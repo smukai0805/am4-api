@@ -1,8 +1,0 @@
-{
-  "name": "am4-api-starter",
-  "version": "1.0.0",
-  "private": true,
-  "dependencies": {
-    "fast-xml-parser": "^4.3.6"
-  }
-}
