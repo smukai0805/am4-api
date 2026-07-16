@@ -15,6 +15,8 @@ const DEFAULT_SEASON = 2024;
 export default async function handler(req, res) {
   const API_KEY = process.env.API_FOOTBALL_KEY;
 
+  res.setHeader('Access-Control-Allow-Origin', '*');
+
   if (!API_KEY) {
     return res.status(500).json({ error: 'API_FOOTBALL_KEY が設定されていません' });
   }
