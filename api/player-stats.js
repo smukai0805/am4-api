@@ -1,13 +1,13 @@
 // api/player-stats.js
 // Vercelのサーバーレス関数(Node.js)。
-// 選手名(英字表記)+ 所属クラブ名で検索して、今季の個人成績を取得する。
-// 例: /api/player-stats?search=Erling Haaland&team=マンチェスター・シティ&season=2024
+// 選手名(姓のみ推奨)+ 所属クラブ名で検索して、2022〜2024の3シーズン分の成績をまとめて取得する。
+// 例: /api/player-stats?search=Haaland&team=マンチェスター・シティ
 //
 // 注意: API-Footballの仕様上、search(選手名)だけでは検索できず、
 // team(チームID)かleague(リーグID)を必ず一緒に指定する必要がある。
-// なので、サイト側のクラブ名(日本語)→ API-FootballのチームIDの対応表をここに持たせている。
+// また、フルネームより姓だけの方が検索にヒットしやすい。
 //
-// 無料プランの制限上、season は 2022〜2024 のみ対応(standings.jsと同じ制限)。
+// 無料プランの制限上、対応シーズンは 2022〜2024 のみ(standings.jsと同じ制限)。
 
 const TEAM_IDS = {
   'マンチェスター・シティ': 50,
@@ -32,22 +32,17 @@ const TEAM_IDS = {
   'ミラン': 489
 };
 
-const MIN_SEASON = 2022;
-const MAX_SEASON = 2024;
+const SEASONS = [2022, 2023, 2024]; // 無料プランで対応できる範囲を全部まとめて取得
 
 export default async function handler(req, res) {
   const API_KEY = process.env.API_FOOTBALL_KEY;
-  const { search, team, season } = req.query;
-  const SEASON = Number(season) || 2024;
+  const { search, team } = req.query;
 
   if (!API_KEY) {
     return res.status(500).json({ error: 'API_FOOTBALL_KEY が設定されていません' });
   }
   if (!search || search.trim().length < 3) {
-    return res.status(400).json({ error: 'search パラメータ(選手名、3文字以上)が必要です' });
-  }
-  if (SEASON < MIN_SEASON || SEASON > MAX_SEASON) {
-    return res.status(400).json({ error: `season は ${MIN_SEASON}〜${MAX_SEASON} の範囲で指定してください(無料プランの制限)` });
+    return res.status(400).json({ error: 'search パラメータ(選手の姓、3文字以上)が必要です' });
   }
 
   const teamId = TEAM_IDS[team];
@@ -59,48 +54,54 @@ export default async function handler(req, res) {
   }
 
   try {
-    const response = await fetch(
-      `https://v3.football.api-sports.io/players?search=${encodeURIComponent(search)}&team=${teamId}&season=${SEASON}`,
-      { headers: { 'x-apisports-key': API_KEY } }
+    // 3シーズン分を並行して取得
+    const results = await Promise.all(
+      SEASONS.map(async season => {
+        const response = await fetch(
+          `https://v3.football.api-sports.io/players?search=${encodeURIComponent(search)}&team=${teamId}&season=${season}`,
+          { headers: { 'x-apisports-key': API_KEY } }
+        );
+        if (!response.ok) return { season, error: `HTTP ${response.status}` };
+        const data = await response.json();
+        if (data.errors && Object.keys(data.errors).length > 0) {
+          return { season, error: data.errors };
+        }
+        const player = data.response?.[0];
+        if (!player) return { season, found: false };
+
+        const stat = (player.statistics || []).sort((a,b)=>(b.games?.appearences||0)-(a.games?.appearences||0))[0];
+        return {
+          season,
+          found: true,
+          playerName: player.player.name,
+          nationality: player.player.nationality,
+          age: player.player.age,
+          team: stat?.team?.name || null,
+          league: stat?.league?.name || null,
+          stats: {
+            出場: stat?.games?.appearences ?? null,
+            ゴール: stat?.goals?.total ?? null,
+            アシスト: stat?.goals?.assists ?? null,
+            イエロー: stat?.cards?.yellow ?? null,
+            レッド: stat?.cards?.red ?? null,
+            平均レーティング: stat?.games?.rating ? Number(stat.games.rating).toFixed(2) : null
+          }
+        };
+      })
     );
-    if (!response.ok) {
-      throw new Error(`取得に失敗: ${response.status}`);
-    }
-    const data = await response.json();
 
-    if (data.errors && Object.keys(data.errors).length > 0) {
-      res.setHeader('Cache-Control', 's-maxage=1800, stale-while-revalidate');
-      return res.status(200).json({ found:false, errors: data.errors });
-    }
-
-    const player = data.response?.[0];
-    if (!player) {
-      res.setHeader('Cache-Control', 's-maxage=1800, stale-while-revalidate');
-      return res.status(200).json({ found:false, message:`${SEASON}シーズンの${team}に、この選手のデータが見つかりませんでした` });
-    }
-
-    const stat = (player.statistics || []).sort((a,b)=>(b.games?.appearences||0)-(a.games?.appearences||0))[0];
-
-    const simplified = {
-      found: true,
-      name: player.player.name,
-      nationality: player.player.nationality,
-      age: player.player.age,
-      team: stat?.team?.name || null,
-      league: stat?.league?.name || null,
-      season: SEASON,
-      stats: {
-        出場: stat?.games?.appearences ?? null,
-        ゴール: stat?.goals?.total ?? null,
-        アシスト: stat?.goals?.assists ?? null,
-        イエロー: stat?.cards?.yellow ?? null,
-        レッド: stat?.cards?.red ?? null,
-        平均レーティング: stat?.games?.rating ? Number(stat.games.rating).toFixed(2) : null
-      }
-    };
+    const foundAny = results.find(r => r.found);
+    const seasons = {};
+    results.forEach(r => { seasons[r.season] = r; });
 
     res.setHeader('Cache-Control', 's-maxage=1800, stale-while-revalidate');
-    return res.status(200).json(simplified);
+    return res.status(200).json({
+      found: !!foundAny,
+      name: foundAny?.playerName || null,
+      nationality: foundAny?.nationality || null,
+      age: foundAny?.age || null,
+      seasons
+    });
 
   } catch (err) {
     console.error(err);
