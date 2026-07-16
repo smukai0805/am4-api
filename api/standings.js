@@ -28,6 +28,7 @@ export default async function handler(req, res) {
   try {
     // 5リーグ分を並行して取得(Promise.allでまとめて投げる)
     const entries = Object.entries(LEAGUES);
+    const errorsByLeague = {};
     const results = await Promise.all(
       entries.map(async ([name, leagueId]) => {
         const response = await fetch(
@@ -38,6 +39,15 @@ export default async function handler(req, res) {
           throw new Error(`${name} の取得に失敗: ${response.status}`);
         }
         const data = await response.json();
+
+        // api-footballはキー無効・プラン制限・シーズン範囲外などの場合でも
+        // HTTPステータスは200を返し、代わりに data.errors にエラー理由を入れてくる。
+        // ここを見ずに response だけ拾うと、エラー時に無言で空配列になってしまう。
+        if (data.errors && Object.keys(data.errors).length > 0) {
+          console.error(`[standings] ${name} (league=${leagueId}, season=${SEASON}):`, data.errors);
+          errorsByLeague[name] = data.errors;
+        }
+
         const table = data.response?.[0]?.league?.standings?.[0] || [];
         const simplified = table.map(row => ({
           rank: row.rank,
@@ -58,7 +68,11 @@ export default async function handler(req, res) {
 
     // 個人利用なら、少し長めにキャッシュしても実用上問題ない(30分)
     res.setHeader('Cache-Control', 's-maxage=1800, stale-while-revalidate');
-    return res.status(200).json({ season: SEASON, leagues: leaguesData });
+    const body = { season: SEASON, leagues: leaguesData };
+    if (Object.keys(errorsByLeague).length > 0) {
+      body.errors = errorsByLeague;
+    }
+    return res.status(200).json(body);
 
   } catch (err) {
     console.error(err);
