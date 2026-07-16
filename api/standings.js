@@ -8,12 +8,28 @@
 // 無料枠(1日100リクエスト ※API-Football側への実際の通信回数でカウント)に
 // 余裕で収まります(1回の呼び出しで5リーグ分＝5リクエスト消費)。
 
+const MIN_SEASON = 2022;
+const MAX_SEASON = 2024;
+const DEFAULT_SEASON = 2024;
+
 export default async function handler(req, res) {
   const API_KEY = process.env.API_FOOTBALL_KEY;
-  const SEASON = 2025; // 2025-26シーズン
 
   if (!API_KEY) {
     return res.status(500).json({ error: 'API_FOOTBALL_KEY が設定されていません' });
+  }
+
+  // ?season=2023 のように指定可能。未指定ならデフォルト値を使う。
+  const { season: seasonParam } = req.query;
+  let SEASON = DEFAULT_SEASON;
+  if (seasonParam !== undefined) {
+    SEASON = Number(seasonParam);
+    if (!Number.isInteger(SEASON) || SEASON < MIN_SEASON || SEASON > MAX_SEASON) {
+      return res.status(400).json({
+        error: `season は ${MIN_SEASON}〜${MAX_SEASON} の範囲の整数で指定してください`,
+        received: seasonParam
+      });
+    }
   }
 
   // サイト内の leaguesData のキー名と、API-Football側のリーグIDの対応表
