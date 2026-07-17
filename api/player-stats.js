@@ -38,6 +38,9 @@ const TEAM_IDS = {
 const SEASONS = [2022, 2023, 2024]; // 無料プランで対応できる範囲を全部まとめて取得
 
 export default async function handler(req, res) {
+  // ブラウザから直接fetchできるようCORSを許可(standings.jsと同じ対応)
+  res.setHeader('Access-Control-Allow-Origin', '*');
+
   const API_KEY = process.env.API_FOOTBALL_KEY;
   const { search, team } = req.query;
 

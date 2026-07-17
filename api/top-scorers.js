@@ -17,6 +17,9 @@ const MIN_SEASON = 2022;
 const MAX_SEASON = 2024;
 
 export default async function handler(req, res) {
+  // ブラウザから直接fetchできるようCORSを許可(standings.jsと同じ対応)
+  res.setHeader('Access-Control-Allow-Origin', '*');
+
   const API_KEY = process.env.API_FOOTBALL_KEY;
   const { league, season } = req.query;
   const SEASON = Number(season) || 2024;
@@ -58,7 +61,6 @@ export default async function handler(req, res) {
       };
     });
 
-    // 得点ランキングはシーズン中の変動があるので1時間キャッシュ(過去シーズンなら長めでもよい)
     res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate');
     return res.status(200).json({ league, season: SEASON, ranking });
 
