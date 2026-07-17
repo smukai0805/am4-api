@@ -1,11 +1,14 @@
 // api/player-stats.js
 // Vercelのサーバーレス関数(Node.js)。
-// 選手名(姓のみ推奨)+ 所属クラブ名で検索して、2022〜2024の3シーズン分の成績をまとめて取得する。
+// 選手名(姓のみ推奨)+ 所属クラブ名で検索して、2022〜2024の3シーズン分の成績と顔写真URLをまとめて取得する。
 // 例: /api/player-stats?search=Haaland&team=マンチェスター・シティ
 //
 // 注意: API-Footballの仕様上、search(選手名)だけでは検索できず、
 // team(チームID)かleague(リーグID)を必ず一緒に指定する必要がある。
 // また、フルネームより姓だけの方が検索にヒットしやすい。
+//
+// 顔写真について: API-Football側が選手ごとに配布している公式の選手写真URL
+// (player.photo)をそのまま返す。自前でホスティングはしていない。
 //
 // 無料プランの制限上、対応シーズンは 2022〜2024 のみ(standings.jsと同じ制限)。
 
@@ -54,7 +57,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 3シーズン分を並行して取得
     const results = await Promise.all(
       SEASONS.map(async season => {
         const response = await fetch(
@@ -74,6 +76,7 @@ export default async function handler(req, res) {
           season,
           found: true,
           playerName: player.player.name,
+          photo: player.player.photo || null,
           nationality: player.player.nationality,
           age: player.player.age,
           team: stat?.team?.name || null,
@@ -98,6 +101,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       found: !!foundAny,
       name: foundAny?.playerName || null,
+      photo: foundAny?.photo || null,
       nationality: foundAny?.nationality || null,
       age: foundAny?.age || null,
       seasons
