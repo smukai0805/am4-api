@@ -1,16 +1,15 @@
 // api/player-stats.js
 // Vercelのサーバーレス関数(Node.js)。
-// 選手名(姓のみ推奨)+ 所属クラブ名で検索して、2022〜2024の3シーズン分の成績と顔写真URLをまとめて取得する。
+//
+// 写真は「選手名」だけで取得(所属クラブが実データと違っていてもOK)。
+// 成績は「選手名+所属クラブ」で取得(API-Football側の仕様上、クラブ指定が必須のため)。
 // 例: /api/player-stats?search=Haaland&team=マンチェスター・シティ
 //
-// 注意: API-Footballの仕様上、search(選手名)だけでは検索できず、
-// team(チームID)かleague(リーグID)を必ず一緒に指定する必要がある。
-// また、フルネームより姓だけの方が検索にヒットしやすい。
-//
-// 顔写真について: API-Football側が選手ごとに配布している公式の選手写真URL
-// (player.photo)をそのまま返す。自前でホスティングはしていない。
-//
-// 無料プランの制限上、対応シーズンは 2022〜2024 のみ(standings.jsと同じ制限)。
+// 【将来、有料プランに切り替えたら】
+// 下の SEASONS 配列に対応したい年(例: 2025)を足すだけで、
+// 自動的にその年の成績・写真も取得対象になります。
+// (players/profiles は元々シーズンに縛られないので、写真は今のままでも
+//  常に最新のものが返ってきます)
 
 const TEAM_IDS = {
   'マンチェスター・シティ': 50,
@@ -35,10 +34,10 @@ const TEAM_IDS = {
   'ミラン': 489
 };
 
-const SEASONS = [2022, 2023, 2024]; // 無料プランで対応できる範囲を全部まとめて取得
+// 対応シーズン一覧。有料プランに上げたら、ここに新しい年を足すだけでOK。
+const SEASONS = [2022, 2023, 2024];
 
 export default async function handler(req, res) {
-  // ブラウザから直接fetchできるようCORSを許可(standings.jsと同じ対応)
   res.setHeader('Access-Control-Allow-Origin', '*');
 
   const API_KEY = process.env.API_FOOTBALL_KEY;
@@ -51,67 +50,84 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'search パラメータ(選手の姓、3文字以上)が必要です' });
   }
 
-  const teamId = TEAM_IDS[team];
-  if (!teamId) {
-    return res.status(200).json({
-      found: false,
-      message: `クラブ「${team}」のチームID対応表が未登録です。TEAM_IDSに追加してください。`
-    });
-  }
-
+  // ---- ① 写真だけは「名前のみ」で取得(クラブが実データと違っていてもOK) ----
+  let photo = null;
+  let profileName = null;
+  let profileNationality = null;
   try {
-    const results = await Promise.all(
-      SEASONS.map(async season => {
-        const response = await fetch(
-          `https://v3.football.api-sports.io/players?search=${encodeURIComponent(search)}&team=${teamId}&season=${season}`,
-          { headers: { 'x-apisports-key': API_KEY } }
-        );
-        if (!response.ok) return { season, error: `HTTP ${response.status}` };
-        const data = await response.json();
-        if (data.errors && Object.keys(data.errors).length > 0) {
-          return { season, error: data.errors };
-        }
-        const player = data.response?.[0];
-        if (!player) return { season, found: false };
-
-        const stat = (player.statistics || []).sort((a,b)=>(b.games?.appearences||0)-(a.games?.appearences||0))[0];
-        return {
-          season,
-          found: true,
-          playerName: player.player.name,
-          photo: player.player.photo || null,
-          nationality: player.player.nationality,
-          age: player.player.age,
-          team: stat?.team?.name || null,
-          league: stat?.league?.name || null,
-          stats: {
-            出場: stat?.games?.appearences ?? null,
-            ゴール: stat?.goals?.total ?? null,
-            アシスト: stat?.goals?.assists ?? null,
-            イエロー: stat?.cards?.yellow ?? null,
-            レッド: stat?.cards?.red ?? null,
-            平均レーティング: stat?.games?.rating ? Number(stat.games.rating).toFixed(2) : null
-          }
-        };
-      })
+    const profileRes = await fetch(
+      `https://v3.football.api-sports.io/players/profiles?search=${encodeURIComponent(search)}`,
+      { headers: { 'x-apisports-key': API_KEY } }
     );
-
-    const foundAny = results.find(r => r.found);
-    const seasons = {};
-    results.forEach(r => { seasons[r.season] = r; });
-
-    res.setHeader('Cache-Control', 's-maxage=1800, stale-while-revalidate');
-    return res.status(200).json({
-      found: !!foundAny,
-      name: foundAny?.playerName || null,
-      photo: foundAny?.photo || null,
-      nationality: foundAny?.nationality || null,
-      age: foundAny?.age || null,
-      seasons
-    });
-
+    if (profileRes.ok) {
+      const profileData = await profileRes.json();
+      const profile = profileData.response?.[0]?.player;
+      if (profile) {
+        photo = profile.photo || null;
+        profileName = profile.name || null;
+        profileNationality = profile.nationality || null;
+      }
+    }
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: '取得に失敗しました', detail: err.message });
+    console.error('profile fetch error:', err);
+    // 写真取得の失敗は致命的ではないので、ここでは処理を止めずに続行する
   }
+
+  // ---- ② 成績はクラブ指定が必要なので、team が対応表にある場合のみ取得を試みる ----
+  const teamId = TEAM_IDS[team];
+  let seasons = {};
+  let statsFoundAny = false;
+
+  if (teamId) {
+    try {
+      const results = await Promise.all(
+        SEASONS.map(async season => {
+          const response = await fetch(
+            `https://v3.football.api-sports.io/players?search=${encodeURIComponent(search)}&team=${teamId}&season=${season}`,
+            { headers: { 'x-apisports-key': API_KEY } }
+          );
+          if (!response.ok) return { season, error: `HTTP ${response.status}` };
+          const data = await response.json();
+          if (data.errors && Object.keys(data.errors).length > 0) {
+            return { season, error: data.errors };
+          }
+          const player = data.response?.[0];
+          if (!player) return { season, found: false };
+
+          const stat = (player.statistics || []).sort((a,b)=>(b.games?.appearences||0)-(a.games?.appearences||0))[0];
+          return {
+            season,
+            found: true,
+            team: stat?.team?.name || null,
+            league: stat?.league?.name || null,
+            stats: {
+              出場: stat?.games?.appearences ?? null,
+              ゴール: stat?.goals?.total ?? null,
+              アシスト: stat?.goals?.assists ?? null,
+              イエロー: stat?.cards?.yellow ?? null,
+              レッド: stat?.cards?.red ?? null,
+              平均レーティング: stat?.games?.rating ? Number(stat.games.rating).toFixed(2) : null
+            }
+          };
+        })
+      );
+      results.forEach(r => { seasons[r.season] = r; });
+      statsFoundAny = results.some(r => r.found);
+    } catch (err) {
+      console.error('stats fetch error:', err);
+    }
+  }
+
+  res.setHeader('Cache-Control', 's-maxage=1800, stale-while-revalidate');
+  return res.status(200).json({
+    found: !!(photo || statsFoundAny),
+    name: profileName,
+    photo,
+    nationality: profileNationality,
+    statsAvailable: statsFoundAny,
+    statsNote: !teamId
+      ? `クラブ「${team}」のID対応表が未登録のため、成績は取得していません(写真のみ)`
+      : (!statsFoundAny ? '実データ(2022〜2024)に該当する在籍記録が見つかりませんでした(写真のみ反映)' : null),
+    seasons
+  });
 }
