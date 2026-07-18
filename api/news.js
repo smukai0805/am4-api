@@ -25,6 +25,12 @@ const FEEDS = [
   { url: 'http://feeds.bbci.co.uk/sport/football/rss.xml', source: 'BBC Sport' },
   { url: 'https://www.skysports.com/rss/12040', source: 'Sky Sports' },
   { url: 'https://www.theguardian.com/football/rss', source: 'The Guardian' },
+  // ゲキサカ(講談社運営)の「海外サッカー」カテゴリRSS。日本語記事を増やす目的で追加。
+  // サッカーキング(soccer-king.jp)のRSSはRDF/RSS1.0という別形式で、
+  // 現状のパーサー(RSS2.0の<rss><channel><item>構造を前提)とは互換性が無いため見送り、
+  // 同じRSS2.0形式で提供されているゲキサカを採用した。更新頻度も高く、
+  // 画像(<image><url>)・要約・リンクが全記事に揃っている。
+  { url: 'https://web.gekisaka.jp/feed?category=foreign', source: 'ゲキサカ' },
   // 他に追加したい場合はここに { url, source } を追記
 ];
 
@@ -95,6 +101,10 @@ function extractImage(item) {
   // enclosure(画像添付形式のRSS)
   if (item.enclosure && item.enclosure['@_url'] && /image/.test(item.enclosure['@_type'] || '')) {
     return decodeEntities(item.enclosure['@_url']);
+  }
+  // <image><url>...</url></image>(ゲキサカ等) — 記事によっては無い場合もある
+  if (item.image && item.image.url) {
+    return decodeEntities(String(item.image.url));
   }
   return null;
 }
