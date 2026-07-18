@@ -35,15 +35,41 @@ const FETCH_HEADERS = {
   'Accept': 'application/rss+xml, application/xml, text/xml, */*'
 };
 
-const parser = new XMLParser({ ignoreAttributes: false });
+// processEntities:false にして、fast-xml-parserの実体参照展開まわりの
+// 安全機構(「Entity expansion limit exceeded」エラー)が、本文中に
+// タイポグラフィ実体参照(&#8217;など)を大量に含むフィード(Guardian等)で
+// 発火してフィード全体が取得失敗になるのを回避する。
+// 実体参照そのものは下のdecodeEntities()で手動デコードする。
+const parser = new XMLParser({ ignoreAttributes: false, processEntities: false });
+
+function decodeEntities(str) {
+  return String(str ?? '')
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCodePoint(parseInt(dec, 10)))
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&nbsp;/g, ' ');
+}
 
 function stripHtml(str) {
-  return String(str ?? '')
+  return decodeEntities(str)
     .replace(/<!\[CDATA\[|\]\]>/g, '')
     .replace(/<[^>]*>/g, '')
-    .replace(/&nbsp;/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+// 日付が欠落/不正な形式でも例外を投げず、フィード全体の取得失敗に
+// つながらないようにする(Sky Sportsで実際にこの問題が起きていた:
+// pubDateが無い/パースできない記事が1件でもあると、修正前は
+// .toISOString()が例外を投げてフィード全体がfailedFeeds行きになっていた)
+function safeIsoDate(raw) {
+  if (!raw) return null;
+  const d = new Date(raw);
+  return isNaN(d.getTime()) ? null : d.toISOString();
 }
 
 function truncate(str, len) {
@@ -80,14 +106,17 @@ export default async function handler(req, res) {
         const xml = await response.text();
         const data = parser.parse(xml);
         const items = data?.rss?.channel?.item || [];
-        return items.slice(0, 8).map(item => ({
-          headline: typeof item.title === 'string' ? item.title : String(item.title ?? ''),
-          summary: truncate(stripHtml(item.description), 100),
-          image: extractImage(item),
-          source: feed.source,
-          time: item.pubDate ? new Date(item.pubDate).toISOString() : null,
-          link: item.link ?? null
-        }));
+        return items.slice(0, 8).map(item => {
+          const rawTitle = typeof item.title === 'string' ? item.title : String(item.title ?? '');
+          return {
+            headline: decodeEntities(rawTitle),
+            summary: truncate(stripHtml(item.description), 100),
+            image: extractImage(item),
+            source: feed.source,
+            time: safeIsoDate(item.pubDate),
+            link: item.link ? decodeEntities(String(item.link)) : null
+          };
+        });
       })
     );
 
