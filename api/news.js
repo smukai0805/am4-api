@@ -82,17 +82,19 @@ function extractImage(item) {
   const thumb = item['media:thumbnail'];
   if (thumb) {
     const t = Array.isArray(thumb) ? thumb[0] : thumb;
-    if (t && t['@_url']) return t['@_url'];
+    if (t && t['@_url']) return decodeEntities(t['@_url']);
   }
-  // media:content (Guardian等)
+  // media:content (Guardian等) — Guardianのurl属性は "?width=140&amp;quality=85&amp;..." のように
+  // 実体参照がエスケープされたまま入っているため、decodeEntities()で"&"に戻す
+  // (デコードしないとURLのクエリパラメータ区切りとして壊れる)
   const content = item['media:content'];
   if (content) {
     const c = Array.isArray(content) ? content[0] : content;
-    if (c && c['@_url']) return c['@_url'];
+    if (c && c['@_url']) return decodeEntities(c['@_url']);
   }
   // enclosure(画像添付形式のRSS)
   if (item.enclosure && item.enclosure['@_url'] && /image/.test(item.enclosure['@_type'] || '')) {
-    return item.enclosure['@_url'];
+    return decodeEntities(item.enclosure['@_url']);
   }
   return null;
 }
