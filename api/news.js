@@ -1,10 +1,21 @@
 // api/news.js
 // Vercelのサーバーレス関数(Node.js)。
 // サッカー専門メディアのRSSフィードを取得・パースして、
-// football-hub.html 側の news 配列と同じ形(headline, source, time)で返す。
+// football-hub.html 側の news 配列と同じ形で返す。
 // APIキー不要、無料で使える(RSSはそもそも公開情報の配信フォーマット)。
 //
-// 依存パッケージ: fast-xml-parser (package.json に追記が必要、下記参照)
+// 依存パッケージ: fast-xml-parser (package.json に追記済み)
+//
+// ------------------------------------------------------------------
+// 【2026-07 改修】ニュースタブのリッチ化に合わせて、以下を追加で返すようにした。
+//   - summary : 記事の概要(descriptionタグをHTMLタグ除去のうえ100文字程度に短縮)
+//   - image   : サムネイル画像URL(media:thumbnail / media:content / enclosure のいずれかから取得)
+//   - link    : 元記事へのURL(フロント側で見出し・カードをクリックすると開く)
+// また、Sky Sportsフィードが取得失敗していた問題への対策として、
+// fetch時にUser-Agentヘッダーを明示的に付与するようにした
+// (UAが空/Node標準のfetchだと一部メディアがボット判定してブロックすることがあるため)。
+// 情報源も1件追加し、記事の多様性を増やしている。
+// ------------------------------------------------------------------
 
 import { XMLParser } from 'fast-xml-parser';
 
@@ -13,22 +24,66 @@ import { XMLParser } from 'fast-xml-parser';
 const FEEDS = [
   { url: 'http://feeds.bbci.co.uk/sport/football/rss.xml', source: 'BBC Sport' },
   { url: 'https://www.skysports.com/rss/12040', source: 'Sky Sports' },
+  { url: 'https://www.theguardian.com/football/rss', source: 'The Guardian' },
   // 他に追加したい場合はここに { url, source } を追記
 ];
 
+// 一部メディアはUser-Agentが無い/簡素なリクエストをボット判定してブロックすることがあるため、
+// ブラウザからのアクセスに近いヘッダーを明示的に付与する
+const FETCH_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (compatible; AM4NewsBot/1.0; +https://am4-api.vercel.app)',
+  'Accept': 'application/rss+xml, application/xml, text/xml, */*'
+};
+
 const parser = new XMLParser({ ignoreAttributes: false });
+
+function stripHtml(str) {
+  return String(str ?? '')
+    .replace(/<!\[CDATA\[|\]\]>/g, '')
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function truncate(str, len) {
+  if (!str) return '';
+  return str.length > len ? str.slice(0, len).trim() + '…' : str;
+}
+
+function extractImage(item) {
+  // media:thumbnail (BBC等) — 単一 or 配列(複数解像度)の場合がある
+  const thumb = item['media:thumbnail'];
+  if (thumb) {
+    const t = Array.isArray(thumb) ? thumb[0] : thumb;
+    if (t && t['@_url']) return t['@_url'];
+  }
+  // media:content (Guardian等)
+  const content = item['media:content'];
+  if (content) {
+    const c = Array.isArray(content) ? content[0] : content;
+    if (c && c['@_url']) return c['@_url'];
+  }
+  // enclosure(画像添付形式のRSS)
+  if (item.enclosure && item.enclosure['@_url'] && /image/.test(item.enclosure['@_type'] || '')) {
+    return item.enclosure['@_url'];
+  }
+  return null;
+}
 
 export default async function handler(req, res) {
   try {
     const results = await Promise.allSettled(
       FEEDS.map(async feed => {
-        const response = await fetch(feed.url);
+        const response = await fetch(feed.url, { headers: FETCH_HEADERS });
         if (!response.ok) throw new Error(`${feed.source} の取得に失敗: ${response.status}`);
         const xml = await response.text();
         const data = parser.parse(xml);
         const items = data?.rss?.channel?.item || [];
-        return items.slice(0, 5).map(item => ({
+        return items.slice(0, 8).map(item => ({
           headline: typeof item.title === 'string' ? item.title : String(item.title ?? ''),
+          summary: truncate(stripHtml(item.description), 100),
+          image: extractImage(item),
           source: feed.source,
           time: item.pubDate ? new Date(item.pubDate).toISOString() : null,
           link: item.link ?? null
@@ -41,13 +96,16 @@ export default async function handler(req, res) {
       .filter(r => r.status === 'fulfilled')
       .flatMap(r => r.value)
       .sort((a, b) => new Date(b.time || 0) - new Date(a.time || 0))
-      .slice(0, 10); // TOP10件に絞る(サイト側はTOP5表示なので余裕を持たせている)
+      .slice(0, 15); // TOP15件に絞る(サイト側はTOP8前後表示なので余裕を持たせている)
 
     const failedFeeds = results
-      .map((r, i) => (r.status === 'rejected' ? FEEDS[i].source : null))
+      .map((r, i) => (r.status === 'rejected' ? { source: FEEDS[i].source, error: String(r.reason?.message || r.reason) } : null))
       .filter(Boolean);
 
-    // ニュースは移籍情報ほど速報性が問われないので、長めに(30分)キャッシュ
+    // ニュースは移籍情報ほど速報性が問われないので、長めに(30分)キャッシュ。
+    // フロント側は5分おきに再フェッチするが、Vercelのエッジキャッシュにより
+    // 実際にAPI-Football側やメディア側への外部リクエストが発生するのは
+    // キャッシュ切れの30分ごとに抑えられる。
     res.setHeader('Cache-Control', 's-maxage=1800, stale-while-revalidate');
     return res.status(200).json({ news: allItems, failedFeeds });
 
