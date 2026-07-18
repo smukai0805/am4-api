@@ -100,6 +100,11 @@ function extractImage(item) {
 }
 
 export default async function handler(req, res) {
+  // 他のエンドポイント(player-stats.js等)には元から入っていたが、
+  // このnews.jsだけ設定が漏れていた。file://で直接HTMLを開いた場合や
+  // 別ドメインからのfetchはこれが無いとブラウザ側でブロックされ、
+  // フロント側は「取得失敗」としてサンプルデータ表示にフォールバックしてしまう。
+  res.setHeader('Access-Control-Allow-Origin', '*');
   try {
     const results = await Promise.allSettled(
       FEEDS.map(async feed => {
