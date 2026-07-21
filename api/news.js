@@ -124,6 +124,44 @@ function extractImage(item) {
   return null;
 }
 
+// 全フィードを取得してパースする共通処理。lang絞り込み等は行わず、
+// 取得できた生の記事一覧をそのまま返す。
+// api/ai-column.js側でもこの関数を再利用し(AM4コラムの「話題まとめ」機能で
+// 実際の報道記事をAIに読ませて要約させるため)、RSS取得・パース処理を二重管理しないようにしている。
+export async function fetchAllNewsItems() {
+  const results = await Promise.allSettled(
+    FEEDS.map(async feed => {
+      const response = await fetch(feed.url, { headers: FETCH_HEADERS });
+      if (!response.ok) throw new Error(`${feed.source} の取得に失敗: ${response.status}`);
+      const xml = await response.text();
+      const data = parser.parse(xml);
+      const items = data?.rss?.channel?.item || [];
+      return items.slice(0, feed.limit || 8).map(item => {
+        const rawTitle = typeof item.title === 'string' ? item.title : String(item.title ?? '');
+        return {
+          headline: decodeEntities(rawTitle),
+          summary: truncate(stripHtml(item.description), 100),
+          image: extractImage(item),
+          source: feed.source,
+          lang: feed.lang,
+          time: safeIsoDate(item.pubDate),
+          link: item.link ? decodeEntities(String(item.link)) : null
+        };
+      });
+    })
+  );
+
+  const fetchedItems = results
+    .filter(r => r.status === 'fulfilled')
+    .flatMap(r => r.value);
+
+  const failedFeeds = results
+    .map((r, i) => (r.status === 'rejected' ? { source: FEEDS[i].source, error: String(r.reason?.message || r.reason) } : null))
+    .filter(Boolean);
+
+  return { items: fetchedItems, failedFeeds };
+}
+
 export default async function handler(req, res) {
   // 他のエンドポイント(player-stats.js等)には元から入っていたが、
   // このnews.jsだけ設定が漏れていた。file://で直接HTMLを開いた場合や
@@ -131,32 +169,7 @@ export default async function handler(req, res) {
   // フロント側は「取得失敗」としてサンプルデータ表示にフォールバックしてしまう。
   res.setHeader('Access-Control-Allow-Origin', '*');
   try {
-    const results = await Promise.allSettled(
-      FEEDS.map(async feed => {
-        const response = await fetch(feed.url, { headers: FETCH_HEADERS });
-        if (!response.ok) throw new Error(`${feed.source} の取得に失敗: ${response.status}`);
-        const xml = await response.text();
-        const data = parser.parse(xml);
-        const items = data?.rss?.channel?.item || [];
-        return items.slice(0, feed.limit || 8).map(item => {
-          const rawTitle = typeof item.title === 'string' ? item.title : String(item.title ?? '');
-          return {
-            headline: decodeEntities(rawTitle),
-            summary: truncate(stripHtml(item.description), 100),
-            image: extractImage(item),
-            source: feed.source,
-            lang: feed.lang,
-            time: safeIsoDate(item.pubDate),
-            link: item.link ? decodeEntities(String(item.link)) : null
-          };
-        });
-      })
-    );
-
-    // 取得に失敗したフィードがあってもエラーにせず、成功した分だけ返す
-    const fetchedItems = results
-      .filter(r => r.status === 'fulfilled')
-      .flatMap(r => r.value);
+    const { items: fetchedItems, failedFeeds } = await fetchAllNewsItems();
 
     // ?lang=ja/en/es のクエリに応じて、対応する言語のソースを優先的に返す。
     // 例: ?lang=ja なら日本語記事(ゲキサカ)のみに絞る。
@@ -175,10 +188,6 @@ export default async function handler(req, res) {
     const allItems = pool
       .sort((a, b) => new Date(b.time || 0) - new Date(a.time || 0))
       .slice(0, 15); // TOP15件に絞る(サイト側はTOP8前後表示なので余裕を持たせている)
-
-    const failedFeeds = results
-      .map((r, i) => (r.status === 'rejected' ? { source: FEEDS[i].source, error: String(r.reason?.message || r.reason) } : null))
-      .filter(Boolean);
 
     // ニュースは移籍情報ほど速報性が問われないので、長めに(30分)キャッシュ。
     // フロント側は5分おきに再フェッチするが、Vercelのエッジキャッシュにより
