@@ -131,7 +131,17 @@ function extractImage(item) {
 export async function fetchAllNewsItems() {
   const results = await Promise.allSettled(
     FEEDS.map(async feed => {
-      const response = await fetch(feed.url, { headers: FETCH_HEADERS });
+      // 1フィードあたり8秒でタイムアウトさせる。api/ai-column.js がこの関数を呼んだ後に
+      // さらにAnthropic APIを呼ぶため、1つのフィードが遅い/応答しないだけで
+      // サーバーレス関数全体の実行時間上限を超えてしまわないようにするための対策。
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+      let response;
+      try {
+        response = await fetch(feed.url, { headers: FETCH_HEADERS, signal: controller.signal });
+      } finally {
+        clearTimeout(timeoutId);
+      }
       if (!response.ok) throw new Error(`${feed.source} の取得に失敗: ${response.status}`);
       const xml = await response.text();
       const data = parser.parse(xml);
@@ -141,6 +151,10 @@ export async function fetchAllNewsItems() {
         return {
           headline: decodeEntities(rawTitle),
           summary: truncate(stripHtml(item.description), 100),
+          // fullText: AM4編集部記事・試合レポートの根拠データ用。表示用summary(100文字)より
+          // 長め(600文字)に取っておく。ゲキサカの「試合記録」記事のように、得点時間などの
+          // 事実が100文字を超えたところに書かれているケースがあるため。
+          fullText: truncate(stripHtml(item.description), 600),
           image: extractImage(item),
           source: feed.source,
           lang: feed.lang,
