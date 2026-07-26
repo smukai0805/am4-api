@@ -80,7 +80,7 @@ If the material doesn't clearly cover one of these phases (e.g. no extra time ha
 
 Also include:
 - "competition": the competition/round name if determinable from the material (e.g. "FIFA World Cup 2026 Final"), else null.
-- "league": one of ${leagues.join(' / ')} — best guess based on the material, "Other" if unclear.
+- "leagues": an array of 1-2 entries from ${leagues.join(' / ')} — usually just one (both teams are in the same competition), but if the two teams belong to different leagues, list both. "Other" if unclear.
 - "score": the final score as a short string (e.g. "1-0") ONLY if explicitly stated in the material, else null. Never guess or calculate it yourself.
 - "title": your own original headline for the report (not copied verbatim from a source).
 - "sourceIds": array of ids actually used.
@@ -91,7 +91,7 @@ Strict rules:
 - Each section body should be 80-150 words, written in a natural sports-journalism style.
 
 Return ONLY this JSON format, no preamble, no markdown fences:
-{"competition":"...","league":"World Cup","score":"1-0","title":"...","sections":[{"label":"First Half","body":"..."},{"label":"Second Half & Extra Time","body":"..."},{"label":"Records & Talking Points","body":"..."}],"sourceIds":[1,2,3]}`;
+{"competition":"...","leagues":["World Cup"],"score":"1-0","title":"...","sections":[{"label":"First Half","body":"..."},{"label":"Second Half & Extra Time","body":"..."},{"label":"Records & Talking Points","body":"..."}],"sourceIds":[1,2,3]}`;
   }
   return `あなたはサッカー情報サイト『AM4』編集部として試合レポートを書くAIです。
 これから、ある1試合についての実際に配信された記事一覧(id・見出し・本文・情報源・リンク)を渡します。この一覧が唯一の事実の根拠です。この試合の結果についてあなたは元々何も知らないので、一覧に無いことを事実として書いてはいけません。
@@ -104,7 +104,7 @@ Return ONLY this JSON format, no preamble, no markdown fences:
 
 以下も含めてください:
 - "competition": 大会名・ラウンドが分かれば(例:「FIFAワールドカップ2026 決勝」)、不明ならnull。
-- "league": 次の中から1つ: ${leagues.join(' / ')}。判断が難しい場合は「その他」。
+- "leagues": 次の中から1〜2個を配列で: ${leagues.join(' / ')}。通常は1つ(両チームが同じ大会に所属)で良いが、2チームが異なるリーグに所属する場合は両方挙げること。判断が難しい場合は["その他"]。
 - "score": 素材に明記されている場合のみ、最終スコアを短い文字列で(例:"1-0")。書かれていなければ必ずnull(自分で推測・計算しない)。
 - "title": AM4独自の見出し(元記事の見出しの丸写しは禁止)。
 - "sourceIds": 実際に使った記事idの配列。
@@ -115,7 +115,7 @@ Return ONLY this JSON format, no preamble, no markdown fences:
 - 各セクションは日本語80〜150文字程度、スポーツ記事らしい自然な文体で(単なる箇条書きにしない)。
 
 出力は必ず以下のJSON形式のみで返してください。説明文・前置き・マークダウンのコードブロック記法は一切付けないでください:
-{"competition":"...","league":"ワールドカップ","score":"1-0","title":"...","sections":[{"label":"前半","body":"..."},{"label":"後半〜延長戦","body":"..."},{"label":"記録・注目ポイント","body":"..."}],"sourceIds":[1,2,3]}`;
+{"competition":"...","leagues":["ワールドカップ"],"score":"1-0","title":"...","sections":[{"label":"前半","body":"..."},{"label":"後半〜延長戦","body":"..."},{"label":"記録・注目ポイント","body":"..."}],"sourceIds":[1,2,3]}`;
 }
 
 function extractJson(text) {
@@ -205,14 +205,17 @@ export default async function handler(req, res) {
         .filter(Boolean)
         .map(s => ({ title: s.headline, link: s.link, source: s.source }));
 
-      const league = validLeagues.includes(parsed.league) ? parsed.league : validLeagues[validLeagues.length - 1];
+      // leaguesは配列(1〜2個)。旧バージョン互換のため単一文字列で返ってきた場合も配列化する。
+      const rawLeagues = Array.isArray(parsed.leagues) ? parsed.leagues : (parsed.league ? [parsed.league] : []);
+      let leagues = rawLeagues.filter(l => validLeagues.includes(l)).slice(0, 2);
+      if (leagues.length === 0) leagues = [validLeagues[validLeagues.length - 1]];
       const videoId = await searchYoutubeHighlight(team1, team2, parsed.competition);
 
       reports.push({
         homeTeam: team1,
         awayTeam: team2,
         competition: parsed.competition || null,
-        league,
+        leagues,
         score: parsed.score || null,
         title: parsed.title,
         sections: parsed.sections,

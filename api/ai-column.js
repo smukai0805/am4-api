@@ -8,9 +8,12 @@
 //
 // 【2026-07 改修】
 //   - 記事数を2〜3本から最大6本に拡大(ニュースタブの主コンテンツになったため)。
-//   - 各記事に "league" フィールドを追加。プレミアリーグ/ラ・リーガ/セリエA/ブンデスリーガ/
-//     リーグ・アン/ワールドカップ/その他、のいずれかをAIが記事内容から判定して付与する。
-//     フロント側のリーグ別タブ(全体/W杯/プレミア/...)はこの値でフィルタする。
+//   - 各記事に "leagues" フィールド(配列)を追加。プレミアリーグ/ラ・リーガ/セリエA/
+//     ブンデスリーガ/リーグ・アン/ワールドカップ/その他、から関係する分だけ1〜2個選んで付与する。
+//     フロント側のリーグ別タブ(全体/プレミア/...)はこの配列に含まれていれば表示するOR一致。
+//     (例: 「ビニシウスがアーセナル移籍」のような記事は、現所属のラ・リーガと移籍先候補の
+//     プレミアリーグの両方に関わるため、単一リーグだと片方のタブから見えなくなってしまう。
+//     複数タグにすることで、どちらのタブからも同じ記事が見えるようにしている。)
 //   - 記事の種類は引き続き
 //       1. category:"話題まとめ"   — 複数の実記事を横断して要約する記事
 //       2. category:"編集部コラム" — 実記事1本を踏まえたAM4独自の考察・便乗記事
@@ -73,17 +76,18 @@ const SYSTEM_PROMPT_JA = `あなたはサッカー情報サイト『AM4』の編
 
 各記事には以下を必ず含めること:
 - "sourceIds": 根拠にした記事のid配列(例: [1,3,4])。実際に参照していないidを含めてはいけない。
-- "league": その記事が主に扱っているリーグ・大会を次の中から1つ選ぶ: ${LEAGUES_JA.join(' / ')}。判断が難しい場合は "その他"。
+- "leagues": その記事が関係しているリーグ・大会を、次の中から1〜2個選んで配列で挙げる: ${LEAGUES_JA.join(' / ')}。
+  例えば移籍の噂記事(選手の現所属クラブのリーグと、移籍先候補クラブのリーグが異なる場合)は、その両方のリーグを挙げること(例:["ラ・リーガ","プレミアリーグ"])。1つのリーグしか関係しない記事は1個だけでよい。判断が難しい場合は ["その他"]。
 
 厳守事項(違反しないこと):
 - 提供された記事一覧に書かれていない事実(移籍の確定、スコア、具体的な数値、日付など)を新たに作り出してはいけません。
 - 実在の選手・監督・関係者の発言を、カギカッコ付きの直接話法で捏造してはいけません。記事一覧内の要約に基づいて間接的に言及するのは可(例:「〜と報じられている」)。
-- 記事一覧が空、または話題として使えるものが無い場合は、無理に記事を作らず、その旨がわかる短い1本の記事(category:"話題まとめ"、内容は「現在参照できる話題が少ない」旨、league:"その他")のみを返してください。
+- 記事一覧が空、または話題として使えるものが無い場合は、無理に記事を作らず、その旨がわかる短い1本の記事(category:"話題まとめ"、内容は「現在参照できる話題が少ない」旨、leagues:["その他"])のみを返してください。
 - 各記事は200〜320文字程度の日本語で、読み応えのある記事らしい文体にしてください(単なる箇条書きの要約にしない)。
 - 見出し(title)は元記事の見出しをそのまま使わず、AM4独自の見出しを付けること。
 
 出力は必ず以下のJSON形式のみで返してください。説明文・前置き・マークダウンのコードブロック記法(\`\`\`)は一切付けないでください:
-{"columns":[{"category":"話題まとめ","title":"...","body":"...","league":"ワールドカップ","sourceIds":[1,2,3]},{"category":"編集部コラム","title":"...","body":"...","league":"プレミアリーグ","sourceIds":[4]}]}`;
+{"columns":[{"category":"話題まとめ","title":"...","body":"...","leagues":["ワールドカップ"],"sourceIds":[1,2,3]},{"category":"編集部コラム","title":"...","body":"...","leagues":["ラ・リーガ","プレミアリーグ"],"sourceIds":[4]}]}`;
 
 const SYSTEM_PROMPT_EN = `You are the editorial AI for the football site "AM4".
 Below is a list of actual, currently published football news articles (id, headline, summary, source, link).
@@ -96,17 +100,18 @@ Articles to write (3-6 total, adjust based on how much material is available):
 
 Each article must include:
 - "sourceIds": an array of the ids it actually drew from (e.g. [1,3,4]). Never include an id you didn't actually use.
-- "league": which league/competition the article is mainly about, chosen from: ${LEAGUES_EN.join(' / ')}. Use "Other" if unclear.
+- "leagues": an array of 1-2 leagues/competitions this article relates to, chosen from: ${LEAGUES_EN.join(' / ')}.
+  For example, a transfer rumor article (where the player's current club and the rumored destination club are in different leagues) should list BOTH leagues (e.g. ["La Liga","Premier League"]). An article about only one league needs just one entry. Use ["Other"] if unclear.
 
 Strict rules (must not violate):
 - Never invent facts (confirmed transfers, scores, specific numbers, dates) that are not present in the provided article list.
 - Never fabricate direct quotes attributed to real players, managers, or officials. Indirect reference based on the provided summaries is fine (e.g., "reportedly...").
-- If the article list is empty or has nothing usable, do not force content — return a single short "Topic Roundup" article (league: "Other") noting that few topics are currently available.
+- If the article list is empty or has nothing usable, do not force content — return a single short "Topic Roundup" article (leagues: ["Other"]) noting that few topics are currently available.
 - Each article should be about 120-180 words, written in a natural article/feature style, not a bare bullet-point summary.
 - Write your own headline (title); do not just reuse a source article's headline verbatim.
 
 Return ONLY the following JSON format. No preamble, no explanation, no markdown code fences:
-{"columns":[{"category":"Topic Roundup","title":"...","body":"...","league":"World Cup","sourceIds":[1,2,3]},{"category":"Editor's Take","title":"...","body":"...","league":"Premier League","sourceIds":[4]}]}`;
+{"columns":[{"category":"Topic Roundup","title":"...","body":"...","leagues":["World Cup"],"sourceIds":[1,2,3]},{"category":"Editor's Take","title":"...","body":"...","leagues":["La Liga","Premier League"],"sourceIds":[4]}]}`;
 
 function getSystemPrompt(lang) {
   return lang === 'en' || lang === 'es' ? SYSTEM_PROMPT_EN : SYSTEM_PROMPT_JA;
@@ -184,13 +189,19 @@ export default async function handler(req, res) {
         .map(id => sourceList.find(s => s.id === id))
         .filter(Boolean)
         .map(s => ({ title: s.headline, link: s.link, source: s.source }));
-      // AIが想定外のリーグ名を返した場合はフロント側のタブフィルタが壊れないよう「その他」に丸める
-      const league = validLeagues.includes(col.league) ? col.league : validLeagues[validLeagues.length - 1];
+      // AIが想定外のリーグ名を返した場合はフロント側のタブフィルタが壊れないよう「その他」に丸める。
+      // leaguesは配列(1〜2個)。旧バージョンとの後方互換のため、万一AIが単一文字列を返しても
+      // 配列に正規化する。
+      const rawLeagues = Array.isArray(col.leagues) ? col.leagues : (col.league ? [col.league] : []);
+      let leagues = rawLeagues
+        .filter(l => validLeagues.includes(l))
+        .slice(0, 2);
+      if (leagues.length === 0) leagues = [validLeagues[validLeagues.length - 1]]; // "その他"/"Other"
       return {
         category: col.category,
         title: col.title,
         body: col.body,
-        league,
+        leagues,
         sources
       };
     });
