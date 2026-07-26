@@ -98,12 +98,26 @@ function truncate(str, len) {
   return str.length > len ? str.slice(0, len).trim() + '…' : str;
 }
 
+// RSS画像は小さいサイズ(Guardianはデフォルトwidth=140など)で配信されることが多く、
+// そのままだとカード全幅に引き伸ばした際にボケて見える。URLに含まれるサイズ指定を
+// 大きい値に書き換えて、表示に耐える解像度を取得する。
+function upgradeImageResolution(url) {
+  if (!url) return url;
+  if (/[?&]width=\d+/.test(url)) {
+    url = url.replace(/width=\d+/, 'width=1200');
+  }
+  if (/[?&]quality=\d+/.test(url)) {
+    url = url.replace(/quality=\d+/, 'quality=85');
+  }
+  return url;
+}
+
 function extractImage(item) {
   // media:thumbnail (BBC等) — 単一 or 配列(複数解像度)の場合がある
   const thumb = item['media:thumbnail'];
   if (thumb) {
     const t = Array.isArray(thumb) ? thumb[0] : thumb;
-    if (t && t['@_url']) return decodeEntities(t['@_url']);
+    if (t && t['@_url']) return upgradeImageResolution(decodeEntities(t['@_url']));
   }
   // media:content (Guardian等) — Guardianのurl属性は "?width=140&amp;quality=85&amp;..." のように
   // 実体参照がエスケープされたまま入っているため、decodeEntities()で"&"に戻す
@@ -111,15 +125,15 @@ function extractImage(item) {
   const content = item['media:content'];
   if (content) {
     const c = Array.isArray(content) ? content[0] : content;
-    if (c && c['@_url']) return decodeEntities(c['@_url']);
+    if (c && c['@_url']) return upgradeImageResolution(decodeEntities(c['@_url']));
   }
   // enclosure(画像添付形式のRSS)
   if (item.enclosure && item.enclosure['@_url'] && /image/.test(item.enclosure['@_type'] || '')) {
-    return decodeEntities(item.enclosure['@_url']);
+    return upgradeImageResolution(decodeEntities(item.enclosure['@_url']));
   }
   // <image><url>...</url></image>(ゲキサカ等) — 記事によっては無い場合もある
   if (item.image && item.image.url) {
-    return decodeEntities(String(item.image.url));
+    return upgradeImageResolution(decodeEntities(String(item.image.url)));
   }
   return null;
 }
