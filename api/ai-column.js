@@ -36,7 +36,7 @@
 // コストを抑えるため、生成結果は6時間キャッシュする(s-maxage)。
 // フロント側は「更新」ボタン押下時のみ ?refresh=1 を付けてキャッシュを無視した再生成をリクエストする。
 
-import { fetchAllNewsItems } from './news.js';
+import { fetchAllNewsItems, attachEmbedUrls } from './news.js';
 
 // 【重要】この関数はRSS取得(最大4フィード)+Anthropic API呼び出しを直列で行うため、
 // 旧バージョン(Anthropic呼び出しのみ)より実行時間が伸びる。Vercelのサーバーレス関数は
@@ -82,6 +82,8 @@ const SYSTEM_PROMPT_JA = `あなたはサッカー情報サイト『AM4』の編
 - "leagues": その記事が関係しているリーグ・大会を、次の中から1〜2個選んで配列で挙げる: ${LEAGUES_JA.join(' / ')}。
   例えば移籍の噂記事(選手の現所属クラブのリーグと、移籍先候補クラブのリーグが異なる場合)は、その両方のリーグを挙げること(例:["ラ・リーガ","プレミアリーグ"])。1つのリーグしか関係しない記事は1個だけでよい。判断が難しい場合は ["その他"]。
 
+一部の記事にはhasEmbed:trueが付いています。これは本人または公式アカウントの投稿(SNS)が見つかっていることを意味します。生成する記事の中に、こうした投稿が話の中心となるもの(移籍発表・本人コメントなど)があれば、該当記事のidをembedSourceIdとして出力してください。無ければembedSourceId: nullにしてください。
+
 厳守事項(違反しないこと):
 - 提供された記事一覧に書かれていない事実(移籍の確定、スコア、具体的な数値、日付など)を新たに作り出してはいけません。
 - 実在の選手・監督・関係者の発言を、カギカッコ付きの直接話法で捏造してはいけません。記事一覧内の要約に基づいて間接的に言及するのは可(例:「〜と報じられている」)。
@@ -90,7 +92,7 @@ const SYSTEM_PROMPT_JA = `あなたはサッカー情報サイト『AM4』の編
 - 見出し(title)は元記事の見出しをそのまま使わず、AM4独自の見出しを付けること。
 
 出力は必ず以下のJSON形式のみで返してください。説明文・前置き・マークダウンのコードブロック記法(\`\`\`)は一切付けないでください:
-{"columns":[{"category":"話題まとめ","title":"...","body":"...","leagues":["ワールドカップ"],"sourceIds":[1,2,3]},{"category":"編集部コラム","title":"...","body":"...","leagues":["ラ・リーガ","プレミアリーグ"],"sourceIds":[4]}]}`;
+{"columns":[{"category":"話題まとめ","title":"...","body":"...","leagues":["ワールドカップ"],"sourceIds":[1,2,3],"embedSourceId":null},{"category":"編集部コラム","title":"...","body":"...","leagues":["ラ・リーガ","プレミアリーグ"],"sourceIds":[4],"embedSourceId":4}]}`;
 
 const SYSTEM_PROMPT_EN = `You are the editorial AI for the football site "AM4".
 Below is a list of actual, currently published football news articles (id, headline, summary, source, link).
@@ -106,6 +108,8 @@ Each article must include:
 - "leagues": an array of 1-2 leagues/competitions this article relates to, chosen from: ${LEAGUES_EN.join(' / ')}.
   For example, a transfer rumor article (where the player's current club and the rumored destination club are in different leagues) should list BOTH leagues (e.g. ["La Liga","Premier League"]). An article about only one league needs just one entry. Use ["Other"] if unclear.
 
+Some articles have hasEmbed:true. This means a post from the player/club's own or an official account (a social media post) was found for that article. If one of the articles you write centers on such a post (a transfer announcement, a direct comment from the player, etc.), output that article's id as embedSourceId. Otherwise set embedSourceId: null.
+
 Strict rules (must not violate):
 - Never invent facts (confirmed transfers, scores, specific numbers, dates) that are not present in the provided article list.
 - Never fabricate direct quotes attributed to real players, managers, or officials. Indirect reference based on the provided summaries is fine (e.g., "reportedly...").
@@ -114,7 +118,7 @@ Strict rules (must not violate):
 - Write your own headline (title); do not just reuse a source article's headline verbatim.
 
 Return ONLY the following JSON format. No preamble, no explanation, no markdown code fences:
-{"columns":[{"category":"Topic Roundup","title":"...","body":"...","leagues":["World Cup"],"sourceIds":[1,2,3]},{"category":"Editor's Take","title":"...","body":"...","leagues":["La Liga","Premier League"],"sourceIds":[4]}]}`;
+{"columns":[{"category":"Topic Roundup","title":"...","body":"...","leagues":["World Cup"],"sourceIds":[1,2,3],"embedSourceId":null},{"category":"Editor's Take","title":"...","body":"...","leagues":["La Liga","Premier League"],"sourceIds":[4],"embedSourceId":4}]}`;
 
 function getSystemPrompt(lang) {
   return lang === 'en' || lang === 'es' ? SYSTEM_PROMPT_EN : SYSTEM_PROMPT_JA;
@@ -143,9 +147,11 @@ export default async function handler(req, res) {
     // ここで取得に失敗しても(failedFeeds)、成功した分だけで続行する。
     const { items: newsItems } = await fetchAllNewsItems();
     const sourceList = buildSourceList(newsItems);
-    // imageはAIには不要な情報(トークンの無駄)なので、プロンプトに渡す分だけ除いておく。
-    // sourceList自体(image込み)は後でサムネイル選定に使うため保持しておく。
-    const promptSourceList = sourceList.map(({ image, ...rest }) => rest);
+    await attachEmbedUrls(sourceList, 5);
+    // image/embedUrlはAIには不要な情報(トークンの無駄・実URLを渡すと捏造リスクもある)なので、
+    // プロンプトに渡す分だけ除き、embedUrlの有無だけをhasEmbedとして渡す。
+    // sourceList自体(image/embedUrl込み)は後でサムネイル・埋め込みURL選定に使うため保持しておく。
+    const promptSourceList = sourceList.map(({ image, embedUrl, ...rest }) => ({ ...rest, hasEmbed: !!embedUrl }));
 
     const userPrompt =
       `ここに現在配信中のニュース記事一覧をJSONで渡します。この内容だけを根拠にコラムを作成してください。\n\n` +
@@ -204,13 +210,20 @@ export default async function handler(req, res) {
         .filter(l => validLeagues.includes(l))
         .slice(0, 2);
       if (leagues.length === 0) leagues = [validLeagues[validLeagues.length - 1]]; // "その他"/"Other"
+      // embedSourceId: AIが指定した記事(citedSources内)が実際にembedUrlを持っている場合のみ採用。
+      // 範囲外・未引用のidや、embedUrlが見つからなかった記事のidは無視する(捏造防止のため)。
+      const embedSourceId = typeof col.embedSourceId === 'number' ? col.embedSourceId : null;
+      const embedSource = embedSourceId ? citedSources.find(s => s.id === embedSourceId) : null;
+      const embedUrl = (embedSource && embedSource.embedUrl) ? embedSource.embedUrl : null;
       return {
         category: col.category,
         image,
         title: col.title,
         body: col.body,
         leagues,
-        sources
+        sources,
+        embedUrl,
+        generatedAt: new Date().toISOString()
       };
     });
 

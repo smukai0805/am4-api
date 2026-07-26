@@ -215,3 +215,54 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: '取得に失敗しました', detail: err.message });
   }
 }
+
+// ---- SNS埋め込み(本人/公式アカウントの投稿URL)関連 ----
+// Anthropic APIのWeb検索($10/1000回)は使わず、既存のRSS取得と同じ「無料の直接fetch」
+// だけで、元記事ページの中にあるX/Instagramの投稿URLを正規表現で拾う。
+const EMBED_PATTERNS = [
+  /https?:\/\/(?:www\.)?(?:twitter|x)\.com\/[A-Za-z0-9_]+\/status\/\d+/,
+  /https?:\/\/(?:www\.)?instagram\.com\/p\/[A-Za-z0-9_-]+/,
+];
+
+function extractEmbedUrl(html) {
+  for (const pattern of EMBED_PATTERNS) {
+    const match = html.match(pattern);
+    if (match) return match[0];
+  }
+  return null;
+}
+
+// 移籍・加入・本人発表系らしい記事だけに絞り込む(全記事フェッチすると重いため)
+const TRANSFER_KEYWORDS = /移籍|加入|完全移籍|契約|退団|新加入|signs|joins|deal|transfer|unveil/i;
+
+function looksLikePersonalNews(item) {
+  return TRANSFER_KEYWORDS.test(item.headline) || TRANSFER_KEYWORDS.test(item.fullText || item.summary || '');
+}
+
+async function tryFetchEmbedUrl(link) {
+  if (!link) return null;
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
+    let response;
+    try {
+      response = await fetch(link, { headers: FETCH_HEADERS, signal: controller.signal });
+    } finally {
+      clearTimeout(timeoutId);
+    }
+    if (!response.ok) return null;
+    const html = await response.text();
+    return extractEmbedUrl(html);
+  } catch {
+    return null;
+  }
+}
+
+// 候補記事(最大limit件)だけ元ページを覗いて埋め込みURLを探し、sourceListに embedUrl として追加する
+export async function attachEmbedUrls(sourceList, limit = 5) {
+  const candidates = sourceList.filter(s => looksLikePersonalNews(s)).slice(0, limit);
+  await Promise.all(candidates.map(async s => {
+    s.embedUrl = await tryFetchEmbedUrl(s.link);
+  }));
+  return sourceList;
+}
