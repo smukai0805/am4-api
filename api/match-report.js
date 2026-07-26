@@ -57,12 +57,15 @@ function buildMatchSourceList(items, team1, team2) {
     return text.includes(team1) && text.includes(team2);
   });
   const sorted = [...related].sort((a, b) => new Date(a.time || 0) - new Date(b.time || 0));
+  // image はAIへのプロンプトには含めず(呼び出し側でstripする)、レポートのサムネイル
+  // 選定用に内部データとしてだけ保持する。
   return sorted.slice(0, 15).map((n, i) => ({
     id: i + 1,
     headline: n.headline,
     detail: n.fullText || n.summary,
     source: n.source,
-    link: n.link
+    link: n.link,
+    image: n.image || null
   }));
 }
 
@@ -140,9 +143,11 @@ async function searchYoutubeHighlight(team1, team2, competition) {
 }
 
 async function callAnthropic(apiKey, lang, sourceList) {
+  // imageはAIには不要な情報(トークンの無駄)なので、プロンプトに渡す分だけ除いておく。
+  const promptSourceList = sourceList.map(({ image, ...rest }) => rest);
   const userPrompt =
     `ここに、ある1試合についての実際の記事一覧をJSONで渡します。この内容だけを根拠にレポートを作成してください。\n\n` +
-    JSON.stringify(sourceList, null, 2);
+    JSON.stringify(promptSourceList, null, 2);
 
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -200,10 +205,10 @@ export default async function handler(req, res) {
       if (!parsed || !Array.isArray(parsed.sections)) continue;
 
       const ids = Array.isArray(parsed.sourceIds) ? parsed.sourceIds : [];
-      const sources = ids
-        .map(id => sourceList.find(s => s.id === id))
-        .filter(Boolean)
-        .map(s => ({ title: s.headline, link: s.link, source: s.source }));
+      const citedSources = ids.map(id => sourceList.find(s => s.id === id)).filter(Boolean);
+      const sources = citedSources.map(s => ({ title: s.headline, link: s.link, source: s.source }));
+      // 動画が見つからない場合のフォールバック用に、根拠記事の画像も1枚選んでおく。
+      const image = citedSources.map(s => s.image).find(Boolean) || null;
 
       // leaguesは配列(1〜2個)。旧バージョン互換のため単一文字列で返ってきた場合も配列化する。
       const rawLeagues = Array.isArray(parsed.leagues) ? parsed.leagues : (parsed.league ? [parsed.league] : []);
@@ -220,6 +225,7 @@ export default async function handler(req, res) {
         title: parsed.title,
         sections: parsed.sections,
         sources,
+        image,
         videoId
       });
     }

@@ -52,13 +52,16 @@ function buildSourceList(items) {
   // 見出し・要約(短縮)・情報源・リンクのみに絞る。最大18件。
   // fetchAllNewsItems()はフィード取得順のままで日時ソートされていないため、
   // ここで新しい記事を優先するよう並べ替えてから絞り込む。
+  // image はAIへのプロンプトには送らず(トークンの無駄なので)、後段でAM4記事の
+  // サムネイル画像を選ぶための内部データとしてだけ保持する(callAnthropicの直前でstrip)。
   const sorted = [...items].sort((a, b) => new Date(b.time || 0) - new Date(a.time || 0));
   return sorted.slice(0, 18).map((n, i) => ({
     id: i + 1,
     headline: n.headline,
     summary: n.fullText || n.summary,
     source: n.source,
-    link: n.link
+    link: n.link,
+    image: n.image || null
   }));
 }
 
@@ -140,10 +143,13 @@ export default async function handler(req, res) {
     // ここで取得に失敗しても(failedFeeds)、成功した分だけで続行する。
     const { items: newsItems } = await fetchAllNewsItems();
     const sourceList = buildSourceList(newsItems);
+    // imageはAIには不要な情報(トークンの無駄)なので、プロンプトに渡す分だけ除いておく。
+    // sourceList自体(image込み)は後でサムネイル選定に使うため保持しておく。
+    const promptSourceList = sourceList.map(({ image, ...rest }) => rest);
 
     const userPrompt =
       `ここに現在配信中のニュース記事一覧をJSONで渡します。この内容だけを根拠にコラムを作成してください。\n\n` +
-      JSON.stringify(sourceList, null, 2);
+      JSON.stringify(promptSourceList, null, 2);
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -185,10 +191,11 @@ export default async function handler(req, res) {
     // AIが範囲外・不正なidを返した場合は無視する(存在しないidは捏造の可能性があるため)。
     const columns = rawColumns.map(col => {
       const ids = Array.isArray(col.sourceIds) ? col.sourceIds : [];
-      const sources = ids
-        .map(id => sourceList.find(s => s.id === id))
-        .filter(Boolean)
-        .map(s => ({ title: s.headline, link: s.link, source: s.source }));
+      const citedSources = ids.map(id => sourceList.find(s => s.id === id)).filter(Boolean);
+      const sources = citedSources.map(s => ({ title: s.headline, link: s.link, source: s.source }));
+      // 記事のサムネイル画像: 根拠にした実記事(sources)のうち、画像を持つ最初の1件を使う。
+      // AM4記事自体は合成コンテンツで専用の画像を持たないため、実際の報道写真を借りる形。
+      const image = citedSources.map(s => s.image).find(Boolean) || null;
       // AIが想定外のリーグ名を返した場合はフロント側のタブフィルタが壊れないよう「その他」に丸める。
       // leaguesは配列(1〜2個)。旧バージョンとの後方互換のため、万一AIが単一文字列を返しても
       // 配列に正規化する。
@@ -199,6 +206,7 @@ export default async function handler(req, res) {
       if (leagues.length === 0) leagues = [validLeagues[validLeagues.length - 1]]; // "その他"/"Other"
       return {
         category: col.category,
+        image,
         title: col.title,
         body: col.body,
         leagues,
