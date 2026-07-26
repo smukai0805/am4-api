@@ -1,0 +1,7 @@
+{
+  "crons": [
+    { "path": "/api/daily-digest?period=morning", "schedule": "0 21 * * *" },
+    { "path": "/api/daily-digest?period=midday", "schedule": "0 3 * * *" },
+    { "path": "/api/daily-digest?period=evening", "schedule": "0 9 * * *" }
+  ]
+}

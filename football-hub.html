@@ -799,6 +799,29 @@
   .am4-article-modal-close{ position:absolute; top:10px; right:14px; background:none; border:none; color:var(--chalk-dim); font-size:24px; cursor:pointer; line-height:1; }
   .am4-article-modal-img{ width:calc(100% + 40px); margin:-20px -20px 14px -20px; display:block; aspect-ratio:16/9; object-fit:cover; }
   .am4-article-modal-body blockquote.twitter-tweet, .am4-article-modal-body blockquote.instagram-media{ margin:14px auto !important; max-width:100% !important; }
+
+  /* ---- 朝刊・昼刊・夕刊ダイジェストカード(2026-07) ---- */
+  .digest-card{
+    position:relative;
+    background:linear-gradient(135deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:14px;
+    padding:16px 18px;
+    margin-bottom:14px;
+  }
+  .digest-card .card-thumb{
+    width:calc(100% + 36px);
+    margin:-16px -18px 12px -18px;
+    display:block;
+    aspect-ratio:16/9;
+    object-fit:cover;
+    border-radius:14px 14px 0 0;
+  }
+  .digest-cat{
+    background:#2dd4bf;
+    color:#04201c;
+    font-weight:700;
+  }
 </style>
 </head>
 <body>
@@ -7203,6 +7226,44 @@ document.getElementById('squadDownloadBtn').addEventListener('click', ()=>{
 
 renderSquadPitch();
 renderBench();
+
+// ==== 朝刊・昼刊・夕刊ダイジェスト ====
+async function initDailyDigest(){
+  try{
+    const list = document.getElementById('aiColumnList');
+    if(!list) return;
+    let card = document.getElementById('digestCard');
+    if(!card){
+      card = document.createElement('div');
+      card.id = 'digestCard';
+      card.className = 'digest-card';
+      card.style.display = 'none';
+      list.parentNode.insertBefore(card, list);
+    }
+    const lang = (typeof currentLang !== 'undefined' ? currentLang : 'ja') === 'en' ? 'en' : 'ja';
+    const res = await fetch(`${AM4_API_BASE}/api/daily-digest?lang=${lang}`);
+    const data = await res.json();
+    if(!data || !data.digest){ card.style.display='none'; return; }
+    const d = data.digest;
+    const thumbHtml = d.image
+      ? `<img class="card-thumb" src="${d.image}" loading="lazy" alt="" onerror="this.remove()">`
+      : '';
+    const leaguesHtml = (d.leagues||[]).map(l=>`<span class="league-chip">${l}</span>`).join('');
+    const sourcesHtml = (d.sources||[]).map(s=>`<a href="${s.link}" target="_blank" rel="noopener">${s.source}</a>`).join(' / ');
+    card.innerHTML = `
+      ${thumbHtml}
+      <span class="cat digest-cat">${d.category}</span>
+      <h4>${d.title}</h4>
+      <p>${d.body}</p>
+      <div class="league-chips">${leaguesHtml}</div>
+      ${sourcesHtml ? `<div class="am4-column-sources">${sourcesHtml}</div>` : ''}
+    `;
+    card.style.display = '';
+  }catch(e){
+    console.error('digest fetch failed', e);
+  }
+}
+document.addEventListener('DOMContentLoaded', initDailyDigest);
 </script>
 </body>
 </html>
