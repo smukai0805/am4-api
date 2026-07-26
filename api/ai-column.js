@@ -84,7 +84,7 @@ const SYSTEM_PROMPT_JA = `あなたはサッカー情報サイト『AM4』の編
 
 一部の記事にはhasEmbed:trueが付いています。これは本人または公式アカウントの投稿(SNS)が見つかっていることを意味します。生成する記事の中に、こうした投稿が話の中心となるもの(移籍発表・本人コメントなど)があれば、該当記事のidをembedSourceIdとして出力してください。無ければembedSourceId: nullにしてください。
 
-記事の中心となる選手・監督など人物が明確な場合、その人物のWikipediaで検索できる形の名前(できれば英語表記のフルネーム、例: "Vinicius Junior")をsubjectNameとして出力してください。総括記事など特定の人物に焦点を当てていない場合はsubjectName: nullにしてください。
+記事に関連する人物(選手・監督等)が明確な場合、その英語表記フルネームを配列でsubjectNamesとして出力してください(単独記事なら1人、複数人にまたがる話題まとめなら最大3人まで)。人物に焦点が無い記事の場合はsubjectNames: []としてください。
 
 厳守事項(違反しないこと):
 - 提供された記事一覧に書かれていない事実(移籍の確定、スコア、具体的な数値、日付など)を新たに作り出してはいけません。
@@ -94,7 +94,7 @@ const SYSTEM_PROMPT_JA = `あなたはサッカー情報サイト『AM4』の編
 - 見出し(title)は元記事の見出しをそのまま使わず、AM4独自の見出しを付けること。
 
 出力は必ず以下のJSON形式のみで返してください。説明文・前置き・マークダウンのコードブロック記法(\`\`\`)は一切付けないでください:
-{"columns":[{"category":"話題まとめ","title":"...","body":"...","leagues":["ワールドカップ"],"sourceIds":[1,2,3],"embedSourceId":null,"subjectName":null},{"category":"編集部コラム","title":"...","body":"...","leagues":["ラ・リーガ","プレミアリーグ"],"sourceIds":[4],"embedSourceId":4,"subjectName":"Vinicius Junior"}]}`;
+{"columns":[{"category":"話題まとめ","title":"...","body":"...","leagues":["ワールドカップ"],"sourceIds":[1,2,3],"embedSourceId":null,"subjectNames":["Kylian Mbappe","Jude Bellingham"]},{"category":"編集部コラム","title":"...","body":"...","leagues":["ラ・リーガ","プレミアリーグ"],"sourceIds":[4],"embedSourceId":4,"subjectNames":["Vinicius Junior"]}]}`;
 
 const SYSTEM_PROMPT_EN = `You are the editorial AI for the football site "AM4".
 Below is a list of actual, currently published football news articles (id, headline, summary, source, link).
@@ -112,7 +112,7 @@ Each article must include:
 
 Some articles have hasEmbed:true. This means a post from the player/club's own or an official account (a social media post) was found for that article. If one of the articles you write centers on such a post (a transfer announcement, a direct comment from the player, etc.), output that article's id as embedSourceId. Otherwise set embedSourceId: null.
 
-If an article clearly centers on one player, manager, or other individual, output that person's name in a form searchable on Wikipedia (preferably their full English name, e.g. "Vinicius Junior") as subjectName. For roundup-style articles not focused on one individual, set subjectName: null.
+If the article clearly relates to one or more players, managers, or other individuals, output their full English names as an array in subjectNames (1 person for a single-subject article, up to 3 for a roundup spanning multiple people). If the article has no individual focus, set subjectNames: [].
 
 Strict rules (must not violate):
 - Never invent facts (confirmed transfers, scores, specific numbers, dates) that are not present in the provided article list.
@@ -122,7 +122,7 @@ Strict rules (must not violate):
 - Write your own headline (title); do not just reuse a source article's headline verbatim.
 
 Return ONLY the following JSON format. No preamble, no explanation, no markdown code fences:
-{"columns":[{"category":"Topic Roundup","title":"...","body":"...","leagues":["World Cup"],"sourceIds":[1,2,3],"embedSourceId":null,"subjectName":null},{"category":"Editor's Take","title":"...","body":"...","leagues":["La Liga","Premier League"],"sourceIds":[4],"embedSourceId":4,"subjectName":"Vinicius Junior"}]}`;
+{"columns":[{"category":"Topic Roundup","title":"...","body":"...","leagues":["World Cup"],"sourceIds":[1,2,3],"embedSourceId":null,"subjectNames":["Kylian Mbappe","Jude Bellingham"]},{"category":"Editor's Take","title":"...","body":"...","leagues":["La Liga","Premier League"],"sourceIds":[4],"embedSourceId":4,"subjectNames":["Vinicius Junior"]}]}`;
 
 function getSystemPrompt(lang) {
   return lang === 'en' || lang === 'es' ? SYSTEM_PROMPT_EN : SYSTEM_PROMPT_JA;
@@ -220,21 +220,28 @@ export default async function handler(req, res) {
       const embedSource = embedSourceId ? citedSources.find(s => s.id === embedSourceId) : null;
       const embedUrl = (embedSource && embedSource.embedUrl) ? embedSource.embedUrl : null;
 
-      // subjectName: 記事の中心人物が明確な場合、RSS由来の画像より高解像度・出典が明確な
-      // Wikipediaの画像を優先して使い、出典(sources)にもWikipediaを明記する。
-      let finalImage = image;
-      let finalSources = sources;
-      if (col.subjectName) {
-        const wiki = await fetchWikipediaImage(col.subjectName);
-        if (wiki) {
-          finalImage = wiki.imageUrl;
-          finalSources = [...sources, { title: wiki.pageTitle, link: wiki.pageUrl, source: 'Wikipedia' }];
-        }
+      // subjectNames: 記事に関連する人物(最大3人)が明確な場合、RSS由来の画像より高解像度・
+      // 出典が明確なWikipediaの画像を人数分まとめて使い、出典(sources)にもWikipediaを明記する。
+      const names = Array.isArray(col.subjectNames) ? col.subjectNames.slice(0, 3) : (col.subjectName ? [col.subjectName] : []);
+      let wikiImages = [];
+      let extraSources = [];
+      if (names.length > 0) {
+        const wikiResults = await Promise.all(names.map(n => fetchWikipediaImage(n)));
+        wikiResults.forEach(wiki => {
+          if (wiki) {
+            wikiImages.push(wiki.imageUrl);
+            extraSources.push({ title: wiki.pageTitle, link: wiki.pageUrl, source: 'Wikipedia' });
+          }
+        });
       }
+      const finalImages = wikiImages.length > 0 ? wikiImages : (image ? [image] : []);
+      const finalImage = finalImages[0] || null;
+      const finalSources = extraSources.length > 0 ? [...sources, ...extraSources] : sources;
 
       return {
         category: col.category,
         image: finalImage,
+        images: finalImages,
         title: col.title,
         body: col.body,
         leagues,

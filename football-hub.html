@@ -822,6 +822,16 @@
     color:#04201c;
     font-weight:700;
   }
+
+  /* ---- 複数人物にまたがる記事のWikipedia画像コラージュ(2026-07) ---- */
+  .thumb-collage{ width:96px; height:96px; flex:0 0 auto; border-radius:8px; overflow:hidden; display:grid; gap:1px; background:rgba(255,255,255,.06); }
+  .thumb-collage-2{ grid-template-columns:repeat(2,1fr); }
+  .thumb-collage-3{ grid-template-columns:repeat(3,1fr); }
+  .thumb-collage img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .am4-article-modal-collage{ width:calc(100% + 40px); margin:-20px -20px 14px -20px; display:grid; gap:2px; aspect-ratio:16/7; }
+  .am4-article-modal-collage-2{ grid-template-columns:repeat(2,1fr); }
+  .am4-article-modal-collage-3{ grid-template-columns:repeat(3,1fr); }
+  .am4-article-modal-collage img{ width:100%; height:100%; object-fit:cover; display:block; }
 </style>
 </head>
 <body>
@@ -5417,13 +5427,21 @@ async function activateEmbeds(embedUrl){
     if(window.instgrm) window.instgrm.Embeds.process();
   }
 }
+function renderModalImagesHtml(images){
+  const imgs = images || [];
+  if(imgs.length === 0) return '';
+  if(imgs.length === 1) return `<img class="am4-article-modal-img" src="${imgs[0]}" alt="">`;
+  const n = Math.min(imgs.length, 3);
+  const cells = imgs.slice(0,3).map(src=>`<img src="${src}" alt="">`).join('');
+  return `<div class="am4-article-modal-collage am4-article-modal-collage-${n}">${cells}</div>`;
+}
 function openAm4ArticleModal(c){
   const modal = ensureAm4ArticleModal();
   const body = modal.querySelector('.am4-article-modal-body');
   const leaguesHtml = (c.leagues||[]).map(l=>`<span class="league-chip">${l}</span>`).join('');
   const sourcesHtml = (c.sources||[]).map(s=>`<a href="${s.link}" target="_blank" rel="noopener">${s.source}</a>`).join(' / ');
   body.innerHTML = `
-    ${c.image ? `<img class="am4-article-modal-img" src="${c.image}" alt="">` : ''}
+    ${renderModalImagesHtml(c.images && c.images.length ? c.images : (c.image ? [c.image] : []))}
     <span class="cat">${c.category || 'AM4編集部'}</span>
     <h3>${c.title || ''}</h3>
     <p>${c.body || ''}</p>
@@ -5433,6 +5451,16 @@ function openAm4ArticleModal(c){
   `;
   modal.style.display = 'flex';
   activateEmbeds(c.embedUrl);
+}
+function renderThumbHtml(images){
+  const imgs = images || [];
+  if(imgs.length === 0) return `<div class="thumb-placeholder">⚽</div>`;
+  if(imgs.length === 1){
+    return `<img class="thumb" src="${imgs[0]}" loading="lazy" alt="" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'thumb-placeholder',textContent:'⚽'}))">`;
+  }
+  const n = Math.min(imgs.length, 3);
+  const cells = imgs.slice(0,3).map(src=>`<img src="${src}" loading="lazy" alt="" onerror="this.style.display='none'">`).join('');
+  return `<div class="thumb-collage thumb-collage-${n}">${cells}</div>`;
 }
 function renderAiColumns(columns){
   aiColumnList.innerHTML = '';
@@ -5446,9 +5474,7 @@ function renderAiColumns(columns){
     const el = document.createElement('div');
     el.className = 'am4-column-list-item';
     const isNew = c.generatedAt ? (now - new Date(c.generatedAt).getTime()) < 24*60*60*1000 : false;
-    const thumbHtml = c.image
-      ? `<img class="thumb" src="${c.image}" loading="lazy" alt="" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'thumb-placeholder',textContent:'⚽'}))">`
-      : `<div class="thumb-placeholder">⚽</div>`;
+    const thumbHtml = renderThumbHtml(c.images && c.images.length ? c.images : (c.image ? [c.image] : []));
     const dateStr = c.generatedAt ? new Date(c.generatedAt).toLocaleDateString('ja-JP',{year:'numeric',month:'2-digit',day:'2-digit'}).replace(/\//g,'.') : '';
     el.innerHTML = `
       ${thumbHtml}
