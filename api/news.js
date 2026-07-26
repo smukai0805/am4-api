@@ -280,3 +280,32 @@ export async function attachEmbedUrls(sourceList, limit = 5) {
   }));
   return sourceList;
 }
+
+// Wikipediaの要約API(無料・APIキー不要)から、人物名に紐づく画像を取得する。
+// RSS由来の小さい画像より高解像度で、ライセンスも明確(CC BY-SA等)なため、
+// 記事の中心人物が分かる場合はこちらを優先的に使う。
+export async function fetchWikipediaImage(subjectName) {
+  if (!subjectName) return null;
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
+    let response;
+    try {
+      response = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(subjectName)}`, {
+        headers: { 'User-Agent': FETCH_HEADERS['User-Agent'] },
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
+    if (!response.ok) return null;
+    const data = await response.json();
+    const imageUrl = data?.originalimage?.source || data?.thumbnail?.source || null;
+    if (!imageUrl) return null;
+    const pageTitle = data?.title || subjectName;
+    const pageUrl = data?.content_urls?.desktop?.page || `https://en.wikipedia.org/wiki/${encodeURIComponent(pageTitle)}`;
+    return { imageUrl, pageTitle, pageUrl };
+  } catch {
+    return null;
+  }
+}
