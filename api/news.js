@@ -25,11 +25,9 @@ import { XMLParser } from 'fast-xml-parser';
 // lang: サイトのUI言語(ja/en/es)と紐付けるためのタグ。
 // フロント側で選択中の言語に応じて、この言語の記事を優先的に返す(下記ハンドラ内のフィルタ処理を参照)。
 //
-// スペイン語(es)向けソースについては、Marca(スペイン最大手のスポーツ紙)のRSSを検証したが、
-// (1) 記事の日付が実際の配信日と大きくズレており更新が止まっている疑いがあること、
-// (2) 暴力事件や性的な話題など、このアプリの読者層にそぐわないタブロイド記事が
-//     サッカー記事に混ざって配信されていたこと、の2点から採用を見送った。
-// 現状はes言語選択時、下記ハンドラ内でen(英語)の記事にフォールバックしている。
+// Marca(futbol/primera-division.xml、ラ・リーガ専用フィード)は2026-07に再検証し、
+// 日付・内容ともに問題ないことを確認して採用した。過去に見送ったのはトップページ全体の
+// RSS(タブロイド色が強い)であり、このサッカー専用フィードとは別物だった。
 const FEEDS = [
   { url: 'http://feeds.bbci.co.uk/sport/football/rss.xml', source: 'BBC Sport', lang: 'en' },
   { url: 'https://www.skysports.com/rss/12040', source: 'Sky Sports', lang: 'en' },
@@ -42,12 +40,15 @@ const FEEDS = [
   // limit: 15 — 日本語(ja)ソースはこの1本しか無いため、英語3ソース合計(最大24件)と
   // 記事のボリュームに差が出すぎないよう、他フィードより多めに取得しておく。
   { url: 'https://web.gekisaka.jp/feed?category=foreign', source: 'ゲキサカ', lang: 'ja', limit: 15 },
+  { url: 'https://newsfeed.kicker.de/news/bundesliga', source: 'kicker', lang: 'de', limit: 10 },
+  { url: "https://dwh.lequipe.fr/api/edito/rss?path=/Football/", source: "L'Équipe", lang: 'fr', limit: 10 },
+  { url: 'https://e00-marca.uecdn.es/rss/futbol/primera-division.xml', source: 'Marca', lang: 'es', limit: 10 },
   // 他に追加したい場合はここに { url, source, lang, limit(省略可、既定8) } を追記
 ];
 
 // UI言語 → 実際にフィルタで使う言語のマッピング。
-// esには専用ソースが無いため、いまはenにフォールバックする。
-const LANG_FALLBACK = { es: 'en' };
+// es は Marca(lang: 'es')を専用ソースとして追加したため、フォールバックは不要になった。
+const LANG_FALLBACK = {};
 
 // 一部メディアはUser-Agentが無い/簡素なリクエストをボット判定してブロックすることがあるため、
 // ブラウザからのアクセスに近いヘッダーを明示的に付与する
