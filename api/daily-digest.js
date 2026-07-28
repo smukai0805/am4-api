@@ -12,7 +12,7 @@
 
 export const config = { maxDuration: 60 };
 
-import { fetchAllNewsItems } from './news.js';
+import { fetchAllNewsItems, fetchWikipediaImage } from './news.js';
 
 const LEAGUES_JA = ['プレミアリーグ', 'ラ・リーガ', 'セリエA', 'ブンデスリーガ', 'リーグ・アン', 'ワールドカップ', 'その他'];
 const LEAGUES_EN = ['Premier League', 'La Liga', 'Serie A', 'Bundesliga', 'Ligue 1', 'World Cup', 'Other'];
@@ -72,8 +72,9 @@ function getSystemPrompt(lang, periodLabel) {
 - 本文(body)は400〜600文字程度
 - 参照した記事のidをsourceIdsに配列で入れること
 - 扱ったトピックに関連するリーグをleaguesに配列で入れること(該当リーグ名: ${leagues.join('/')})。複数リーグにまたがる場合は最大2つまで
+- 記事の内容を視覚的に代表できるもの(選手名・監督名、またはクラブ名)を、英語表記(Wikipediaで検索できる形、例: "Zinedine Zidane"や"Real Madrid CF")の配列でsubjectNamesとして出力してください。最大3つまで。特に代表的なものが無い場合はsubjectNames: []としてください。
 - 出力は以下のJSON形式のみ。前後に説明文は一切つけないこと:
-{"title":"...","body":"...","leagues":["..."],"sourceIds":[1,2,3]}`;
+{"title":"...","body":"...","leagues":["..."],"sourceIds":[1,2,3],"subjectNames":["Zinedine Zidane"]}`;
   }
   return `You are a reporter for AM4, a football media outlet.
 Based only on the provided news list (JSON), write ONE roundup article in English titled "${periodLabel}" summarizing multiple topics from this time window.
@@ -85,8 +86,9 @@ Rules:
 - body should be 250-400 words
 - Include the ids of referenced articles in sourceIds
 - Include relevant leagues in "leagues" (valid names: ${leagues.join('/')}), max 2
+- Output an array in subjectNames of whatever best visually represents the article's content — player names, manager names, or club names — in English form searchable on Wikipedia (e.g. "Zinedine Zidane" or "Real Madrid CF"). Up to 3. Use subjectNames: [] if nothing clearly represents it.
 - Output ONLY this JSON shape, no extra text:
-{"title":"...","body":"...","leagues":["..."],"sourceIds":[1,2,3]}`;
+{"title":"...","body":"...","leagues":["..."],"sourceIds":[1,2,3],"subjectNames":["Zinedine Zidane"]}`;
 }
 
 async function callAnthropic(apiKey, lang, periodLabel, sourceList) {
@@ -155,14 +157,30 @@ export default async function handler(req, res) {
     let leagues = rawLeagues.filter(l => validLeagues.includes(l)).slice(0, 2);
     if (leagues.length === 0) leagues = [validLeagues[validLeagues.length - 1]];
 
+    const names = Array.isArray(parsed.subjectNames) ? parsed.subjectNames.slice(0, 3) : [];
+    let wikiImages = [];
+    let extraSources = [];
+    if (names.length > 0) {
+      const wikiResults = await Promise.all(names.map(n => fetchWikipediaImage(n)));
+      wikiResults.forEach(wiki => {
+        if (wiki) {
+          wikiImages.push(wiki.imageUrl);
+          extraSources.push({ title: wiki.pageTitle, link: wiki.pageUrl, source: 'Wikipedia' });
+        }
+      });
+    }
+    const finalImages = wikiImages.length > 0 ? wikiImages : (image ? [image] : []);
+    const finalSources = extraSources.length > 0 ? [...sources, ...extraSources] : sources;
+
     const digest = {
       period,
       category: periodLabel,
       title: parsed.title || periodLabel,
       body: parsed.body || '',
       leagues,
-      sources,
-      image,
+      sources: finalSources,
+      image: finalImages[0] || null,
+      images: finalImages,
       generatedAt: new Date().toISOString(),
     };
 

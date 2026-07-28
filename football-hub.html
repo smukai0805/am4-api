@@ -809,14 +809,18 @@
     padding:16px 18px;
     margin-bottom:14px;
   }
-  .digest-card .card-thumb{
+  .digest-card .thumb,
+  .digest-card .thumb-collage,
+  .digest-card .thumb-placeholder{
     width:calc(100% + 36px);
+    height:auto;
     margin:-16px -18px 12px -18px;
     display:block;
     aspect-ratio:16/9;
     object-fit:cover;
     border-radius:14px 14px 0 0;
   }
+  .digest-card .thumb-placeholder{ display:flex; align-items:center; justify-content:center; font-size:32px; background:var(--panel-2); }
   .digest-cat{
     background:#2dd4bf;
     color:#04201c;
@@ -7271,9 +7275,7 @@ async function initDailyDigest(){
     const data = await res.json();
     if(!data || !data.digest){ card.style.display='none'; return; }
     const d = data.digest;
-    const thumbHtml = d.image
-      ? `<img class="card-thumb" src="${d.image}" loading="lazy" alt="" onerror="this.remove()">`
-      : '';
+    const thumbHtml = renderThumbHtml(d.images && d.images.length ? d.images : (d.image ? [d.image] : []));
     const leaguesHtml = (d.leagues||[]).map(l=>`<span class="league-chip">${l}</span>`).join('');
     const sourcesHtml = (d.sources||[]).map(s=>`<a href="${s.link}" target="_blank" rel="noopener">${s.source}</a>`).join(' / ');
     card.innerHTML = `
