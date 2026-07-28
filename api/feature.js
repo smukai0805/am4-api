@@ -99,7 +99,12 @@ export default async function handler(req, res) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
+        // このエンドポイントはユーザーがボタンを押した時だけ呼ばれるオンデマンド機能で、
+        // cronで定期実行されるai-column.js/daily-digest.jsと違い呼び出し頻度が低いため、
+        // コスト影響が小さい一方、パターン2(ニュース一覧に無くても実在の選手・監督・クラブなら
+        // 一般知識で紹介記事を書く)の判断はHaikuでは安定して一般化しなかったため、
+        // より指示追従力の高いSonnetを使う。
+        model: 'claude-sonnet-5',
         max_tokens: 1200,
         system: getSystemPrompt(lang, topic),
         messages: [{ role: 'user', content: `ここに現在配信中のニュース記事一覧をJSONで渡します。\n\n` + JSON.stringify(promptSourceList, null, 2) }],
