@@ -844,6 +844,12 @@
   .related-article-item{ display:flex; gap:10px; align-items:center; cursor:pointer; }
   .related-article-item h5{ font-size:13px; line-height:1.4; margin:0; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
   .related-article-item .thumb, .related-article-item .thumb-placeholder, .related-article-item .thumb-collage{ width:56px; height:56px; flex:0 0 auto; }
+
+  /* ---- トピック指定の特集記事リクエスト(2026-07) ---- */
+  .feature-request-box{ display:flex; gap:8px; margin-bottom:14px; }
+  .feature-request-box input{ flex:1; padding:8px 12px; border-radius:8px; border:1px solid rgba(255,255,255,.15); background:rgba(255,255,255,.05); color:var(--chalk); font-size:13px; }
+  .feature-request-box button{ padding:8px 14px; border-radius:8px; border:none; background:#2dd4bf; color:#04201c; font-weight:700; font-size:13px; cursor:pointer; white-space:nowrap; }
+  .feature-request-box button:disabled{ opacity:.6; cursor:default; }
 </style>
 </head>
 <body>
@@ -893,6 +899,12 @@
   <span id="newsStatus" class="standings-status">読み込み中...</span>
 
   <div class="match-report-list" id="matchReportList"></div>
+
+  <div class="feature-request-box">
+    <input type="text" id="featureTopicInput" placeholder="気になるトピックを入力(例: ディオマンデ レアル移籍)">
+    <button id="featureRequestBtn">特集記事をリクエスト</button>
+  </div>
+
   <div class="am4-column-list" id="aiColumnList"></div>
 </section>
 </div>
@@ -5582,6 +5594,30 @@ async function loadNewsContent(forceRefresh){
 }
 loadNewsContent(false);
 aiColumnRefreshBtn.addEventListener('click', ()=>loadNewsContent(true));
+
+document.getElementById('featureRequestBtn')?.addEventListener('click', async () => {
+  const input = document.getElementById('featureTopicInput');
+  const topic = input.value.trim();
+  if(!topic) return;
+  const btn = document.getElementById('featureRequestBtn');
+  const originalLabel = btn.textContent;
+  btn.disabled = true; btn.textContent = '生成中...';
+  try {
+    const lang = (typeof currentLang !== 'undefined' ? currentLang : 'ja') === 'en' ? 'en' : 'ja';
+    const res = await fetch(`${AM4_API_BASE}/api/feature?topic=${encodeURIComponent(topic)}&lang=${lang}`);
+    const data = await res.json();
+    if(data.feature){
+      openAm4ArticleModal(data.feature);
+      input.value = '';
+    } else {
+      alert('現時点でこのトピックに関する信頼できる報道が見つかりませんでした。時間をおいて再度お試しください。');
+    }
+  } catch(e) {
+    alert('生成に失敗しました。時間をおいて再度お試しください。');
+  } finally {
+    btn.disabled = false; btn.textContent = originalLabel;
+  }
+});
 
 newsLeagueTabs.querySelectorAll('.news-league-tab').forEach(btn=>{
   btn.addEventListener('click', ()=>{

@@ -85,7 +85,7 @@ Also include:
 - "competition": the competition/round name if determinable from the material (e.g. "FIFA World Cup 2026 Final"), else null.
 - "leagues": an array of 1-2 entries from ${leagues.join(' / ')} — usually just one (both teams are in the same competition), but if the two teams belong to different leagues, list both. "Other" if unclear.
 - "score": the final score as a short string (e.g. "1-0") ONLY if explicitly stated in the material, else null. Never guess or calculate it yourself.
-- "title": your own original headline for the report (not copied verbatim from a source).
+- "title": your own original headline for the report (not copied verbatim from a source). Put extra effort into this: rather than a plain score report (e.g. "Team A beat Team B"), lead with the single most notable thing about this match if the material supports it — an individual award, a dramatic late winner, a record, a red card or controversial VAR call. Prefer a specific, click-worthy sentence over a generic summary.
 - "sourceIds": array of ids actually used.
 
 Strict rules:
@@ -109,7 +109,7 @@ Return ONLY this JSON format, no preamble, no markdown fences:
 - "competition": 大会名・ラウンドが分かれば(例:「FIFAワールドカップ2026 決勝」)、不明ならnull。
 - "leagues": 次の中から1〜2個を配列で: ${leagues.join(' / ')}。通常は1つ(両チームが同じ大会に所属)で良いが、2チームが異なるリーグに所属する場合は両方挙げること。判断が難しい場合は["その他"]。
 - "score": 素材に明記されている場合のみ、最終スコアを短い文字列で(例:"1-0")。書かれていなければ必ずnull(自分で推測・計算しない)。
-- "title": AM4独自の見出し(元記事の見出しの丸写しは禁止)。
+- "title": AM4独自の見出し(元記事の見出しの丸写しは禁止)。titleは特に力を入れて作成してください。単なるスコアの報告(「〇〇が△△を下す」等)ではなく、この試合で最も特筆すべき出来事(例: 個人賞受賞、劇的な決勝点、記録達成、退場・物議を醸したVAR判定など)があれば、それを見出しの主軸に据えてください。抽象的な要約より、具体的で読みたくなる一文を優先してください。
 - "sourceIds": 実際に使った記事idの配列。
 
 厳守事項:

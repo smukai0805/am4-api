@@ -95,7 +95,7 @@ const SYSTEM_PROMPT_JA = `あなたはサッカー情報サイト『AM4』の編
 - 実在の選手・監督・関係者の発言を、カギカッコ付きの直接話法で捏造してはいけません。記事一覧内の要約に基づいて間接的に言及するのは可(例:「〜と報じられている」)。
 - 記事一覧が空、または話題として使えるものが無い場合は、無理に記事を作らず、その旨がわかる短い1本の記事(category:"話題まとめ"、内容は「現在参照できる話題が少ない」旨、leagues:["その他"])のみを返してください。
 - 各記事は200〜320文字程度の日本語で、読み応えのある記事らしい文体にしてください(単なる箇条書きの要約にしない)。
-- 見出し(title)は元記事の見出しをそのまま使わず、AM4独自の見出しを付けること。
+- 見出し(title)は元記事の見出しをそのまま使わず、AM4独自の見出しを付けること。titleは記事の中で最も具体的・驚きのある要素を前面に出すこと。「移籍市場が加熱」のような一般論ではなく、固有名詞や具体的な出来事を含む見出しを優先すること。
 
 出力は必ず以下のJSON形式のみで返してください。説明文・前置き・マークダウンのコードブロック記法(\`\`\`)は一切付けないでください:
 {"columns":[{"category":"話題まとめ","title":"...","body":"...","leagues":["ワールドカップ"],"sourceIds":[1,2,3],"embedSourceId":null,"subjectNames":["Kylian Mbappe","Jude Bellingham"]},{"category":"編集部コラム","title":"...","body":"...","leagues":["ラ・リーガ","プレミアリーグ"],"sourceIds":[4],"embedSourceId":4,"subjectNames":["Vinicius Junior"]}]}`;
@@ -127,7 +127,7 @@ Strict rules (must not violate):
 - Never fabricate direct quotes attributed to real players, managers, or officials. Indirect reference based on the provided summaries is fine (e.g., "reportedly...").
 - If the article list is empty or has nothing usable, do not force content — return a single short "Topic Roundup" article (leagues: ["Other"]) noting that few topics are currently available.
 - Each article should be about 120-180 words, written in a natural article/feature style, not a bare bullet-point summary.
-- Write your own headline (title); do not just reuse a source article's headline verbatim.
+- Write your own headline (title); do not just reuse a source article's headline verbatim. Lead the title with the most specific, surprising element in the article — favor concrete names and events over generic framing like "transfer market heats up".
 
 Return ONLY the following JSON format. No preamble, no explanation, no markdown code fences:
 {"columns":[{"category":"Topic Roundup","title":"...","body":"...","leagues":["World Cup"],"sourceIds":[1,2,3],"embedSourceId":null,"subjectNames":["Kylian Mbappe","Jude Bellingham"]},{"category":"Editor's Take","title":"...","body":"...","leagues":["La Liga","Premier League"],"sourceIds":[4],"embedSourceId":4,"subjectNames":["Vinicius Junior"]}]}`;

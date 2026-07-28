@@ -68,7 +68,7 @@ function getSystemPrompt(lang, periodLabel) {
 ルール:
 - 個々の記事をただ並べるのではなく、記者自身の視点で「この時間帯何が起きたか」を1つの読み物としてまとめること
 - 3〜5個程度のトピックに触れること(渡された記事数が少ない場合は無理に増やさなくてよい)
-- 見出し(title)は「${periodLabel}」を含む、読みたくなる具体的なタイトルにすること
+- 見出し(title)は「${periodLabel}」を含む、読みたくなる具体的なタイトルにすること。titleは記事の中で最も具体的・驚きのある要素を前面に出すこと。「移籍市場が加熱」のような一般論ではなく、固有名詞や具体的な出来事を含む見出しを優先すること。
 - 本文(body)は400〜600文字程度
 - 参照した記事のidをsourceIdsに配列で入れること
 - 扱ったトピックに関連するリーグをleaguesに配列で入れること(該当リーグ名: ${leagues.join('/')})。複数リーグにまたがる場合は最大2つまで
@@ -82,7 +82,7 @@ Based only on the provided news list (JSON), write ONE roundup article in Englis
 Rules:
 - Don't just list articles; synthesize "what happened in this window" as a single piece of writing
 - Cover roughly 3-5 topics (fewer is fine if few articles were provided)
-- title should be a compelling specific headline including "${periodLabel}"
+- title should be a compelling specific headline including "${periodLabel}". Lead the title with the most specific, surprising element in the article — favor concrete names and events over generic framing like "transfer market heats up".
 - body should be 250-400 words
 - Include the ids of referenced articles in sourceIds
 - Include relevant leagues in "leagues" (valid names: ${leagues.join('/')}), max 2
