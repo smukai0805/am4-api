@@ -255,6 +255,7 @@ export default async function handler(req, res) {
         leagues,
         sources: finalSources,
         embedUrl,
+        subjectNames: names,
         generatedAt: new Date().toISOString()
       };
     }));

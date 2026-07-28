@@ -836,6 +836,14 @@
   .am4-article-modal-collage-2{ grid-template-columns:repeat(2,1fr); }
   .am4-article-modal-collage-3{ grid-template-columns:repeat(3,1fr); }
   .am4-article-modal-collage img{ width:100%; height:100%; object-fit:cover; display:block; }
+
+  /* ---- 記事モーダルの関連記事セクション(2026-07) ---- */
+  .related-articles{ margin-top:16px; padding-top:12px; border-top:1px solid rgba(255,255,255,.1); }
+  .related-articles-heading{ font-size:12px; color:var(--chalk-dim); margin-bottom:8px; font-weight:700; }
+  .related-articles-list{ display:flex; flex-direction:column; gap:8px; }
+  .related-article-item{ display:flex; gap:10px; align-items:center; cursor:pointer; }
+  .related-article-item h5{ font-size:13px; line-height:1.4; margin:0; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .related-article-item .thumb, .related-article-item .thumb-placeholder, .related-article-item .thumb-collage{ width:56px; height:56px; flex:0 0 auto; }
 </style>
 </head>
 <body>
@@ -5439,6 +5447,33 @@ function renderModalImagesHtml(images){
   const cells = imgs.slice(0,3).map(src=>`<img src="${src}" alt="">`).join('');
   return `<div class="am4-article-modal-collage am4-article-modal-collage-${n}">${cells}</div>`;
 }
+// subjectNames(選手・監督・クラブ名)またはleaguesが重なる記事を「関連記事」として拾う。
+// subjectNames一致(同じ人物・クラブに言及)を重く、leagues一致(同じリーグ)を軽く配点する。
+function findRelatedArticles(current, allColumns, max=3){
+  const currentNames = new Set((current.subjectNames||[]).map(n=>n.toLowerCase()));
+  const currentLeagues = new Set(current.leagues||[]);
+  return allColumns
+    .filter(c => c !== current && c.title !== current.title)
+    .map(c => {
+      let score = 0;
+      (c.subjectNames||[]).forEach(n=>{ if(currentNames.has(n.toLowerCase())) score += 2; });
+      (c.leagues||[]).forEach(l=>{ if(currentLeagues.has(l)) score += 1; });
+      return { c, score };
+    })
+    .filter(x => x.score > 0)
+    .sort((a,b)=>b.score-a.score)
+    .slice(0, max)
+    .map(x => x.c);
+}
+function renderRelatedArticlesHtml(current){
+  const related = findRelatedArticles(current, latestColumns);
+  if(related.length === 0) return '';
+  const items = related.map(r => {
+    const thumb = renderThumbHtml(r.images && r.images.length ? r.images : (r.image ? [r.image] : []));
+    return `<div class="related-article-item" data-title="${encodeURIComponent(r.title)}">${thumb}<h5>${r.title}</h5></div>`;
+  }).join('');
+  return `<div class="related-articles"><div class="related-articles-heading">関連記事</div><div class="related-articles-list">${items}</div></div>`;
+}
 function openAm4ArticleModal(c){
   const modal = ensureAm4ArticleModal();
   const body = modal.querySelector('.am4-article-modal-body');
@@ -5452,9 +5487,19 @@ function openAm4ArticleModal(c){
     ${renderEmbedHtml(c.embedUrl)}
     <div class="league-chips">${leaguesHtml}</div>
     ${sourcesHtml ? `<div class="am4-column-sources">${sourcesHtml}</div>` : ''}
+    ${renderRelatedArticlesHtml(c)}
   `;
   modal.style.display = 'flex';
   activateEmbeds(c.embedUrl);
+
+  // 関連記事クリックで記事を切り替え
+  body.querySelectorAll('.related-article-item').forEach(el => {
+    el.addEventListener('click', () => {
+      const title = decodeURIComponent(el.dataset.title);
+      const target = latestColumns.find(x => x.title === title);
+      if(target) openAm4ArticleModal(target);
+    });
+  });
 }
 function renderThumbHtml(images){
   const imgs = images || [];
