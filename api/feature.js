@@ -115,9 +115,11 @@ export default async function handler(req, res) {
       throw new Error(`Anthropic APIエラー: HTTP ${response.status} ${detail}`);
     }
     const data = await response.json();
-    const text = data?.content?.[0]?.text || '';
+    // Sonnetは拡張思考(type:"thinking")ブロックをcontent[0]に返すことがあるため、
+    // 先頭決め打ちではなくtype:"text"のブロックを探す。
+    const text = (data?.content || []).find(b => b.type === 'text')?.text || '';
     const match = text.match(/\{[\s\S]*\}/);
-    if (!match) throw new Error('AI応答のJSON解析に失敗: ' + text.slice(0, 200) + ' | DEBUG:' + JSON.stringify(data).slice(0, 500));
+    if (!match) throw new Error('AI応答のJSON解析に失敗: ' + text.slice(0, 200));
     const parsed = JSON.parse(match[0]);
 
     if (!parsed.feature) {
