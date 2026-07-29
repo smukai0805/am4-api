@@ -665,11 +665,25 @@
     width:40px; height:40px; border-radius:50%; border:2px solid rgba(79,209,197,.5);
     display:flex; align-items:center; justify-content:center; color:#1D4ED8; font-size:14px;
   }
+  .video-thumb-trigger{ position:relative; cursor:pointer; }
+  .video-play-overlay{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    background:rgba(0,0,0,.35);
+  }
+  .video-play-overlay .play-icon{
+    width:52px; height:52px; border-radius:50%; background:rgba(5,7,13,.7); border:2px solid #fff;
+    color:#fff; font-size:18px; display:flex; align-items:center; justify-content:center; padding-left:3px;
+  }
   .report-section-label{
     font-family:'JetBrains Mono',monospace; font-size:11px; color:#1D4ED8; letter-spacing:1px;
     margin:16px 0 6px; text-transform:uppercase;
   }
   .match-report p{ font-size:13.5px; line-height:1.75; color:var(--chalk); margin:0 0 4px; }
+  .match-report-toggle{
+    display:block; margin:10px auto 0; background:none; border:1px solid var(--line); color:var(--chalk-dim);
+    font-size:12px; font-weight:600; padding:6px 16px; border-radius:20px; cursor:pointer;
+  }
+  .match-report-toggle:hover{ border-color:#2F6FFF; color:var(--chalk); }
 
   /* Club link */
   .club-link{ cursor:pointer; text-decoration:underline dotted; text-underline-offset:3px; }
@@ -5388,15 +5402,31 @@ function renderMatchReports(reports){
     // videoId(YouTube動画ID)はapi/match-report.js側でYOUTUBE_API_KEY未設定時はnullが返る。
     // 動画が無い場合は、根拠記事から借りた写真(r.image)があればそれを代わりに表示し、
     // それも無ければ「準備中」のプレースホルダーにする。
+    // 動画がある場合も、記事を開いた瞬間に大きなiframeを読み込んで領域を占有しないよう、
+    // 最初はサムネイル+再生ボタンだけを表示し、クリックされた時だけiframeに差し替える。
     const videoHtml = r.videoId
-      ? `<div class="video-embed"><iframe src="https://www.youtube.com/embed/${r.videoId}" title="highlight" allowfullscreen loading="lazy"></iframe></div>`
+      ? `<div class="video-embed video-thumb-trigger" data-video-id="${r.videoId}">
+           <img class="video-fallback-img" src="https://img.youtube.com/vi/${r.videoId}/hqdefault.jpg" loading="lazy" alt="">
+           <div class="video-play-overlay"><span class="play-icon">▶</span></div>
+         </div>`
       : r.image
         ? `<div class="video-embed"><img class="video-fallback-img" src="${r.image}" loading="lazy" alt=""></div>`
         : `<div class="video-embed"><div class="video-pending"><span class="play-icon">▶</span><span>ハイライト動画は準備中です</span></div></div>`;
-    const sectionsHtml = (r.sections || []).map(s => `
+    // 本文セクション(前半/後半〜延長戦/記録・注目ポイント)は最初の2つだけ表示し、
+    // 残りは「続きを読む」ボタンで展開する折りたたみ式にする(記事が長すぎて見づらいため)。
+    const allSections = r.sections || [];
+    const visibleSections = allSections.slice(0, 2);
+    const hiddenSections = allSections.slice(2);
+    const sectionHtml = s => `
       <div class="report-section-label">${s.label}</div>
       <p>${s.body}</p>
-    `).join('');
+    `;
+    const visibleSectionsHtml = visibleSections.map(sectionHtml).join('');
+    const hiddenSectionsHtml = hiddenSections.map(sectionHtml).join('');
+    const toggleHtml = hiddenSections.length > 0
+      ? `<div class="match-report-collapsed" style="display:none;">${hiddenSectionsHtml}</div>
+         <button class="match-report-toggle">続きを読む ▼</button>`
+      : '';
     el.innerHTML = `
       <div class="badges">
         ${r.competition ? `<span class="badge-comp">${r.competition}</span>` : ''}
@@ -5405,10 +5435,26 @@ function renderMatchReports(reports){
       <h3>${r.title || ''}</h3>
       ${scoreHtml}
       ${videoHtml}
-      ${sectionsHtml}
+      ${visibleSectionsHtml}
+      ${toggleHtml}
       ${renderLeagueChipsHtml(r.leagues)}
       ${renderSourcesHtml(r.sources)}
     `;
+    const videoTrigger = el.querySelector('.video-thumb-trigger');
+    if(videoTrigger){
+      videoTrigger.addEventListener('click', () => {
+        videoTrigger.outerHTML = `<div class="video-embed"><iframe src="https://www.youtube.com/embed/${r.videoId}?autoplay=1" title="highlight" allowfullscreen allow="autoplay; encrypted-media"></iframe></div>`;
+      });
+    }
+    const toggleBtn = el.querySelector('.match-report-toggle');
+    if(toggleBtn){
+      toggleBtn.addEventListener('click', () => {
+        const collapsed = el.querySelector('.match-report-collapsed');
+        const isHidden = collapsed.style.display === 'none';
+        collapsed.style.display = isHidden ? '' : 'none';
+        toggleBtn.textContent = isHidden ? '閉じる ▲' : '続きを読む ▼';
+      });
+    }
     matchReportList.appendChild(el);
   });
 }
@@ -5636,7 +5682,12 @@ async function loadNewsContent(forceRefresh){
       ? (await reportsRes.value.json()).reports || []
       : [];
 
-    renderMatchReports(latestReports);
+    // 【2026-07 停止】W杯終了に伴い、ゲキサカの「チーム名vsチーム名 試合記録」という
+    // 見出しパターンが新しく出なくなり、detectMatchups()が最後のW杯の試合(例:
+    // アルゼンチンvsカーボベルデ)を延々と検出し続けるだけの状態になったため、表示を止めている。
+    // API(/api/match-report)自体は生きているので、直接アクセスすれば動作確認できる。
+    // 復活する場合はこの行を有効化する(次のような新しい大会が始まった時など)。
+    // renderMatchReports(latestReports);
     renderAiColumns(latestColumns);
     renderHeroCarousel(latestColumns);
 
@@ -5687,7 +5738,7 @@ newsLeagueTabs.querySelectorAll('.news-league-tab').forEach(btn=>{
     newsLeagueTabs.querySelectorAll('.news-league-tab').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
     currentLeague = btn.dataset.league;
-    renderMatchReports(latestReports);
+    // renderMatchReports(latestReports); // 【2026-07 停止】上記と同じ理由でコメントアウト中
     renderAiColumns(latestColumns);
   });
 });
