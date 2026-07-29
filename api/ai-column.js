@@ -41,7 +41,7 @@
 // フロント側は「更新」ボタン押下時のみ ?refresh=1 を付けてキャッシュを無視した再生成をリクエストする。
 
 import crypto from 'node:crypto';
-import { put, list } from '@vercel/blob';
+import { put, get } from '@vercel/blob';
 import { fetchAllNewsItems, attachEmbedUrls, fetchWikipediaImage } from './news.js';
 
 // 【2026-07 追加】AM4編集部コラムのアーカイブ機能。
@@ -60,15 +60,12 @@ async function loadArchive(lang) {
   // DEBUG(一時): 原因調査のためデバッグ情報を併せて返す。調査後に元へ戻す。
   const debug = {};
   try {
-    const { blobs } = await list({ prefix: archivePathname(lang), limit: 1 });
-    debug.blobsFound = blobs.map(b => b.pathname);
-    const match = blobs.find(b => b.pathname === archivePathname(lang));
-    if (!match) { debug.reason = 'no_match'; return { list: [], debug }; }
-    debug.matchUrl = match.url;
-    const res = await fetch(match.url);
-    debug.fetchStatus = res.status;
-    if (!res.ok) return { list: [], debug };
-    const data = await res.json();
+    // プライベートストアなのでaccess:'private'を指定。useCache:falseでCDNキャッシュを
+    // バイパスし、直前のsaveArchive()の内容を確実に読めるようにする。
+    const result = await get(archivePathname(lang), { access: 'private', useCache: false });
+    if (!result || !result.stream) { debug.reason = 'not_found'; return { list: [], debug }; }
+    const text = await new Response(result.stream).text();
+    const data = JSON.parse(text);
     debug.dataLength = Array.isArray(data) ? data.length : 'not_array';
     return { list: Array.isArray(data) ? data : [], debug };
   } catch (err) {
@@ -82,13 +79,10 @@ async function saveArchive(lang, entries) {
   const debug = {};
   try {
     const result = await put(archivePathname(lang), JSON.stringify(entries), {
-      access: 'public',
+      access: 'private',
       addRandomSuffix: false,
       allowOverwrite: true,
       contentType: 'application/json',
-      // デフォルトのキャッシュ(1ヶ月)だと上書き後もCDN側で古い内容が返る恐れがあるため、
-      // 許容される最小値(60秒)に短縮しておく。
-      cacheControlMaxAge: 60,
     });
     debug.savedUrl = result.url;
     debug.savedPathname = result.pathname;
