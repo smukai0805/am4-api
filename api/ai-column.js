@@ -33,7 +33,9 @@
 // 環境変数 ANTHROPIC_API_KEY が必要(Vercelのプロジェクト設定 > Environment Variables で追加)。
 // https://console.anthropic.com/ で取得できる。
 //
-// コストを抑えるため、生成結果は6時間キャッシュする(s-maxage)。
+// コストを抑えるため、生成結果は通常4時間キャッシュする(s-maxage)。
+// ただし直近の見出しに確定報道キーワード(BREAKING_KEYWORDS_JA/EN)が含まれる場合は
+// 15分に短縮し、速報性が求められる内容を素早く反映する(可変キャッシュ)。
 // フロント側は「更新」ボタン押下時のみ ?refresh=1 を付けてキャッシュを無視した再生成をリクエストする。
 
 import { fetchAllNewsItems, attachEmbedUrls, fetchWikipediaImage } from './news.js';
@@ -63,6 +65,17 @@ function buildSourceList(items) {
     link: n.link,
     image: n.image || null
   }));
+}
+
+// 直近の見出しに「確定報道」らしいキーワードが含まれるかチェックする。
+// 含まれる場合は、通常より短いキャッシュ時間にして素早く反映されるようにする。
+const BREAKING_KEYWORDS_JA = /正式発表|完全移籍で合意|加入決定|契約書にサイン|公式発表|移籍が完了|電撃移籍|移籍合意/;
+const BREAKING_KEYWORDS_EN = /\bofficial\b|here we go|signs for|completes move|confirmed transfer|deal completed|deal agreed/i;
+
+function hasBreakingNews(sourceList) {
+  // sourceListは既にbuildSourceList内で新しい順にソート済みなので、上位5件だけ見れば十分
+  const recent = sourceList.slice(0, 5);
+  return recent.some(s => BREAKING_KEYWORDS_JA.test(s.headline) || BREAKING_KEYWORDS_EN.test(s.headline));
 }
 
 const LEAGUES_JA = ['プレミアリーグ', 'ラ・リーガ', 'セリエA', 'ブンデスリーガ', 'リーグ・アン', 'ワールドカップ', 'その他'];
@@ -159,6 +172,7 @@ export default async function handler(req, res) {
     // ここで取得に失敗しても(failedFeeds)、成功した分だけで続行する。
     const { items: newsItems } = await fetchAllNewsItems();
     const sourceList = buildSourceList(newsItems);
+    const isBreaking = hasBreakingNews(sourceList);
     await attachEmbedUrls(sourceList, 5);
     // image/embedUrlはAIには不要な情報(トークンの無駄・実URLを渡すと捏造リスクもある)なので、
     // プロンプトに渡す分だけ除き、embedUrlの有無だけをhasEmbedとして渡す。
@@ -260,11 +274,13 @@ export default async function handler(req, res) {
       };
     }));
 
-    // 手動更新(refresh=1)以外は6時間キャッシュしてAPIコストを抑える。
+    // 手動更新(refresh=1)以外は通常4時間キャッシュしてAPIコストを抑える。
+    // ただし直近の見出しに確定報道らしいキーワードがあれば15分に短縮し、素早く反映されるようにする。
     // 手動更新時も直後の連打で無駄なAPI呼び出しが起きないよう短時間だけキャッシュする。
+    const cacheSeconds = isBreaking ? 900 : 14400; // 速報キーワードがあれば15分、通常時は4時間
     res.setHeader(
       'Cache-Control',
-      forceRefresh ? 's-maxage=60, stale-while-revalidate' : 's-maxage=21600, stale-while-revalidate'
+      forceRefresh ? 's-maxage=60, stale-while-revalidate' : `s-maxage=${cacheSeconds}, stale-while-revalidate`
     );
     return res.status(200).json({ columns, generatedAt: new Date().toISOString(), lang });
 
