@@ -78,6 +78,8 @@ function getSystemPrompt(lang, periodLabel) {
 - 参照した記事のidをsourceIdsに配列で入れること
 - 扱ったトピックに関連するリーグをleaguesに配列で入れること(該当リーグ名: ${leagues.join('/')})。複数リーグにまたがる場合は最大2つまで
 - 記事の内容を視覚的に代表できるもの(選手名・監督名、またはクラブ名)を、英語表記(Wikipediaで検索できる形、例: "Zinedine Zidane"や"Real Madrid CF")の配列でsubjectNamesとして出力してください。最大3つまで。特に代表的なものが無い場合はsubjectNames: []としてください。
+- 外国人選手・監督の名前は、メッシ・ロナウド・ハーランド・ムバッペのような、日本語表記が完全に定着している誰もが知る超有名選手・監督に限ってカタカナ表記にしてください。それ以外の選手・監督は、無理にカタカナ化せず、原語のアルファベット表記のまま書いてください(例: Marc Cucurella)。カタカナ表記を迷う場合は必ずアルファベット表記を選んでください、誤ったカタカナ表記(存在しない当て字)を作ることは絶対に避けてください。なお、Kylian Mbappéについては『ムバッペ』ではなく『エンバペ』を使用してください。
+- アルファベット表記の選手名を初めて登場させる際、所属クラブ名や背番号を補足する場合は、必ず渡された記事本文(ニュース記事一覧のJSON)の中に実際に明記されている情報だけを使ってください。あなた自身の一般知識でクラブ名や背番号を補完することは絶対にしないでください(移籍により古い情報になっている可能性があるため)。渡された記事本文にクラブ名の記載が無い場合は、無理に補足せず選手名だけを書いてください。
 - 出力は以下のJSON形式のみ。前後に説明文は一切つけないこと:
 {"title":"...","body":"...","leagues":["..."],"sourceIds":[1,2,3],"subjectNames":["Zinedine Zidane"]}`;
   }
@@ -92,6 +94,7 @@ Rules:
 - Include the ids of referenced articles in sourceIds
 - Include relevant leagues in "leagues" (valid names: ${leagues.join('/')}), max 2
 - Output an array in subjectNames of whatever best visually represents the article's content — player names, manager names, or club names — in English form searchable on Wikipedia (e.g. "Zinedine Zidane" or "Real Madrid CF"). Up to 3. Use subjectNames: [] if nothing clearly represents it.
+- Only include club/squad number context if it is explicitly stated in the provided source articles — never supplement this from your own general knowledge, since it may be outdated due to transfers. If not stated in the source, just use the name alone.
 - Output ONLY this JSON shape, no extra text:
 {"title":"...","body":"...","leagues":["..."],"sourceIds":[1,2,3],"subjectNames":["Zinedine Zidane"]}`;
 }

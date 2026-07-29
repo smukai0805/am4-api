@@ -64,6 +64,8 @@ ${buildWikiFactsBlockJa(wikiFacts)}
 - パターン3以外は、実在の情報(一覧記載の事実、またはあなたの一般知識として確立している経歴・実績)のみを書いてください。存在しない移籍・スコア・日付などを新たに作り出すことは常に禁止です。
 - titleは特に力を入れて、具体的で読みたくなるものにしてください。
 - 本文(body)は400〜600文字程度。パターン1で情報源を使った場合は、少なくとも1箇所は実際の情報源名を明記し、「〇〇が報じたところによると」という形にしてください。パターン2(一般知識のみ)の場合はこの限りではありません。
+- 外国人選手・監督の名前は、メッシ・ロナウド・ハーランド・ムバッペのような、日本語表記が完全に定着している誰もが知る超有名選手・監督に限ってカタカナ表記にしてください。それ以外の選手・監督は、無理にカタカナ化せず、原語のアルファベット表記のまま書いてください(例: Marc Cucurella)。カタカナ表記を迷う場合は必ずアルファベット表記を選んでください、誤ったカタカナ表記(存在しない当て字)を作ることは絶対に避けてください。なお、Kylian Mbappéについては『ムバッペ』ではなく『エンバペ』を使用してください。
+- パターン1で選手名に所属クラブ名や背番号を補足する場合は、必ず渡された記事本文(ニュース記事一覧のJSON)の中に実際に明記されている情報だけを使ってください。あなた自身の一般知識でクラブ名や背番号を補完することは絶対にしないでください(移籍により古い情報になっている可能性があるため)。渡された記事本文にクラブ名の記載が無い場合は、無理に補足せず選手名だけを書いてください(パターン2の経歴紹介で過去の所属クラブに触れるのは引き続き可)。
 - 関連する人物・クラブ名を英語表記(Wikipedia検索可能な形)でsubjectNames(配列、最大3)として出力してください。
 - 参照した記事がある場合のみ、そのidをsourceIdsに配列で入れてください(無ければ空配列)。
 - leaguesも配列で出力してください(該当リーグ名: ${LEAGUES_JA.join('/')}、判断が難しい場合は["その他"])。
@@ -94,6 +96,7 @@ Rules:
 - Outside of case 3, only write real information — either facts from the list, or well-established biographical/career facts from your general knowledge. Never invent a transfer, score, or date that doesn't exist.
 - Make the title especially compelling and specific.
 - Body 250-400 words. If you used case 1, explicitly name at least one real source. Case 2 (general-knowledge profile) doesn't require this.
+- In case 1, only include club/squad number context if it is explicitly stated in the provided source articles — never supplement this from your own general knowledge, since it may be outdated due to transfers. If not stated in the source, just use the name alone (referencing a player's past clubs as part of a case-2 career profile is still fine).
 - Include subjectNames (array, max 3, English names searchable on Wikipedia).
 - Include sourceIds (array of referenced ids; empty array if none were used).
 - Include leagues (array, valid: ${LEAGUES_EN.join('/')}; use ["Other"] if unclear).

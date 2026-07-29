@@ -94,6 +94,8 @@ Also include:
 - "homeTeamEn" / "awayTeamEn": the two teams' official English names (e.g. "Argentina", "Cape Verde"), even if the source material refers to them in another language. These are used to search for a highlight video, so they must be accurate English names, not transliterations.
 - "sourceIds": array of ids actually used.
 
+For player/manager names in the section text: only include club/squad number context if it is explicitly stated in the provided source articles — never supplement this from your own general knowledge, since it may be outdated due to transfers. If not stated in the source, just use the name alone.
+
 Strict rules:
 - Never state a fact (score, goal-scorer, minute, card, attendance, record) that isn't present in the provided material.
 - Never fabricate direct quotes attributed to real players/managers. Indirect reference is fine ("according to reports...").
@@ -118,6 +120,9 @@ Return ONLY this JSON format, no preamble, no markdown fences:
 - "title": AM4独自の見出し(元記事の見出しの丸写しは禁止)。titleは特に力を入れて作成してください。単なるスコアの報告(「〇〇が△△を下す」等)ではなく、この試合で最も特筆すべき出来事(例: 個人賞受賞、劇的な決勝点、記録達成、退場・物議を醸したVAR判定など)があれば、それを見出しの主軸に据えてください。抽象的な要約より、具体的で読みたくなる一文を優先してください。
 - "homeTeamEn" / "awayTeamEn": 両チームの公式英語表記(例: "Argentina"、"Cape Verde")。素材が日本語など英語以外の言語でチーム名を表記している場合も、正確な英語表記に変換すること。ハイライト動画検索に使うため、音訳ではなく実際に使われる英語名にすること。
 - "sourceIds": 実際に使った記事idの配列。
+
+本文中の選手・監督名の表記について: 外国人選手・監督の名前は、メッシ・ロナウド・ハーランド・ムバッペのような、日本語表記が完全に定着している誰もが知る超有名選手・監督に限ってカタカナ表記にしてください。それ以外の選手・監督は、無理にカタカナ化せず、原語のアルファベット表記のまま書いてください(例: Marc Cucurella)。カタカナ表記を迷う場合は必ずアルファベット表記を選んでください、誤ったカタカナ表記(存在しない当て字)を作ることは絶対に避けてください。なお、Kylian Mbappéについては『ムバッペ』ではなく『エンバペ』を使用してください。
+アルファベット表記の選手名を初めて登場させる際、所属クラブ名や背番号を補足する場合は、必ず渡された記事本文(ニュース記事一覧のJSON)の中に実際に明記されている情報だけを使ってください。あなた自身の一般知識でクラブ名や背番号を補完することは絶対にしないでください(移籍により古い情報になっている可能性があるため)。渡された記事本文にクラブ名の記載が無い場合は、無理に補足せず選手名だけを書いてください。
 
 厳守事項:
 - 素材に無い事実(スコア・得点者・時間・カード・観客数・記録など)を書いてはいけません。
