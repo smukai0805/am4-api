@@ -8,15 +8,15 @@
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg: #0D1B14;
-    --panel: #14261E;
-    --panel-2: #182D23;
-    --line: #274233;
-    --chalk: #EFE9DC;
-    --chalk-dim: #A9B6AC;
-    --amber: #F2B705;
-    --amber-dim: #7A5E13;
-    --blue: #4F86A6;
+    --bg: #05070D;
+    --panel: #0E1424;
+    --panel-2: #141B30;
+    --line: #232D45;
+    --chalk: #EDEFF5;
+    --chalk-dim: #8792B0;
+    --amber: #2F6FFF;
+    --amber-dim: #172A56;
+    --blue: #4C8DFF;
     --red: #C1502E;
   }
   *{box-sizing:border-box;}
@@ -70,7 +70,7 @@
   .logo-block{ display:flex; flex-direction:column; gap:5px; }
   .logo-mark{
     display:inline-flex; align-items:center; justify-content:center;
-    background:var(--chalk); color:#0B1611;
+    background:var(--chalk); color:#0E1424;
     font-family:'Inter',sans-serif; font-weight:800; font-size:17px;
     letter-spacing:1.5px; padding:6px 11px; width:fit-content;
     border-radius:2px;
@@ -85,10 +85,10 @@
     background:none; border:1px solid var(--line); color:var(--chalk-dim);
     font-size:12px; font-weight:600; padding:5px 10px; border-radius:20px; cursor:pointer;
   }
-  .lang-btn.active{ background:var(--amber); color:#1a1408; border-color:var(--amber); }
+  .lang-btn.active{ background:var(--amber); color:#ffffff; border-color:var(--amber); }
   .lang-btn:hover:not(.active){ border-color:var(--amber-dim); color:var(--chalk); }
   .lang-note{
-    background:#0B1611; border-bottom:1px solid var(--line); color:var(--chalk-dim);
+    background:#0E1424; border-bottom:1px solid var(--line); color:var(--chalk-dim);
     font-size:12px; text-align:center; padding:8px 6vw;
   }
   .search-panel{
@@ -96,7 +96,7 @@
     padding:12px 6vw 16px; display:flex; flex-direction:column; gap:10px;
   }
   #siteSearchInput{
-    background:#0B1611; border:1px solid var(--line); color:var(--chalk);
+    background:#0E1424; border:1px solid var(--line); color:var(--chalk);
     padding:10px 14px; font-size:15px; border-radius:3px; font-family:'Inter',sans-serif;
     width:100%;
   }
@@ -130,7 +130,7 @@
   body{ padding-bottom:74px; } /* 下段タブぶんの余白 */
   .bottom-tabbar{
     position:fixed; bottom:0; left:0; right:0; z-index:150;
-    background:#0B1611; border-top:1px solid var(--line);
+    background:#0E1424; border-top:1px solid var(--line);
     display:flex; justify-content:space-around;
     padding:6px 4px calc(6px + env(safe-area-inset-bottom));
   }
@@ -160,15 +160,15 @@
   }
   .standings-season-label{ font-size:12.5px; color:var(--chalk-dim); }
   #standingsSeasonSelect{
-    background:#0B1611; border:1px solid var(--line); color:var(--chalk);
+    background:#0E1424; border:1px solid var(--line); color:var(--chalk);
     padding:6px 10px; font-size:13px; border-radius:3px;
   }
   .standings-status{
     font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--chalk-dim);
     padding:3px 8px; border:1px solid var(--line); border-radius:10px;
   }
-  .standings-status.live{ color:#8FD19E; border-color:#3F6C46; }
-  .standings-status.error{ color:#E38A6A; border-color:#6B3823; }
+  .standings-status.live{ color:#7C9EFF; border-color:#141B30; }
+  .standings-status.error{ color:#2F6FFF; border-color:#0E1424; }
 
   /* Favorites page */
   .favorites-picker{ display:flex; flex-wrap:wrap; gap:16px; margin-bottom:8px; }
@@ -176,7 +176,7 @@
   .favorites-picker-row label{ font-size:11px; color:var(--chalk-dim); font-family:'JetBrains Mono',monospace; }
   .favorites-picker-row select,
   .favorites-picker-row input[type="text"]{
-    background:#0B1611; border:1px solid var(--line); color:var(--chalk);
+    background:#0E1424; border:1px solid var(--line); color:var(--chalk);
     padding:9px 12px; font-size:14px; border-radius:3px; min-width:220px;
     font-family:'Inter',sans-serif;
   }
@@ -199,9 +199,9 @@
     background:none; border:1px solid var(--line); color:var(--chalk-dim);
     font-size:12.5px; padding:8px 14px; border-radius:20px; cursor:pointer;
   }
-  .squad-mode-btn.active{ background:var(--amber); color:#1a1408; border-color:var(--amber); font-weight:700; }
+  .squad-mode-btn.active{ background:var(--amber); color:#ffffff; border-color:var(--amber); font-weight:700; }
   #squadNameInput{
-    background:#0B1611; border:1px solid var(--line); color:var(--chalk);
+    background:#0E1424; border:1px solid var(--line); color:var(--chalk);
     padding:9px 12px; font-size:14px; border-radius:3px; min-width:220px;
   }
   .squad-capture-area{
@@ -216,7 +216,7 @@
   .squad-pitch{
     position:relative; width:100%; aspect-ratio:3/4.2;
     background:
-      repeating-linear-gradient(180deg, #1c4430 0, #1c4430 10%, #194028 10%, #194028 20%);
+      repeating-linear-gradient(180deg, #141B30 0, #141B30 10%, #141B30 10%, #141B30 20%);
     border:2px solid rgba(255,255,255,.35); border-radius:4px; overflow:hidden;
   }
   .squad-pitch::before{
@@ -270,7 +270,7 @@
   }
   .squad-bench .squad-slot{ position:static; transform:none; }
   .squad-download-btn{
-    background:var(--amber); color:#1a1408; border:none; font-weight:700;
+    background:var(--amber); color:#ffffff; border:none; font-weight:700;
     padding:12px 22px; border-radius:4px; font-size:14px; cursor:pointer; margin-bottom:20px;
   }
   .squad-download-btn:hover{ opacity:.9; }
@@ -320,16 +320,16 @@
     font-size:12px; padding:6px 12px; border-radius:16px; cursor:pointer;
   }
   .window-tab.active{ border-style:solid; border-color:var(--amber); color:var(--amber); }
-  .window-current-dot{ color:#8FD19E; font-size:10px; }
+  .window-current-dot{ color:#7C9EFF; font-size:10px; }
   .transfer-card .status{
     position:absolute; top:14px; right:14px;
     font-size:10px; font-family:'JetBrains Mono',monospace;
     padding:3px 8px; border-radius:20px;
     text-transform:uppercase; letter-spacing:.5px;
   }
-  .status.done{ background:rgba(114,178,120,.15); color:#8FD19E; border:1px solid #3F6C46; }
+  .status.done{ background:rgba(114,178,120,.15); color:#7C9EFF; border:1px solid #141B30; }
   .status.talks{ background:rgba(242,183,5,.12); color:var(--amber); border:1px solid var(--amber-dim); }
-  .status.rumor{ background:rgba(193,80,46,.12); color:#E38A6A; border:1px solid #6B3823; }
+  .status.rumor{ background:rgba(193,80,46,.12); color:#2F6FFF; border:1px solid #0E1424; }
   .status.collapsed{ background:rgba(220,50,50,.15); color:#FF6B6B; border:1px solid #8B2E2E; }
   .transfer-card.is-collapsed{
     overflow:hidden;
@@ -351,7 +351,7 @@
     pointer-events:none; z-index:2;
     text-align:center; white-space:nowrap;
   }
-  .collapsed-note{ font-size:11.5px; color:#E38A6A; margin-top:8px; line-height:1.5; }
+  .collapsed-note{ font-size:11.5px; color:#2F6FFF; margin-top:8px; line-height:1.5; }
   @keyframes collapse-shake{
     0%{ transform:translateX(0); }
     20%{ transform:translateX(-6px) rotate(-1deg); }
@@ -378,7 +378,7 @@
     border-radius:20px;
     cursor:pointer;
   }
-  .league-tab.active{ background:var(--amber); color:#1a1408; border-color:var(--amber); }
+  .league-tab.active{ background:var(--amber); color:#ffffff; border-color:var(--amber); }
   .fixtures{ display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:12px; margin-bottom:28px; }
   .fixture{
     background:var(--panel);
@@ -482,7 +482,7 @@
     font-size:10px;
     padding:3px 8px;
     border-radius:3px;
-    background:#0B1611;
+    background:#0E1424;
     border:1px solid var(--line);
     color:var(--chalk-dim);
     white-space:nowrap;
@@ -575,11 +575,11 @@
   .am4-column-head{ display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; }
   .am4-badge{
     display:inline-block; font-family:'JetBrains Mono',monospace; font-size:10px;
-    color:#C9BBFF; background:rgba(139,124,216,.18); border:1px solid rgba(139,124,216,.5);
+    color:#4C8DFF; background:rgba(139,124,216,.18); border:1px solid rgba(139,124,216,.5);
     padding:2px 7px; border-radius:3px; vertical-align:middle; margin-left:8px; letter-spacing:.5px;
   }
   .am4-column-refresh{
-    background:none; border:1px solid rgba(139,124,216,.5); color:#C9BBFF;
+    background:none; border:1px solid rgba(139,124,216,.5); color:#4C8DFF;
     padding:7px 14px; border-radius:3px; font-size:12.5px; cursor:pointer; font-weight:600; flex-shrink:0;
   }
   .am4-column-refresh:hover{ background:rgba(139,124,216,.12); }
@@ -591,7 +591,7 @@
   }
   .am4-column-card .cat{
     display:inline-block; font-family:'JetBrains Mono',monospace; font-size:10px; text-transform:uppercase;
-    letter-spacing:1px; color:#C9BBFF; margin-bottom:8px;
+    letter-spacing:1px; color:#4C8DFF; margin-bottom:8px;
   }
   .am4-column-card h4{ font-family:'Anton',sans-serif; font-size:16px; font-weight:400; line-height:1.35; margin:0 0 8px; }
   .am4-column-card p{ font-size:13px; color:var(--chalk-dim); line-height:1.65; margin:0; }
@@ -629,7 +629,7 @@
     padding:6px 13px; border-radius:20px; font-size:12px; font-weight:600; cursor:pointer;
     font-family:'JetBrains Mono',monospace; white-space:nowrap;
   }
-  .news-league-tab.active{ background:var(--amber); color:#1a1408; border-color:var(--amber); }
+  .news-league-tab.active{ background:var(--amber); color:#ffffff; border-color:var(--amber); }
   .news-league-tab:hover:not(.active){ border-color:var(--amber-dim); color:var(--chalk); }
 
   /* ---- 試合レポート(実結果ベースのAM4編集部記事) ---- */
@@ -640,7 +640,7 @@
   .match-report .badges{ display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
   .badge-report{
     font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:.5px; padding:2px 8px; border-radius:3px;
-    color:#4FD1C5; background:rgba(79,209,197,.10); border:1px solid rgba(79,209,197,.5); display:inline-block;
+    color:#1D4ED8; background:rgba(79,209,197,.10); border:1px solid rgba(79,209,197,.5); display:inline-block;
   }
   .badge-comp{
     font-family:'JetBrains Mono',monospace; font-size:10px; padding:2px 8px; border-radius:3px;
@@ -662,10 +662,10 @@
   }
   .video-embed .video-pending .play-icon{
     width:40px; height:40px; border-radius:50%; border:2px solid rgba(79,209,197,.5);
-    display:flex; align-items:center; justify-content:center; color:#4FD1C5; font-size:14px;
+    display:flex; align-items:center; justify-content:center; color:#1D4ED8; font-size:14px;
   }
   .report-section-label{
-    font-family:'JetBrains Mono',monospace; font-size:11px; color:#4FD1C5; letter-spacing:1px;
+    font-family:'JetBrains Mono',monospace; font-size:11px; color:#1D4ED8; letter-spacing:1px;
     margin:16px 0 6px; text-transform:uppercase;
   }
   .match-report p{ font-size:13.5px; line-height:1.75; color:var(--chalk); margin:0 0 4px; }
@@ -741,7 +741,7 @@
   }
   .ranking-baseline{
     font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--chalk-dim);
-    background:#0B1611; padding:4px 8px; border-radius:3px; margin-bottom:8px; display:inline-block;
+    background:#0E1424; padding:4px 8px; border-radius:3px; margin-bottom:8px; display:inline-block;
   }
   .ranking-extra.hidden{ display:none; }
   .ranking-detail-btn{
@@ -822,8 +822,8 @@
   }
   .digest-card .thumb-placeholder{ display:flex; align-items:center; justify-content:center; font-size:32px; background:var(--panel-2); }
   .digest-cat{
-    background:#2dd4bf;
-    color:#04201c;
+    background:#2F6FFF;
+    color:#ffffff;
     font-weight:700;
   }
 
@@ -848,7 +848,7 @@
   /* ---- トピック指定の特集記事リクエスト(2026-07) ---- */
   .feature-request-box{ display:flex; gap:8px; margin-bottom:14px; }
   .feature-request-box input{ flex:1; padding:8px 12px; border-radius:8px; border:1px solid rgba(255,255,255,.15); background:rgba(255,255,255,.05); color:var(--chalk); font-size:13px; }
-  .feature-request-box button{ padding:8px 14px; border-radius:8px; border:none; background:#2dd4bf; color:#04201c; font-weight:700; font-size:13px; cursor:pointer; white-space:nowrap; }
+  .feature-request-box button{ padding:8px 14px; border-radius:8px; border:none; background:#2F6FFF; color:#ffffff; font-weight:700; font-size:13px; cursor:pointer; white-space:nowrap; }
   .feature-request-box button:disabled{ opacity:.6; cursor:default; }
 
   /* ---- ニュースタブ上部のヒーローカルーセル(2026-07) ---- */
@@ -856,11 +856,11 @@
   .hero-slide{ position:absolute; inset:0; background-size:cover; background-position:center; }
   .hero-slide-gradient{ position:absolute; inset:0; background:linear-gradient(to top, rgba(0,0,0,.85) 0%, rgba(0,0,0,.2) 55%, transparent 80%); }
   .hero-slide-text{ position:absolute; left:0; right:0; bottom:0; padding:16px 20px; }
-  .hero-slide-cat{ display:inline-block; background:#2dd4bf; color:#04201c; font-size:11px; font-weight:700; padding:2px 8px; border-radius:4px; margin-bottom:8px; }
+  .hero-slide-cat{ display:inline-block; background:#2F6FFF; color:#ffffff; font-size:11px; font-weight:700; padding:2px 8px; border-radius:4px; margin-bottom:8px; }
   .hero-slide-text h2{ color:#fff; font-size:19px; line-height:1.4; margin:0; text-shadow:0 1px 4px rgba(0,0,0,.5); }
   .hero-dots{ position:absolute; bottom:10px; right:14px; display:flex; gap:6px; }
   .hero-dot{ width:7px; height:7px; border-radius:50%; background:rgba(255,255,255,.4); cursor:pointer; }
-  .hero-dot.active{ background:#2dd4bf; }
+  .hero-dot.active{ background:#2F6FFF; }
 </style>
 </head>
 <body>
@@ -1138,7 +1138,7 @@
   <div class="modal-box" id="squadPickerBox">
     <button class="modal-close" id="squadPickerClose">×</button>
     <h2 style="font-size:18px;">選手を選ぶ</h2>
-    <input type="text" id="squadPickerInput" placeholder="選手名で検索(ひらがな可)" autocomplete="off" style="width:100%; margin:10px 0; background:#0B1611; border:1px solid var(--line); color:var(--chalk); padding:10px 14px; border-radius:3px; font-size:15px;">
+    <input type="text" id="squadPickerInput" placeholder="選手名で検索(ひらがな可)" autocomplete="off" style="width:100%; margin:10px 0; background:#0E1424; border:1px solid var(--line); color:var(--chalk); padding:10px 14px; border-radius:3px; font-size:15px;">
     <div id="squadPickerResults" class="search-results"></div>
   </div>
 </div>
