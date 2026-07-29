@@ -850,6 +850,17 @@
   .feature-request-box input{ flex:1; padding:8px 12px; border-radius:8px; border:1px solid rgba(255,255,255,.15); background:rgba(255,255,255,.05); color:var(--chalk); font-size:13px; }
   .feature-request-box button{ padding:8px 14px; border-radius:8px; border:none; background:#2dd4bf; color:#04201c; font-weight:700; font-size:13px; cursor:pointer; white-space:nowrap; }
   .feature-request-box button:disabled{ opacity:.6; cursor:default; }
+
+  /* ---- ニュースタブ上部のヒーローカルーセル(2026-07) ---- */
+  .hero-carousel{ position:relative; width:100%; aspect-ratio:16/7; border-radius:14px; overflow:hidden; margin-bottom:16px; cursor:pointer; background:rgba(255,255,255,.05); }
+  .hero-slide{ position:absolute; inset:0; background-size:cover; background-position:center; }
+  .hero-slide-gradient{ position:absolute; inset:0; background:linear-gradient(to top, rgba(0,0,0,.85) 0%, rgba(0,0,0,.2) 55%, transparent 80%); }
+  .hero-slide-text{ position:absolute; left:0; right:0; bottom:0; padding:16px 20px; }
+  .hero-slide-cat{ display:inline-block; background:#2dd4bf; color:#04201c; font-size:11px; font-weight:700; padding:2px 8px; border-radius:4px; margin-bottom:8px; }
+  .hero-slide-text h2{ color:#fff; font-size:19px; line-height:1.4; margin:0; text-shadow:0 1px 4px rgba(0,0,0,.5); }
+  .hero-dots{ position:absolute; bottom:10px; right:14px; display:flex; gap:6px; }
+  .hero-dot{ width:7px; height:7px; border-radius:50%; background:rgba(255,255,255,.4); cursor:pointer; }
+  .hero-dot.active{ background:#2dd4bf; }
 </style>
 </head>
 <body>
@@ -884,6 +895,8 @@
     </div>
     <button id="aiColumnRefreshBtn" class="am4-column-refresh" data-i18n="news_refresh">更新</button>
   </div>
+
+  <div id="heroCarousel" class="hero-carousel" style="display:none;"></div>
 
   <div class="news-league-tabs" id="newsLeagueTabs">
     <!-- W杯タブは大会終了に伴い削除(2026-07)。バックエンド側のleague判定候補としては
@@ -5553,6 +5566,54 @@ function renderAiColumns(columns){
   });
 }
 
+let heroCarouselTimer = null;
+let heroCarouselIndex = 0;
+
+function renderHeroCarousel(columns){
+  const container = document.getElementById('heroCarousel');
+  if(!container) return;
+  const slides = columns.filter(c => c.image || (c.images && c.images.length)).slice(0, 5);
+  if(heroCarouselTimer){ clearInterval(heroCarouselTimer); heroCarouselTimer = null; }
+  if(slides.length === 0){ container.style.display='none'; return; }
+  container.style.display = '';
+  heroCarouselIndex = 0;
+
+  function renderSlide(i){
+    const c = slides[i];
+    const img = c.image || (c.images && c.images[0]);
+    container.innerHTML = `
+      <div class="hero-slide" style="background-image:url('${img}')">
+        <div class="hero-slide-gradient"></div>
+        <div class="hero-slide-text">
+          <span class="hero-slide-cat">${c.category || 'AM4編集部'}</span>
+          <h2>${c.title || ''}</h2>
+        </div>
+      </div>
+      <div class="hero-dots">${slides.map((_,idx)=>`<span class="hero-dot${idx===i?' active':''}" data-idx="${idx}"></span>`).join('')}</div>
+    `;
+    container.querySelector('.hero-slide').addEventListener('click', ()=> openAm4ArticleModal(c));
+    container.querySelectorAll('.hero-dot').forEach(dot=>{
+      dot.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        heroCarouselIndex = parseInt(dot.dataset.idx, 10);
+        renderSlide(heroCarouselIndex);
+        resetHeroTimer();
+      });
+    });
+  }
+
+  function resetHeroTimer(){
+    if(heroCarouselTimer) clearInterval(heroCarouselTimer);
+    heroCarouselTimer = setInterval(()=>{
+      heroCarouselIndex = (heroCarouselIndex + 1) % slides.length;
+      renderSlide(heroCarouselIndex);
+    }, 5000);
+  }
+
+  renderSlide(0);
+  resetHeroTimer();
+}
+
 // AM4編集部記事(/api/ai-column)と試合レポート(/api/match-report)を並行取得する。
 // どちらか一方が失敗/未設定(APIキー無し等)でも、成功した方だけで表示を続行する。
 async function loadNewsContent(forceRefresh){
@@ -5576,6 +5637,7 @@ async function loadNewsContent(forceRefresh){
 
     renderMatchReports(latestReports);
     renderAiColumns(latestColumns);
+    renderHeroCarousel(latestColumns);
 
     if(latestColumns.length === 0 && latestReports.length === 0){
       newsStatus.textContent = '取得失敗(APIキー未設定、またはサーバー側の一時的なエラーの可能性があります)';
