@@ -57,40 +57,31 @@ function archivePathname(lang) {
 }
 
 async function loadArchive(lang) {
-  // DEBUG(一時): 原因調査のためデバッグ情報を併せて返す。調査後に元へ戻す。
-  const debug = {};
   try {
     // プライベートストアなのでaccess:'private'を指定。useCache:falseでCDNキャッシュを
     // バイパスし、直前のsaveArchive()の内容を確実に読めるようにする。
     const result = await get(archivePathname(lang), { access: 'private', useCache: false });
-    if (!result || !result.stream) { debug.reason = 'not_found'; return { list: [], debug }; }
+    if (!result || !result.stream) return [];
     const text = await new Response(result.stream).text();
     const data = JSON.parse(text);
-    debug.dataLength = Array.isArray(data) ? data.length : 'not_array';
-    return { list: Array.isArray(data) ? data : [], debug };
+    return Array.isArray(data) ? data : [];
   } catch (err) {
-    debug.error = err.message;
     console.error('column archive load error:', err.message);
-    return { list: [], debug };
+    return [];
   }
 }
 
 async function saveArchive(lang, entries) {
-  const debug = {};
   try {
-    const result = await put(archivePathname(lang), JSON.stringify(entries), {
+    await put(archivePathname(lang), JSON.stringify(entries), {
       access: 'private',
       addRandomSuffix: false,
       allowOverwrite: true,
       contentType: 'application/json',
     });
-    debug.savedUrl = result.url;
-    debug.savedPathname = result.pathname;
   } catch (err) {
-    debug.error = err.message;
     console.error('column archive save error:', err.message);
   }
-  return debug;
 }
 
 // 既存アーカイブ(7日以内のみ残す)+今回生成分をidでマージし、生成時刻の新しい順に並べる。
@@ -351,10 +342,9 @@ export default async function handler(req, res) {
     // アーカイブ(過去1週間分)を読み込み、今回の生成分とマージして保存し直す。
     // フロント側には「直近生成分+アーカイブ」を生成時刻の新しい順にまとめて返すことで、
     // ニュースタブに過去記事が積み上がって表示されるようにする。
-    const { list: existingArchive, debug: loadDebug } = await loadArchive(lang);
+    const existingArchive = await loadArchive(lang);
     const mergedColumns = mergeArchive(existingArchive, columns);
-    const saveDebug = await saveArchive(lang, mergedColumns);
-    const archiveDebug = { existingCount: existingArchive.length, freshCount: columns.length, mergedCount: mergedColumns.length, loadDebug, saveDebug };
+    await saveArchive(lang, mergedColumns);
 
     // 手動更新(refresh=1)以外は通常4時間キャッシュしてAPIコストを抑える。
     // ただし直近の見出しに確定報道らしいキーワードがあれば15分に短縮し、素早く反映されるようにする。
@@ -364,7 +354,7 @@ export default async function handler(req, res) {
       'Cache-Control',
       forceRefresh ? 's-maxage=60, stale-while-revalidate' : `s-maxage=${cacheSeconds}, stale-while-revalidate`
     );
-    return res.status(200).json({ columns: mergedColumns, generatedAt: new Date().toISOString(), lang, _archiveDebug: archiveDebug });
+    return res.status(200).json({ columns: mergedColumns, generatedAt: new Date().toISOString(), lang });
 
   } catch (err) {
     console.error('ai-column error:', err);
