@@ -155,7 +155,10 @@ export default async function handler(req, res) {
         // 一般知識で紹介記事を書く)の判断はHaikuでは安定して一般化しなかったため、
         // より指示追従力の高いSonnetを使う。
         model: 'claude-sonnet-5',
-        max_tokens: 1200,
+        // Sonnetは拡張思考(thinking)ブロックの出力もmax_tokensの予算内に含まれる。
+        // wikiFacts分の判断が加わり思考が長くなると、1200では本文JSONが完成する前に
+        // 打ち切られJSON解析に失敗するケースが確認されたため、余裕を持たせている。
+        max_tokens: 3000,
         system: getSystemPrompt(lang, topic, wikiFacts),
         messages: [{ role: 'user', content: `ここに現在配信中のニュース記事一覧をJSONで渡します。\n\n` + JSON.stringify(promptSourceList, null, 2) }],
       }),
