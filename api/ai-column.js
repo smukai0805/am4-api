@@ -7,6 +7,8 @@
 // このエンドポイントの記事のみを主コンテンツとして表示する(外部記事の生カード表示はしない)。
 //
 // 【2026-07 改修】
+//   - 記事数の上限を8本に拡大し、Vercel Blobに過去1週間分をアーカイブして
+//     「直近生成分+アーカイブ」を積み上げ表示するようにした(詳細は下記のarchive関連関数)。
 //   - 記事数を2〜3本から最大6本に拡大(ニュースタブの主コンテンツになったため)。
 //   - 各記事に "leagues" フィールド(配列)を追加。プレミアリーグ/ラ・リーガ/セリエA/
 //     ブンデスリーガ/リーグ・アン/ワールドカップ/その他、から関係する分だけ1〜2個選んで付与する。
@@ -38,7 +40,67 @@
 // 15分に短縮し、速報性が求められる内容を素早く反映する(可変キャッシュ)。
 // フロント側は「更新」ボタン押下時のみ ?refresh=1 を付けてキャッシュを無視した再生成をリクエストする。
 
+import crypto from 'node:crypto';
+import { put, list } from '@vercel/blob';
 import { fetchAllNewsItems, attachEmbedUrls, fetchWikipediaImage } from './news.js';
+
+// 【2026-07 追加】AM4編集部コラムのアーカイブ機能。
+// 生成のたびに各コラムをVercel Blob上の1本のJSONファイルに追記保存し、
+// 過去1週間分を「直近生成分」とマージしてニュースタブに表示する(積み上げ表示)。
+// 保存先はlangごとに分ける(JA/EN/ESで内容が別物のため)。
+// BLOB_READ_WRITE_TOKEN未設定(Vercel BlobストアがプロジェクトにまだConnectされていない)
+// 場合は静かに失敗させ、アーカイブ無し(直近生成分のみ)で通常通り動作を続ける。
+const ARCHIVE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7日
+
+function archivePathname(lang) {
+  return `am4-column-archive-${lang}.json`;
+}
+
+async function loadArchive(lang) {
+  try {
+    const { blobs } = await list({ prefix: archivePathname(lang), limit: 1 });
+    const match = blobs.find(b => b.pathname === archivePathname(lang));
+    if (!match) return [];
+    const res = await fetch(match.url);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+  } catch (err) {
+    console.error('column archive load error:', err.message);
+    return [];
+  }
+}
+
+async function saveArchive(lang, entries) {
+  try {
+    await put(archivePathname(lang), JSON.stringify(entries), {
+      access: 'public',
+      addRandomSuffix: false,
+      allowOverwrite: true,
+      contentType: 'application/json',
+      // デフォルトのキャッシュ(1ヶ月)だと上書き後もCDN側で古い内容が返る恐れがあるため、
+      // 許容される最小値(60秒)に短縮しておく。
+      cacheControlMaxAge: 60,
+    });
+  } catch (err) {
+    console.error('column archive save error:', err.message);
+  }
+}
+
+// 既存アーカイブ(7日以内のみ残す)+今回生成分をidでマージし、生成時刻の新しい順に並べる。
+function mergeArchive(existing, freshColumns) {
+  const now = Date.now();
+  const byId = new Map();
+  for (const entry of existing) {
+    if (!entry.id || !entry.generatedAt) continue;
+    if (now - new Date(entry.generatedAt).getTime() > ARCHIVE_TTL_MS) continue; // 7日以上前は削除
+    byId.set(entry.id, entry);
+  }
+  for (const col of freshColumns) {
+    byId.set(col.id, col);
+  }
+  return [...byId.values()].sort((a, b) => new Date(b.generatedAt) - new Date(a.generatedAt));
+}
 
 // 【重要】この関数はRSS取得(最大4フィード)+Anthropic API呼び出しを直列で行うため、
 // 旧バージョン(Anthropic呼び出しのみ)より実行時間が伸びる。Vercelのサーバーレス関数は
@@ -101,8 +163,6 @@ const SYSTEM_PROMPT_JA = `あなたはサッカー情報サイト『AM4』の編
 
 本文中では、少なくとも1箇所は実際の情報源名(渡された記事のsource値、例: The Guardian、BBC Sport、kicker、L'Équipe、Marca等)を明記し、「〇〇が報じたところによると」「〇〇によると」といった形で、海外・国内メディアの報道をAM4編集部が翻訳・要約して伝えている、という書き方にしてください。AM4編集部が独自に取材したかのような書き方は避けてください。
 
-情報源名を本文中に明記する際、同じ話題について複数の情報源がある場合は、ゲキサカよりも海外の一次情報源(The Guardian、BBC Sport、kicker、L'Équipe、Marca等)の名前を優先して挙げてください。ゲキサカは、日本人選手・Jリーグ関連など日本発の話題が中心の場合にのみ情報源として明記してください。
-
 外国人選手・監督の名前は、メッシ・ロナウド・ハーランド・ムバッペのような、日本語表記が完全に定着している誰もが知る超有名選手・監督に限ってカタカナ表記にしてください。それ以外の選手・監督は、無理にカタカナ化せず、原語のアルファベット表記のまま書いてください(例: Marc Cucurella)。カタカナ表記を迷う場合は必ずアルファベット表記を選んでください、誤ったカタカナ表記(存在しない当て字)を作ることは絶対に避けてください。
 
 アルファベット表記の選手名を初めて登場させる際、所属クラブ名や背番号を補足する場合は、必ず渡された記事本文(ニュース記事一覧のJSON)の中に実際に明記されている情報だけを使ってください。あなた自身の一般知識でクラブ名や背番号を補完することは絶対にしないでください(移籍により古い情報になっている可能性があるため)。渡された記事本文にクラブ名の記載が無い場合は、無理に補足せず選手名だけを書いてください。
@@ -138,8 +198,6 @@ Some articles have hasEmbed:true. This means a post from the player/club's own o
 Output an array in subjectNames of whatever best visually represents the article's content — player names, manager names, or club names — in English form searchable on Wikipedia (e.g. "Cristian Romero" or "Tottenham Hotspur F.C."). For a single-subject article, output one name; for a roundup spanning multiple topics, output up to 3 names or club names, one per topic (e.g. ["Cristian Romero", "Liverpool F.C.", "Kazuyoshi Miura"]). If no individual clearly represents a given topic, use that topic's club name instead. Only use subjectNames: [] if there is truly nothing that could visually represent the article.
 
 Somewhere in the body text, name the actual source at least once (the source value from the provided articles, e.g. The Guardian, BBC Sport, kicker, L'Équipe, Marca), using phrasing like "according to X" or "as X reported" — make it clear AM4's editorial team is translating/summarizing foreign and domestic media coverage, not reporting as an original AM4 investigation.
-
-When multiple sources cover the same topic, prefer naming an international primary source (The Guardian, BBC Sport, kicker, L'Équipe, Marca, etc.) over Gekisaka. Only name Gekisaka as the source when the topic centers on a Japanese player or the J.League.
 
 Only include club/squad number context if it is explicitly stated in the provided source articles — never supplement this from your own general knowledge, since it may be outdated due to transfers. If not stated in the source, just use the name alone.
 
@@ -270,6 +328,7 @@ export default async function handler(req, res) {
       const finalSources = extraSources.length > 0 ? [...sources, ...extraSources] : sources;
 
       return {
+        id: crypto.randomUUID(),
         category: col.category,
         image: finalImage,
         images: finalImages,
@@ -283,6 +342,13 @@ export default async function handler(req, res) {
       };
     }));
 
+    // アーカイブ(過去1週間分)を読み込み、今回の生成分とマージして保存し直す。
+    // フロント側には「直近生成分+アーカイブ」を生成時刻の新しい順にまとめて返すことで、
+    // ニュースタブに過去記事が積み上がって表示されるようにする。
+    const existingArchive = await loadArchive(lang);
+    const mergedColumns = mergeArchive(existingArchive, columns);
+    await saveArchive(lang, mergedColumns);
+
     // 手動更新(refresh=1)以外は通常4時間キャッシュしてAPIコストを抑える。
     // ただし直近の見出しに確定報道らしいキーワードがあれば15分に短縮し、素早く反映されるようにする。
     // 手動更新時も直後の連打で無駄なAPI呼び出しが起きないよう短時間だけキャッシュする。
@@ -291,7 +357,7 @@ export default async function handler(req, res) {
       'Cache-Control',
       forceRefresh ? 's-maxage=60, stale-while-revalidate' : `s-maxage=${cacheSeconds}, stale-while-revalidate`
     );
-    return res.status(200).json({ columns, generatedAt: new Date().toISOString(), lang });
+    return res.status(200).json({ columns: mergedColumns, generatedAt: new Date().toISOString(), lang });
 
   } catch (err) {
     console.error('ai-column error:', err);

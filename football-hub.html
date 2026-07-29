@@ -5721,7 +5721,9 @@ async function loadNewsContent(forceRefresh){
       fetch(`${AM4_API_BASE}/api/ai-column?${params.toString()}`),
       fetch(`${AM4_API_BASE}/api/match-report?${params.toString()}`)
     ]);
-    loadOtherNews(); // AI処理を挟まないので、AM4記事の取得成否とは独立に読み込む
+    // 【2026-07 停止】未翻訳の外国語見出しがそのまま並び読みにくいため表示を停止。
+    // 関数・API(/api/other-news)自体は残しているので、復活する場合はこの行を有効化する。
+    // loadOtherNews();
 
     latestColumns = (columnsRes.status === 'fulfilled' && columnsRes.value.ok)
       ? (await columnsRes.value.json()).columns || []

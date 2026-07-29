@@ -32,14 +32,7 @@ const FEEDS = [
   { url: 'http://feeds.bbci.co.uk/sport/football/rss.xml', source: 'BBC Sport', lang: 'en' },
   { url: 'https://www.skysports.com/rss/12040', source: 'Sky Sports', lang: 'en' },
   { url: 'https://www.theguardian.com/football/rss', source: 'The Guardian', lang: 'en' },
-  // ゲキサカ(講談社運営)の「海外サッカー」カテゴリRSS。日本語記事を増やす目的で追加。
-  // サッカーキング(soccer-king.jp)のRSSはRDF/RSS1.0という別形式で、
-  // 現状のパーサー(RSS2.0の<rss><channel><item>構造を前提)とは互換性が無いため見送り、
-  // 同じRSS2.0形式で提供されているゲキサカを採用した。更新頻度も高く、
-  // 画像(<image><url>)・要約・リンクが全記事に揃っている。
-  // limit: 15 — 日本語(ja)ソースはこの1本しか無いため、英語3ソース合計(最大24件)と
-  // 記事のボリュームに差が出すぎないよう、他フィードより多めに取得しておく。
-  { url: 'https://web.gekisaka.jp/feed?category=foreign', source: 'ゲキサカ', lang: 'ja', limit: 15 },
+  // 【2026-07 削除】ゲキサカ(日本語ソース)は情報源から除外した。
   { url: 'https://newsfeed.kicker.de/news/bundesliga', source: 'kicker', lang: 'de', limit: 10 },
   { url: "https://dwh.lequipe.fr/api/edito/rss?path=/Football/", source: "L'Équipe", lang: 'fr', limit: 10 },
   { url: 'https://e00-marca.uecdn.es/rss/futbol/primera-division.xml', source: 'Marca', lang: 'es', limit: 10 },
@@ -201,9 +194,9 @@ export default async function handler(req, res) {
     const { items: fetchedItems, failedFeeds } = await fetchAllNewsItems();
 
     // ?lang=ja/en/es のクエリに応じて、対応する言語のソースを優先的に返す。
-    // 例: ?lang=ja なら日本語記事(ゲキサカ)のみに絞る。
     // 該当言語のソースが無い/該当記事が0件の場合は、全言語混合の一覧にフォールバックする
     // (空っぽの結果を返してフロント側を「取得失敗」扱いにしないため)。
+    // 【2026-07】日本語(ja)ソースは無くなったため、?lang=ja は常に全言語混合にフォールバックする。
     const requestedLang = String(req.query.lang || '').toLowerCase();
     const targetLang = LANG_FALLBACK[requestedLang] || requestedLang;
     const hasLangSource = FEEDS.some(f => f.lang === targetLang);
