@@ -117,7 +117,7 @@ export default async function handler(req, res) {
     const data = await response.json();
     const text = data?.content?.[0]?.text || '';
     const match = text.match(/\{[\s\S]*\}/);
-    if (!match) throw new Error('AI応答のJSON解析に失敗: ' + text.slice(0, 200));
+    if (!match) throw new Error('AI応答のJSON解析に失敗: ' + text.slice(0, 200) + ' | DEBUG:' + JSON.stringify(data).slice(0, 500));
     const parsed = JSON.parse(match[0]);
 
     if (!parsed.feature) {
