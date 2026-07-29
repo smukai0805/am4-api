@@ -86,7 +86,7 @@ const SYSTEM_PROMPT_JA = `あなたはサッカー情報サイト『AM4』の編
 この一覧「だけ」を事実の根拠として、日本語の記事を作成してください。一覧に無い情報を事実として書いてはいけません。
 このサイトのニュースタブでは外部記事をそのまま並べず、この記事群だけを表示するので、できるだけ幅広い話題(複数のリーグ・大会)をカバーしてください。
 
-作成する記事(3〜6本、素材の量に応じて調整可):
+作成する記事(3〜8本、素材の量に応じて調整可。無理に話題を分割せず、自然にまとまる本数でよい):
 1. category:"話題まとめ" — 一覧の中から関連性がある/話題性が高いと思われる記事をまとめて、横断的に要約・整理した記事。同じリーグ・大会の話題ごとに分けて複数本作ってよい(例: W杯関連で1本、プレミア移籍市場で1本、など)。単なる翻訳や丸写しではなく、AM4としての視点でまとめ直すこと。
 2. category:"編集部コラム" — 一覧の中から特に読者の関心を引きそうな記事を1本選び、その内容を踏まえたAM4独自の短い考察・便乗コラムを書く。例:移籍報道があれば、その移籍が実現した場合のチームへの影響についての考察、など。
 
@@ -124,7 +124,7 @@ Below is a list of actual, currently published football news articles (id, headl
 Use ONLY this list as your factual basis for the English-language articles you write. Do not state anything as fact that isn't in this list.
 The news tab on this site shows only these AM4-written articles (no raw external article cards), so try to cover a range of topics/leagues when the source material allows it.
 
-Articles to write (3-6 total, adjust based on how much material is available):
+Articles to write (3-8 total, adjust based on how much material is available — don't force a topic split just to hit a number; whatever groups naturally is fine):
 1. category:"Topic Roundup" — Pick related/notable articles from the list and write synthesized pieces connecting them. Feel free to write multiple, one per league/topic cluster (e.g. one about World Cup fallout, one about Premier League transfer buzz). Write in your own words and with AM4's own framing, not a translation or copy of the originals.
 2. category:"Editor's Take" — Pick one article likely to interest readers and write a short original commentary/reaction piece building on it.
 
@@ -200,7 +200,8 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 3500,
+        // 記事上限を6→8本に引き上げたため(2026-07)、出力トークンの余裕も比例して増やす。
+        max_tokens: 4500,
         system: getSystemPrompt(lang),
         messages: [{ role: 'user', content: userPrompt }]
       })
@@ -223,7 +224,7 @@ export default async function handler(req, res) {
       return res.status(502).json({ error: 'AI応答のJSON解析に失敗しました' });
     }
 
-    const rawColumns = Array.isArray(parsed.columns) ? parsed.columns.slice(0, 6) : [];
+    const rawColumns = Array.isArray(parsed.columns) ? parsed.columns.slice(0, 8) : [];
     const validLeagues = lang === 'en' || lang === 'es' ? LEAGUES_EN : LEAGUES_JA;
 
     // sourceIds(1始まりのid配列)を、実際のsourceList上の記事(title+link)に変換して

@@ -876,6 +876,19 @@
   .hero-dots{ position:absolute; bottom:10px; right:14px; display:flex; gap:6px; }
   .hero-dot{ width:7px; height:7px; border-radius:50%; background:rgba(255,255,255,.4); cursor:pointer; }
   .hero-dot.active{ background:#2F6FFF; }
+
+  /* ---- その他のニュース(2026-07、AI処理無しのシンプルなテキストリスト) ---- */
+  .other-news-section{ margin-top:24px; padding-top:16px; border-top:1px solid var(--line); }
+  .other-news-heading{ font-size:14px; font-weight:700; color:var(--chalk-dim); margin:0 0 10px; }
+  .other-news-list{ display:flex; flex-direction:column; }
+  .other-news-item{
+    display:flex; flex-direction:column; gap:2px; padding:10px 0;
+    border-bottom:1px solid var(--line); text-decoration:none; color:var(--chalk);
+  }
+  .other-news-item:last-child{ border-bottom:none; }
+  .other-news-item:hover .other-news-headline{ color:#4C8DFF; }
+  .other-news-headline{ font-size:13.5px; line-height:1.5; }
+  .other-news-meta{ font-size:11px; color:var(--chalk-dim); font-family:'JetBrains Mono',monospace; }
 </style>
 </head>
 <body>
@@ -934,6 +947,11 @@
   </div>
 
   <div class="am4-column-list" id="aiColumnList"></div>
+
+  <div class="other-news-section" id="otherNewsSection" style="display:none;">
+    <h3 class="other-news-heading">その他のニュース</h3>
+    <div class="other-news-list" id="otherNewsList"></div>
+  </div>
 </section>
 </div>
 
@@ -5663,6 +5681,35 @@ function renderHeroCarousel(columns){
 
 // AM4編集部記事(/api/ai-column)と試合レポート(/api/match-report)を並行取得する。
 // どちらか一方が失敗/未設定(APIキー無し等)でも、成功した方だけで表示を続行する。
+// 「その他のニュース」: AM4編集部コラム・試合レポートの根拠記事として使われなかった
+// 生RSS記事を、サムネ無しのシンプルなテキストリストで表示する(AI処理を挟まないため
+// api/ai-column等より短いキャッシュ=15分)。タップで元記事に外部リンク。
+async function loadOtherNews(){
+  const section = document.getElementById('otherNewsSection');
+  const list = document.getElementById('otherNewsList');
+  if(!section || !list) return;
+  try{
+    const res = await fetch(`${AM4_API_BASE}/api/other-news?lang=${currentLang}`);
+    if(!res.ok) throw new Error('fetch failed');
+    const data = await res.json();
+    const items = data.items || [];
+    if(items.length === 0){ section.style.display = 'none'; return; }
+    list.innerHTML = items.map(n => {
+      const dateStr = n.publishedAt ? new Date(n.publishedAt).toLocaleDateString('ja-JP',{month:'2-digit',day:'2-digit'}).replace(/\//g,'.') : '';
+      return `
+        <a class="other-news-item" href="${n.link || '#'}" target="_blank" rel="noopener noreferrer">
+          <span class="other-news-headline">${n.headline || ''}</span>
+          <span class="other-news-meta">${n.source || ''}${dateStr ? ' · ' + dateStr : ''}</span>
+        </a>
+      `;
+    }).join('');
+    section.style.display = '';
+  } catch(e){
+    console.error('other-news fetch failed', e);
+    section.style.display = 'none';
+  }
+}
+
 async function loadNewsContent(forceRefresh){
   aiColumnRefreshBtn.disabled = true;
   newsStatus.textContent = '読み込み中...';
@@ -5674,6 +5721,7 @@ async function loadNewsContent(forceRefresh){
       fetch(`${AM4_API_BASE}/api/ai-column?${params.toString()}`),
       fetch(`${AM4_API_BASE}/api/match-report?${params.toString()}`)
     ]);
+    loadOtherNews(); // AI処理を挟まないので、AM4記事の取得成否とは独立に読み込む
 
     latestColumns = (columnsRes.status === 'fulfilled' && columnsRes.value.ok)
       ? (await columnsRes.value.json()).columns || []
