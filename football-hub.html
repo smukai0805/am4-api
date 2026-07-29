@@ -68,13 +68,7 @@
     gap:12px;
   }
   .logo-block{ display:flex; flex-direction:column; gap:5px; }
-  .logo-mark{
-    display:inline-flex; align-items:center; justify-content:center;
-    background:var(--chalk); color:#0E1424;
-    font-family:'Inter',sans-serif; font-weight:800; font-size:17px;
-    letter-spacing:1.5px; padding:6px 11px; width:fit-content;
-    border-radius:2px;
-  }
+  .header-logo{ height:28px; width:auto; display:block; }
   .logo-tagline{
     font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:1.5px;
     color:var(--chalk-dim); text-transform:uppercase; padding-left:1px;
@@ -871,7 +865,7 @@
 
 <header class="top">
   <div class="logo-block">
-    <div class="logo-mark">AM4</div>
+    <img src="/am4-logo.png" alt="AM4" class="header-logo">
     <div class="logo-tagline">SOCCER NEWS · SQUAD BUILDER</div>
   </div>
   <div class="lang-switch" id="langSwitch">
