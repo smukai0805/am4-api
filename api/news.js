@@ -310,3 +310,34 @@ export async function fetchWikipediaImage(subjectName) {
     return null;
   }
 }
+
+// 人物・クラブの実在確認と基礎情報(ポジション・国籍等)の裏取り用。
+// 一般知識だけで記事を書かせると、同姓の別人と混同する等のリスクがあるため、
+// 実際のWikipedia要約を事実の根拠として使う。
+export async function fetchWikipediaSummary(subjectName) {
+  if (!subjectName) return null;
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
+    let response;
+    try {
+      response = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(subjectName)}`, {
+        headers: { 'User-Agent': FETCH_HEADERS['User-Agent'] },
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
+    if (!response.ok) return null;
+    const data = await response.json();
+    if (!data.extract) return null;
+    return {
+      title: data.title,
+      description: data.description || null, // 例: "Ivorian footballer"
+      extract: data.extract, // Wikipediaの要約文(1〜3文程度)
+      pageUrl: data?.content_urls?.desktop?.page || `https://en.wikipedia.org/wiki/${encodeURIComponent(data.title)}`,
+    };
+  } catch {
+    return null;
+  }
+}

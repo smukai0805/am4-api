@@ -6,7 +6,7 @@
 
 export const config = { maxDuration: 60 };
 
-import { fetchAllNewsItems, attachEmbedUrls, fetchWikipediaImage } from './news.js';
+import { fetchAllNewsItems, attachEmbedUrls, fetchWikipediaImage, fetchWikipediaSummary } from './news.js';
 
 const LEAGUES_JA = ['プレミアリーグ', 'ラ・リーガ', 'セリエA', 'ブンデスリーガ', 'リーグ・アン', 'ワールドカップ', 'その他'];
 const LEAGUES_EN = ['Premier League', 'La Liga', 'Serie A', 'Bundesliga', 'Ligue 1', 'World Cup', 'Other'];
@@ -18,7 +18,29 @@ function buildSourceList(items) {
     .map((n, i) => ({ id: i + 1, headline: n.headline, summary: n.fullText || n.summary, source: n.source, link: n.link, image: n.image || null }));
 }
 
-function getSystemPrompt(lang, topic) {
+function buildWikiFactsBlockJa(wikiFacts) {
+  if (wikiFacts && wikiFacts.length > 0) {
+    return `
+以下はWikipediaで裏取りした実在の人物/クラブの情報です。プロフィールを書く場合は、必ずこの情報と矛盾しないようにしてください。もしトピックの文脈(例: 特定のポジションでの移籍報道)とこの情報が食い違う場合(例: トピックではDFの移籍と言っているのにWikipediaの情報がGKになっている等)、無理に断定せず「情報の特定に確信が持てないため、詳細な断定は避けます」といった慎重な書き方にしてください。
+
+${wikiFacts.map(f => `- ${f.title}: ${f.description || ''} / ${f.extract}`).join('\n')}
+`;
+  }
+  return `Wikipediaでの裏取りができませんでした。一般知識で書く場合も、確信が持てない具体的な数値(身長・年齢等)やポジションは断定せず、慎重な書き方にしてください。`;
+}
+
+function buildWikiFactsBlockEn(wikiFacts) {
+  if (wikiFacts && wikiFacts.length > 0) {
+    return `
+Below is verified information from Wikipedia about the real person/club in question. If you write a profile, it must not contradict this information. If the topic's context (e.g. a transfer rumor mentioning a specific position) conflicts with this information (e.g. the topic says a defender, but Wikipedia says this person is a goalkeeper), do not force a confident statement — instead write cautiously, e.g. "we can't confirm the exact identity/details here."
+
+${wikiFacts.map(f => `- ${f.title}: ${f.description || ''} / ${f.extract}`).join('\n')}
+`;
+  }
+  return `Wikipedia verification was not available. Even when writing from general knowledge, do not assert specific numbers (height, age, etc.) or a position you're not confident about — write cautiously instead.`;
+}
+
+function getSystemPrompt(lang, topic, wikiFacts) {
   if (lang === 'ja') {
     return `あなたはサッカー専門メディア「AM4編集部」の記者です。
 読者から「${topic}」というトピックについて特集記事を書いてほしいというリクエストがありました。
@@ -35,6 +57,8 @@ function getSystemPrompt(lang, topic) {
 
 パターン2の出力例(topicが「ペレ」の場合):
 {"feature": {"title":"『サッカーの王様』ペレ、3度のワールドカップ制覇という金字塔","body":"ブラジルが生んだ稀代のストライカー、ペレは...(経歴・実績に基づく紹介文、約500文字)","leagues":["その他"],"subjectNames":["Pelé"],"sourceIds":[]}}
+
+${buildWikiFactsBlockJa(wikiFacts)}
 
 重要なルール:
 - パターン3以外は、実在の情報(一覧記載の事実、またはあなたの一般知識として確立している経歴・実績)のみを書いてください。存在しない移籍・スコア・日付などを新たに作り出すことは常に禁止です。
@@ -63,6 +87,8 @@ Handling policy (evaluate in this order):
 
 Example of case 2 (topic = "Pelé"):
 {"feature": {"title":"The King of Football: Pelé's Unmatched Legacy of Three World Cup Titles","body":"Widely regarded as one of the greatest players in the sport's history, Pelé...(profile based on career/achievements, ~300 words)","leagues":["Other"],"subjectNames":["Pelé"],"sourceIds":[]}}
+
+${buildWikiFactsBlockEn(wikiFacts)}
 
 Rules:
 - Outside of case 3, only write real information — either facts from the list, or well-established biographical/career facts from your general knowledge. Never invent a transfer, score, or date that doesn't exist.
@@ -95,6 +121,30 @@ export default async function handler(req, res) {
     await attachEmbedUrls(sourceList, 5);
     const promptSourceList = sourceList.map(({ image, embedUrl, ...rest }) => ({ ...rest, hasEmbed: !!embedUrl }));
 
+    // ステップ1: トピックから実在の人物/クラブ候補を推定(軽量な1回目の呼び出し)
+    const candidateResponse = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 200,
+        system: `与えられたトピック文から、それが指している可能性のある実在のサッカー選手・監督・クラブの名前を、Wikipediaで検索できる英語表記で最大2つ推定してください。同姓の別人がいて曖昧な場合は両方候補として挙げてください。出力は{"candidates":["...","..."]}のJSON形式のみ。心当たりが無い場合は{"candidates":[]}。`,
+        messages: [{ role: 'user', content: topic }],
+      }),
+    });
+    let candidates = [];
+    if (candidateResponse.ok) {
+      const cdata = await candidateResponse.json();
+      const ctextBlock = (cdata?.content || []).find(b => b.type === 'text');
+      const cmatch = ctextBlock?.text?.match(/\{[\s\S]*\}/);
+      if (cmatch) {
+        try { candidates = JSON.parse(cmatch[0]).candidates || []; } catch {}
+      }
+    }
+
+    // ステップ2: 候補それぞれについてWikipediaで裏取り
+    const wikiFacts = (await Promise.all(candidates.slice(0, 2).map(fetchWikipediaSummary))).filter(Boolean);
+
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
@@ -106,7 +156,7 @@ export default async function handler(req, res) {
         // より指示追従力の高いSonnetを使う。
         model: 'claude-sonnet-5',
         max_tokens: 1200,
-        system: getSystemPrompt(lang, topic),
+        system: getSystemPrompt(lang, topic, wikiFacts),
         messages: [{ role: 'user', content: `ここに現在配信中のニュース記事一覧をJSONで渡します。\n\n` + JSON.stringify(promptSourceList, null, 2) }],
       }),
     });
