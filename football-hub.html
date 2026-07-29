@@ -74,8 +74,8 @@
     display:flex; justify-content:space-between; align-items:center;
     gap:12px;
   }
-  .logo-block{ display:flex; flex-direction:column; gap:5px; }
-  .header-logo{ height:28px; width:auto; display:block; }
+  .logo-block{ display:flex; flex-direction:column; align-items:flex-start; gap:5px; }
+  .header-logo{ height:28px; width:auto; max-width:none; object-fit:contain; flex-shrink:0; display:block; }
   .logo-tagline{
     font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:1.5px;
     color:var(--chalk-dim); text-transform:uppercase; padding-left:1px;
