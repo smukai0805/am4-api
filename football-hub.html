@@ -7372,7 +7372,8 @@ async function initDailyDigest(){
     console.error('digest fetch failed', e);
   }
 }
-document.addEventListener('DOMContentLoaded', initDailyDigest);
+// 【2026-07 停止】朝刊/昼刊/夕刊は不具合により一旦停止中。復活する場合はこの行を有効化する。
+// document.addEventListener('DOMContentLoaded', initDailyDigest);
 </script>
 </body>
 </html>
