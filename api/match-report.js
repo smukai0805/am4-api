@@ -18,6 +18,11 @@
 // ハイライト動画のvideoIdを1件取得する(環境変数 YOUTUBE_API_KEY が必要)。
 // キー未設定の場合はvideoId:nullを返し、フロント側は動画欄を「準備中」表示にする
 // (この機能自体は無くても記事生成は問題なく動く)。
+// 【2026-07 修正】検索クエリにteam1/team2(ゲキサカ見出しから抽出した表記。日本語の
+// 場合がある)をそのまま使うと、YouTube側で実際の動画titleとマッチせず、無関係な
+// 人気動画(例: 別の試合のハイライト)がヒットすることがあった。そのため、AIに
+// homeTeamEn/awayTeamEn(英語表記)を出力させて検索クエリに使い、さらに検索結果の
+// titleに両チーム名が含まれているかを照合してから採用するようにした。
 // X(Twitter)の投稿埋め込みは、特定の試合のゴールシーン投稿を自動検索する手段が
 // 現実的でない(検索APIが有料プラン前提)ため自動化していない。手動でURLを追加できる
 // 余地だけ残してある(未実装、将来的な拡張ポイント)。
@@ -86,6 +91,7 @@ Also include:
 - "leagues": an array of 1-2 entries from ${leagues.join(' / ')} — usually just one (both teams are in the same competition), but if the two teams belong to different leagues, list both. "Other" if unclear.
 - "score": the final score as a short string (e.g. "1-0") ONLY if explicitly stated in the material, else null. Never guess or calculate it yourself.
 - "title": your own original headline for the report (not copied verbatim from a source). Put extra effort into this: rather than a plain score report (e.g. "Team A beat Team B"), lead with the single most notable thing about this match if the material supports it — an individual award, a dramatic late winner, a record, a red card or controversial VAR call. Prefer a specific, click-worthy sentence over a generic summary.
+- "homeTeamEn" / "awayTeamEn": the two teams' official English names (e.g. "Argentina", "Cape Verde"), even if the source material refers to them in another language. These are used to search for a highlight video, so they must be accurate English names, not transliterations.
 - "sourceIds": array of ids actually used.
 
 Strict rules:
@@ -94,7 +100,7 @@ Strict rules:
 - Each section body should be 80-150 words, written in a natural sports-journalism style.
 
 Return ONLY this JSON format, no preamble, no markdown fences:
-{"competition":"...","leagues":["World Cup"],"score":"1-0","title":"...","sections":[{"label":"First Half","body":"..."},{"label":"Second Half & Extra Time","body":"..."},{"label":"Records & Talking Points","body":"..."}],"sourceIds":[1,2,3]}`;
+{"competition":"...","leagues":["World Cup"],"score":"1-0","title":"...","homeTeamEn":"Argentina","awayTeamEn":"Cape Verde","sections":[{"label":"First Half","body":"..."},{"label":"Second Half & Extra Time","body":"..."},{"label":"Records & Talking Points","body":"..."}],"sourceIds":[1,2,3]}`;
   }
   return `あなたはサッカー情報サイト『AM4』編集部として試合レポートを書くAIです。
 これから、ある1試合についての実際に配信された記事一覧(id・見出し・本文・情報源・リンク)を渡します。この一覧が唯一の事実の根拠です。この試合の結果についてあなたは元々何も知らないので、一覧に無いことを事実として書いてはいけません。
@@ -110,6 +116,7 @@ Return ONLY this JSON format, no preamble, no markdown fences:
 - "leagues": 次の中から1〜2個を配列で: ${leagues.join(' / ')}。通常は1つ(両チームが同じ大会に所属)で良いが、2チームが異なるリーグに所属する場合は両方挙げること。判断が難しい場合は["その他"]。
 - "score": 素材に明記されている場合のみ、最終スコアを短い文字列で(例:"1-0")。書かれていなければ必ずnull(自分で推測・計算しない)。
 - "title": AM4独自の見出し(元記事の見出しの丸写しは禁止)。titleは特に力を入れて作成してください。単なるスコアの報告(「〇〇が△△を下す」等)ではなく、この試合で最も特筆すべき出来事(例: 個人賞受賞、劇的な決勝点、記録達成、退場・物議を醸したVAR判定など)があれば、それを見出しの主軸に据えてください。抽象的な要約より、具体的で読みたくなる一文を優先してください。
+- "homeTeamEn" / "awayTeamEn": 両チームの公式英語表記(例: "Argentina"、"Cape Verde")。素材が日本語など英語以外の言語でチーム名を表記している場合も、正確な英語表記に変換すること。ハイライト動画検索に使うため、音訳ではなく実際に使われる英語名にすること。
 - "sourceIds": 実際に使った記事idの配列。
 
 厳守事項:
@@ -118,7 +125,7 @@ Return ONLY this JSON format, no preamble, no markdown fences:
 - 各セクションは日本語80〜150文字程度、スポーツ記事らしい自然な文体で(単なる箇条書きにしない)。
 
 出力は必ず以下のJSON形式のみで返してください。説明文・前置き・マークダウンのコードブロック記法は一切付けないでください:
-{"competition":"...","leagues":["ワールドカップ"],"score":"1-0","title":"...","sections":[{"label":"前半","body":"..."},{"label":"後半〜延長戦","body":"..."},{"label":"記録・注目ポイント","body":"..."}],"sourceIds":[1,2,3]}`;
+{"competition":"...","leagues":["ワールドカップ"],"score":"1-0","title":"...","homeTeamEn":"Argentina","awayTeamEn":"Cape Verde","sections":[{"label":"前半","body":"..."},{"label":"後半〜延長戦","body":"..."},{"label":"記録・注目ポイント","body":"..."}],"sourceIds":[1,2,3]}`;
 }
 
 function extractJson(text) {
@@ -126,16 +133,37 @@ function extractJson(text) {
   return JSON.parse(cleaned);
 }
 
+// 動画titleに両チーム名(の一部)が含まれているか確認する。team名は英語表記の先頭の
+// 単語(例: "Cape Verde" → "cape")だけで判定し、表記ゆれ("Cabo Verde"等)にはある程度
+// 寛容にする。どちらか一方でも含まれていなければ無関係な動画とみなす。
+function titleMatchesTeams(title, team1, team2) {
+  if (!title || !team1 || !team2) return false;
+  const t = title.toLowerCase();
+  const key1 = team1.split(/\s+/)[0].toLowerCase();
+  const key2 = team2.split(/\s+/)[0].toLowerCase();
+  if (!key1 || !key2) return false;
+  return t.includes(key1) && t.includes(key2);
+}
+
 async function searchYoutubeHighlight(team1, team2, competition) {
   const key = process.env.YOUTUBE_API_KEY;
   if (!key) return null; // キー未設定時は静かにnullを返す(記事生成自体は継続させる)
   try {
-    const q = encodeURIComponent(`${team1} ${team2} highlights ${competition || ''}`.trim());
+    // team1/team2は英語表記(homeTeamEn/awayTeamEn)であることが前提。大会名が
+    // 取れなかった場合も、この機能が主にW杯の試合レポート向けであることを踏まえ
+    // 「FIFA World Cup 2026」を補って検索クエリを具体的にする。
+    const competitionHint = competition || 'FIFA World Cup 2026';
+    const q = encodeURIComponent(`${team1} vs ${team2} highlights ${competitionHint}`.trim());
     const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=1&order=relevance&type=video&q=${q}&key=${key}`;
     const r = await fetch(url);
     if (!r.ok) return null;
     const data = await r.json();
-    return data?.items?.[0]?.id?.videoId || null;
+    const item = data?.items?.[0];
+    if (!item) return null;
+    // 検索結果のtitleに両チーム名が含まれていない場合、無関係な人気動画がヒットした
+    // 可能性が高いので採用しない(写真フォールバックに委ねた方が安全なため)。
+    if (!titleMatchesTeams(item?.snippet?.title, team1, team2)) return null;
+    return item?.id?.videoId || null;
   } catch (err) {
     console.error('youtube search error:', err);
     return null;
@@ -214,7 +242,11 @@ export default async function handler(req, res) {
       const rawLeagues = Array.isArray(parsed.leagues) ? parsed.leagues : (parsed.league ? [parsed.league] : []);
       let leagues = rawLeagues.filter(l => validLeagues.includes(l)).slice(0, 2);
       if (leagues.length === 0) leagues = [validLeagues[validLeagues.length - 1]];
-      const videoId = await searchYoutubeHighlight(team1, team2, parsed.competition);
+      // team1/team2はRSS見出しから抽出した表記(日本語の場合がある)なので、YouTube検索には
+      // AIが出力した英語表記(homeTeamEn/awayTeamEn)を使う。AIが省略した場合のみ元の表記で妥協する。
+      const team1En = parsed.homeTeamEn || team1;
+      const team2En = parsed.awayTeamEn || team2;
+      const videoId = await searchYoutubeHighlight(team1En, team2En, parsed.competition);
 
       reports.push({
         homeTeam: team1,
