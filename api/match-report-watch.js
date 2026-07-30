@@ -33,14 +33,23 @@ import {
 import { saveArticle, listArticles, slugify } from '../lib/article-store.js';
 
 // Markdownの下書き本文から見出し(# で始まる行)を抜き出してタイトルにする。
+// プロンプト内のフォーマット仕様書見出しがそのまま複製されてしまうことがあるため、
+// 「フォーマット(AM4)」を含む見出しは除外し、実際の記事見出しだけを拾う。
 // 見つからない場合は対戦カード+スコアをフォールバックにする。
 function extractTitle(draft, fallback) {
-  const m = (draft || '').match(/^#\s+(.+)$/m);
-  return m ? m[1].trim() : fallback;
+  const headings = [...(draft || '').matchAll(/^#\s+(.+)$/gm)].map(m => m[1].trim());
+  const real = headings.find(h => !h.includes('フォーマット(AM4)'));
+  return real || fallback;
+}
+
+// プロンプト内のフォーマット仕様書見出し行がそのまま複製されてしまった場合、本文からも除去する。
+function stripFormatSpecHeading(draft) {
+  return (draft || '').replace(/^#\s+.*フォーマット\(AM4\).*\n+/m, '');
 }
 
 async function buildAndSaveArticle(matchInfo, ratingResult) {
-  const { draft, searchSources } = await generateMatchReportDraft(matchInfo, ratingResult);
+  const { draft: rawDraft, searchSources } = await generateMatchReportDraft(matchInfo, ratingResult);
+  const draft = stripFormatSpecHeading(rawDraft);
   const dateStr = (matchInfo.date || '').slice(0, 10);
   const id = slugify(`${dateStr}-${matchInfo.homeTeam}-vs-${matchInfo.awayTeam}`) || `match-report-${matchInfo.fixtureId}`;
   const fallbackTitle = `${matchInfo.homeTeam} ${matchInfo.homeGoals}-${matchInfo.awayGoals} ${matchInfo.awayTeam}`;
@@ -163,32 +172,6 @@ export default async function handler(req, res) {
   if (req.method === 'GET' && req.query.list === '1') {
     const result = await listArticles({ type: 'match_report', pageSize: 50 });
     return res.status(200).json({ drafts: result.items });
-  }
-
-  // 【一時的な移行用】旧「下書きログに追記」方式(match-report-drafts.json)に残っている
-  // Man United vs Liverpool の下書き(fixtureId:1379316)を、新しい恒久アーカイブ形式に
-  // 移行するための一回限りのエンドポイント。移行完了後に削除する。
-  // GET /api/match-report-watch?migrateOldDraft=1
-  if (req.method === 'GET' && req.query.migrateOldDraft === '1') {
-    const result = await get('match-report-drafts.json', { access: 'private', useCache: false });
-    if (!result || !result.stream) return res.status(404).json({ error: '旧下書きログが見つかりません' });
-    const oldLog = JSON.parse(await new Response(result.stream).text());
-    const oldEntry = oldLog.find(e => e.match?.fixtureId === 1379316);
-    if (!oldEntry) return res.status(404).json({ error: '対象の下書きが見つかりません' });
-    const article = {
-      id: slugify(`${(oldEntry.match.date || '').slice(0, 10)}-${oldEntry.match.homeTeam}-vs-${oldEntry.match.awayTeam}`),
-      type: 'match_report',
-      title: extractTitle(oldEntry.draft, `${oldEntry.match.homeTeam} ${oldEntry.match.homeGoals}-${oldEntry.match.awayGoals} ${oldEntry.match.awayTeam}`),
-      publishedAt: oldEntry.generatedAt || new Date().toISOString(),
-      body: oldEntry.draft,
-      hasScoreTable: true,
-      sources: oldEntry.searchSources || [],
-      status: 'draft',
-      match: oldEntry.match,
-      ratings: oldEntry.ratings,
-    };
-    await saveArticle(article);
-    return res.status(200).json({ migrated: article });
   }
 
   // 特定の試合を手動で(再)生成したい場合の動作確認・単体テスト用:

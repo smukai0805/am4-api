@@ -863,6 +863,40 @@
   .am4-article-modal-close{ position:absolute; top:10px; right:14px; background:none; border:none; color:var(--chalk-dim); font-size:24px; cursor:pointer; line-height:1; }
   .am4-article-modal-img{ width:calc(100% + 40px); margin:-20px -20px 14px -20px; display:block; aspect-ratio:16/9; object-fit:cover; }
   .am4-article-modal-body blockquote.twitter-tweet, .am4-article-modal-body blockquote.instagram-media{ margin:14px auto !important; max-width:100% !important; }
+  .am4-article-modal-body h1{ font-size:19px; margin:0 0 12px; line-height:1.4; }
+  .am4-article-modal-body h2{ font-size:15.5px; margin:20px 0 8px; color:var(--amber); }
+  .am4-article-modal-body p{ font-size:13.5px; line-height:1.75; margin:0 0 12px; }
+  .am4-article-modal-body strong{ color:var(--chalk); }
+  .am4-article-modal-body table{ width:100%; border-collapse:collapse; margin:10px 0 16px; font-size:11.5px; }
+  .am4-article-modal-body th, .am4-article-modal-body td{ border:1px solid var(--line); padding:6px 7px; text-align:left; }
+  .am4-article-modal-body th{ background:var(--panel-2); font-weight:700; white-space:nowrap; }
+  .am4-article-modal-sources{ margin-top:16px; padding-top:12px; border-top:1px solid var(--line); display:flex; flex-direction:column; gap:4px; }
+  .am4-article-modal-sources a{ font-size:11px; color:var(--chalk-dim); }
+  .am4-article-modal-sources a:hover{ color:#4C8DFF; }
+
+  .archive-section{ margin-bottom:28px; }
+  .archive-section-head{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:10px; }
+  .archive-section-head h3{ font-size:16px; font-weight:700; margin:0; }
+  .archive-more-btn{ background:none; border:none; color:var(--amber); font-size:12.5px; font-weight:600; cursor:pointer; padding:0; }
+  .archive-more-btn:hover{ color:var(--amber-dim); }
+  .archive-card-list{ display:flex; flex-direction:column; gap:10px; }
+  .archive-card{ display:flex; gap:12px; align-items:flex-start; padding:12px; background:var(--panel); border:1px solid var(--line); border-radius:10px; cursor:pointer; transition:border-color .15s; }
+  .archive-card:hover{ border-color:var(--amber-dim); }
+  .archive-card-badge{ flex-shrink:0; font-size:9.5px; font-weight:700; padding:3px 7px; border-radius:4px; text-transform:uppercase; letter-spacing:.3px; white-space:nowrap; margin-top:2px; }
+  .archive-card-badge.match_report{ background:rgba(76,141,255,.15); color:#4C8DFF; }
+  .archive-card-badge.player_intro{ background:rgba(224,36,94,.15); color:#e0245e; }
+  .archive-card-content{ flex:1; min-width:0; }
+  .archive-card-title{ font-size:14px; font-weight:600; line-height:1.4; margin:0 0 4px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .archive-card-meta{ font-size:10.5px; color:var(--chalk-dim); font-family:'JetBrains Mono',monospace; }
+  .archive-card-snippet{ font-size:12px; color:var(--chalk-dim); line-height:1.5; margin-top:5px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .archive-empty{ padding:24px 4px; text-align:center; color:var(--chalk-dim); font-size:13px; }
+  .archive-pagination{ display:flex; justify-content:center; align-items:center; gap:16px; margin-top:22px; }
+  .archive-page-btn{ background:none; border:1px solid var(--line); color:var(--chalk); font-size:12.5px; font-weight:600; padding:7px 16px; border-radius:20px; cursor:pointer; }
+  .archive-page-btn:disabled{ opacity:.35; cursor:default; }
+  .archive-page-btn:hover:not(:disabled){ border-color:var(--amber-dim); color:var(--amber); }
+  .archive-page-indicator{ font-size:12px; color:var(--chalk-dim); font-family:'JetBrains Mono',monospace; }
+  .archive-back-btn{ background:none; border:none; color:var(--chalk-dim); font-size:13px; cursor:pointer; padding:0; margin-bottom:10px; display:block; }
+  .archive-back-btn:hover{ color:var(--amber); }
 
   /* ---- 朝刊・昼刊・夕刊ダイジェストカード(2026-07) ---- */
   .digest-card{
@@ -967,40 +1001,47 @@
 <section id="news">
   <div class="section-head am4-column-head">
     <div>
-      <h2 data-i18n="news_title">ニュース</h2>
-      <span class="sub" data-i18n="news_sub">AM4編集部が実際の報道をもとに執筆した記事です</span>
+      <h2 data-i18n="news_title">特集</h2>
+      <span class="sub" data-i18n="news_sub">AM4編集部による試合解説・選手紹介アーカイブ</span>
     </div>
-    <button id="aiColumnRefreshBtn" class="am4-column-refresh" data-i18n="news_refresh">更新</button>
   </div>
 
-  <div id="heroCarousel" class="hero-carousel" style="display:none;"></div>
-
-  <div class="news-league-tabs" id="newsLeagueTabs">
-    <!-- W杯タブは大会終了に伴い削除(2026-07)。バックエンド側のleague判定候補としては
-         "ワールドカップ"を引き続き残しているので、該当記事があっても「全体」タブで表示される。 -->
-    <button class="news-league-tab active" data-league="all" data-i18n="league_all">全体</button>
-    <button class="news-league-tab" data-league="プレミアリーグ" data-i18n="league_pl">プレミア</button>
-    <button class="news-league-tab" data-league="ラ・リーガ" data-i18n="league_laliga">ラ・リーガ</button>
-    <button class="news-league-tab" data-league="セリエA" data-i18n="league_seriea">セリエA</button>
-    <button class="news-league-tab" data-league="ブンデスリーガ" data-i18n="league_bundes">ブンデス</button>
-    <button class="news-league-tab" data-league="リーグ・アン" data-i18n="league_ligue1">リーグ・アン</button>
+  <div class="archive-section">
+    <div class="archive-section-head">
+      <h3 data-i18n="archive_match_report">試合解説</h3>
+      <button class="archive-more-btn" data-archive-type="match_report" data-i18n="archive_more">もっと見る &rsaquo;</button>
+    </div>
+    <span class="standings-status" id="matchReportArchiveStatus">読み込み中...</span>
+    <div class="archive-card-list" id="matchReportArchiveList"></div>
   </div>
 
-  <span id="newsStatus" class="standings-status">読み込み中...</span>
-
-  <div class="match-report-list" id="matchReportList"></div>
+  <div class="archive-section">
+    <div class="archive-section-head">
+      <h3 data-i18n="archive_player_intro">選手紹介</h3>
+      <button class="archive-more-btn" data-archive-type="player_intro" data-i18n="archive_more">もっと見る &rsaquo;</button>
+    </div>
+    <span class="standings-status" id="playerIntroArchiveStatus">読み込み中...</span>
+    <div class="archive-card-list" id="playerIntroArchiveList"></div>
+  </div>
 
   <div class="feature-request-box">
     <input type="text" id="featureTopicInput" placeholder="気になるトピックを入力(例: ディオマンデ レアル移籍)">
     <button id="featureRequestBtn">特集記事をリクエスト</button>
   </div>
+</section>
+</div>
 
-  <div class="am4-column-list" id="aiColumnList"></div>
-
-  <div class="other-news-section" id="otherNewsSection" style="display:none;">
-    <h3 class="other-news-heading">その他のニュース</h3>
-    <div class="other-news-list" id="otherNewsList"></div>
+<div class="page" data-page="archive">
+<section id="articleArchive">
+  <div class="section-head">
+    <div>
+      <button class="archive-back-btn" id="archiveBackBtn">&lsaquo; <span data-i18n="archive_back">特集に戻る</span></button>
+      <h2 id="archivePageTitle">アーカイブ</h2>
+    </div>
   </div>
+  <span class="standings-status" id="archiveListStatus">読み込み中...</span>
+  <div class="archive-card-list archive-card-list-full" id="archiveFullList"></div>
+  <div class="archive-pagination" id="archivePagination"></div>
 </section>
 </div>
 
@@ -1234,7 +1275,7 @@
 </footer>
 
 <nav class="bottom-tabbar" id="bottomTabbar">
-  <button class="bottom-tab active" data-page="news"><span class="bt-icon">📰</span><span class="bt-label">ニュース</span></button>
+  <button class="bottom-tab active" data-page="news"><span class="bt-icon">📰</span><span class="bt-label">特集</span></button>
   <!-- 2026-07: W杯は大会終了のため下部ナビから非表示(display:none)。コード・データは
        そのまま残しているので、style属性を消すだけですぐ復活できる。 -->
   <button class="bottom-tab" data-page="wc" style="display:none;"><span class="bt-icon">🏆</span><span class="bt-label">W杯</span></button>
@@ -1265,8 +1306,9 @@ const i18n = {
     chat_account_note:'※このチャットの利用にはClaudeアカウントでのログインが必要です(無料アカウントでもご利用いただけます)。',
     search_placeholder:'選手名・クラブ名で検索',
     search_btn_label:'検索',
-    news_title:'ニュース', news_sub:'AM4編集部が実際の報道をもとに執筆した記事です',
+    news_title:'特集', news_sub:'AM4編集部による試合解説・選手紹介アーカイブ',
     news_refresh:'更新',
+    archive_match_report:'試合解説', archive_player_intro:'選手紹介', archive_more:'もっと見る ›', archive_back:'特集に戻る',
     news_disclaimer:'※これはAM4編集部が実際の報道記事を根拠に(AIの補助を受けて)執筆した記事です。各記事下部の「元記事」から出典を確認できます。断定的な数値・発言は参考情報としてお読みください。',
     league_all:'全体', league_wc:'W杯', league_pl:'プレミア', league_laliga:'ラ・リーガ',
     league_seriea:'セリエA', league_bundes:'ブンデス', league_ligue1:'リーグ・アン',
@@ -1291,8 +1333,9 @@ const i18n = {
     chat_account_note:'*Using this chat requires signing in with a Claude account (a free account works too).',
     search_placeholder:'Search players or clubs',
     search_btn_label:'Search',
-    news_title:'News', news_sub:'Articles written by the AM4 editorial desk, based on real reporting',
+    news_title:'Featured', news_sub:'Match reports and player features by the AM4 editorial desk',
     news_refresh:'Refresh',
+    archive_match_report:'Match Reports', archive_player_intro:'Player Features', archive_more:'More ›', archive_back:'Back to Featured',
     news_disclaimer:'*These articles are written by the AM4 editorial desk (AI-assisted) based on real news articles. Check the "source" links below each article. Treat specific figures/quotes as reference only.',
     league_all:'All', league_wc:'World Cup', league_pl:'Premier League', league_laliga:'La Liga',
     league_seriea:'Serie A', league_bundes:'Bundesliga', league_ligue1:'Ligue 1',
@@ -1317,8 +1360,9 @@ const i18n = {
     chat_account_note:'*Para usar este chat necesitas iniciar sesión con una cuenta de Claude (una cuenta gratuita también funciona).',
     search_placeholder:'Buscar jugadores o clubes',
     search_btn_label:'Buscar',
-    news_title:'Noticias', news_sub:'Artículos escritos por la redacción de AM4, basados en reportajes reales',
+    news_title:'Destacados', news_sub:'Crónicas de partidos y perfiles de jugadores de la redacción de AM4',
     news_refresh:'Actualizar',
+    archive_match_report:'Crónicas de Partidos', archive_player_intro:'Perfiles de Jugadores', archive_more:'Ver más ›', archive_back:'Volver a Destacados',
     news_disclaimer:'*Estos artículos están escritos por la redacción de AM4 (con ayuda de IA) a partir de noticias reales. Consulta los enlaces "fuente" debajo de cada artículo. Trata las cifras/citas específicas solo como referencia.',
     league_all:'Todo', league_wc:'Mundial', league_pl:'Premier League', league_laliga:'La Liga',
     league_seriea:'Serie A', league_bundes:'Bundesliga', league_ligue1:'Ligue 1',
@@ -1359,13 +1403,8 @@ function applyLanguage(lang){
     langNote.textContent = dict.lang_note;
   }
 
-  // 言語切替時、AM4編集部記事・試合レポートも同言語の内容に合わせて再取得する。
-  // loadNewsContent は関数宣言(hoisting)によりスクリプト内のどこからでも参照できる。
-  // どちらもLLM呼び出しでコストが発生するため、言語切替だけではforce refreshしない
-  // (すでにキャッシュされた同言語の記事があればそれを使い、無ければ「更新」ボタンで手動生成)。
-  if(langChanged && typeof loadNewsContent === 'function'){
-    loadNewsContent(false);
-  }
+  // 【2026-07-31】特集タブの記事アーカイブは言語非依存(記事本文は日本語固定)のため、
+  // 言語切替時の再取得は不要になった(旧AM4編集部コラム/試合レポートのlang別再取得は廃止)。
 }
 
 document.querySelectorAll('.lang-btn').forEach(btn=>{
@@ -5464,23 +5503,213 @@ topScorersLeagueSelect.addEventListener('change', loadTopScorers);
 topScorersSeasonSelect.addEventListener('change', loadTopScorers);
 loadTopScorers();
 
-/* ===================== ニュース(AM4編集部記事 + 試合レポート) =====================
-   【2026-07 改修】外部メディアの記事をそのままカード表示するのをやめ、
-   AM4編集部として実データを根拠に書いた記事(/api/ai-column)と、
-   試合結果ベースの独自解説記事(/api/match-report)だけをこのタブに表示する。
-   どちらもLLM呼び出しでコストが発生するため、5分自動更新はせず、ページ読み込み時に
-   1回だけ取得し、あとは「更新」ボタンでの手動再取得のみとする(サーバー側でも長めにキャッシュ)。
-   league(プレミアリーグ/ラ・リーガ/セリエA/ブンデスリーガ/リーグ・アン/ワールドカップ/その他)
-   フィールドで、上部のリーグタブによるフィルタを行う(タブ切替はAPIを叩き直さず、
-   直近取得済みのlatestColumns/latestReportsをクライアント側でフィルタするだけ)。 */
+/* ===================== 特集タブ(記事アーカイブ: 試合解説 + 選手紹介) =====================
+   api/articles.js(一覧・詳細API)経由でVercel Blobの恒久アーカイブから記事を取得する。
+   一覧APIは軽量メタデータ(id/type/title/publishedAt等)のみを返す設計のため、本文は
+   カードクリック時に個別取得する(?id=<slug>)。 */
+const matchReportArchiveList = document.getElementById('matchReportArchiveList');
+const playerIntroArchiveList = document.getElementById('playerIntroArchiveList');
+const matchReportArchiveStatus = document.getElementById('matchReportArchiveStatus');
+const playerIntroArchiveStatus = document.getElementById('playerIntroArchiveStatus');
+const archiveFullList = document.getElementById('archiveFullList');
+const archiveListStatus = document.getElementById('archiveListStatus');
+const archivePagination = document.getElementById('archivePagination');
+const archiveBackBtn = document.getElementById('archiveBackBtn');
+const archivePageTitle = document.getElementById('archivePageTitle');
+
+const ARCHIVE_TYPE_LABEL = { match_report: '試合解説', player_intro: '選手紹介' };
+let archiveCurrentType = 'match_report';
+
+// 記事本文(Markdown)を最小限のHTMLに変換する。このリポジトリはビルド工程が無い
+// 単一HTMLファイルのため、外部Markdownライブラリを追加せず自前の軽量パーサーで対応する
+// (見出し#/##/###、テーブル、**太字**、段落のみサポート。生成記事の実際の構造に合わせてある)。
+function escapeHtmlText(s){
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function inlineMarkdown(text){
+  return escapeHtmlText(text).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+}
+function renderMarkdownTable(lines){
+  const rows = lines.map(l => l.trim().replace(/^\||\|$/g, '').split('|').map(c => c.trim()));
+  if(rows.length < 2) return '';
+  const header = rows[0];
+  const body = rows.slice(2); // rows[1] は区切り線(---|---)なのでスキップ
+  const thead = `<thead><tr>${header.map(h=>`<th>${inlineMarkdown(h)}</th>`).join('')}</tr></thead>`;
+  const tbody = `<tbody>${body.map(r=>`<tr>${r.map(c=>`<td>${inlineMarkdown(c)}</td>`).join('')}</tr>`).join('')}</tbody>`;
+  return `<table>${thead}${tbody}</table>`;
+}
+function renderMarkdown(md){
+  const lines = String(md ?? '').split('\n');
+  let html = '';
+  let i = 0;
+  while(i < lines.length){
+    const line = lines[i];
+    const headingMatch = line.match(/^(#{1,3})\s+(.+)$/);
+    if(headingMatch){
+      const tag = `h${headingMatch[1].length}`;
+      html += `<${tag}>${inlineMarkdown(headingMatch[2])}</${tag}>`;
+      i++; continue;
+    }
+    if(/^\|.*\|\s*$/.test(line)){
+      const tableLines = [];
+      while(i < lines.length && /^\|.*\|\s*$/.test(lines[i])){ tableLines.push(lines[i]); i++; }
+      html += renderMarkdownTable(tableLines);
+      continue;
+    }
+    if(line.trim() === ''){ i++; continue; }
+    const para = [line];
+    i++;
+    while(i < lines.length && lines[i].trim() !== '' && !/^#{1,3}\s+/.test(lines[i]) && !/^\|.*\|\s*$/.test(lines[i])){
+      para.push(lines[i]); i++;
+    }
+    html += `<p>${inlineMarkdown(para.join(' '))}</p>`;
+  }
+  return html;
+}
+
+function renderArchiveCard(article){
+  const el = document.createElement('div');
+  el.className = 'archive-card';
+  const dateStr = article.publishedAt
+    ? new Date(article.publishedAt).toLocaleDateString('ja-JP', {year:'numeric', month:'2-digit', day:'2-digit'}).replace(/\//g, '.')
+    : '';
+  el.innerHTML = `
+    <span class="archive-card-badge ${article.type}">${ARCHIVE_TYPE_LABEL[article.type] || article.type}</span>
+    <div class="archive-card-content">
+      <h4 class="archive-card-title">${escapeHtmlText(article.title)}</h4>
+      <span class="archive-card-meta">${dateStr}</span>
+    </div>
+  `;
+  el.addEventListener('click', () => openArchiveArticle(article.id));
+  return el;
+}
+
+async function fetchArticles(type, page, pageSize){
+  const params = new URLSearchParams({ type, page, pageSize });
+  const res = await fetch(`${AM4_API_BASE}/api/articles?${params.toString()}`);
+  if(!res.ok) throw new Error('fetch failed');
+  return res.json();
+}
+
+// 特集タブ上部の「試合解説」「選手紹介」各セクション(新着数件のみ表示)。
+async function loadArchiveSection(type, listEl, statusEl){
+  try{
+    const data = await fetchArticles(type, 1, 4);
+    listEl.innerHTML = '';
+    if(data.items.length === 0){
+      listEl.innerHTML = '<div class="archive-empty">まだ記事がありません</div>';
+    } else {
+      data.items.forEach(item => listEl.appendChild(renderArchiveCard(item)));
+    }
+    statusEl.style.display = 'none';
+  } catch(e){
+    console.error('archive section fetch failed:', type, e);
+    statusEl.textContent = '取得に失敗しました';
+    statusEl.className = 'standings-status error';
+  }
+}
+
+// 「もっと見る」遷移先の、種別ごとのページネーション付き全件アーカイブ。
+async function loadArchivePage(type, page){
+  archiveCurrentType = type;
+  archivePageTitle.textContent = `${ARCHIVE_TYPE_LABEL[type] || type}アーカイブ`;
+  archiveListStatus.textContent = '読み込み中...';
+  archiveListStatus.className = 'standings-status';
+  archiveListStatus.style.display = '';
+  archiveFullList.innerHTML = '';
+  archivePagination.innerHTML = '';
+  try{
+    const data = await fetchArticles(type, page, 10);
+    archiveListStatus.style.display = 'none';
+    if(data.items.length === 0){
+      archiveFullList.innerHTML = '<div class="archive-empty">まだ記事がありません</div>';
+    } else {
+      data.items.forEach(item => archiveFullList.appendChild(renderArchiveCard(item)));
+    }
+    renderArchivePagination(data);
+  } catch(e){
+    console.error('archive page fetch failed:', e);
+    archiveListStatus.textContent = '取得に失敗しました';
+    archiveListStatus.className = 'standings-status error';
+  }
+}
+
+function renderArchivePagination(data){
+  archivePagination.innerHTML = '';
+  if(data.totalPages <= 1) return;
+  const prevBtn = document.createElement('button');
+  prevBtn.className = 'archive-page-btn';
+  prevBtn.textContent = '‹ 前へ';
+  prevBtn.disabled = data.page <= 1;
+  prevBtn.addEventListener('click', () => loadArchivePage(archiveCurrentType, data.page - 1));
+
+  const indicator = document.createElement('span');
+  indicator.className = 'archive-page-indicator';
+  indicator.textContent = `${data.page} / ${data.totalPages}`;
+
+  const nextBtn = document.createElement('button');
+  nextBtn.className = 'archive-page-btn';
+  nextBtn.textContent = '次へ ›';
+  nextBtn.disabled = data.page >= data.totalPages;
+  nextBtn.addEventListener('click', () => loadArchivePage(archiveCurrentType, data.page + 1));
+
+  archivePagination.appendChild(prevBtn);
+  archivePagination.appendChild(indicator);
+  archivePagination.appendChild(nextBtn);
+}
+
+// 個別記事の全文表示。一覧は軽量メタデータのみのため、クリック時に本文を個別取得する。
+async function openArchiveArticle(id){
+  try{
+    const res = await fetch(`${AM4_API_BASE}/api/articles?id=${encodeURIComponent(id)}`);
+    if(!res.ok) throw new Error('fetch failed');
+    const { article } = await res.json();
+    const modal = ensureAm4ArticleModal();
+    const body = modal.querySelector('.am4-article-modal-body');
+    const sourcesHtml = (article.sources || [])
+      .filter(s => s.url)
+      .map(s => `<a href="${s.url}" target="_blank" rel="noopener noreferrer">${escapeHtmlText(s.title || s.url)}</a>`)
+      .join('');
+    body.innerHTML = `
+      <span class="cat">${ARCHIVE_TYPE_LABEL[article.type] || ''}</span>
+      ${renderMarkdown(article.body)}
+      ${sourcesHtml ? `<div class="am4-article-modal-sources">${sourcesHtml}</div>` : ''}
+    `;
+    modal.style.display = 'flex';
+  } catch(e){
+    console.error('archive article fetch failed:', e);
+    alert('記事の取得に失敗しました');
+  }
+}
+
+document.querySelectorAll('.archive-more-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    showPage('archive');
+    loadArchivePage(btn.dataset.archiveType, 1);
+  });
+});
+archiveBackBtn.addEventListener('click', () => showPage('news'));
+
+loadArchiveSection('match_report', matchReportArchiveList, matchReportArchiveStatus);
+loadArchiveSection('player_intro', playerIntroArchiveList, playerIntroArchiveStatus);
+
+/* ===================== 特集(AM4編集部記事 + 試合レポート、旧仕様・現在未使用) =====================
+   【2026-07-31 停止】このタブは試合解説・選手紹介の記事アーカイブ(下記
+   「特集タブ(記事アーカイブ)」セクション)に置き換えた。以下のrenderMatchReports/
+   renderAiColumns/renderHeroCarousel/loadOtherNews/loadNewsContentは、対応するDOM要素
+   (#matchReportList/#aiColumnList/#newsLeagueTabs等)をHTML側から削除したため現在は
+   一切呼び出されない(呼び出し箇所は全て削除済み)。コード自体は将来の用途変更に備えて
+   残してあるが、有効化する場合はHTML側の要素を復元する必要がある。 */
+// 【2026-07-31】旧要素は削除済みのため、以下は常にnullになる(renderMatchReports等の
+// 未使用関数からのみ参照される)。
 const matchReportList = document.getElementById('matchReportList');
 const aiColumnList = document.getElementById('aiColumnList');
 const newsStatus = document.getElementById('newsStatus');
 const aiColumnRefreshBtn = document.getElementById('aiColumnRefreshBtn');
-// 「試合」タブの5大リーグ順位表用に既存の#leagueTabsが別途あるため、名前が衝突しないよう
-// ニュースタブのリーグフィルタタブは#newsLeagueTabs/newsLeagueTabs変数名にしている。
 const newsLeagueTabs = document.getElementById('newsLeagueTabs');
 
+// latestColumnsは club-news(クラブ別関連ニュース)等、他機能からも参照され続けているため
+// 変数自体は残す(常に空配列。ai-column表示の廃止に伴う既知の仕様)。
 let currentLeague = 'all';
 let latestColumns = [];
 let latestReports = [];
@@ -5863,9 +6092,6 @@ async function loadNewsContent(forceRefresh){
     aiColumnRefreshBtn.disabled = false;
   }
 }
-loadNewsContent(false);
-aiColumnRefreshBtn.addEventListener('click', ()=>loadNewsContent(true));
-
 document.getElementById('featureRequestBtn')?.addEventListener('click', async () => {
   const input = document.getElementById('featureTopicInput');
   const topic = input.value.trim();
@@ -5888,16 +6114,6 @@ document.getElementById('featureRequestBtn')?.addEventListener('click', async ()
   } finally {
     btn.disabled = false; btn.textContent = originalLabel;
   }
-});
-
-newsLeagueTabs.querySelectorAll('.news-league-tab').forEach(btn=>{
-  btn.addEventListener('click', ()=>{
-    newsLeagueTabs.querySelectorAll('.news-league-tab').forEach(b=>b.classList.remove('active'));
-    btn.classList.add('active');
-    currentLeague = btn.dataset.league;
-    // renderMatchReports(latestReports); // 【2026-07 停止】上記と同じ理由でコメントアウト中
-    renderAiColumns(latestColumns);
-  });
 });
 
 /* ===================== UEFAチャンピオンズリーグ(実データ) ===================== */

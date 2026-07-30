@@ -36,14 +36,23 @@ import { generateArticleDraft } from '../lib/academy-core.js';
 import { saveArticle, listArticles, slugify } from '../lib/article-store.js';
 
 // Markdownの下書き本文から見出し(# で始まる行)を抜き出してタイトルにする。
+// プロンプト内のフォーマット仕様書見出しがそのまま複製されてしまうことがあるため、
+// 「フォーマット(AM4)」を含む見出しは除外し、実際の記事見出しだけを拾う。
 // 見つからない場合は選手名+クラブ名をフォールバックにする。
 function extractTitle(draft, fallback) {
-  const m = (draft || '').match(/^#\s+(.+)$/m);
-  return m ? m[1].trim() : fallback;
+  const headings = [...(draft || '').matchAll(/^#\s+(.+)$/gm)].map(m => m[1].trim());
+  const real = headings.find(h => !h.includes('フォーマット(AM4)'));
+  return real || fallback;
+}
+
+// プロンプト内のフォーマット仕様書見出し行がそのまま複製されてしまった場合、本文からも除去する。
+function stripFormatSpecHeading(draft) {
+  return (draft || '').replace(/^#\s+.*フォーマット\(AM4\).*\n+/m, '');
 }
 
 async function buildAndSaveArticle(candidate, profile) {
-  const { draft, searchSources } = await generateArticleDraft(candidate, profile);
+  const { draft: rawDraft, searchSources } = await generateArticleDraft(candidate, profile);
+  const draft = stripFormatSpecHeading(rawDraft);
   const dateStr = (candidate.fixtureDate || '').slice(0, 10);
   const id = slugify(`${dateStr}-${candidate.name}`) || `player-intro-${candidate.playerId}`;
   const fallbackTitle = `${candidate.name}(${candidate.club})`;
