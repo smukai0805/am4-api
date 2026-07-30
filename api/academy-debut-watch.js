@@ -84,15 +84,25 @@ function calcAge(birthDateStr, onDate) {
   return age;
 }
 
+// ヨーロッパのシーズンは概ね7〜8月開始のため、7月以降なら「その年」がシーズン開始年、
+// それより前(1〜6月)なら前年開始のシーズンとして扱う(API-Footballのseason命名規則に合わせる)。
+function currentSeasonYear(date = new Date()) {
+  const month = date.getMonth(); // 0-indexed; 6 = 7月
+  return month >= 6 ? date.getFullYear() : date.getFullYear() - 1;
+}
+
 async function getRecentFixtures(teamId, lookbackDays) {
   const to = new Date();
   const from = new Date(to.getTime() - lookbackDays * 24 * 60 * 60 * 1000);
   const fmt = d => d.toISOString().slice(0, 10);
 
+  // API-Footballの/fixturesは team+from+to だけでは "The Season field is required."
+  // というエラー(HTTP自体は200)を返す。season明示が必須。
   const data = await apiFootballFetch('/fixtures', {
     team: teamId,
     from: fmt(from),
     to: fmt(to),
+    season: currentSeasonYear(to),
   });
   // API-FootballはHTTPステータス200のまま、パラメータ不正等をdata.errorsに埋めて返す
   // ことがある(res.okだけを見ていると気づけない)。呼び出し元(debugモード)で
