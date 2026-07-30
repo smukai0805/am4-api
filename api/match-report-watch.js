@@ -141,6 +141,26 @@ export default async function handler(req, res) {
     return res.status(200).json({ drafts: log });
   }
 
+  // 【一時的な調査用】公式戦(スタッツ提供あり)の過去fixtureIdを探すための生検索。
+  // GET /api/match-report-watch?rawSearch=1&teamId=33&from=2026-04-01&to=2026-05-31
+  if (req.method === 'GET' && req.query.rawSearch === '1') {
+    const teamId = Number(req.query.teamId);
+    const from = req.query.from;
+    const to = req.query.to;
+    const url = new URL('https://v3.football.api-sports.io/fixtures');
+    url.searchParams.set('team', teamId);
+    url.searchParams.set('from', from);
+    url.searchParams.set('to', to);
+    url.searchParams.set('season', new Date(to).getMonth() >= 6 ? new Date(to).getFullYear() : new Date(to).getFullYear() - 1);
+    const r = await fetch(url, { headers: { 'x-apisports-key': API_KEY } });
+    const d = await r.json();
+    return res.status(200).json({
+      results: d.results,
+      errors: d.errors,
+      fixtures: (d.response || []).map(f => ({ id: f.fixture.id, date: f.fixture.date, status: f.fixture.status?.short, league: f.league?.name, home: f.teams.home.name, away: f.teams.away.name, score: `${f.goals.home}-${f.goals.away}` })),
+    });
+  }
+
   // 特定の試合を手動で(再)生成したい場合の動作確認・単体テスト用:
   // POST /api/match-report-watch { "fixtureId": 12345 }
   if (req.method === 'POST') {
