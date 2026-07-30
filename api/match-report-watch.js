@@ -174,7 +174,18 @@ async function saveSeenMatches(entries) {
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
 
-
+  // 【一時的な調査用】新規追加クラブのteam ID確認用。GET ?teamLookup=1&name=Napoli
+  if (req.method === 'GET' && req.query.teamLookup === '1') {
+    const name = String(req.query.name || '');
+    const url = new URL('https://v3.football.api-sports.io/teams');
+    url.searchParams.set('search', name);
+    const r = await fetch(url, { headers: { 'x-apisports-key': API_KEY } });
+    const d = await r.json();
+    return res.status(200).json({
+      results: d.results,
+      teams: (d.response || []).map(t => ({ id: t.team.id, name: t.team.name, country: t.team.country })),
+    });
+  }
 
   // 保存済み記事一覧の確認用(簡易レビュー): GET /api/match-report-watch?list=1
   // 一般公開用の一覧・詳細APIは api/articles.js を使うこと(こちらは動作確認用の簡易版)。
