@@ -154,13 +154,17 @@ export default async function handler(req, res) {
       const { fixtureId } = req.body || {};
       if (!fixtureId) return res.status(400).json({ error: 'fixtureId is required' });
 
+      const tStart = Date.now();
       const fixture = await getFixtureDetail(fixtureId);
+      console.error(`[timing] getFixtureDetail: ${Date.now() - tStart}ms`);
       if (!fixture) return res.status(404).json({ error: '指定されたfixtureIdの試合が見つかりませんでした' });
 
+      const tFetch = Date.now();
       const [events, fixturePlayers] = await Promise.all([
         getFixtureEvents(fixtureId),
         getFixturePlayers(fixtureId),
       ]);
+      console.error(`[timing] events+players fetch: ${Date.now() - tFetch}ms`);
       const teamGoalsConceded = {
         [fixture.teams.home.id]: fixture.goals.away,
         [fixture.teams.away.id]: fixture.goals.home,
@@ -177,7 +181,10 @@ export default async function handler(req, res) {
         date: fixture.fixture.date,
         venue: fixture.fixture.venue?.name,
       };
+      const tGen = Date.now();
+      console.error('[timing] calling generateMatchReportDraft...');
       const { draft, searchSources } = await generateMatchReportDraft(matchInfo, ratingResult);
+      console.error(`[timing] generateMatchReportDraft: ${Date.now() - tGen}ms`);
 
       const entry = {
         id: crypto.randomUUID(),
