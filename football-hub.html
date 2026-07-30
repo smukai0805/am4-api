@@ -38,34 +38,48 @@
   .display{ font-family:'Anton', sans-serif; letter-spacing:.5px; }
   .mono{ font-family:'JetBrains Mono', monospace; }
 
-  /* ---------- Ticker ---------- */
+  /* ---------- Ticker(フェード切り替え方式) ---------- */
   .ticker-wrap{
     background:#000;
     border-bottom:2px solid var(--amber);
     overflow:hidden;
-    white-space:nowrap;
     position:sticky; top:0; z-index:50;
+    padding:9px 16px;
+    display:flex; align-items:center;
+    min-height:36px;
+    cursor:pointer;
   }
-  .ticker{
-    display:inline-block;
-    padding:9px 0;
-    animation: scroll-left 32s linear infinite;
+  .ticker-fade{
+    display:flex; align-items:center; gap:10px;
+    width:100%; min-width:0;
+    opacity:1;
+    transition:opacity .35s ease;
   }
-  .ticker span{
-    display:inline-block;
-    padding:0 28px;
+  .ticker-fade.ticker-fade-out{ opacity:0; }
+  .ticker-badge{
+    flex-shrink:0;
+    background:var(--amber); color:#000;
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px; font-weight:700;
+    padding:3px 8px; border-radius:3px;
+    text-transform:uppercase; letter-spacing:.3px;
+  }
+  .ticker-text{
     font-family:'JetBrains Mono',monospace;
     font-size:13px;
     color:var(--chalk);
-    border-right:1px solid var(--line);
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    min-width:0;
   }
-  .ticker span b{ color:var(--amber); }
-  @keyframes scroll-left{
-    from{ transform:translateX(0); }
-    to{ transform:translateX(-50%); }
-  }
+  .ticker-text b{ color:var(--amber); }
   @media (prefers-reduced-motion: reduce){
-    .ticker{ animation:none; }
+    .ticker-fade{ transition:none; }
+  }
+  @media (max-width:480px){
+    .ticker-text{ font-size:11.5px; }
+    .ticker-badge{ font-size:9px; padding:2px 6px; }
   }
 
   /* ---------- Header / hero ---------- */
@@ -898,6 +912,16 @@
   .archive-back-btn{ background:none; border:none; color:var(--chalk-dim); font-size:13px; cursor:pointer; padding:0; margin-bottom:10px; display:block; }
   .archive-back-btn:hover{ color:var(--amber); }
 
+  /* ---- 移籍速報(カード形式ではなく、ニュースサイトの速報欄のようなシンプルなリスト) ---- */
+  .transfer-news-list{ display:flex; flex-direction:column; }
+  .transfer-news-item{ display:block; padding:11px 4px; border-bottom:1px solid rgba(255,255,255,.08); cursor:pointer; }
+  .transfer-news-item:last-child{ border-bottom:none; }
+  .transfer-news-item:hover .transfer-news-headline{ color:var(--amber); }
+  .transfer-news-row-top{ display:flex; align-items:baseline; gap:8px; margin-bottom:3px; }
+  .transfer-news-date{ font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--chalk-dim); flex-shrink:0; }
+  .transfer-news-headline{ font-size:13.5px; font-weight:600; line-height:1.4; }
+  .transfer-news-summary{ font-size:12px; color:var(--chalk-dim); line-height:1.55; margin:0; }
+
   /* ---- 朝刊・昼刊・夕刊ダイジェストカード(2026-07) ---- */
   .digest-card{
     position:relative;
@@ -976,8 +1000,11 @@
 </head>
 <body>
 
-<div class="ticker-wrap">
-  <div class="ticker" id="tickerTrack"></div>
+<div class="ticker-wrap" id="tickerWrap">
+  <div class="ticker-fade" id="tickerFade">
+    <span class="ticker-badge" id="tickerBadge"></span>
+    <span class="ticker-text" id="tickerText"></span>
+  </div>
 </div>
 
 <header class="top">
@@ -1022,6 +1049,14 @@
     </div>
     <span class="standings-status" id="playerIntroArchiveStatus">読み込み中...</span>
     <div class="archive-card-list" id="playerIntroArchiveList"></div>
+  </div>
+
+  <div class="archive-section">
+    <div class="archive-section-head">
+      <h3 data-i18n="archive_transfer_news">移籍速報</h3>
+    </div>
+    <span class="standings-status" id="transferNewsStatus">読み込み中...</span>
+    <div class="transfer-news-list" id="transferNewsList"></div>
   </div>
 
   <div class="feature-request-box">
@@ -1308,7 +1343,7 @@ const i18n = {
     search_btn_label:'検索',
     news_title:'特集', news_sub:'AM4編集部による試合解説・選手紹介アーカイブ',
     news_refresh:'更新',
-    archive_match_report:'試合解説', archive_player_intro:'選手紹介', archive_more:'もっと見る ›', archive_back:'特集に戻る',
+    archive_match_report:'試合解説', archive_player_intro:'選手紹介', archive_transfer_news:'移籍速報', archive_more:'もっと見る ›', archive_back:'特集に戻る',
     news_disclaimer:'※これはAM4編集部が実際の報道記事を根拠に(AIの補助を受けて)執筆した記事です。各記事下部の「元記事」から出典を確認できます。断定的な数値・発言は参考情報としてお読みください。',
     league_all:'全体', league_wc:'W杯', league_pl:'プレミア', league_laliga:'ラ・リーガ',
     league_seriea:'セリエA', league_bundes:'ブンデス', league_ligue1:'リーグ・アン',
@@ -1335,7 +1370,7 @@ const i18n = {
     search_btn_label:'Search',
     news_title:'Featured', news_sub:'Match reports and player features by the AM4 editorial desk',
     news_refresh:'Refresh',
-    archive_match_report:'Match Reports', archive_player_intro:'Player Features', archive_more:'More ›', archive_back:'Back to Featured',
+    archive_match_report:'Match Reports', archive_player_intro:'Player Features', archive_transfer_news:'Transfer News', archive_more:'More ›', archive_back:'Back to Featured',
     news_disclaimer:'*These articles are written by the AM4 editorial desk (AI-assisted) based on real news articles. Check the "source" links below each article. Treat specific figures/quotes as reference only.',
     league_all:'All', league_wc:'World Cup', league_pl:'Premier League', league_laliga:'La Liga',
     league_seriea:'Serie A', league_bundes:'Bundesliga', league_ligue1:'Ligue 1',
@@ -1362,7 +1397,7 @@ const i18n = {
     search_btn_label:'Buscar',
     news_title:'Destacados', news_sub:'Crónicas de partidos y perfiles de jugadores de la redacción de AM4',
     news_refresh:'Actualizar',
-    archive_match_report:'Crónicas de Partidos', archive_player_intro:'Perfiles de Jugadores', archive_more:'Ver más ›', archive_back:'Volver a Destacados',
+    archive_match_report:'Crónicas de Partidos', archive_player_intro:'Perfiles de Jugadores', archive_transfer_news:'Fichajes en Directo', archive_more:'Ver más ›', archive_back:'Volver a Destacados',
     news_disclaimer:'*Estos artículos están escritos por la redacción de AM4 (con ayuda de IA) a partir de noticias reales. Consulta los enlaces "fuente" debajo de cada artículo. Trata las cifras/citas específicas solo como referencia.',
     league_all:'Todo', league_wc:'Mundial', league_pl:'Premier League', league_laliga:'La Liga',
     league_seriea:'Serie A', league_bundes:'Bundesliga', league_ligue1:'Ligue 1',
@@ -5189,16 +5224,71 @@ const leaguesData = {
   }
 };
 
-/* ===================== ティッカー ===================== */
-const tickerItems = [
-  '🏆 W杯準決勝 フランス vs スペイン: 7/15(水)4:00キックオフ(日本時間)/ DAZN・日本テレビ系列',
-  '🏆 W杯準決勝 イングランド vs アルゼンチン: 7/16(木)4:00キックオフ(日本時間)/ NHK総合・DAZN',
-  ...transfers.map(t=>`${t.label}: <b>${t.player}</b> → ${t.to} (${t.fee})`),
-  'PL: シティ 3-1 アーセナル','リーガ: レアル 2-1 バルサ','セリエA: インテル 2-0 ユベントス'
-];
-const track = document.getElementById('tickerTrack');
-const doubled = [...tickerItems, ...tickerItems];
-track.innerHTML = doubled.map(t=>`<span>${t}</span>`).join('');
+/* ===================== ティッカー(フェード切り替え) =====================
+   【2026-07-31】横スクロール(マーキー)方式から、1件ずつ数秒表示してフェード切り替わる
+   方式に変更。表示内容は移籍速報(/api/articles?type=transfer_news、Fabrizio Romano発信の
+   情報をWeb検索でチェックする新機能)を主なソースとする。複数ソースを混在させる場合に
+   備え、各アイテムにbadge(表示ラベル)を持たせてある。クリックで特集タブへ遷移する。 */
+const TICKER_ROTATE_MS = 6000;
+const TICKER_FADE_MS = 350;
+let tickerData = [];
+let tickerIndex = 0;
+let tickerTimer = null;
+
+const tickerWrapEl = document.getElementById('tickerWrap');
+const tickerFadeEl = document.getElementById('tickerFade');
+const tickerBadgeEl = document.getElementById('tickerBadge');
+const tickerTextEl = document.getElementById('tickerText');
+
+function renderTickerItem(item){
+  tickerBadgeEl.textContent = item.badge;
+  tickerTextEl.textContent = item.text;
+}
+
+function showNextTickerItem(){
+  if(tickerData.length === 0) return;
+  tickerIndex = (tickerIndex + 1) % tickerData.length;
+  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(prefersReduced){
+    renderTickerItem(tickerData[tickerIndex]);
+    return;
+  }
+  tickerFadeEl.classList.add('ticker-fade-out');
+  setTimeout(()=>{
+    renderTickerItem(tickerData[tickerIndex]);
+    tickerFadeEl.classList.remove('ticker-fade-out');
+  }, TICKER_FADE_MS);
+}
+
+function startTickerRotation(){
+  if(tickerTimer) clearInterval(tickerTimer);
+  tickerIndex = 0;
+  renderTickerItem(tickerData[0]);
+  if(tickerData.length > 1){
+    tickerTimer = setInterval(showNextTickerItem, TICKER_ROTATE_MS);
+  }
+}
+
+async function loadTickerData(){
+  try{
+    const res = await fetch(`${AM4_API_BASE}/api/articles?type=transfer_news&pageSize=10`);
+    if(!res.ok) throw new Error('fetch failed');
+    const data = await res.json();
+    tickerData = (data.items || []).map(item => ({ badge: '移籍速報', text: item.title || '' }));
+  } catch(e){
+    console.error('ticker fetch failed', e);
+    tickerData = [];
+  }
+  // 移籍速報がまだ1件も無い場合、ティッカー自体を非表示にする(空欄のまま表示しない)。
+  if(tickerData.length === 0){
+    tickerWrapEl.style.display = 'none';
+    return;
+  }
+  tickerWrapEl.style.display = '';
+  startTickerRotation();
+}
+tickerWrapEl.addEventListener('click', ()=>showPage('news'));
+loadTickerData();
 
 /* ===================== 移籍情報 ===================== */
 const transferGrid = document.getElementById('transferGrid');
@@ -5511,6 +5601,8 @@ const matchReportArchiveList = document.getElementById('matchReportArchiveList')
 const playerIntroArchiveList = document.getElementById('playerIntroArchiveList');
 const matchReportArchiveStatus = document.getElementById('matchReportArchiveStatus');
 const playerIntroArchiveStatus = document.getElementById('playerIntroArchiveStatus');
+const transferNewsList = document.getElementById('transferNewsList');
+const transferNewsStatus = document.getElementById('transferNewsStatus');
 const archiveFullList = document.getElementById('archiveFullList');
 const archiveListStatus = document.getElementById('archiveListStatus');
 const archivePagination = document.getElementById('archivePagination');
@@ -5692,6 +5784,50 @@ archiveBackBtn.addEventListener('click', () => showPage('news'));
 
 loadArchiveSection('match_report', matchReportArchiveList, matchReportArchiveStatus);
 loadArchiveSection('player_intro', playerIntroArchiveList, playerIntroArchiveStatus);
+
+// 移籍速報: 試合解説・選手紹介とは違い、カード形式ではなくニュースサイトの速報欄のような
+// シンプルなリスト(日時+見出し+要約)で表示する。1件が短文のため、一覧APIのレスポンスに
+// 含まれるbody/sourcesをそのまま使い、個別取得(?id=)は行わない。
+function renderTransferNewsItem(item){
+  const el = document.createElement('a');
+  el.className = 'transfer-news-item';
+  const sourceUrl = (item.sources && item.sources[0] && item.sources[0].url) || null;
+  el.href = sourceUrl || '#';
+  el.target = '_blank';
+  el.rel = 'noopener noreferrer';
+  const dateStr = item.publishedAt
+    ? new Date(item.publishedAt).toLocaleDateString('ja-JP', {month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'}).replace(/\//g, '.')
+    : '';
+  el.innerHTML = `
+    <div class="transfer-news-row-top">
+      <span class="transfer-news-date">${dateStr}</span>
+      <span class="transfer-news-headline">${item.title || ''}</span>
+    </div>
+    <p class="transfer-news-summary">${item.body || ''}</p>
+  `;
+  if(!sourceUrl){
+    el.addEventListener('click', e => e.preventDefault());
+  }
+  return el;
+}
+
+async function loadTransferNewsSection(){
+  try{
+    const data = await fetchArticles('transfer_news', 1, 15);
+    transferNewsList.innerHTML = '';
+    if(data.items.length === 0){
+      transferNewsList.innerHTML = '<div class="archive-empty">まだ移籍速報がありません</div>';
+    } else {
+      data.items.forEach(item => transferNewsList.appendChild(renderTransferNewsItem(item)));
+    }
+    transferNewsStatus.style.display = 'none';
+  } catch(e){
+    console.error('transfer news section fetch failed:', e);
+    transferNewsStatus.textContent = '取得に失敗しました';
+    transferNewsStatus.className = 'standings-status error';
+  }
+}
+loadTransferNewsSection();
 
 /* ===================== 特集タブ 旧仕様(ai-column.js/旧match-report.js、削除済み) =====================
    【2026-07-31】このタブは試合解説・選手紹介の記事アーカイブ(上記「特集タブ(記事アーカイブ)」
