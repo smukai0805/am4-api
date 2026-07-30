@@ -34,7 +34,10 @@ import {
   loadDraftLog,
 } from '../lib/match-report-core.js';
 
-export const config = { maxDuration: 60 };
+// Web検索を伴うAI記事生成(1試合あたり最大5回のweb_search往復)は数十秒かかることがあり、
+// 60秒だと実際にFUNCTION_INVOCATION_TIMEOUTになることを確認したため300秒に拡張
+// (Vercelは現在Fluid Compute上で全プランともmaxDuration既定値・上限が300秒)。
+export const config = { maxDuration: 300 };
 
 const API_FOOTBALL_HOST = 'v3.football.api-sports.io';
 const API_KEY = process.env.API_FOOTBALL_KEY;

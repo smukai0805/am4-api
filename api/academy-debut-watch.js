@@ -35,7 +35,11 @@ import crypto from 'node:crypto';
 import { put, get } from '@vercel/blob';
 import { generateArticleDraft, saveDraft, loadDraftLog } from '../lib/academy-core.js';
 
-export const config = { maxDuration: 60 };
+// Web検索を伴うAI記事生成(1人あたり最大5回のweb_search往復)は数十秒かかることがあり、
+// match-report-watch.js側で同じパターンが60秒でFUNCTION_INVOCATION_TIMEOUTになることを
+// 確認したため300秒に拡張(Vercelは現在Fluid Compute上で全プランともmaxDuration
+// 既定値・上限が300秒)。
+export const config = { maxDuration: 300 };
 
 const API_FOOTBALL_HOST = 'v3.football.api-sports.io';
 const API_KEY = process.env.API_FOOTBALL_KEY;
