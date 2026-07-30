@@ -32,7 +32,7 @@
 // 環境変数: API_FOOTBALL_KEY が必要。
 
 import { put, get } from '@vercel/blob';
-import { generateArticleDraft } from '../lib/academy-core.js';
+import { generateArticleDraft, calcAge } from '../lib/academy-core.js';
 import { saveArticle, listArticles, slugify } from '../lib/article-store.js';
 import { PILOT_CLUBS } from '../lib/pilot-clubs.js';
 import { apiFootballFetch, mapWithConcurrency } from '../lib/api-football-client.js';
@@ -60,7 +60,8 @@ function cleanArticleBody(draft) {
 }
 
 async function buildAndSaveArticle(candidate, profile) {
-  const { draft: rawDraft, searchSources } = await generateArticleDraft(candidate, profile);
+  const triggerDescription = `出場した試合: ${candidate.fixtureDate} vs ${candidate.opponent} (${candidate.competition})`;
+  const { draft: rawDraft, searchSources } = await generateArticleDraft({ ...candidate, triggerDescription }, profile);
   const draft = cleanArticleBody(rawDraft);
   const dateStr = (candidate.fixtureDate || '').slice(0, 10);
   const id = slugify(`${dateStr}-${candidate.name}`) || `player-intro-${candidate.playerId}`;
@@ -74,6 +75,9 @@ async function buildAndSaveArticle(candidate, profile) {
     hasScoreTable: null, // player_introには該当しない
     sources: searchSources,
     status: 'draft',
+    // subject: transfer-news-watch.js側で「同一選手の記事が既にあるか」を検索する際の
+    // キーになる(Here we go連動の重複生成防止。lib/article-store.jsのfindArticleBySubject参照)。
+    subject: candidate.name,
     player: candidate,
   };
   await saveArticle(article);
@@ -99,17 +103,6 @@ const SEEN_PATHNAME = 'seen-academy-players.json';
 
 // 1回の実行で記事生成まで行う人数の上限(実行時間対策)。
 const MAX_ARTICLES_PER_RUN = 2;
-
-function calcAge(birthDateStr, onDate) {
-  const birth = new Date(birthDateStr);
-  const ref = onDate || new Date();
-  let age = ref.getFullYear() - birth.getFullYear();
-  const m = ref.getMonth() - birth.getMonth();
-  if (m < 0 || (m === 0 && ref.getDate() < birth.getDate())) {
-    age--;
-  }
-  return age;
-}
 
 // ヨーロッパのシーズンは概ね7〜8月開始のため、7月以降なら「その年」がシーズン開始年、
 // それより前(1〜6月)なら前年開始のシーズンとして扱う(API-Footballのseason命名規則に合わせる)。

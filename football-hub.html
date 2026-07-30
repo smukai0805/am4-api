@@ -889,6 +889,9 @@
   .am4-article-modal-sources{ margin-top:16px; padding-top:12px; border-top:1px solid var(--line); display:flex; flex-direction:column; gap:4px; }
   .am4-article-modal-sources a{ font-size:11px; color:var(--chalk-dim); }
   .am4-article-modal-sources a:hover{ color:#4C8DFF; }
+  .am4-article-modal-related{ margin-top:14px; }
+  .am4-article-modal-related a{ display:inline-block; font-size:12.5px; font-weight:600; color:var(--amber); border:1px solid var(--amber-dim); border-radius:20px; padding:6px 14px; }
+  .am4-article-modal-related a:hover{ background:var(--amber); color:#000; }
 
   .archive-section{ margin-bottom:28px; }
   .archive-section-head{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:10px; }
@@ -916,13 +919,16 @@
 
   /* ---- 移籍速報(カード形式ではなく、ニュースサイトの速報欄のようなシンプルなリスト) ---- */
   .transfer-news-list{ display:flex; flex-direction:column; }
-  .transfer-news-item{ display:block; padding:11px 4px; border-bottom:1px solid rgba(255,255,255,.08); cursor:pointer; }
+  .transfer-news-item{ display:block; padding:11px 4px; border-bottom:1px solid rgba(255,255,255,.08); }
   .transfer-news-item:last-child{ border-bottom:none; }
-  .transfer-news-item:hover .transfer-news-headline{ color:var(--amber); }
   .transfer-news-row-top{ display:flex; align-items:baseline; gap:8px; margin-bottom:3px; }
   .transfer-news-date{ font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--chalk-dim); flex-shrink:0; }
   .transfer-news-headline{ font-size:13.5px; font-weight:600; line-height:1.4; }
   .transfer-news-summary{ font-size:12px; color:var(--chalk-dim); line-height:1.55; margin:0; }
+  .transfer-news-links{ display:flex; gap:14px; margin-top:6px; }
+  .transfer-news-links:empty{ display:none; }
+  .transfer-news-link{ font-size:11px; font-weight:600; color:#4C8DFF; }
+  .transfer-news-link:hover{ color:var(--amber); }
   .herewego-badge{
     flex-shrink:0;
     background:#e0245e; color:#fff;
@@ -5777,12 +5783,25 @@ async function openArchiveArticle(id){
       .filter(s => s.url)
       .map(s => `<a href="${s.url}" target="_blank" rel="noopener noreferrer">${escapeHtmlText(s.title || s.url)}</a>`)
       .join('');
+    // 相互リンク(Here we go移籍速報 ⇔ 選手紹介記事)。相手記事の種別に応じて文言を変える。
+    const relatedLabel = article.type === 'transfer_news' ? '関連記事: 選手紹介はこちら' : '関連する移籍速報はこちら';
+    const relatedHtml = article.relatedArticleId
+      ? `<div class="am4-article-modal-related"><a href="#" id="am4RelatedArticleLink">${relatedLabel}</a></div>`
+      : '';
     body.innerHTML = `
       <span class="cat">${ARCHIVE_TYPE_LABEL[article.type] || ''}</span>
       ${renderMarkdown(article.body)}
+      ${relatedHtml}
       ${sourcesHtml ? `<div class="am4-article-modal-sources">${sourcesHtml}</div>` : ''}
     `;
     modal.style.display = 'flex';
+    const relatedLink = document.getElementById('am4RelatedArticleLink');
+    if(relatedLink){
+      relatedLink.addEventListener('click', e => {
+        e.preventDefault();
+        openArchiveArticle(article.relatedArticleId);
+      });
+    }
   } catch(e){
     console.error('archive article fetch failed:', e);
     alert('記事の取得に失敗しました');
@@ -5804,12 +5823,9 @@ loadArchiveSection('player_intro', playerIntroArchiveList, playerIntroArchiveSta
 // シンプルなリスト(日時+見出し+要約)で表示する。1件が短文のため、一覧APIのレスポンスに
 // 含まれるbody/sourcesをそのまま使い、個別取得(?id=)は行わない。
 function renderTransferNewsItem(item){
-  const el = document.createElement('a');
+  const el = document.createElement('div');
   el.className = 'transfer-news-item';
   const sourceUrl = (item.sources && item.sources[0] && item.sources[0].url) || null;
-  el.href = sourceUrl || '#';
-  el.target = '_blank';
-  el.rel = 'noopener noreferrer';
   const dateStr = item.publishedAt
     ? new Date(item.publishedAt).toLocaleDateString('ja-JP', {month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'}).replace(/\//g, '.')
     : '';
@@ -5822,9 +5838,26 @@ function renderTransferNewsItem(item){
       <span class="transfer-news-headline">${item.title || ''}</span>
     </div>
     <p class="transfer-news-summary">${item.body || ''}</p>
+    <div class="transfer-news-links"></div>
   `;
-  if(!sourceUrl){
-    el.addEventListener('click', e => e.preventDefault());
+  const linksEl = el.querySelector('.transfer-news-links');
+  if(sourceUrl){
+    const srcLink = document.createElement('a');
+    srcLink.className = 'transfer-news-link';
+    srcLink.href = sourceUrl;
+    srcLink.target = '_blank';
+    srcLink.rel = 'noopener noreferrer';
+    srcLink.textContent = '元記事を見る';
+    linksEl.appendChild(srcLink);
+  }
+  // Here we go連動で生成/更新された選手紹介記事への相互リンク。
+  if(item.relatedArticleId){
+    const relLink = document.createElement('a');
+    relLink.className = 'transfer-news-link';
+    relLink.href = '#';
+    relLink.textContent = '関連記事: 選手紹介はこちら';
+    relLink.addEventListener('click', e => { e.preventDefault(); openArchiveArticle(item.relatedArticleId); });
+    linksEl.appendChild(relLink);
   }
   return el;
 }
