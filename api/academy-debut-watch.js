@@ -186,15 +186,21 @@ export default async function handler(req, res) {
       for (const fixture of fixtures) {
         const fixtureId = fixture.fixture.id;
         const players = await getLineup(fixtureId, club.teamId);
+        const unseenPlayers = players.filter(p => !seenIds.has(p.id));
 
-        for (const player of players) {
-          if (seenIds.has(player.id)) continue;
+        // プロフィール取得(1人ずつawaitすると、スタメン11人×複数試合×6クラブで
+        // 実行時間の上限(60秒)に達しかねないため、1試合分はまとめて並列取得する。
+        const profileResults = await Promise.all(
+          unseenPlayers.map(async player => {
+            // season非依存の /players/profiles で基礎プロフィール(生年月日含む)を取得。
+            // ここで取得したプロフィールは、年齢判定だけでなく後段の記事生成にもそのまま使う
+            // (二重にAPI-Footballへ問い合わせない)。
+            const data = await apiFootballFetch('/players/profiles', { player: player.id });
+            return { player, profile: data.response?.[0] || null };
+          })
+        );
 
-          // season非依存の /players/profiles で基礎プロフィール(生年月日含む)を取得。
-          // ここで取得したプロフィールは、年齢判定だけでなく後段の記事生成にもそのまま使う
-          // (二重にAPI-Footballへ問い合わせない)。
-          const data = await apiFootballFetch('/players/profiles', { player: player.id });
-          const profile = data.response?.[0] || null;
+        for (const { player, profile } of profileResults) {
           const birthDate = profile?.player?.birth?.date;
           if (!birthDate) continue;
 
