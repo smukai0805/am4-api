@@ -31,9 +31,36 @@
 //
 // 環境変数: API_FOOTBALL_KEY が必要。
 
-import crypto from 'node:crypto';
 import { put, get } from '@vercel/blob';
-import { generateArticleDraft, saveDraft, loadDraftLog } from '../lib/academy-core.js';
+import { generateArticleDraft } from '../lib/academy-core.js';
+import { saveArticle, listArticles, slugify } from '../lib/article-store.js';
+
+// Markdownの下書き本文から見出し(# で始まる行)を抜き出してタイトルにする。
+// 見つからない場合は選手名+クラブ名をフォールバックにする。
+function extractTitle(draft, fallback) {
+  const m = (draft || '').match(/^#\s+(.+)$/m);
+  return m ? m[1].trim() : fallback;
+}
+
+async function buildAndSaveArticle(candidate, profile) {
+  const { draft, searchSources } = await generateArticleDraft(candidate, profile);
+  const dateStr = (candidate.fixtureDate || '').slice(0, 10);
+  const id = slugify(`${dateStr}-${candidate.name}`) || `player-intro-${candidate.playerId}`;
+  const fallbackTitle = `${candidate.name}(${candidate.club})`;
+  const article = {
+    id,
+    type: 'player_intro',
+    title: extractTitle(draft, fallbackTitle),
+    publishedAt: new Date().toISOString(),
+    body: draft,
+    hasScoreTable: null, // player_introには該当しない
+    sources: searchSources,
+    status: 'draft',
+    player: candidate,
+  };
+  await saveArticle(article);
+  return article;
+}
 
 // Web検索を伴うAI記事生成(1人あたり最大5回のweb_search往復)は数十秒かかることがあり、
 // match-report-watch.js側で同じパターンが60秒でFUNCTION_INVOCATION_TIMEOUTになることを
@@ -156,13 +183,11 @@ async function saveSeenPlayers(entries) {
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
 
-  // 保存済み下書き一覧の確認用(簡易レビュー): GET /api/academy-debut-watch?list=1
-  // (旧 api/generate-academy-player-article.js の一覧エンドポイントをここに統合。
-  //  Vercel Hobbyプランのサーバーレス関数数上限(12個/デプロイ)対策で、当該ファイルは
-  //  lib/academy-core.js に統合し、api/配下の関数としては数えない形にした)
+  // 保存済み記事一覧の確認用(簡易レビュー): GET /api/academy-debut-watch?list=1
+  // 一般公開用の一覧・詳細APIは api/articles.js を使うこと(こちらは動作確認用の簡易版)。
   if (req.method === 'GET' && req.query.list === '1') {
-    const log = await loadDraftLog();
-    return res.status(200).json({ drafts: log });
+    const result = await listArticles({ type: 'player_intro', pageSize: 50 });
+    return res.status(200).json({ drafts: result.items });
   }
 
   if (!API_KEY) {
@@ -277,17 +302,8 @@ export default async function handler(req, res) {
       }
       try {
         const profile = profilesById.get(candidate.playerId) || null;
-        const { draft, searchSources } = await generateArticleDraft(candidate, profile);
-        const entry = {
-          id: crypto.randomUUID(),
-          player: candidate,
-          draft,
-          searchSources,
-          status: 'draft_generated',
-          generatedAt: new Date().toISOString(),
-        };
-        await saveDraft(entry);
-        generated.push(entry);
+        const article = await buildAndSaveArticle(candidate, profile);
+        generated.push(article);
         seenEntries.push({
           playerId: candidate.playerId,
           name: candidate.name,

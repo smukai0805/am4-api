@@ -184,12 +184,79 @@ export async function fetchAllNewsItems() {
   return { items: fetchedItems, failedFeeds };
 }
 
+// 【other-newsモード】旧api/other-news.jsを統合したもの(Vercel Hobbyプランの
+// サーバーレス関数数上限対策で、api/直下の独立ルートからここへ統合した)。
+// 「その他のニュース」機能: AM4編集部コラム・試合レポートの根拠記事(sources)として
+// 使われなかった生RSS記事だけをシンプルなテキストリストとして返す。
+// このモード自体はAnthropic APIを一切呼ばない(既にキャッシュ済みの生成結果を読むだけ)。
+// GET /api/news?mode=other&lang=ja
+const AM4_API_BASE = 'https://am4-api.vercel.app';
+
+async function fetchUsedLinks(lang) {
+  const usedLinks = new Set();
+  const results = await Promise.allSettled([
+    fetch(`${AM4_API_BASE}/api/ai-column?lang=${lang}`),
+    fetch(`${AM4_API_BASE}/api/match-report?lang=${lang}`),
+  ]);
+
+  for (const result of results) {
+    if (result.status !== 'fulfilled' || !result.value.ok) continue;
+    try {
+      const data = await result.value.json();
+      const lists = [data.columns, data.reports].filter(Array.isArray);
+      for (const list of lists) {
+        for (const item of list) {
+          for (const source of item.sources || []) {
+            if (source.link) usedLinks.add(source.link);
+          }
+        }
+      }
+    } catch {
+      // 片方の取得・解析に失敗しても、もう片方の結果だけで続行する
+    }
+  }
+  return usedLinks;
+}
+
+async function handleOtherNewsMode(req, res) {
+  const lang = String(req.query.lang || 'ja').toLowerCase();
+  const [{ items: newsItems }, usedLinks] = await Promise.all([
+    fetchAllNewsItems(),
+    fetchUsedLinks(lang),
+  ]);
+
+  const items = newsItems
+    .filter(n => !n.link || !usedLinks.has(n.link))
+    .sort((a, b) => new Date(b.time || 0) - new Date(a.time || 0))
+    .slice(0, 20)
+    .map(n => ({
+      headline: n.headline,
+      source: n.source,
+      link: n.link,
+      publishedAt: n.time || null,
+      image: n.image || null,
+    }));
+
+  res.setHeader('Cache-Control', 's-maxage=900, stale-while-revalidate');
+  return res.status(200).json({ items, generatedAt: new Date().toISOString() });
+}
+
 export default async function handler(req, res) {
   // 他のエンドポイント(player-stats.js等)には元から入っていたが、
   // このnews.jsだけ設定が漏れていた。file://で直接HTMLを開いた場合や
   // 別ドメインからのfetchはこれが無いとブラウザ側でブロックされ、
   // フロント側は「取得失敗」としてサンプルデータ表示にフォールバックしてしまう。
   res.setHeader('Access-Control-Allow-Origin', '*');
+
+  if (req.query.mode === 'other') {
+    try {
+      return await handleOtherNewsMode(req, res);
+    } catch (err) {
+      console.error('other-news error:', err);
+      return res.status(500).json({ error: '取得に失敗しました', detail: err.message });
+    }
+  }
+
   try {
     const { items: fetchedItems, failedFeeds } = await fetchAllNewsItems();
 

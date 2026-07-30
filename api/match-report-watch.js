@@ -22,7 +22,6 @@
 //
 // 環境変数: API_FOOTBALL_KEY が必要。
 
-import crypto from 'node:crypto';
 import { put, get } from '@vercel/blob';
 import {
   getFixtureDetail,
@@ -30,9 +29,36 @@ import {
   getFixturePlayers,
   computePlayerRatings,
   generateMatchReportDraft,
-  saveDraft,
-  loadDraftLog,
 } from '../lib/match-report-core.js';
+import { saveArticle, listArticles, slugify } from '../lib/article-store.js';
+
+// Markdownの下書き本文から見出し(# で始まる行)を抜き出してタイトルにする。
+// 見つからない場合は対戦カード+スコアをフォールバックにする。
+function extractTitle(draft, fallback) {
+  const m = (draft || '').match(/^#\s+(.+)$/m);
+  return m ? m[1].trim() : fallback;
+}
+
+async function buildAndSaveArticle(matchInfo, ratingResult) {
+  const { draft, searchSources } = await generateMatchReportDraft(matchInfo, ratingResult);
+  const dateStr = (matchInfo.date || '').slice(0, 10);
+  const id = slugify(`${dateStr}-${matchInfo.homeTeam}-vs-${matchInfo.awayTeam}`) || `match-report-${matchInfo.fixtureId}`;
+  const fallbackTitle = `${matchInfo.homeTeam} ${matchInfo.homeGoals}-${matchInfo.awayGoals} ${matchInfo.awayTeam}`;
+  const article = {
+    id,
+    type: 'match_report',
+    title: extractTitle(draft, fallbackTitle),
+    publishedAt: new Date().toISOString(),
+    body: draft,
+    hasScoreTable: true, // このパイプラインは選手個別スタッツが無い試合を事前に除外している
+    sources: searchSources,
+    status: 'draft',
+    match: matchInfo,
+    ratings: ratingResult,
+  };
+  await saveArticle(article);
+  return article;
+}
 
 // Web検索を伴うAI記事生成(1試合あたり最大5回のweb_search往復)は数十秒かかることがあり、
 // 60秒だと実際にFUNCTION_INVOCATION_TIMEOUTになることを確認したため300秒に拡張
@@ -132,13 +158,37 @@ async function saveSeenMatches(entries) {
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
 
-  // 保存済み下書き一覧の確認用(簡易レビュー): GET /api/match-report-watch?list=1
-  // (旧 api/generate-match-report-article.js の一覧エンドポイントをここに統合。
-  //  Vercel Hobbyプランのサーバーレス関数数上限(12個/デプロイ)対策で、当該ファイルは
-  //  lib/match-report-core.js に統合し、api/配下の関数としては数えない形にした)
+  // 保存済み記事一覧の確認用(簡易レビュー): GET /api/match-report-watch?list=1
+  // 一般公開用の一覧・詳細APIは api/articles.js を使うこと(こちらは動作確認用の簡易版)。
   if (req.method === 'GET' && req.query.list === '1') {
-    const log = await loadDraftLog();
-    return res.status(200).json({ drafts: log });
+    const result = await listArticles({ type: 'match_report', pageSize: 50 });
+    return res.status(200).json({ drafts: result.items });
+  }
+
+  // 【一時的な移行用】旧「下書きログに追記」方式(match-report-drafts.json)に残っている
+  // Man United vs Liverpool の下書き(fixtureId:1379316)を、新しい恒久アーカイブ形式に
+  // 移行するための一回限りのエンドポイント。移行完了後に削除する。
+  // GET /api/match-report-watch?migrateOldDraft=1
+  if (req.method === 'GET' && req.query.migrateOldDraft === '1') {
+    const result = await get('match-report-drafts.json', { access: 'private', useCache: false });
+    if (!result || !result.stream) return res.status(404).json({ error: '旧下書きログが見つかりません' });
+    const oldLog = JSON.parse(await new Response(result.stream).text());
+    const oldEntry = oldLog.find(e => e.match?.fixtureId === 1379316);
+    if (!oldEntry) return res.status(404).json({ error: '対象の下書きが見つかりません' });
+    const article = {
+      id: slugify(`${(oldEntry.match.date || '').slice(0, 10)}-${oldEntry.match.homeTeam}-vs-${oldEntry.match.awayTeam}`),
+      type: 'match_report',
+      title: extractTitle(oldEntry.draft, `${oldEntry.match.homeTeam} ${oldEntry.match.homeGoals}-${oldEntry.match.awayGoals} ${oldEntry.match.awayTeam}`),
+      publishedAt: oldEntry.generatedAt || new Date().toISOString(),
+      body: oldEntry.draft,
+      hasScoreTable: true,
+      sources: oldEntry.searchSources || [],
+      status: 'draft',
+      match: oldEntry.match,
+      ratings: oldEntry.ratings,
+    };
+    await saveArticle(article);
+    return res.status(200).json({ migrated: article });
   }
 
   // 特定の試合を手動で(再)生成したい場合の動作確認・単体テスト用:
@@ -189,20 +239,9 @@ export default async function handler(req, res) {
       };
       const tGen = Date.now();
       console.error('[timing] calling generateMatchReportDraft...');
-      const { draft, searchSources } = await generateMatchReportDraft(matchInfo, ratingResult);
+      const article = await buildAndSaveArticle(matchInfo, ratingResult);
       console.error(`[timing] generateMatchReportDraft: ${Date.now() - tGen}ms`);
-
-      const entry = {
-        id: crypto.randomUUID(),
-        match: matchInfo,
-        ratings: ratingResult,
-        draft,
-        searchSources,
-        status: 'draft_generated',
-        generatedAt: new Date().toISOString(),
-      };
-      await saveDraft(entry);
-      return res.status(200).json(entry);
+      return res.status(200).json(article);
     } catch (err) {
       console.error(err);
       return res.status(500).json({ error: err.message });
@@ -300,19 +339,8 @@ export default async function handler(req, res) {
           date: fixture.fixture.date,
           venue: fixture.fixture.venue?.name,
         };
-        const { draft, searchSources } = await generateMatchReportDraft(matchInfo, ratingResult);
-
-        const entry = {
-          id: crypto.randomUUID(),
-          match: matchInfo,
-          ratings: ratingResult,
-          draft,
-          searchSources,
-          status: 'draft_generated',
-          generatedAt: new Date().toISOString(),
-        };
-        await saveDraft(entry);
-        generated.push(entry);
+        const article = await buildAndSaveArticle(matchInfo, ratingResult);
+        generated.push(article);
         seenEntries.push({
           fixtureId: fixture.fixture.id,
           home: matchInfo.homeTeam,
