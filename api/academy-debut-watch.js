@@ -45,15 +45,21 @@ function extractTitle(draft, fallback) {
   return real || fallback;
 }
 
-// プロンプト内のフォーマット仕様書見出し行(# 形式・【】形式のどちらでも)が
-// そのまま複製されてしまった場合、本文の先頭から除去する。
-function stripFormatSpecHeading(draft) {
-  return (draft || '').replace(/^.*フォーマット\(AM4\).*\n+/m, '');
+// ARTICLE_FORMAT_SPEC(構成:1. 見出し 2. プロフィール表...という番号付きリストで
+// 指示している)の内容が、そのまま本文に混入してしまうことがある実データ検証で確認した
+// 2パターンを除去する:
+//   (a) 仕様書見出し行(# 形式・【】形式のどちらでも)が本文の先頭にそのまま複製される
+//   (b) 各セクション見出しに"1. ""2. "等、仕様書の番号がそのまま付いてしまう
+//       (例: "## 2. プロフィール" → "## プロフィール")
+function cleanArticleBody(draft) {
+  let text = (draft || '').replace(/^.*フォーマット\(AM4\).*\n+/m, '');
+  text = text.replace(/^(#{1,3})\s+\d+\.\s*/gm, '$1 ');
+  return text;
 }
 
 async function buildAndSaveArticle(candidate, profile) {
   const { draft: rawDraft, searchSources } = await generateArticleDraft(candidate, profile);
-  const draft = stripFormatSpecHeading(rawDraft);
+  const draft = cleanArticleBody(rawDraft);
   const dateStr = (candidate.fixtureDate || '').slice(0, 10);
   const id = slugify(`${dateStr}-${candidate.name}`) || `player-intro-${candidate.playerId}`;
   const fallbackTitle = `${candidate.name}(${candidate.club})`;

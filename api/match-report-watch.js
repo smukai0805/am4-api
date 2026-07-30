@@ -30,7 +30,7 @@ import {
   computePlayerRatings,
   generateMatchReportDraft,
 } from '../lib/match-report-core.js';
-import { saveArticle, listArticles, slugify } from '../lib/article-store.js';
+import { saveArticle, getArticle, listArticles, slugify } from '../lib/article-store.js';
 
 // Markdownの下書き本文から見出し(# で始まる行)を抜き出してタイトルにする。
 // プロンプト内のフォーマット仕様書見出しがそのまま複製されてしまうことがあるため、
@@ -42,15 +42,21 @@ function extractTitle(draft, fallback) {
   return real || fallback;
 }
 
-// プロンプト内のフォーマット仕様書見出し行(# 形式・【】形式のどちらでも)が
-// そのまま複製されてしまった場合、本文の先頭から除去する。
-function stripFormatSpecHeading(draft) {
-  return (draft || '').replace(/^.*フォーマット\(AM4\).*\n+/m, '');
+// ARTICLE_FORMAT_SPEC(構成:1. 見出し 2. リード文...という番号付きリストで
+// 指示している)の内容が、そのまま本文に混入してしまうことがある実データ検証で確認した
+// 2パターンを除去する:
+//   (a) 仕様書見出し行(# 形式・【】形式のどちらでも)が本文の先頭にそのまま複製される
+//   (b) 各セクション見出しに"1. ""2. "等、仕様書の番号がそのまま付いてしまう
+//       (例: "## 2. 試合概要" → "## 試合概要")
+function cleanArticleBody(draft) {
+  let text = (draft || '').replace(/^.*フォーマット\(AM4\).*\n+/m, '');
+  text = text.replace(/^(#{1,3})\s+\d+\.\s*/gm, '$1 ');
+  return text;
 }
 
 async function buildAndSaveArticle(matchInfo, ratingResult) {
   const { draft: rawDraft, searchSources } = await generateMatchReportDraft(matchInfo, ratingResult);
-  const draft = stripFormatSpecHeading(rawDraft);
+  const draft = cleanArticleBody(rawDraft);
   const dateStr = (matchInfo.date || '').slice(0, 10);
   const id = slugify(`${dateStr}-${matchInfo.homeTeam}-vs-${matchInfo.awayTeam}`) || `match-report-${matchInfo.fixtureId}`;
   const fallbackTitle = `${matchInfo.homeTeam} ${matchInfo.homeGoals}-${matchInfo.awayGoals} ${matchInfo.awayTeam}`;
@@ -167,6 +173,19 @@ async function saveSeenMatches(entries) {
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
+
+  // 【一時的な修正用、AI呼び出し不要】既存保存済み記事(任意のtype/id)の本文に
+  // 残っている仕様書見出し・番号付き見出しの混入を、再生成せずその場でクリーンアップする。
+  // GET /api/match-report-watch?cleanArticle=1&id=<slug>
+  if (req.method === 'GET' && req.query.cleanArticle === '1') {
+    const id = String(req.query.id || '');
+    const article = await getArticle(id);
+    if (!article) return res.status(404).json({ error: '記事が見つかりません' });
+    article.body = cleanArticleBody(article.body);
+    article.title = extractTitle(article.body, article.title);
+    await saveArticle(article);
+    return res.status(200).json({ cleaned: article.id, title: article.title, bodyPreview: article.body.slice(0, 80) });
+  }
 
 
   // 保存済み記事一覧の確認用(簡易レビュー): GET /api/match-report-watch?list=1
