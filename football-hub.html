@@ -64,6 +64,8 @@
     padding:3px 8px; border-radius:3px;
     text-transform:uppercase; letter-spacing:.3px;
   }
+  /* Here we go: ロマーノが移籍合意成立を告げる代名詞的な表現。他の速報と区別して目立たせる。 */
+  .ticker-badge.ticker-badge-herewego{ background:#e0245e; color:#fff; }
   .ticker-text{
     font-family:'JetBrains Mono',monospace;
     font-size:13px;
@@ -921,6 +923,14 @@
   .transfer-news-date{ font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--chalk-dim); flex-shrink:0; }
   .transfer-news-headline{ font-size:13.5px; font-weight:600; line-height:1.4; }
   .transfer-news-summary{ font-size:12px; color:var(--chalk-dim); line-height:1.55; margin:0; }
+  .herewego-badge{
+    flex-shrink:0;
+    background:#e0245e; color:#fff;
+    font-family:'JetBrains Mono',monospace;
+    font-size:9.5px; font-weight:700;
+    padding:2px 7px; border-radius:3px;
+    letter-spacing:.3px;
+  }
 
   /* ---- 朝刊・昼刊・夕刊ダイジェストカード(2026-07) ---- */
   .digest-card{
@@ -5242,6 +5252,7 @@ const tickerTextEl = document.getElementById('tickerText');
 
 function renderTickerItem(item){
   tickerBadgeEl.textContent = item.badge;
+  tickerBadgeEl.classList.toggle('ticker-badge-herewego', !!item.isHereWeGo);
   tickerTextEl.textContent = item.text;
 }
 
@@ -5274,7 +5285,11 @@ async function loadTickerData(){
     const res = await fetch(`${AM4_API_BASE}/api/articles?type=transfer_news&pageSize=10`);
     if(!res.ok) throw new Error('fetch failed');
     const data = await res.json();
-    tickerData = (data.items || []).map(item => ({ badge: '移籍速報', text: item.title || '' }));
+    tickerData = (data.items || []).map(item => ({
+      badge: item.isHereWeGo ? '🚨 HERE WE GO' : '移籍速報',
+      text: item.title || '',
+      isHereWeGo: !!item.isHereWeGo,
+    }));
   } catch(e){
     console.error('ticker fetch failed', e);
     tickerData = [];
@@ -5798,9 +5813,12 @@ function renderTransferNewsItem(item){
   const dateStr = item.publishedAt
     ? new Date(item.publishedAt).toLocaleDateString('ja-JP', {month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'}).replace(/\//g, '.')
     : '';
+  // Here we go: ロマーノが移籍合意成立を告げる代名詞的な表現。バッジで目立たせる。
+  const hereWeGoBadge = item.isHereWeGo ? '<span class="herewego-badge">🚨 HERE WE GO</span>' : '';
   el.innerHTML = `
     <div class="transfer-news-row-top">
       <span class="transfer-news-date">${dateStr}</span>
+      ${hereWeGoBadge}
       <span class="transfer-news-headline">${item.title || ''}</span>
     </div>
     <p class="transfer-news-summary">${item.body || ''}</p>

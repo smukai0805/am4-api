@@ -84,7 +84,20 @@ export default async function handler(req, res) {
     const seenKeys = new Set(seenEntries.map(e => e.key));
 
     const clubNames = PILOT_CLUBS.map(c => c.name);
-    const { items, searchSources } = await checkTransferNews(clubNames);
+    const debugMode = req.query.debug === '1';
+    const { items, rejected, searchSources } = await checkTransferNews(clubNames);
+
+    // 【デバッグ用】本人確認基準を満たさず却下された候補を理由付きでログ出力する。
+    // 条件が厳しすぎるのか、そもそも検索がヒットしていないのかを切り分けるための情報
+    // (本番のレスポンス形状・cron設定には影響しない。?debug=1でレスポンスにも含める)。
+    if (rejected.length > 0) {
+      console.error(`transfer news: ${rejected.length}件の候補が本人確認基準を満たさず却下されました:`);
+      for (const r of rejected) {
+        console.error(`  - ${r.description || '(概要不明)'}: ${r.reason || '(理由不明)'}`);
+      }
+    } else {
+      console.error('transfer news: 却下された候補はありませんでした(検索がヒットしなかった可能性もある。searchSourcesCountを確認)');
+    }
 
     const generated = [];
     const skipped = [];
@@ -105,9 +118,12 @@ export default async function handler(req, res) {
         publishedAt: new Date().toISOString(),
         body: item.summary,
         hasScoreTable: null,
+        // isHereWeGoはトップレベルにも持たせる(hasScoreTableと同様、一覧の軽量メタデータに
+        // 含めてフロント側でバッジ表示の判定に使うため。transfer.isHereWeGoは詳細用の複製)。
+        isHereWeGo: item.isHereWeGo === true,
         sources: [{ title: 'Fabrizio Romano', url: item.sourceUrl }],
         status: 'published', // 速報性を優先するため、記事アーカイブ(下書き運用)とは異なり即時公開扱い
-        transfer: { player: item.player, fromClub: item.fromClub, toClub: item.toClub, status: item.status },
+        transfer: { player: item.player, fromClub: item.fromClub, toClub: item.toClub, status: item.status, isHereWeGo: item.isHereWeGo === true },
       };
       await saveArticle(article);
       generated.push(article);
@@ -127,6 +143,7 @@ export default async function handler(req, res) {
       generated,
       skipped,
       searchSourcesCount: searchSources.length,
+      ...(debugMode ? { debug: { rejected } } : {}),
     });
   } catch (err) {
     console.error(err);
