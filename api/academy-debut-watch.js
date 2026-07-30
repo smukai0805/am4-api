@@ -84,9 +84,9 @@ function calcAge(birthDateStr, onDate) {
   return age;
 }
 
-async function getRecentFixtures(teamId) {
+async function getRecentFixtures(teamId, lookbackDays) {
   const to = new Date();
-  const from = new Date(to.getTime() - LOOKBACK_DAYS * 24 * 60 * 60 * 1000);
+  const from = new Date(to.getTime() - lookbackDays * 24 * 60 * 60 * 1000);
   const fmt = d => d.toISOString().slice(0, 10);
 
   const data = await apiFootballFetch('/fixtures', {
@@ -139,6 +139,15 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'API_FOOTBALL_KEY が設定されていません' });
   }
 
+  // ?lookbackDays= で走査対象日数を一時的に広げられる(動作確認・チューニング用、既定値は3日)。
+  // ?debug=1 でクラブごとのfixture/lineup件数を含めて返す(検知0件時の原因切り分け用)。
+  const lookbackDaysParam = Number(req.query.lookbackDays);
+  const lookbackDays = Number.isInteger(lookbackDaysParam) && lookbackDaysParam > 0
+    ? Math.min(lookbackDaysParam, 30)
+    : LOOKBACK_DAYS;
+  const debugMode = req.query.debug === '1';
+  const clubDebug = [];
+
   try {
     const seenEntries = await loadSeenPlayers();
     const seenIds = new Set(seenEntries.map(e => e.playerId));
@@ -147,7 +156,8 @@ export default async function handler(req, res) {
     const profilesById = new Map();
 
     for (const club of PILOT_CLUBS) {
-      const fixtures = await getRecentFixtures(club.teamId);
+      const fixtures = await getRecentFixtures(club.teamId, lookbackDays);
+      if (debugMode) clubDebug.push({ club: club.name, teamId: club.teamId, fixturesFound: fixtures.length, fixtures: fixtures.map(f => ({ id: f.fixture.id, date: f.fixture.date, opponent: f.teams.home.id === club.teamId ? f.teams.away.name : f.teams.home.name })) });
 
       for (const fixture of fixtures) {
         const fixtureId = fixture.fixture.id;
@@ -229,6 +239,8 @@ export default async function handler(req, res) {
       generatedCount: generated.length,
       generated,
       pending, // 次回実行で処理される(または今回生成に失敗した)候補
+      lookbackDays,
+      ...(debugMode ? { debug: { clubDebug } } : {}),
     });
   } catch (err) {
     console.error(err);
