@@ -165,6 +165,7 @@ export default async function handler(req, res) {
         getFixturePlayers(fixtureId),
       ]);
       console.error(`[timing] events+players fetch: ${Date.now() - tFetch}ms`);
+      console.error(`[debug] events: ${events.length}, fixturePlayers teams: ${fixturePlayers.length}, players per team: ${fixturePlayers.map(t => t.players?.length ?? 0).join(',')}`);
       const teamGoalsConceded = {
         [fixture.teams.home.id]: fixture.goals.away,
         [fixture.teams.away.id]: fixture.goals.home,
