@@ -35,6 +35,7 @@ import { put, get } from '@vercel/blob';
 import { generateArticleDraft } from '../lib/academy-core.js';
 import { saveArticle, listArticles, slugify } from '../lib/article-store.js';
 import { PILOT_CLUBS } from '../lib/pilot-clubs.js';
+import { apiFootballFetch, mapWithConcurrency } from '../lib/api-football-client.js';
 
 // Markdownの下書き本文から見出し(# で始まる行)を抜き出してタイトルにする。
 // プロンプト内のフォーマット仕様書見出しがそのまま複製されてしまうことがあるため、
@@ -85,7 +86,6 @@ async function buildAndSaveArticle(candidate, profile) {
 // 既定値・上限が300秒)。
 export const config = { maxDuration: 300 };
 
-const API_FOOTBALL_HOST = 'v3.football.api-sports.io';
 const API_KEY = process.env.API_FOOTBALL_KEY;
 
 // 「アカデミー選手」とみなす年齢の上限(この年齢以下の出場を検知対象にする)。
@@ -99,16 +99,6 @@ const SEEN_PATHNAME = 'seen-academy-players.json';
 
 // 1回の実行で記事生成まで行う人数の上限(実行時間対策)。
 const MAX_ARTICLES_PER_RUN = 2;
-
-async function apiFootballFetch(path, params) {
-  const url = new URL(`https://${API_FOOTBALL_HOST}${path}`);
-  Object.entries(params || {}).forEach(([k, v]) => url.searchParams.set(k, v));
-  const res = await fetch(url, { headers: { 'x-apisports-key': API_KEY } });
-  if (!res.ok) {
-    throw new Error(`API-Football error: ${res.status} ${await res.text()}`);
-  }
-  return res.json();
-}
 
 function calcAge(birthDateStr, onDate) {
   const birth = new Date(birthDateStr);
@@ -217,16 +207,19 @@ export default async function handler(req, res) {
     const profilesById = new Map();
 
     // 【実行時間対策】各段階(fixtures取得→lineups取得→profiles取得)を、それぞれ
-    // クラブ/試合/選手をまたいでPromise.allで並列化する。逐次awaitのままだと、
-    // プレシーズンで試合数が多い時期に60秒の実行時間上限へすぐ達してしまうため。
+    // クラブ/試合/選手をまたいで並列化する。逐次awaitのままだと、プレシーズンで
+    // 試合数が多い時期に60秒の実行時間上限へすぐ達してしまうため。
+    // 【レート制限対策】PILOT_CLUBSを15クラブに拡張した実データ検証で、全クラブを
+    // 一斉にPromise.allで叩くとAPI-Football側のレート制限(data.errors.rateLimit)に
+    // 一部のクラブが引っかかることを確認した。そのため各段階ともmapWithConcurrencyで
+    // 一定数ずつのバッチ処理にし(バッチ内は並列)、apiFootballFetch側のリトライと
+    // 合わせて二重に対策している。
 
-    // 1) 全クラブのfixturesを並列取得
-    const clubFixtureResults = await Promise.all(
-      PILOT_CLUBS.map(async club => {
-        const { fixtures, errors, results } = await getRecentFixtures(club.teamId, lookbackDays);
-        return { club, fixtures, errors, results };
-      })
-    );
+    // 1) 全クラブのfixturesをバッチ並列取得
+    const clubFixtureResults = await mapWithConcurrency(PILOT_CLUBS, 5, async club => {
+      const { fixtures, errors, results } = await getRecentFixtures(club.teamId, lookbackDays);
+      return { club, fixtures, errors, results };
+    });
 
     if (debugMode) {
       for (const { club, fixtures, errors, results } of clubFixtureResults) {
@@ -245,28 +238,24 @@ export default async function handler(req, res) {
     const fixtureEntries = clubFixtureResults.flatMap(({ club, fixtures }) =>
       fixtures.map(fixture => ({ club, fixture }))
     );
-    const lineupResults = await Promise.all(
-      fixtureEntries.map(async ({ club, fixture }) => {
-        const players = await getLineup(fixture.fixture.id, club.teamId);
-        return { club, fixture, players };
-      })
-    );
+    const lineupResults = await mapWithConcurrency(fixtureEntries, 5, async ({ club, fixture }) => {
+      const players = await getLineup(fixture.fixture.id, club.teamId);
+      return { club, fixture, players };
+    });
 
-    // 3) (クラブ, 試合, 未検知選手) の組をフラットにし、profilesを並列取得
+    // 3) (クラブ, 試合, 未検知選手) の組をフラットにし、profilesをバッチ並列取得
     const playerEntries = lineupResults.flatMap(({ club, fixture, players }) =>
       players
         .filter(p => !seenIds.has(p.id))
         .map(player => ({ club, fixture, player }))
     );
-    const profileResults = await Promise.all(
-      playerEntries.map(async ({ club, fixture, player }) => {
-        // season非依存の /players/profiles で基礎プロフィール(生年月日含む)を取得。
-        // ここで取得したプロフィールは、年齢判定だけでなく後段の記事生成にもそのまま使う
-        // (二重にAPI-Footballへ問い合わせない)。
-        const data = await apiFootballFetch('/players/profiles', { player: player.id });
-        return { club, fixture, player, profile: data.response?.[0] || null };
-      })
-    );
+    const profileResults = await mapWithConcurrency(playerEntries, 5, async ({ club, fixture, player }) => {
+      // season非依存の /players/profiles で基礎プロフィール(生年月日含む)を取得。
+      // ここで取得したプロフィールは、年齢判定だけでなく後段の記事生成にもそのまま使う
+      // (二重にAPI-Footballへ問い合わせない)。
+      const data = await apiFootballFetch('/players/profiles', { player: player.id });
+      return { club, fixture, player, profile: data.response?.[0] || null };
+    });
 
     // 同じ選手が期間中の複数試合(例: プレシーズンの連戦)で条件に合致した場合の重複防止。
     const addedPlayerIds = new Set();

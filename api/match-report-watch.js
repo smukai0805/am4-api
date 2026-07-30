@@ -32,6 +32,7 @@ import {
 } from '../lib/match-report-core.js';
 import { saveArticle, listArticles, slugify } from '../lib/article-store.js';
 import { PILOT_CLUBS } from '../lib/pilot-clubs.js';
+import { apiFootballFetch, mapWithConcurrency } from '../lib/api-football-client.js';
 
 // Markdownの下書き本文から見出し(# で始まる行)を抜き出してタイトルにする。
 // プロンプト内のフォーマット仕様書見出しがそのまま複製されてしまうことがあるため、
@@ -82,7 +83,6 @@ async function buildAndSaveArticle(matchInfo, ratingResult) {
 // (Vercelは現在Fluid Compute上で全プランともmaxDuration既定値・上限が300秒)。
 export const config = { maxDuration: 300 };
 
-const API_FOOTBALL_HOST = 'v3.football.api-sports.io';
 const API_KEY = process.env.API_FOOTBALL_KEY;
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 
@@ -100,16 +100,6 @@ const MAX_ARTICLES_PER_RUN = 2;
 function currentSeasonYear(date = new Date()) {
   const month = date.getMonth();
   return month >= 6 ? date.getFullYear() : date.getFullYear() - 1;
-}
-
-async function apiFootballFetch(path, params) {
-  const url = new URL(`https://${API_FOOTBALL_HOST}${path}`);
-  Object.entries(params || {}).forEach(([k, v]) => url.searchParams.set(k, v));
-  const res = await fetch(url, { headers: { 'x-apisports-key': API_KEY } });
-  if (!res.ok) {
-    throw new Error(`API-Football error: ${res.status} ${await res.text()}`);
-  }
-  return res.json();
 }
 
 // API-FootballはHTTPステータス200のまま、パラメータ不正等をdata.errorsに埋めて返す
@@ -245,13 +235,15 @@ export default async function handler(req, res) {
     const seenEntries = await loadSeenMatches();
     const seenFixtureIds = new Set(seenEntries.map(e => e.fixtureId));
 
-    // 全クラブの終了済みfixturesを並列取得(実行時間対策)。
-    const clubResults = await Promise.all(
-      PILOT_CLUBS.map(async club => {
-        const { fixtures, errors, resultsCount } = await getRecentFinishedFixtures(club.teamId, lookbackDays);
-        return { club, fixtures, errors, resultsCount };
-      })
-    );
+    // 全クラブの終了済みfixturesをバッチ並列取得(実行時間対策)。
+    // 【レート制限対策】PILOT_CLUBSを15クラブに拡張した実データ検証で、全クラブを
+    // 一斉にPromise.allで叩くとAPI-Football側のレート制限(data.errors.rateLimit)に
+    // 一部のクラブが引っかかることを確認したため、一定数ずつのバッチ処理にした
+    // (apiFootballFetch側のリトライと合わせて二重に対策)。
+    const clubResults = await mapWithConcurrency(PILOT_CLUBS, 5, async club => {
+      const { fixtures, errors, resultsCount } = await getRecentFinishedFixtures(club.teamId, lookbackDays);
+      return { club, fixtures, errors, resultsCount };
+    });
 
     if (debugMode) {
       for (const { club, fixtures, errors, resultsCount } of clubResults) {
