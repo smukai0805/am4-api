@@ -171,6 +171,11 @@ export default async function handler(req, res) {
         [fixture.teams.away.id]: fixture.goals.home,
       };
       const ratingResult = computePlayerRatings(fixturePlayers, events, fixture.teams.home.id, fixture.teams.away.id, teamGoalsConceded);
+      // 親善試合など、API-Footballが選手個別スタッツ(fixtures/players)自体を提供していない
+      // 試合が存在する(採点表が必須のフォーマットのため、空の採点で記事化はしない)。
+      if (ratingResult.ratings.length === 0) {
+        return res.status(422).json({ error: 'この試合は選手個別スタッツが提供されていないため採点できません(親善試合等でAPI-Football側にデータが無い可能性があります)' });
+      }
 
       const matchInfo = {
         fixtureId,
@@ -280,6 +285,11 @@ export default async function handler(req, res) {
         const ratingResult = computePlayerRatings(
           fixturePlayers, events, fixture.teams.home.id, fixture.teams.away.id, teamGoalsConceded
         );
+        // 親善試合など、API-Footballが選手個別スタッツを提供していない試合はスキップする
+        // (採点表が必須のフォーマットのため、空の採点で記事化はしない)。
+        if (ratingResult.ratings.length === 0) {
+          throw new Error('選手個別スタッツが提供されていないため採点できません(親善試合等の可能性)');
+        }
         const matchInfo = {
           fixtureId: fixture.fixture.id,
           homeTeam: fixture.teams.home.name,
