@@ -34,6 +34,7 @@
 import { put, get } from '@vercel/blob';
 import { generateArticleDraft } from '../lib/academy-core.js';
 import { saveArticle, listArticles, slugify } from '../lib/article-store.js';
+import { PILOT_CLUBS } from '../lib/pilot-clubs.js';
 
 // Markdownの下書き本文から見出し(# で始まる行)を抜き出してタイトルにする。
 // プロンプト内のフォーマット仕様書見出しがそのまま複製されてしまうことがあるため、
@@ -86,17 +87,6 @@ export const config = { maxDuration: 300 };
 
 const API_FOOTBALL_HOST = 'v3.football.api-sports.io';
 const API_KEY = process.env.API_FOOTBALL_KEY;
-
-// パイロット対象クラブ(5大リーグの主要クラブ、team_idはAPI-Footballの実IDで
-// api/player-stats.js の TEAM_IDS 対応表と一致することを確認済み)。
-const PILOT_CLUBS = [
-  { name: 'Manchester United', teamId: 33 },
-  { name: 'Barcelona', teamId: 529 },
-  { name: 'Real Madrid', teamId: 541 },
-  { name: 'Bayern Munich', teamId: 157 },
-  { name: 'Juventus', teamId: 496 },
-  { name: 'Paris Saint Germain', teamId: 85 },
-];
 
 // 「アカデミー選手」とみなす年齢の上限(この年齢以下の出場を検知対象にする)。
 const AGE_THRESHOLD = 20;

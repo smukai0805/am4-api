@@ -31,6 +31,7 @@ import {
   generateMatchReportDraft,
 } from '../lib/match-report-core.js';
 import { saveArticle, listArticles, slugify } from '../lib/article-store.js';
+import { PILOT_CLUBS } from '../lib/pilot-clubs.js';
 
 // Markdownの下書き本文から見出し(# で始まる行)を抜き出してタイトルにする。
 // プロンプト内のフォーマット仕様書見出しがそのまま複製されてしまうことがあるため、
@@ -84,17 +85,6 @@ export const config = { maxDuration: 300 };
 const API_FOOTBALL_HOST = 'v3.football.api-sports.io';
 const API_KEY = process.env.API_FOOTBALL_KEY;
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
-
-// academy-debut-watch.jsと同じ対象クラブでパイロット開始(team_idはAPI-Footballの実IDで
-// api/player-stats.js の TEAM_IDS 対応表と一致することを確認済み)。
-const PILOT_CLUBS = [
-  { name: 'Manchester United', teamId: 33 },
-  { name: 'Barcelona', teamId: 529 },
-  { name: 'Real Madrid', teamId: 541 },
-  { name: 'Bayern Munich', teamId: 157 },
-  { name: 'Juventus', teamId: 496 },
-  { name: 'Paris Saint Germain', teamId: 85 },
-];
 
 // 直近何日分のfixtureを走査するか。
 const LOOKBACK_DAYS = 3;
@@ -173,19 +163,6 @@ async function saveSeenMatches(entries) {
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-
-  // 【一時的な調査用】新規追加クラブのteam ID確認用。GET ?teamLookup=1&name=Napoli
-  if (req.method === 'GET' && req.query.teamLookup === '1') {
-    const name = String(req.query.name || '');
-    const url = new URL('https://v3.football.api-sports.io/teams');
-    url.searchParams.set('search', name);
-    const r = await fetch(url, { headers: { 'x-apisports-key': API_KEY } });
-    const d = await r.json();
-    return res.status(200).json({
-      results: d.results,
-      teams: (d.response || []).map(t => ({ id: t.team.id, name: t.team.name, country: t.team.country })),
-    });
-  }
 
   // 保存済み記事一覧の確認用(簡易レビュー): GET /api/match-report-watch?list=1
   // 一般公開用の一覧・詳細APIは api/articles.js を使うこと(こちらは動作確認用の簡易版)。
