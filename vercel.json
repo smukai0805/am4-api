@@ -4,6 +4,7 @@
     { "path": "/api/academy-debut-watch", "schedule": "0 14 * * *" },
     { "path": "/api/match-report-watch", "schedule": "0 17 * * *" },
     { "path": "/api/match-report-watch", "schedule": "30 21 * * *" },
-    { "path": "/api/match-report-watch", "schedule": "0 5 * * *" }
+    { "path": "/api/match-report-watch", "schedule": "0 5 * * *" },
+    { "path": "/api/transfer-news-watch", "schedule": "10 0,3,6,9,12,15,18,21 * * *" }
   ]
 }

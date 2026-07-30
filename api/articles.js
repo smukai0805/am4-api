@@ -13,7 +13,7 @@
 
 import { listArticles, getArticle } from '../lib/article-store.js';
 
-const VALID_TYPES = ['match_report', 'player_intro'];
+const VALID_TYPES = ['match_report', 'player_intro', 'transfer_news'];
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
