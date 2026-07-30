@@ -94,7 +94,12 @@ async function getRecentFixtures(teamId, lookbackDays) {
     from: fmt(from),
     to: fmt(to),
   });
-  return data.response || [];
+  // API-FootballはHTTPステータス200のまま、パラメータ不正等をdata.errorsに埋めて返す
+  // ことがある(res.okだけを見ていると気づけない)。呼び出し元(debugモード)で
+  // 原因切り分けできるよう、errorsとresultsも合わせて返す。
+  const errors = data.errors && Object.keys(data.errors).length > 0 ? data.errors : null;
+  if (errors) console.error(`API-Football /fixtures errors (team=${teamId}):`, errors);
+  return { fixtures: data.response || [], errors, results: data.results };
 }
 
 async function getLineup(fixtureId, teamId) {
@@ -156,8 +161,15 @@ export default async function handler(req, res) {
     const profilesById = new Map();
 
     for (const club of PILOT_CLUBS) {
-      const fixtures = await getRecentFixtures(club.teamId, lookbackDays);
-      if (debugMode) clubDebug.push({ club: club.name, teamId: club.teamId, fixturesFound: fixtures.length, fixtures: fixtures.map(f => ({ id: f.fixture.id, date: f.fixture.date, opponent: f.teams.home.id === club.teamId ? f.teams.away.name : f.teams.home.name })) });
+      const { fixtures, errors: fixtureErrors, results: fixtureResults } = await getRecentFixtures(club.teamId, lookbackDays);
+      if (debugMode) clubDebug.push({
+        club: club.name,
+        teamId: club.teamId,
+        apiResults: fixtureResults,
+        apiErrors: fixtureErrors,
+        fixturesFound: fixtures.length,
+        fixtures: fixtures.map(f => ({ id: f.fixture.id, date: f.fixture.date, opponent: f.teams.home.id === club.teamId ? f.teams.away.name : f.teams.home.name })),
+      });
 
       for (const fixture of fixtures) {
         const fixtureId = fixture.fixture.id;
