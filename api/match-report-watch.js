@@ -30,7 +30,7 @@ import {
   computePlayerRatings,
   generateMatchReportDraft,
 } from '../lib/match-report-core.js';
-import { saveArticle, listArticles, slugify } from '../lib/article-store.js';
+import { saveArticle, getArticle, listArticles, slugify } from '../lib/article-store.js';
 
 // Markdownの下書き本文から見出し(# で始まる行)を抜き出してタイトルにする。
 // プロンプト内のフォーマット仕様書見出しがそのまま複製されてしまうことがあるため、
@@ -167,6 +167,18 @@ async function saveSeenMatches(entries) {
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
+
+  // 【一時的な修正用、AI呼び出し不要】既存保存済み記事の本文先頭に残っている
+  // フォーマット仕様書見出しの誤混入を、再生成せずその場でクリーンアップする。
+  // GET /api/match-report-watch?cleanArticle=1&id=<slug>
+  if (req.method === 'GET' && req.query.cleanArticle === '1') {
+    const id = String(req.query.id || '');
+    const article = await getArticle(id);
+    if (!article) return res.status(404).json({ error: '記事が見つかりません' });
+    article.body = (article.body || '').replace(/^.*フォーマット\(AM4\).*\n+/m, '');
+    await saveArticle(article);
+    return res.status(200).json({ cleaned: article.id, bodyPreview: article.body.slice(0, 80) });
+  }
 
   // 保存済み記事一覧の確認用(簡易レビュー): GET /api/match-report-watch?list=1
   // 一般公開用の一覧・詳細APIは api/articles.js を使うこと(こちらは動作確認用の簡易版)。
