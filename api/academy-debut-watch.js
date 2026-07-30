@@ -172,57 +172,84 @@ export default async function handler(req, res) {
     const candidates = [];
     const profilesById = new Map();
 
-    for (const club of PILOT_CLUBS) {
-      const { fixtures, errors: fixtureErrors, results: fixtureResults } = await getRecentFixtures(club.teamId, lookbackDays);
-      if (debugMode) clubDebug.push({
-        club: club.name,
-        teamId: club.teamId,
-        apiResults: fixtureResults,
-        apiErrors: fixtureErrors,
-        fixturesFound: fixtures.length,
-        fixtures: fixtures.map(f => ({ id: f.fixture.id, date: f.fixture.date, opponent: f.teams.home.id === club.teamId ? f.teams.away.name : f.teams.home.name })),
-      });
+    // 【実行時間対策】各段階(fixtures取得→lineups取得→profiles取得)を、それぞれ
+    // クラブ/試合/選手をまたいでPromise.allで並列化する。逐次awaitのままだと、
+    // プレシーズンで試合数が多い時期に60秒の実行時間上限へすぐ達してしまうため。
 
-      for (const fixture of fixtures) {
-        const fixtureId = fixture.fixture.id;
-        const players = await getLineup(fixtureId, club.teamId);
-        const unseenPlayers = players.filter(p => !seenIds.has(p.id));
+    // 1) 全クラブのfixturesを並列取得
+    const clubFixtureResults = await Promise.all(
+      PILOT_CLUBS.map(async club => {
+        const { fixtures, errors, results } = await getRecentFixtures(club.teamId, lookbackDays);
+        return { club, fixtures, errors, results };
+      })
+    );
 
-        // プロフィール取得(1人ずつawaitすると、スタメン11人×複数試合×6クラブで
-        // 実行時間の上限(60秒)に達しかねないため、1試合分はまとめて並列取得する。
-        const profileResults = await Promise.all(
-          unseenPlayers.map(async player => {
-            // season非依存の /players/profiles で基礎プロフィール(生年月日含む)を取得。
-            // ここで取得したプロフィールは、年齢判定だけでなく後段の記事生成にもそのまま使う
-            // (二重にAPI-Footballへ問い合わせない)。
-            const data = await apiFootballFetch('/players/profiles', { player: player.id });
-            return { player, profile: data.response?.[0] || null };
-          })
-        );
-
-        for (const { player, profile } of profileResults) {
-          const birthDate = profile?.player?.birth?.date;
-          if (!birthDate) continue;
-
-          const age = calcAge(birthDate, new Date(fixture.fixture.date));
-          if (age > AGE_THRESHOLD) continue;
-
-          candidates.push({
-            playerId: player.id,
-            name: player.name,
-            age,
-            club: club.name,
-            fixtureId,
-            fixtureDate: fixture.fixture.date,
-            opponent:
-              fixture.teams.home.id === club.teamId
-                ? fixture.teams.away.name
-                : fixture.teams.home.name,
-            competition: fixture.league?.name,
-          });
-          profilesById.set(player.id, profile);
-        }
+    if (debugMode) {
+      for (const { club, fixtures, errors, results } of clubFixtureResults) {
+        clubDebug.push({
+          club: club.name,
+          teamId: club.teamId,
+          apiResults: results,
+          apiErrors: errors,
+          fixturesFound: fixtures.length,
+          fixtures: fixtures.map(f => ({ id: f.fixture.id, date: f.fixture.date, opponent: f.teams.home.id === club.teamId ? f.teams.away.name : f.teams.home.name })),
+        });
       }
+    }
+
+    // 2) (クラブ, 試合) の組をフラットにし、lineupsを並列取得
+    const fixtureEntries = clubFixtureResults.flatMap(({ club, fixtures }) =>
+      fixtures.map(fixture => ({ club, fixture }))
+    );
+    const lineupResults = await Promise.all(
+      fixtureEntries.map(async ({ club, fixture }) => {
+        const players = await getLineup(fixture.fixture.id, club.teamId);
+        return { club, fixture, players };
+      })
+    );
+
+    // 3) (クラブ, 試合, 未検知選手) の組をフラットにし、profilesを並列取得
+    const playerEntries = lineupResults.flatMap(({ club, fixture, players }) =>
+      players
+        .filter(p => !seenIds.has(p.id))
+        .map(player => ({ club, fixture, player }))
+    );
+    const profileResults = await Promise.all(
+      playerEntries.map(async ({ club, fixture, player }) => {
+        // season非依存の /players/profiles で基礎プロフィール(生年月日含む)を取得。
+        // ここで取得したプロフィールは、年齢判定だけでなく後段の記事生成にもそのまま使う
+        // (二重にAPI-Footballへ問い合わせない)。
+        const data = await apiFootballFetch('/players/profiles', { player: player.id });
+        return { club, fixture, player, profile: data.response?.[0] || null };
+      })
+    );
+
+    // 同じ選手が期間中の複数試合(例: プレシーズンの連戦)で条件に合致した場合の重複防止。
+    const addedPlayerIds = new Set();
+
+    for (const { club, fixture, player, profile } of profileResults) {
+      if (addedPlayerIds.has(player.id)) continue;
+      const birthDate = profile?.player?.birth?.date;
+      if (!birthDate) continue;
+
+      const age = calcAge(birthDate, new Date(fixture.fixture.date));
+      if (age > AGE_THRESHOLD) continue;
+
+      addedPlayerIds.add(player.id);
+      candidates.push({
+        playerId: player.id,
+        name: player.name,
+        age,
+        club: club.name,
+        fixtureId: fixture.fixture.id,
+        fixtureDate: fixture.fixture.date,
+        opponent:
+          fixture.teams.home.id === club.teamId
+            ? fixture.teams.away.name
+            : fixture.teams.home.name,
+        competition: fixture.league?.name,
+      });
+      profilesById.set(player.id, profile);
     }
 
     // 記事生成(Web検索+AI生成)は時間・コストがかかるため、1回あたり上限人数まで。
