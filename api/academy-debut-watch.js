@@ -115,7 +115,9 @@ async function getRecentFixtures(teamId, lookbackDays) {
 async function getLineup(fixtureId, teamId) {
   const data = await apiFootballFetch('/fixtures/lineups', { fixture: fixtureId });
   const teamLineup = (data.response || []).find(l => l.team.id === teamId);
-  if (!teamLineup) return [];
+  // 未来の試合や、ラインナップがまだ登録されていない試合ではstartXIが無い(undefined)
+  // ことがあるため、配列であることを確認してから使う。
+  if (!teamLineup || !Array.isArray(teamLineup.startXI)) return [];
   // まずはスタメン(startXI)出場のみを検知対象にする。「メンバー入り(ベンチ)のみ」も
   // 記事化対象にしたい場合は teamLineup.substitutes も含めて判定ロジックを追加すること。
   return teamLineup.startXI.map(p => p.player);
