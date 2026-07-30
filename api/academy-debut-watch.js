@@ -33,7 +33,7 @@
 
 import crypto from 'node:crypto';
 import { put, get } from '@vercel/blob';
-import { generateArticleDraft, saveDraft } from './generate-academy-player-article.js';
+import { generateArticleDraft, saveDraft, loadDraftLog } from '../lib/academy-core.js';
 
 export const config = { maxDuration: 60 };
 
@@ -151,6 +151,15 @@ async function saveSeenPlayers(entries) {
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
+
+  // 保存済み下書き一覧の確認用(簡易レビュー): GET /api/academy-debut-watch?list=1
+  // (旧 api/generate-academy-player-article.js の一覧エンドポイントをここに統合。
+  //  Vercel Hobbyプランのサーバーレス関数数上限(12個/デプロイ)対策で、当該ファイルは
+  //  lib/academy-core.js に統合し、api/配下の関数としては数えない形にした)
+  if (req.method === 'GET' && req.query.list === '1') {
+    const log = await loadDraftLog();
+    return res.status(200).json({ drafts: log });
+  }
 
   if (!API_KEY) {
     return res.status(500).json({ error: 'API_FOOTBALL_KEY が設定されていません' });

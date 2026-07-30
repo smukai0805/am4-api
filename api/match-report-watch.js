@@ -25,17 +25,20 @@
 import crypto from 'node:crypto';
 import { put, get } from '@vercel/blob';
 import {
+  getFixtureDetail,
   getFixtureEvents,
   getFixturePlayers,
   computePlayerRatings,
   generateMatchReportDraft,
   saveDraft,
-} from './generate-match-report-article.js';
+  loadDraftLog,
+} from '../lib/match-report-core.js';
 
 export const config = { maxDuration: 60 };
 
 const API_FOOTBALL_HOST = 'v3.football.api-sports.io';
 const API_KEY = process.env.API_FOOTBALL_KEY;
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 
 // academy-debut-watch.jsと同じ対象クラブでパイロット開始(team_idはAPI-Footballの実IDで
 // api/player-stats.js の TEAM_IDS 対応表と一致することを確認済み)。
@@ -125,6 +128,70 @@ async function saveSeenMatches(entries) {
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
+
+  // 保存済み下書き一覧の確認用(簡易レビュー): GET /api/match-report-watch?list=1
+  // (旧 api/generate-match-report-article.js の一覧エンドポイントをここに統合。
+  //  Vercel Hobbyプランのサーバーレス関数数上限(12個/デプロイ)対策で、当該ファイルは
+  //  lib/match-report-core.js に統合し、api/配下の関数としては数えない形にした)
+  if (req.method === 'GET' && req.query.list === '1') {
+    const log = await loadDraftLog();
+    return res.status(200).json({ drafts: log });
+  }
+
+  // 特定の試合を手動で(再)生成したい場合の動作確認・単体テスト用:
+  // POST /api/match-report-watch { "fixtureId": 12345 }
+  if (req.method === 'POST') {
+    if (!ANTHROPIC_API_KEY) {
+      return res.status(500).json({ error: 'ANTHROPIC_API_KEY が設定されていません' });
+    }
+    if (!API_KEY) {
+      return res.status(500).json({ error: 'API_FOOTBALL_KEY が設定されていません' });
+    }
+    try {
+      const { fixtureId } = req.body || {};
+      if (!fixtureId) return res.status(400).json({ error: 'fixtureId is required' });
+
+      const fixture = await getFixtureDetail(fixtureId);
+      if (!fixture) return res.status(404).json({ error: '指定されたfixtureIdの試合が見つかりませんでした' });
+
+      const [events, fixturePlayers] = await Promise.all([
+        getFixtureEvents(fixtureId),
+        getFixturePlayers(fixtureId),
+      ]);
+      const teamGoalsConceded = {
+        [fixture.teams.home.id]: fixture.goals.away,
+        [fixture.teams.away.id]: fixture.goals.home,
+      };
+      const ratingResult = computePlayerRatings(fixturePlayers, events, fixture.teams.home.id, fixture.teams.away.id, teamGoalsConceded);
+
+      const matchInfo = {
+        fixtureId,
+        homeTeam: fixture.teams.home.name,
+        awayTeam: fixture.teams.away.name,
+        homeGoals: fixture.goals.home,
+        awayGoals: fixture.goals.away,
+        competition: fixture.league?.name,
+        date: fixture.fixture.date,
+        venue: fixture.fixture.venue?.name,
+      };
+      const { draft, searchSources } = await generateMatchReportDraft(matchInfo, ratingResult);
+
+      const entry = {
+        id: crypto.randomUUID(),
+        match: matchInfo,
+        ratings: ratingResult,
+        draft,
+        searchSources,
+        status: 'draft_generated',
+        generatedAt: new Date().toISOString(),
+      };
+      await saveDraft(entry);
+      return res.status(200).json(entry);
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ error: err.message });
+    }
+  }
 
   if (!API_KEY) {
     return res.status(500).json({ error: 'API_FOOTBALL_KEY が設定されていません' });
