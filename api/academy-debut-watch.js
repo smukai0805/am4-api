@@ -1,0 +1,237 @@
+// api/academy-debut-watch.js
+//
+// 下部組織(アカデミー)選手のトップチーム合流・初出場を検知し、新規検知分については
+// その場で選手紹介記事の下書き生成まで行うVercelサーバーレス関数。Vercel Cronで
+// 1日2回程度自動実行する想定(vercel.json参照)。
+//
+// フロー:
+//   1. PILOT_CLUBS の各クラブについて、直近の試合(fixtures)を取得
+//   2. 各試合のスタメン(lineups)を取得
+//   3. 出場選手のプロフィール(生年月日等)をAPI-Footballから取得し、年齢を算出
+//   4. AGE_THRESHOLD以下 かつ 検知済みリスト未登録の選手を「新規検知」として抽出
+//   5. 新規検知した選手について、generate-academy-player-article.js の
+//      generateArticleDraft() をその場で呼び出して記事下書きを生成・保存する
+//   6. 実際に下書き生成まで完了した選手だけを検知済みリストに追加する
+//      (生成に失敗した場合はリストに追加せず、次回実行時に再度候補として拾われる)
+//
+// 【永続化について】
+// Vercelはステートレスなため、検知済み選手リスト(誰の記事をもう生成したか)を
+// どこかに保存しておく必要がある。GitHub Contents API経由でリポジトリ内の
+// JSONファイルを都度コミットする方式も検討したが、実装・運用(コンフリクト、
+// API呼び出しの複雑さ)の割に得るものが少ないため、このリポジトリで既に
+// 動作実績のあるVercel Blob(ai-column.jsのコラムアーカイブと同じ仕組み・
+// 同じプライベートストア)を採用した。
+//
+// 【1回の実行あたりの処理人数について】
+// 記事生成はWeb検索+AI生成を伴うため、1人あたり数秒〜十数秒かかる。Vercelの
+// サーバーレス関数の実行時間上限(Hobbyプランで60秒)を踏まえ、1回の実行で
+// 記事生成まで行うのは MAX_ARTICLES_PER_RUN 人までに制限している。それを超えた
+// 新規検知分は検知済みリストに追加されないため、次回のCron実行時に改めて
+// 候補として拾われ、順次処理される。
+//
+// 環境変数: API_FOOTBALL_KEY が必要。
+
+import crypto from 'node:crypto';
+import { put, get } from '@vercel/blob';
+import { generateArticleDraft, saveDraft } from './generate-academy-player-article.js';
+
+export const config = { maxDuration: 60 };
+
+const API_FOOTBALL_HOST = 'v3.football.api-sports.io';
+const API_KEY = process.env.API_FOOTBALL_KEY;
+
+// パイロット対象クラブ(5大リーグの主要クラブ、team_idはAPI-Footballの実IDで
+// api/player-stats.js の TEAM_IDS 対応表と一致することを確認済み)。
+const PILOT_CLUBS = [
+  { name: 'Manchester United', teamId: 33 },
+  { name: 'Barcelona', teamId: 529 },
+  { name: 'Real Madrid', teamId: 541 },
+  { name: 'Bayern Munich', teamId: 157 },
+  { name: 'Juventus', teamId: 496 },
+  { name: 'Paris Saint Germain', teamId: 85 },
+];
+
+// 「アカデミー選手」とみなす年齢の上限(この年齢以下の出場を検知対象にする)。
+const AGE_THRESHOLD = 20;
+
+// 直近何日分のfixtureを走査するか。
+const LOOKBACK_DAYS = 3;
+
+// 検知済み選手リストの保存先(Vercel Blob、プライベートアクセス)。
+const SEEN_PATHNAME = 'seen-academy-players.json';
+
+// 1回の実行で記事生成まで行う人数の上限(実行時間対策)。
+const MAX_ARTICLES_PER_RUN = 2;
+
+async function apiFootballFetch(path, params) {
+  const url = new URL(`https://${API_FOOTBALL_HOST}${path}`);
+  Object.entries(params || {}).forEach(([k, v]) => url.searchParams.set(k, v));
+  const res = await fetch(url, { headers: { 'x-apisports-key': API_KEY } });
+  if (!res.ok) {
+    throw new Error(`API-Football error: ${res.status} ${await res.text()}`);
+  }
+  return res.json();
+}
+
+function calcAge(birthDateStr, onDate) {
+  const birth = new Date(birthDateStr);
+  const ref = onDate || new Date();
+  let age = ref.getFullYear() - birth.getFullYear();
+  const m = ref.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && ref.getDate() < birth.getDate())) {
+    age--;
+  }
+  return age;
+}
+
+async function getRecentFixtures(teamId) {
+  const to = new Date();
+  const from = new Date(to.getTime() - LOOKBACK_DAYS * 24 * 60 * 60 * 1000);
+  const fmt = d => d.toISOString().slice(0, 10);
+
+  const data = await apiFootballFetch('/fixtures', {
+    team: teamId,
+    from: fmt(from),
+    to: fmt(to),
+  });
+  return data.response || [];
+}
+
+async function getLineup(fixtureId, teamId) {
+  const data = await apiFootballFetch('/fixtures/lineups', { fixture: fixtureId });
+  const teamLineup = (data.response || []).find(l => l.team.id === teamId);
+  if (!teamLineup) return [];
+  // まずはスタメン(startXI)出場のみを検知対象にする。「メンバー入り(ベンチ)のみ」も
+  // 記事化対象にしたい場合は teamLineup.substitutes も含めて判定ロジックを追加すること。
+  return teamLineup.startXI.map(p => p.player);
+}
+
+async function loadSeenPlayers() {
+  try {
+    const result = await get(SEEN_PATHNAME, { access: 'private', useCache: false });
+    if (!result || !result.stream) return [];
+    const text = await new Response(result.stream).text();
+    const data = JSON.parse(text);
+    return Array.isArray(data) ? data : [];
+  } catch (err) {
+    console.error('seen players load error:', err.message);
+    return [];
+  }
+}
+
+async function saveSeenPlayers(entries) {
+  try {
+    await put(SEEN_PATHNAME, JSON.stringify(entries), {
+      access: 'private',
+      addRandomSuffix: false,
+      allowOverwrite: true,
+      contentType: 'application/json',
+    });
+  } catch (err) {
+    console.error('seen players save error:', err.message);
+  }
+}
+
+export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+
+  if (!API_KEY) {
+    return res.status(500).json({ error: 'API_FOOTBALL_KEY が設定されていません' });
+  }
+
+  try {
+    const seenEntries = await loadSeenPlayers();
+    const seenIds = new Set(seenEntries.map(e => e.playerId));
+
+    const candidates = [];
+    const profilesById = new Map();
+
+    for (const club of PILOT_CLUBS) {
+      const fixtures = await getRecentFixtures(club.teamId);
+
+      for (const fixture of fixtures) {
+        const fixtureId = fixture.fixture.id;
+        const players = await getLineup(fixtureId, club.teamId);
+
+        for (const player of players) {
+          if (seenIds.has(player.id)) continue;
+
+          // season非依存の /players/profiles で基礎プロフィール(生年月日含む)を取得。
+          // ここで取得したプロフィールは、年齢判定だけでなく後段の記事生成にもそのまま使う
+          // (二重にAPI-Footballへ問い合わせない)。
+          const data = await apiFootballFetch('/players/profiles', { player: player.id });
+          const profile = data.response?.[0] || null;
+          const birthDate = profile?.player?.birth?.date;
+          if (!birthDate) continue;
+
+          const age = calcAge(birthDate, new Date(fixture.fixture.date));
+          if (age > AGE_THRESHOLD) continue;
+
+          candidates.push({
+            playerId: player.id,
+            name: player.name,
+            age,
+            club: club.name,
+            fixtureId,
+            fixtureDate: fixture.fixture.date,
+            opponent:
+              fixture.teams.home.id === club.teamId
+                ? fixture.teams.away.name
+                : fixture.teams.home.name,
+            competition: fixture.league?.name,
+          });
+          profilesById.set(player.id, profile);
+        }
+      }
+    }
+
+    // 記事生成(Web検索+AI生成)は時間・コストがかかるため、1回あたり上限人数まで。
+    // 生成に成功した人だけを検知済みリストに追加し、それ以外は次回実行時に再度候補になる。
+    const generated = [];
+    const pending = [];
+
+    for (const candidate of candidates) {
+      if (generated.length >= MAX_ARTICLES_PER_RUN) {
+        pending.push(candidate);
+        continue;
+      }
+      try {
+        const profile = profilesById.get(candidate.playerId) || null;
+        const { draft, searchSources } = await generateArticleDraft(candidate, profile);
+        const entry = {
+          id: crypto.randomUUID(),
+          player: candidate,
+          draft,
+          searchSources,
+          status: 'draft_generated',
+          generatedAt: new Date().toISOString(),
+        };
+        await saveDraft(entry);
+        generated.push(entry);
+        seenEntries.push({
+          playerId: candidate.playerId,
+          name: candidate.name,
+          club: candidate.club,
+          firstSeenAt: new Date().toISOString(),
+        });
+      } catch (err) {
+        console.error(`article generation failed for player ${candidate.playerId}:`, err.message);
+        pending.push(candidate);
+      }
+    }
+
+    if (generated.length > 0) {
+      await saveSeenPlayers(seenEntries);
+    }
+
+    return res.status(200).json({
+      detectedCount: candidates.length,
+      generatedCount: generated.length,
+      generated,
+      pending, // 次回実行で処理される(または今回生成に失敗した)候補
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: err.message });
+  }
+}

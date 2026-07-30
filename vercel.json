@@ -1,2 +1,6 @@
 {
+  "crons": [
+    { "path": "/api/academy-debut-watch", "schedule": "0 21 * * *" },
+    { "path": "/api/academy-debut-watch", "schedule": "0 14 * * *" }
+  ]
 }
