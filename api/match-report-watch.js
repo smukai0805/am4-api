@@ -42,9 +42,10 @@ function extractTitle(draft, fallback) {
   return real || fallback;
 }
 
-// プロンプト内のフォーマット仕様書見出し行がそのまま複製されてしまった場合、本文からも除去する。
+// プロンプト内のフォーマット仕様書見出し行(# 形式・【】形式のどちらでも)が
+// そのまま複製されてしまった場合、本文の先頭から除去する。
 function stripFormatSpecHeading(draft) {
-  return (draft || '').replace(/^#\s+.*フォーマット\(AM4\).*\n+/m, '');
+  return (draft || '').replace(/^.*フォーマット\(AM4\).*\n+/m, '');
 }
 
 async function buildAndSaveArticle(matchInfo, ratingResult) {
