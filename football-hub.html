@@ -5693,42 +5693,16 @@ archiveBackBtn.addEventListener('click', () => showPage('news'));
 loadArchiveSection('match_report', matchReportArchiveList, matchReportArchiveStatus);
 loadArchiveSection('player_intro', playerIntroArchiveList, playerIntroArchiveStatus);
 
-/* ===================== 特集(AM4編集部記事 + 試合レポート、旧仕様・現在未使用) =====================
-   【2026-07-31 停止】このタブは試合解説・選手紹介の記事アーカイブ(下記
-   「特集タブ(記事アーカイブ)」セクション)に置き換えた。以下のrenderMatchReports/
-   renderAiColumns/renderHeroCarousel/loadOtherNews/loadNewsContentは、対応するDOM要素
-   (#matchReportList/#aiColumnList/#newsLeagueTabs等)をHTML側から削除したため現在は
-   一切呼び出されない(呼び出し箇所は全て削除済み)。コード自体は将来の用途変更に備えて
-   残してあるが、有効化する場合はHTML側の要素を復元する必要がある。 */
-// 【2026-07-31】旧要素は削除済みのため、以下は常にnullになる(renderMatchReports等の
-// 未使用関数からのみ参照される)。
-const matchReportList = document.getElementById('matchReportList');
-const aiColumnList = document.getElementById('aiColumnList');
-const newsStatus = document.getElementById('newsStatus');
-const aiColumnRefreshBtn = document.getElementById('aiColumnRefreshBtn');
-const newsLeagueTabs = document.getElementById('newsLeagueTabs');
-
-// latestColumnsは club-news(クラブ別関連ニュース)等、他機能からも参照され続けているため
-// 変数自体は残す(常に空配列。ai-column表示の廃止に伴う既知の仕様)。
-let currentLeague = 'all';
+/* ===================== 特集タブ 旧仕様(ai-column.js/旧match-report.js、削除済み) =====================
+   【2026-07-31】このタブは試合解説・選手紹介の記事アーカイブ(上記「特集タブ(記事アーカイブ)」
+   セクション)に置き換えた。バックエンド(api/ai-column.js、旧api/match-report.js)も
+   フロントから一切呼ばれていないことを確認のうえ削除し、Vercel Hobbyプランのサーバーレス
+   関数枠を空けた(daily-digest.jsはlib/へ移設、feature.jsは特集記事リクエスト機能で
+   引き続き使用中のためどちらも維持)。renderMatchReports/renderAiColumns/
+   renderHeroCarousel/loadNewsContentもバックエンドごと削除済み。 */
+// latestColumnsは club-news(クラブ別関連ニュース)・findRelatedArticles等、他機能からも
+// 参照され続けているため変数自体は残す(常に空配列。ai-column表示の廃止に伴う既知の仕様)。
 let latestColumns = [];
-let latestReports = [];
-
-function renderSourcesHtml(sources){
-  if(!sources || sources.length === 0) return '';
-  return `<div class="am4-column-sources">元記事: ${sources.map(s =>
-    s.link
-      ? `<a href="${s.link}" target="_blank" rel="noopener noreferrer">${s.source ? `[${s.source}] ` : ''}${s.title || 'リンク'}</a>`
-      : `${s.source ? `[${s.source}] ` : ''}${s.title || ''}`
-  ).join(' / ')}</div>`;
-}
-
-// 複数リーグにまたがる記事(例: 移籍の噂で現所属クラブと移籍先候補クラブのリーグが違う場合)を
-// 小さなチップとして表示する。「全体」タブで見た時に、どのタブからも辿れる記事だと分かるように。
-function renderLeagueChipsHtml(leagues){
-  if(!leagues || leagues.length === 0) return '';
-  return `<div class="league-chips">${leagues.map(l=>`<span class="league-chip">${l}</span>`).join('')}</div>`;
-}
 
 // AM4編集部記事・試合レポートのサムネイル。合成記事自体には専用の画像が無いため、
 // バックエンド側で根拠にした実記事(sources)から借りてきた画像を表示する。
@@ -5738,79 +5712,6 @@ function renderCardThumbHtml(image){
     return `<img class="card-thumb" src="${image}" loading="lazy" alt="" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'card-thumb-placeholder',textContent:'⚽'}))">`;
   }
   return `<div class="card-thumb-placeholder">⚽</div>`;
-}
-
-function renderMatchReports(reports){
-  matchReportList.innerHTML = '';
-  // leaguesは配列なので、選択中のタブがその配列に含まれていれば表示する(OR一致)。
-  const filtered = currentLeague === 'all' ? reports : reports.filter(r => (r.leagues || []).includes(currentLeague));
-  filtered.forEach(r=>{
-    const el = document.createElement('div');
-    el.className = 'match-report';
-    const scoreHtml = r.score ? `
-      <div class="match-score-row">
-        <div class="team">${r.homeTeam}</div>
-        <div class="score">${r.score}</div>
-        <div class="team">${r.awayTeam}</div>
-      </div>` : '';
-    // videoId(YouTube動画ID)はapi/match-report.js側でYOUTUBE_API_KEY未設定時はnullが返る。
-    // 動画が無い場合は、根拠記事から借りた写真(r.image)があればそれを代わりに表示し、
-    // それも無ければ「準備中」のプレースホルダーにする。
-    // 動画がある場合も、記事を開いた瞬間に大きなiframeを読み込んで領域を占有しないよう、
-    // 最初はサムネイル+再生ボタンだけを表示し、クリックされた時だけiframeに差し替える。
-    const videoHtml = r.videoId
-      ? `<div class="video-embed video-thumb-trigger" data-video-id="${r.videoId}">
-           <img class="video-fallback-img" src="https://img.youtube.com/vi/${r.videoId}/hqdefault.jpg" loading="lazy" alt="">
-           <div class="video-play-overlay"><span class="play-icon">▶</span></div>
-         </div>`
-      : r.image
-        ? `<div class="video-embed"><img class="video-fallback-img" src="${r.image}" loading="lazy" alt=""></div>`
-        : `<div class="video-embed"><div class="video-pending"><span class="play-icon">▶</span><span>ハイライト動画は準備中です</span></div></div>`;
-    // 本文セクション(前半/後半〜延長戦/記録・注目ポイント)は最初の2つだけ表示し、
-    // 残りは「続きを読む」ボタンで展開する折りたたみ式にする(記事が長すぎて見づらいため)。
-    const allSections = r.sections || [];
-    const visibleSections = allSections.slice(0, 2);
-    const hiddenSections = allSections.slice(2);
-    const sectionHtml = s => `
-      <div class="report-section-label">${s.label}</div>
-      <p>${s.body}</p>
-    `;
-    const visibleSectionsHtml = visibleSections.map(sectionHtml).join('');
-    const hiddenSectionsHtml = hiddenSections.map(sectionHtml).join('');
-    const toggleHtml = hiddenSections.length > 0
-      ? `<div class="match-report-collapsed" style="display:none;">${hiddenSectionsHtml}</div>
-         <button class="match-report-toggle">続きを読む ▼</button>`
-      : '';
-    el.innerHTML = `
-      <div class="badges">
-        ${r.competition ? `<span class="badge-comp">${r.competition}</span>` : ''}
-        <span class="badge-report">試合レポート</span>
-      </div>
-      <h3>${r.title || ''}</h3>
-      ${scoreHtml}
-      ${videoHtml}
-      ${visibleSectionsHtml}
-      ${toggleHtml}
-      ${renderLeagueChipsHtml(r.leagues)}
-      ${renderSourcesHtml(r.sources)}
-    `;
-    const videoTrigger = el.querySelector('.video-thumb-trigger');
-    if(videoTrigger){
-      videoTrigger.addEventListener('click', () => {
-        videoTrigger.outerHTML = `<div class="video-embed"><iframe src="https://www.youtube.com/embed/${r.videoId}?autoplay=1" title="highlight" allowfullscreen allow="autoplay; encrypted-media"></iframe></div>`;
-      });
-    }
-    const toggleBtn = el.querySelector('.match-report-toggle');
-    if(toggleBtn){
-      toggleBtn.addEventListener('click', () => {
-        const collapsed = el.querySelector('.match-report-collapsed');
-        const isHidden = collapsed.style.display === 'none';
-        collapsed.style.display = isHidden ? '' : 'none';
-        toggleBtn.textContent = isHidden ? '閉じる ▲' : '続きを読む ▼';
-      });
-    }
-    matchReportList.appendChild(el);
-  });
 }
 
 function ensureAm4ArticleModal(){
@@ -5937,95 +5838,17 @@ function renderThumbHtml(images){
   const cells = imgs.slice(0,3).map(src=>`<img src="${src}" loading="lazy" alt="" onerror="this.style.display='none'">`).join('');
   return `<div class="thumb-collage thumb-collage-${n}">${cells}</div>`;
 }
-function renderAiColumns(columns){
-  aiColumnList.innerHTML = '';
-  const filtered = currentLeague === 'all' ? columns : columns.filter(c => (c.leagues || []).includes(currentLeague));
-  if(filtered.length === 0){
-    aiColumnList.innerHTML = matchReportList.children.length > 0 ? '' : '<div class="modal-empty">記事を取得できませんでした</div>';
-    return;
-  }
-  const now = Date.now();
-  filtered.forEach(c=>{
-    const el = document.createElement('div');
-    el.className = 'am4-column-list-item';
-    const isNew = c.generatedAt ? (now - new Date(c.generatedAt).getTime()) < 24*60*60*1000 : false;
-    const thumbHtml = renderThumbHtml(c.images && c.images.length ? c.images : (c.image ? [c.image] : []));
-    const dateStr = c.generatedAt ? new Date(c.generatedAt).toLocaleDateString('ja-JP',{year:'numeric',month:'2-digit',day:'2-digit'}).replace(/\//g,'.') : '';
-    el.innerHTML = `
-      ${thumbHtml}
-      <div class="meta">
-        <div class="row-badges">
-          ${isNew ? '<span class="new-badge">NEW</span>' : ''}
-          <span class="row-date">${dateStr}</span>
-        </div>
-        <h4>${c.title || ''}</h4>
-        <span class="row-cat">${c.category || 'AM4編集部'}</span>
-      </div>
-    `;
-    el.addEventListener('click', ()=> openAm4ArticleModal(c));
-    aiColumnList.appendChild(el);
-  });
-}
-
-let heroCarouselTimer = null;
-let heroCarouselIndex = 0;
-
-function renderHeroCarousel(columns){
-  const container = document.getElementById('heroCarousel');
-  if(!container) return;
-  const slides = columns.filter(c => c.image || (c.images && c.images.length)).slice(0, 5);
-  if(heroCarouselTimer){ clearInterval(heroCarouselTimer); heroCarouselTimer = null; }
-  if(slides.length === 0){ container.style.display='none'; return; }
-  container.style.display = '';
-  heroCarouselIndex = 0;
-
-  function renderSlide(i){
-    const c = slides[i];
-    const img = c.image || (c.images && c.images[0]);
-    container.innerHTML = `
-      <div class="hero-slide" style="background-image:url('${img}')">
-        <div class="hero-slide-gradient"></div>
-        <div class="hero-slide-text">
-          <span class="hero-slide-cat">${c.category || 'AM4編集部'}</span>
-          <h2>${c.title || ''}</h2>
-        </div>
-      </div>
-      <div class="hero-dots">${slides.map((_,idx)=>`<span class="hero-dot${idx===i?' active':''}" data-idx="${idx}"></span>`).join('')}</div>
-    `;
-    container.querySelector('.hero-slide').addEventListener('click', ()=> openAm4ArticleModal(c));
-    container.querySelectorAll('.hero-dot').forEach(dot=>{
-      dot.addEventListener('click', (e)=>{
-        e.stopPropagation();
-        heroCarouselIndex = parseInt(dot.dataset.idx, 10);
-        renderSlide(heroCarouselIndex);
-        resetHeroTimer();
-      });
-    });
-  }
-
-  function resetHeroTimer(){
-    if(heroCarouselTimer) clearInterval(heroCarouselTimer);
-    heroCarouselTimer = setInterval(()=>{
-      heroCarouselIndex = (heroCarouselIndex + 1) % slides.length;
-      renderSlide(heroCarouselIndex);
-    }, 5000);
-  }
-
-  renderSlide(0);
-  resetHeroTimer();
-}
-
-// AM4編集部記事(/api/ai-column)と試合レポート(/api/match-report)を並行取得する。
-// どちらか一方が失敗/未設定(APIキー無し等)でも、成功した方だけで表示を続行する。
 // 「その他のニュース」: AM4編集部コラム・試合レポートの根拠記事として使われなかった
 // 生RSS記事を、サムネ無しのシンプルなテキストリストで表示する(AI処理を挟まないため
-// api/ai-column等より短いキャッシュ=15分)。タップで元記事に外部リンク。
+// 短いキャッシュ=15分)。タップで元記事に外部リンク。
+// 【2026-07-31】未使用のため現在は呼び出されていない(呼び出し元は既に削除済み)。
+// バックエンドはapi/other-news.jsからapi/news.js(?mode=other)に統合済み。
 async function loadOtherNews(){
   const section = document.getElementById('otherNewsSection');
   const list = document.getElementById('otherNewsList');
   if(!section || !list) return;
   try{
-    const res = await fetch(`${AM4_API_BASE}/api/other-news?lang=${currentLang}`);
+    const res = await fetch(`${AM4_API_BASE}/api/news?mode=other&lang=${currentLang}`);
     if(!res.ok) throw new Error('fetch failed');
     const data = await res.json();
     const items = data.items || [];
@@ -6046,52 +5869,9 @@ async function loadOtherNews(){
   }
 }
 
-async function loadNewsContent(forceRefresh){
-  aiColumnRefreshBtn.disabled = true;
-  newsStatus.textContent = '読み込み中...';
-  newsStatus.className = 'standings-status';
-  try{
-    const params = new URLSearchParams({ lang: currentLang });
-    if(forceRefresh) params.set('refresh', '1'); // キャッシュを無視して再生成させる
-    const [columnsRes, reportsRes] = await Promise.allSettled([
-      fetch(`${AM4_API_BASE}/api/ai-column?${params.toString()}`),
-      fetch(`${AM4_API_BASE}/api/match-report?${params.toString()}`)
-    ]);
-    // 【2026-07 停止】未翻訳の外国語見出しがそのまま並び読みにくいため表示を停止。
-    // 関数・API(/api/other-news)自体は残しているので、復活する場合はこの行を有効化する。
-    // loadOtherNews();
+// 【2026-07-31】loadNewsContent()(api/ai-column.js・旧api/match-report.jsを叩いていた
+// 関数)は、バックエンド2ファイルをフロント未使用と確認のうえ削除したことに伴い削除した。
 
-    latestColumns = (columnsRes.status === 'fulfilled' && columnsRes.value.ok)
-      ? (await columnsRes.value.json()).columns || []
-      : [];
-    latestReports = (reportsRes.status === 'fulfilled' && reportsRes.value.ok)
-      ? (await reportsRes.value.json()).reports || []
-      : [];
-
-    // 【2026-07 停止】W杯終了に伴い、ゲキサカの「チーム名vsチーム名 試合記録」という
-    // 見出しパターンが新しく出なくなり、detectMatchups()が最後のW杯の試合(例:
-    // アルゼンチンvsカーボベルデ)を延々と検出し続けるだけの状態になったため、表示を止めている。
-    // API(/api/match-report)自体は生きているので、直接アクセスすれば動作確認できる。
-    // 復活する場合はこの行を有効化する(次のような新しい大会が始まった時など)。
-    // renderMatchReports(latestReports);
-    renderAiColumns(latestColumns);
-    renderHeroCarousel(latestColumns);
-
-    if(latestColumns.length === 0 && latestReports.length === 0){
-      newsStatus.textContent = '取得失敗(APIキー未設定、またはサーバー側の一時的なエラーの可能性があります)';
-      newsStatus.className = 'standings-status error';
-    } else {
-      newsStatus.textContent = '● AM4編集部が実データをもとに執筆';
-      newsStatus.className = 'standings-status live';
-    }
-  } catch(err){
-    console.error('news content fetch error:', err);
-    newsStatus.textContent = '取得失敗(APIキー未設定、またはサーバー側の一時的なエラーの可能性があります)';
-    newsStatus.className = 'standings-status error';
-  } finally {
-    aiColumnRefreshBtn.disabled = false;
-  }
-}
 document.getElementById('featureRequestBtn')?.addEventListener('click', async () => {
   const input = document.getElementById('featureTopicInput');
   const topic = input.value.trim();
@@ -7826,6 +7606,10 @@ renderSquadPitch();
 renderBench();
 
 // ==== 朝刊・昼刊・夕刊ダイジェスト ====
+// 【2026-07-31】未使用のため現在は呼び出されていない(DOMContentLoaded呼び出しは
+// コメントアウト済み)。バックエンドはVercel Hobbyプランの関数枠確保のため
+// api/daily-digest.js から lib/daily-digest-core.js に移設済み(中身は変更なし)。
+// 復活する場合はlib/daily-digest-core.jsをapi/直下に戻す(または薄いラッパーを作る)こと。
 async function initDailyDigest(){
   try{
     const list = document.getElementById('aiColumnList');

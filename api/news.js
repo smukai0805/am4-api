@@ -186,47 +186,18 @@ export async function fetchAllNewsItems() {
 
 // 【other-newsモード】旧api/other-news.jsを統合したもの(Vercel Hobbyプランの
 // サーバーレス関数数上限対策で、api/直下の独立ルートからここへ統合した)。
-// 「その他のニュース」機能: AM4編集部コラム・試合レポートの根拠記事(sources)として
-// 使われなかった生RSS記事だけをシンプルなテキストリストとして返す。
+// 「その他のニュース」機能: 生RSS記事をシンプルなテキストリストとして返す。
 // このモード自体はAnthropic APIを一切呼ばない(既にキャッシュ済みの生成結果を読むだけ)。
 // GET /api/news?mode=other&lang=ja
-const AM4_API_BASE = 'https://am4-api.vercel.app';
-
-async function fetchUsedLinks(lang) {
-  const usedLinks = new Set();
-  const results = await Promise.allSettled([
-    fetch(`${AM4_API_BASE}/api/ai-column?lang=${lang}`),
-    fetch(`${AM4_API_BASE}/api/match-report?lang=${lang}`),
-  ]);
-
-  for (const result of results) {
-    if (result.status !== 'fulfilled' || !result.value.ok) continue;
-    try {
-      const data = await result.value.json();
-      const lists = [data.columns, data.reports].filter(Array.isArray);
-      for (const list of lists) {
-        for (const item of list) {
-          for (const source of item.sources || []) {
-            if (source.link) usedLinks.add(source.link);
-          }
-        }
-      }
-    } catch {
-      // 片方の取得・解析に失敗しても、もう片方の結果だけで続行する
-    }
-  }
-  return usedLinks;
-}
+//
+// 【2026-07-31】従来は「AM4編集部コラム(api/ai-column.js)・試合レポート(旧api/match-report.js)
+// の根拠記事として使われたRSSは除外する」処理をしていたが、両ファイルとも未使用と確認の上
+// 削除したため、除外処理自体を削除した(除外対象が存在しなくなったため)。
 
 async function handleOtherNewsMode(req, res) {
-  const lang = String(req.query.lang || 'ja').toLowerCase();
-  const [{ items: newsItems }, usedLinks] = await Promise.all([
-    fetchAllNewsItems(),
-    fetchUsedLinks(lang),
-  ]);
+  const { items: newsItems } = await fetchAllNewsItems();
 
   const items = newsItems
-    .filter(n => !n.link || !usedLinks.has(n.link))
     .sort((a, b) => new Date(b.time || 0) - new Date(a.time || 0))
     .slice(0, 20)
     .map(n => ({
