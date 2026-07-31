@@ -243,6 +243,30 @@ export default async function handler(req, res) {
     });
   }
 
+  // 【一時的な調査用】league=2(Champions League)season=2026の実際のfixture分布確認用。
+  // GET ?fixturesLookup=1&league=2&season=2026
+  if (req.method === 'GET' && req.query.fixturesLookup === '1') {
+    const league = String(req.query.league || '2');
+    const season = String(req.query.season || '2026');
+    const url = new URL('https://v3.football.api-sports.io/fixtures');
+    url.searchParams.set('league', league);
+    url.searchParams.set('season', season);
+    const r = await fetch(url, { headers: { 'x-apisports-key': API_KEY } });
+    const d = await r.json();
+    const fixtures = d.response || [];
+    const rounds = [...new Set(fixtures.map(f => f.league.round))];
+    const dates = fixtures.map(f => f.fixture.date).sort();
+    return res.status(200).json({
+      results: d.results,
+      errors: d.errors,
+      totalFixtures: fixtures.length,
+      firstDate: dates[0],
+      lastDate: dates[dates.length - 1],
+      rounds,
+      sample: fixtures.slice(0, 3).map(f => ({ id: f.fixture.id, date: f.fixture.date, round: f.league.round, status: f.fixture.status?.short, home: f.teams.home.name, away: f.teams.away.name })),
+    });
+  }
+
   // 保存済み記事一覧の確認用(簡易レビュー): GET /api/match-report-watch?list=1
   // 一般公開用の一覧・詳細APIは api/articles.js を使うこと(こちらは動作確認用の簡易版)。
   if (req.method === 'GET' && req.query.list === '1') {
