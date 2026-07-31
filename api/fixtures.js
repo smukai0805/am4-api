@@ -49,6 +49,16 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'API_FOOTBALL_KEY が設定されていません' });
   }
 
+  // 【一時的な調査用】5大リーグのロゴURLを確認するための診断用。GET ?leagueLogos=1
+  if (req.method === 'GET' && req.query.leagueLogos === '1') {
+    const results = {};
+    for (const [name, id] of Object.entries(LEAGUES)) {
+      const d = await apiFootballFetch('/leagues', { id });
+      results[name] = d.response?.[0]?.league?.logo || null;
+    }
+    return res.status(200).json(results);
+  }
+
   const { league } = req.query;
   const leagueId = LEAGUES[league];
   if (!leagueId) {
