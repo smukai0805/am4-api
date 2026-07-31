@@ -52,6 +52,10 @@ export default async function handler(req, res) {
   // 【一時的な調査用】/fixturesのteams.*.nameと/teamsのteam.nameの表記差を確認。
   // GET ?teamNameCheck=1&team=34
   if (req.method === 'GET' && req.query.teamNameCheck === '1') {
+    if (req.query.search) {
+      const d = await apiFootballFetch('/teams', { search: req.query.search });
+      return res.status(200).json({ matches: (d.response || []).map(r => r.team) });
+    }
     const teamId = Number(req.query.team);
     const d = await apiFootballFetch('/teams', { id: teamId });
     return res.status(200).json({ full: d.response?.[0] || null });
