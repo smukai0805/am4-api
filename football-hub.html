@@ -407,14 +407,21 @@
     background:var(--panel);
     border:1px solid var(--line);
     color:var(--chalk-dim);
-    padding:8px 16px;
+    padding:0 16px;
     font-size:13px;
     font-weight:600;
     border-radius:20px;
     cursor:pointer;
     display:inline-flex;
     align-items:center;
+    justify-content:center;
     gap:6px;
+    /* 2026-07-31: ロゴ追加後にボタンの幅・高さがバラバラだったため、高さを固定し
+       (box-sizingでpadding込みで揃える)、最小幅も揃えてガタつきを無くした。 */
+    height:38px;
+    min-width:150px;
+    box-sizing:border-box;
+    white-space:nowrap;
   }
   .league-tab.active{ background:var(--amber); color:#ffffff; border-color:var(--amber); }
   /* 2026-07-31: リーグ選択ボタンにAPI-Footballのリーグロゴを追加(クラブロゴと同じCDN)。 */
@@ -1261,11 +1268,11 @@
   <div class="standings-controls">
     <label class="standings-season-label">リーグ:</label>
     <select id="topScorersLeagueSelect">
-      <option value="プレミアリーグ">プレミアリーグ</option>
-      <option value="ラ・リーガ">ラ・リーガ</option>
-      <option value="セリエA">セリエA</option>
-      <option value="ブンデスリーガ">ブンデスリーガ</option>
-      <option value="リーグ・アン">リーグ・アン</option>
+      <option value="プレミアリーグ">Premier League</option>
+      <option value="ラ・リーガ">La Liga</option>
+      <option value="セリエA">Serie A</option>
+      <option value="ブンデスリーガ">Bundesliga</option>
+      <option value="リーグ・アン">Ligue 1</option>
     </select>
     <label class="standings-season-label">シーズン:</label>
     <select id="topScorersSeasonSelect">
@@ -5605,7 +5612,7 @@ function renderLeague(name){
     standingsBody.appendChild(tr);
   });
   [...leagueTabs.children].forEach(btn=>{
-    btn.classList.toggle('active', btn.textContent===name);
+    btn.classList.toggle('active', btn.dataset.league===name);
   });
 }
 
@@ -5619,13 +5626,27 @@ const LEAGUE_LOGOS = {
   'リーグ・アン': 'https://media.api-sports.io/football/leagues/61.png',
 };
 
+// 2026-07-31: ボタン表記を英語表記に変更(内部的な識別子(leaguesDataのキー・
+// API呼び出しのパラメータ)は既存のまま日本語名を使い続け、表示ラベルだけを
+// 差し替える。バックエンド(standings.js/fixtures.js/top-scorers.js)側の
+// LEAGUESマップとの互換性を保つため)。
+const LEAGUE_LABEL_EN = {
+  'プレミアリーグ': 'Premier League',
+  'ラ・リーガ': 'La Liga',
+  'セリエA': 'Serie A',
+  'ブンデスリーガ': 'Bundesliga',
+  'リーグ・アン': 'Ligue 1',
+};
+
 leagueNames.forEach(name=>{
   const btn = document.createElement('button');
   btn.className = 'league-tab';
+  btn.dataset.league = name;
   const logo = LEAGUE_LOGOS[name];
+  const label = LEAGUE_LABEL_EN[name] || name;
   btn.innerHTML = logo
-    ? `<img class="league-tab-logo" src="${logo}" alt="" loading="lazy" onerror="this.remove()">${escapeHtmlText(name)}`
-    : escapeHtmlText(name);
+    ? `<img class="league-tab-logo" src="${logo}" alt="" loading="lazy" onerror="this.remove()"><span class="league-tab-label">${escapeHtmlText(label)}</span>`
+    : `<span class="league-tab-label">${escapeHtmlText(label)}</span>`;
   btn.onclick = ()=>{ currentActiveLeagueName = name; renderLeague(name); };
   leagueTabs.appendChild(btn);
 });
@@ -5700,7 +5721,7 @@ async function loadTopScorers(){
       tr.innerHTML = `<td class="pos">${row.rank}</td><td>${row.name}</td><td>${row.team || '-'}</td><td class="pts">${row.goals ?? '-'}</td><td>${row.assists ?? '-'}</td><td>${row.appearances ?? '-'}</td>`;
       topScorersBody.appendChild(tr);
     });
-    topScorersStatus.textContent = `● 実データ反映済み(${topScorersLeagueSelect.value} / ${topScorersSeasonSelect.value})`;
+    topScorersStatus.textContent = `● 実データ反映済み(${LEAGUE_LABEL_EN[topScorersLeagueSelect.value] || topScorersLeagueSelect.value} / ${topScorersSeasonSelect.value})`;
     topScorersStatus.className = 'standings-status live';
   } catch(err){
     console.error('top-scorers fetch error:', err);
