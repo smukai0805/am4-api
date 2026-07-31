@@ -204,6 +204,24 @@
   }
   .checkbox-row input[type="checkbox"]{ accent-color:var(--amber); width:14px; height:14px; cursor:pointer; }
   .ps-sublabel{ font-size:10.5px; color:var(--chalk-dim); margin-top:6px; }
+
+  /* ---- 選手検索: 国籍・クラブの検索可能コンボボックス(入力+候補一覧を1つに統合) ---- */
+  .ps-combobox{ position:relative; }
+  .ps-combobox input[type="text"]{ width:100%; }
+  .ps-combobox-options{
+    position:absolute; top:calc(100% + 4px); left:0; right:0; z-index:30;
+    max-height:230px; overflow-y:auto;
+    background:#0E1424; border:1px solid var(--line); border-radius:6px;
+    box-shadow:0 8px 20px rgba(0,0,0,.35);
+    display:none;
+  }
+  .ps-combobox-options.open{ display:block; }
+  .ps-combobox-option{
+    padding:8px 12px; font-size:13px; color:var(--chalk); cursor:pointer;
+    display:flex; align-items:center; gap:8px; font-family:'Inter',sans-serif;
+  }
+  .ps-combobox-option:hover, .ps-combobox-option.active{ background:#1c3527; }
+  .ps-combobox-option-empty{ padding:8px 12px; font-size:12.5px; color:var(--chalk-dim); }
   .favorites-note{ font-size:11.5px; color:var(--chalk-dim); margin:10px 0 22px; }
   .fav-block{ margin-bottom:26px; }
   .fav-block h3{ font-family:'Anton',sans-serif; font-size:20px; margin:0 0 12px; }
@@ -1247,20 +1265,22 @@
   </div>
   <div class="favorites-picker">
     <div class="favorites-picker-row">
-      <label for="psNationalitySelect">国籍(プルダウン)</label>
-      <select id="psNationalitySelect"><option value="">すべて</option></select>
-      <label for="psNationalityFilter" class="ps-sublabel">または入力で検索</label>
-      <input type="text" id="psNationalityFilter" placeholder="例: フランス" autocomplete="off">
+      <label for="psNationalityFilter">国籍</label>
+      <div class="ps-combobox" id="psNationalityCombobox">
+        <input type="text" id="psNationalityFilter" placeholder="入力または一覧から選択(例: フランス)" autocomplete="off">
+        <div class="ps-combobox-options" id="psNationalityOptions"></div>
+      </div>
     </div>
     <div class="favorites-picker-row">
       <label for="psPositionFilter">ポジション</label>
       <select id="psPositionFilter"><option value="">すべて</option></select>
     </div>
     <div class="favorites-picker-row">
-      <label for="psClubSelect">クラブ(プルダウン)</label>
-      <select id="psClubSelect"><option value="">すべて</option></select>
-      <label for="psClubFilter" class="ps-sublabel">または入力で検索</label>
-      <input type="text" id="psClubFilter" placeholder="例: ミラン" autocomplete="off">
+      <label for="psClubFilter">クラブ</label>
+      <div class="ps-combobox" id="psClubCombobox">
+        <input type="text" id="psClubFilter" placeholder="入力または一覧から選択(例: ミラン)" autocomplete="off">
+        <div class="ps-combobox-options" id="psClubOptions"></div>
+      </div>
       <label class="checkbox-row"><input type="checkbox" id="psIncludePastClubs"> 過去所属クラブも含む</label>
     </div>
   </div>
@@ -6851,10 +6871,27 @@ renderPlayerRanking('総合');
 
 /* ===================== 国旗ユーティリティ(選手を探す等で使用) ===================== */
 // 国名 → 国旗絵文字(必要に応じて随時追加)
+// 2026-07-31: サンプル選手データに登場する全58国籍分をカバーするよう拡充
+// (従来は10か国分しか無く、大半の選手で国旗が🏳️のプレースホルダーのままだった)。
+// イングランド/スコットランド/ウェールズはISO国コードが無いため、Unicodeの
+// タグシーケンスによる地域旗(England/Scotland/Wales)を使用。コソボは公式ISO
+// コード未定だが🇽🇰が主要プラットフォームで広く対応している。
 const countryFlags = {
-  'イタリア':'🇮🇹', 'フランス':'🇫🇷', 'ブラジル':'🇧🇷', 'スペイン':'🇪🇸',
-  'ドイツ':'🇩🇪', 'イングランド':'🏴', 'アルゼンチン':'🇦🇷', 'ポルトガル':'🇵🇹',
-  'オランダ':'🇳🇱', 'ベルギー':'🇧🇪'
+  'アイスランド':'🇮🇸', 'アイルランド':'🇮🇪', 'アメリカ':'🇺🇸', 'アルジェリア':'🇩🇿',
+  'アルゼンチン':'🇦🇷', 'アンゴラ':'🇦🇴', 'イタリア':'🇮🇹', 'イングランド':'🏴󠁧󠁢󠁥󠁮󠁧󠁿',
+  'ウェールズ':'🏴󠁧󠁢󠁷󠁬󠁳󠁿', 'ウクライナ':'🇺🇦', 'ウルグアイ':'🇺🇾', 'エクアドル':'🇪🇨',
+  'エジプト':'🇪🇬', 'オーストラリア':'🇦🇺', 'オーストリア':'🇦🇹', 'オランダ':'🇳🇱',
+  'ガーナ':'🇬🇭', 'カナダ':'🇨🇦', 'ガボン':'🇬🇦', 'カメルーン':'🇨🇲',
+  'ギニア':'🇬🇳', 'ギリシャ':'🇬🇷', 'クロアチア':'🇭🇷', 'コートジボワール':'🇨🇮',
+  'コソボ':'🇽🇰', 'コロンビア':'🇨🇴', 'コンゴ民主共和国':'🇨🇩', 'ジャマイカ':'🇯🇲',
+  'ジョージア':'🇬🇪', 'スイス':'🇨🇭', 'スウェーデン':'🇸🇪', 'スコットランド':'🏴󠁧󠁢󠁳󠁣󠁴󠁿',
+  'スペイン':'🇪🇸', 'スロバキア':'🇸🇰', 'スロベニア':'🇸🇮', 'セネガル':'🇸🇳',
+  'セルビア':'🇷🇸', 'チェコ':'🇨🇿', 'デンマーク':'🇩🇰', 'ドイツ':'🇩🇪',
+  'ナイジェリア':'🇳🇬', 'ニュージーランド':'🇳🇿', 'ノルウェー':'🇳🇴', 'ハンガリー':'🇭🇺',
+  'フィンランド':'🇫🇮', 'ブラジル':'🇧🇷', 'フランス':'🇫🇷', 'ベネズエラ':'🇻🇪',
+  'ベルギー':'🇧🇪', 'ポーランド':'🇵🇱', 'ボスニア・ヘルツェゴビナ':'🇧🇦', 'ポルトガル':'🇵🇹',
+  'マリ':'🇲🇱', 'メキシコ':'🇲🇽', 'モロッコ':'🇲🇦', 'モンテネグロ':'🇲🇪',
+  'ルーマニア':'🇷🇴', '韓国':'🇰🇷', '日本':'🇯🇵'
 };
 function flagFor(nationality){ return countryFlags[nationality] || '🏳️'; }
 
@@ -6879,41 +6916,69 @@ async function loadAvatarPhotoInto(uid, p){
 const psNationalityFilter = document.getElementById('psNationalityFilter');
 const psPositionFilter = document.getElementById('psPositionFilter');
 const psClubFilter = document.getElementById('psClubFilter');
-const psNationalitySelect = document.getElementById('psNationalitySelect');
-const psClubSelect = document.getElementById('psClubSelect');
 const playerSearchResult = document.getElementById('playerSearchResult');
 
-[...new Set(players.map(p=>p.nationality).filter(Boolean))].sort().forEach(n=>{
-  const opt = document.createElement('option');
-  opt.value = n; opt.textContent = `${flagFor(n)} ${n}`;
-  psNationalitySelect.appendChild(opt);
-});
 [...new Set(players.map(p=>p.pos))].forEach(pos=>{
   const opt = document.createElement('option'); opt.value = pos; opt.textContent = pos;
   psPositionFilter.appendChild(opt);
 });
+const allPlayerNationalities = [...new Set(players.map(p=>p.nationality).filter(Boolean))].sort();
 const allPlayerClubs = [...new Set(players.flatMap(p=>p.career.map(c=>c.club)))].sort();
-allPlayerClubs.forEach(clubName=>{
-  const opt = document.createElement('option'); opt.value = clubName; opt.textContent = clubName;
-  psClubSelect.appendChild(opt);
-});
 
-// プルダウンで選んだら入力欄に反映、入力し始めたらプルダウンをリセット(スマホでの操作を単純化)
-psNationalitySelect.addEventListener('change', ()=>{
-  psNationalityFilter.value = psNationalitySelect.value;
-  renderPlayerSearchResult();
+// 2026-07-31: 国籍・クラブそれぞれ別々だった「プルダウン選択」と「テキスト入力検索」を、
+// 1つの検索可能なコンボボックス(入力しながら候補が絞り込まれ、候補からも選べる)に統合。
+// 既存のsiteSearchInput/siteSearchResultsの見た目・挙動(input欄+候補リスト、クリックで
+// 選択)のデザイントーンに合わせつつ、ドロップダウン形式でコンパクトに表示する。
+function setupCombobox({ inputEl, optionsEl, allOptions, formatLabel, onAfterSelect }){
+  function renderOptions(query){
+    const q = toKatakana(query.trim()).toLowerCase();
+    const matches = q ? allOptions.filter(o => toKatakana(o).toLowerCase().includes(q)) : allOptions;
+    optionsEl.innerHTML = '';
+    if(matches.length === 0){
+      optionsEl.innerHTML = '<div class="ps-combobox-option-empty">候補が見つかりません</div>';
+    } else {
+      matches.slice(0, 50).forEach(o=>{
+        const el = document.createElement('div');
+        el.className = 'ps-combobox-option';
+        el.innerHTML = formatLabel ? formatLabel(o) : o;
+        el.addEventListener('mousedown', (e)=>{
+          // blur(候補リストが閉じる)より先にクリックを処理する必要があるためmousedownで拾う
+          e.preventDefault();
+          inputEl.value = o;
+          optionsEl.classList.remove('open');
+          renderPlayerSearchResult();
+          if(onAfterSelect) onAfterSelect(o);
+        });
+        optionsEl.appendChild(el);
+      });
+    }
+    optionsEl.classList.add('open');
+  }
+  inputEl.addEventListener('input', ()=>{
+    renderOptions(inputEl.value);
+    renderPlayerSearchResult();
+  });
+  inputEl.addEventListener('focus', ()=> renderOptions(inputEl.value));
+  inputEl.addEventListener('keydown', (e)=>{
+    if(e.key === 'Escape') optionsEl.classList.remove('open');
+  });
+  document.addEventListener('click', (e)=>{
+    if(!inputEl.contains(e.target) && !optionsEl.contains(e.target)){
+      optionsEl.classList.remove('open');
+    }
+  });
+}
+
+setupCombobox({
+  inputEl: psNationalityFilter,
+  optionsEl: document.getElementById('psNationalityOptions'),
+  allOptions: allPlayerNationalities,
+  formatLabel: n => `<span>${flagFor(n)}</span><span>${n}</span>`,
 });
-psNationalityFilter.addEventListener('input', ()=>{
-  psNationalitySelect.value = '';
-  renderPlayerSearchResult();
-});
-psClubSelect.addEventListener('change', ()=>{
-  psClubFilter.value = psClubSelect.value;
-  renderPlayerSearchResult();
-});
-psClubFilter.addEventListener('input', ()=>{
-  psClubSelect.value = '';
-  renderPlayerSearchResult();
+setupCombobox({
+  inputEl: psClubFilter,
+  optionsEl: document.getElementById('psClubOptions'),
+  allOptions: allPlayerClubs,
 });
 
 const psIncludePastClubs = document.getElementById('psIncludePastClubs');

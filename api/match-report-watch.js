@@ -223,6 +223,26 @@ async function saveSeenMatches(entries) {
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
 
+  // 【一時的な調査用】UEFA Champions LeagueのリーグID・シーズン確認用。
+  // GET ?leagueLookup=1&name=Champions%20League
+  if (req.method === 'GET' && req.query.leagueLookup === '1') {
+    const name = String(req.query.name || 'Champions League');
+    const url = new URL('https://v3.football.api-sports.io/leagues');
+    url.searchParams.set('search', name);
+    const r = await fetch(url, { headers: { 'x-apisports-key': API_KEY } });
+    const d = await r.json();
+    return res.status(200).json({
+      results: d.results,
+      leagues: (d.response || []).map(l => ({
+        id: l.league.id,
+        name: l.league.name,
+        type: l.league.type,
+        country: l.country?.name,
+        seasons: (l.seasons || []).filter(s => s.current).map(s => ({ year: s.year, start: s.start, end: s.end, current: s.current })),
+      })),
+    });
+  }
+
   // 保存済み記事一覧の確認用(簡易レビュー): GET /api/match-report-watch?list=1
   // 一般公開用の一覧・詳細APIは api/articles.js を使うこと(こちらは動作確認用の簡易版)。
   if (req.method === 'GET' && req.query.list === '1') {
