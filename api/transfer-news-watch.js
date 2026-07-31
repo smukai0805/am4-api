@@ -206,6 +206,9 @@ export default async function handler(req, res) {
       });
       clearTimeout(timeoutId);
       const data = await response.json();
+      if (!response.ok) {
+        return res.status(200).json({ apiError: true, status: response.status, data });
+      }
       const rawResults = [];
       for (const block of data.content || []) {
         if (block.type === 'web_search_tool_result') {
