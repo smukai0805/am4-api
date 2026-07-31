@@ -127,6 +127,10 @@ export default async function handler(req, res) {
       return {
         id: f.fixture.id,
         date: (f.fixture.date || '').slice(0, 10),
+        // 2026-08-01追加: 未開催の試合はキックオフ時刻を表示するため、日付部分だけ
+        // 切り詰めていない完全なISO8601文字列(タイムゾーン情報付き)も返す。
+        // フロント側でDate変換すればユーザーのローカルタイムゾーンに自動変換される。
+        kickoff: f.fixture.date || null,
         roundKey: roundInfo?.key || null,
         roundLabel: roundInfo?.label || null,
         status: f.fixture.status?.short,
