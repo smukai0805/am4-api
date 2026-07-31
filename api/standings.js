@@ -34,6 +34,20 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'API_FOOTBALL_KEY が設定されていません' });
   }
 
+  // 【一時的な調査用】Champions Leagueのstandingsレスポンス形式を確認するための診断用。
+  // GET ?clStandingsCheck=1&season=2025
+  if (req.method === 'GET' && req.query.clStandingsCheck === '1') {
+    const season = Number(req.query.season) || 2025;
+    const d = await apiFootballFetch('/standings', { league: 2, season });
+    const standingsGroups = d.response?.[0]?.league?.standings || [];
+    return res.status(200).json({
+      errors: d.errors,
+      groupCount: standingsGroups.length,
+      firstGroupLength: standingsGroups[0]?.length,
+      sample: (standingsGroups[0] || []).slice(0, 5).map(r => ({ rank: r.rank, team: r.team.name, points: r.points, played: r.all.played, group: r.group })),
+    });
+  }
+
   // ?season=2023 のように指定可能。未指定ならデフォルト値を使う。
   const { season: seasonParam } = req.query;
   let SEASON = DEFAULT_SEASON;
