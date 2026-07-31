@@ -76,6 +76,7 @@ export default async function handler(req, res) {
         const simplified = table.map(row => ({
           rank: row.rank,
           club: row.team.name,
+          logo: row.team.logo || null,
           played: row.all.played,
           win: row.all.win,
           draw: row.all.draw,

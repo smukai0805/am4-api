@@ -521,6 +521,16 @@
   table.standings tr:hover td{ background:var(--panel-2); }
   table.standings td.pts{ font-family:'JetBrains Mono',monospace; color:var(--amber); font-weight:700; }
   table.standings td.pos{ color:var(--chalk-dim); width:24px; }
+  /* 2026-07-31: 順位表にもクラブロゴを追加(試合結果カードと同じAPI-Footballの
+     ロゴ画像。取得失敗時はイニシャルバッジにフォールバック)。 */
+  .standings-club-cell{ display:flex; align-items:center; gap:8px; }
+  .standings-logo{ width:18px; height:18px; object-fit:contain; flex-shrink:0; }
+  .standings-logo-badge{
+    width:18px; height:18px; border-radius:50%; flex-shrink:0;
+    background:var(--panel-2); border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'JetBrains Mono',monospace; font-size:8px; font-weight:700; color:var(--chalk-dim);
+  }
 
   /* World Cup */
   .wc-live-banner{
@@ -5469,6 +5479,13 @@ function teamLogoHtml(logo, name){
   return `<img class="team-badge-logo" src="${logo}" alt="${escapeHtmlText(name)}" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'team-badge',textContent:'${fallback}'}))">`;
 }
 
+// 順位表用の小さめクラブロゴ(考え方はteamLogoHtmlと同じ、サイズだけ小さい)。
+function standingsLogoHtml(logo, name){
+  if(!logo) return `<span class="standings-logo-badge">${teamBadgeInitials(name)}</span>`;
+  const fallback = teamBadgeInitials(name).replace(/'/g, "\\'");
+  return `<img class="standings-logo" src="${logo}" alt="${escapeHtmlText(name)}" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'standings-logo-badge',textContent:'${fallback}'}))">`;
+}
+
 function renderMatchCard(f){
   const el = document.createElement('div');
   el.className = 'match-result-card';
@@ -5607,7 +5624,7 @@ function renderLeague(name){
   standingsBody.innerHTML = '';
   leaguesData[name].standings.forEach((row,i)=>{
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td class="pos">${i+1}</td><td><span class="club-link" data-club="${row[0]}">${row[0]}</span></td><td>${row[1]}</td><td>${row[2]}</td><td>${row[3]}</td><td>${row[4]}</td><td>${row[5]}</td><td class="pts">${row[6]}</td>`;
+    tr.innerHTML = `<td class="pos">${i+1}</td><td><span class="standings-club-cell">${standingsLogoHtml(row[7], row[0])}<span class="club-link" data-club="${row[0]}">${row[0]}</span></span></td><td>${row[1]}</td><td>${row[2]}</td><td>${row[3]}</td><td>${row[4]}</td><td>${row[5]}</td><td class="pts">${row[6]}</td>`;
     tr.querySelector('.club-link').addEventListener('click', (e)=>{ e.stopPropagation(); openClubModal(row[0]); });
     standingsBody.appendChild(tr);
   });
@@ -5667,14 +5684,14 @@ async function loadStandingsFromAPI(season){
       leaguesData[name].standings = rows.map(row => [
         row.club, row.played, row.win, row.draw, row.lose,
         (row.goalsDiff >= 0 ? '+' : '') + row.goalsDiff,
-        row.points
+        row.points, row.logo
       ]);
     });
 
     standingsBody.innerHTML = '';
     (leaguesData[currentActiveLeagueName].standings || []).forEach((row,i)=>{
       const tr = document.createElement('tr');
-      tr.innerHTML = `<td class="pos">${i+1}</td><td><span class="club-link" data-club="${row[0]}">${row[0]}</span></td><td>${row[1]}</td><td>${row[2]}</td><td>${row[3]}</td><td>${row[4]}</td><td>${row[5]}</td><td class="pts">${row[6]}</td>`;
+      tr.innerHTML = `<td class="pos">${i+1}</td><td><span class="standings-club-cell">${standingsLogoHtml(row[7], row[0])}<span class="club-link" data-club="${row[0]}">${row[0]}</span></span></td><td>${row[1]}</td><td>${row[2]}</td><td>${row[3]}</td><td>${row[4]}</td><td>${row[5]}</td><td class="pts">${row[6]}</td>`;
       tr.querySelector('.club-link').addEventListener('click', (e)=>{ e.stopPropagation(); openClubModal(row[0]); });
       standingsBody.appendChild(tr);
     });
