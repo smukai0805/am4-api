@@ -373,6 +373,18 @@ export default async function handler(req, res) {
       await saveProfileCache(profileCache);
     }
 
+    // 【一時的な調査用】検知フェーズ(fixtures/lineups/profiles取得)だけの所要時間を
+    // 記事生成(AI)と切り分けて計測するための一時パラメータ。検証後に削除予定。
+    if (req.query.skipGeneration === '1') {
+      return res.status(200).json({
+        detectedCount: candidates.length,
+        candidates,
+        lookbackDays,
+        freshProfileLookupCount,
+        ...(debugMode ? { debug: { clubDebug } } : {}),
+      });
+    }
+
     // 記事生成(Web検索+AI生成)は時間・コストがかかるため、1回あたり上限人数まで。
     // 生成に成功した人だけを検知済みリストに追加し、それ以外は次回実行時に再度候補になる。
     const generated = [];
