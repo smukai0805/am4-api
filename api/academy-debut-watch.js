@@ -242,8 +242,8 @@ export default async function handler(req, res) {
   const clubDebug = [];
 
   try {
+    // 記事生成開始前の残り時間チェック(SAFE_TIME_BUDGET_MS)に使う実行開始時刻。
     const tStart = Date.now();
-    const timings = {};
     const seenEntries = await loadSeenPlayers();
     const seenIds = new Set(seenEntries.map(e => e.playerId));
     const profileCache = await loadProfileCache();
@@ -265,8 +265,6 @@ export default async function handler(req, res) {
       const { fixtures, errors, results } = await getRecentFixtures(club.teamId, lookbackDays);
       return { club, fixtures, errors, results };
     });
-    timings.clubFixturesMs = Date.now() - tStart;
-
     if (debugMode) {
       for (const { club, fixtures, errors, results } of clubFixtureResults) {
         clubDebug.push({
@@ -285,7 +283,6 @@ export default async function handler(req, res) {
     // 無いため、fixture自身のhome/awayチーム情報から擬似的なclubオブジェクトを組み立てる
     // (両チームのラインナップを見る必要がある点がPILOT_CLUBS単位の取得と異なる)。
     const clResult = await getChampionsLeagueFixtures(lookbackDays);
-    timings.clFixturesMs = Date.now() - tStart;
     if (debugMode) {
       clubDebug.push({
         club: 'UEFA Champions League(大会単位)',
@@ -321,9 +318,6 @@ export default async function handler(req, res) {
       const players = await getLineup(fixture.fixture.id, club.teamId);
       return { club, fixture, players };
     });
-    timings.lineupsMs = Date.now() - tStart;
-    timings.fixtureEntriesCount = fixtureEntries.length;
-
     // 3) (クラブ, 試合, 未検知選手) の組をフラットにし、profilesをバッチ並列取得
     const playerEntries = lineupResults.flatMap(({ club, fixture, players }) =>
       players
@@ -351,10 +345,6 @@ export default async function handler(req, res) {
       const birthDate = data.response?.[0]?.player?.birth?.date || null;
       return { club, fixture, player, birthDate };
     });
-    timings.profilesMs = Date.now() - tStart;
-    timings.playerEntriesCount = playerEntries.length;
-    timings.freshProfileLookupCount = freshProfileLookupCount;
-
     // 同じ選手が期間中の複数試合(例: プレシーズンの連戦)で条件に合致した場合の重複防止。
     const addedPlayerIds = new Set();
 
@@ -387,18 +377,6 @@ export default async function handler(req, res) {
 
     if (profileCacheDirty) {
       await saveProfileCache(profileCache);
-    }
-
-    // 【一時的な調査用】検知フェーズ(fixtures/lineups/profiles取得)だけの所要時間を
-    // 記事生成(AI)と切り分けて計測するための一時パラメータ。検証後に削除予定。
-    if (req.query.skipGeneration === '1') {
-      return res.status(200).json({
-        detectedCount: candidates.length,
-        candidates,
-        lookbackDays,
-        timings,
-        ...(debugMode ? { debug: { clubDebug } } : {}),
-      });
     }
 
     // 記事生成(Web検索+AI生成)は時間・コストがかかるため、1回あたり上限人数まで。
