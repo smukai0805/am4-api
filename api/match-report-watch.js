@@ -33,6 +33,11 @@ import {
 import { saveArticle, listArticles, slugify } from '../lib/article-store.js';
 import { PILOT_CLUBS } from '../lib/pilot-clubs.js';
 import { apiFootballFetch, mapWithConcurrency } from '../lib/api-football-client.js';
+import { getChampionsLeagueFixtures } from '../lib/champions-league.js';
+
+// 終了済み(Match Finished)の試合だけを対象にする。延長・PK戦を経た終了(AET/PEN)も含める。
+// PILOT_CLUBS単位・Champions League大会単位の両方の取得経路で共通して使う。
+const FINISHED_STATUSES = ['FT', 'AET', 'PEN'];
 
 // クラブ名が長い場合の略称テーブル(PILOT_CLUBS分)。「3文字程度の略称」という
 // 要望に合わせ、一般的なサッカーメディアでの3文字表記に寄せた。対戦相手がこの表に
@@ -188,8 +193,6 @@ async function getRecentFinishedFixtures(teamId, lookbackDays) {
   const errors = data.errors && Object.keys(data.errors).length > 0 ? data.errors : null;
   if (errors) console.error(`API-Football /fixtures errors (team=${teamId}):`, errors);
 
-  // 終了済み(Match Finished)の試合だけを対象にする。延長・PK戦を経た終了(AET/PEN)も含める。
-  const FINISHED_STATUSES = ['FT', 'AET', 'PEN'];
   const fixtures = (data.response || []).filter(f => FINISHED_STATUSES.includes(f.fixture.status?.short));
   return { fixtures, errors, resultsCount: data.results };
 }
@@ -222,50 +225,6 @@ async function saveSeenMatches(entries) {
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-
-  // 【一時的な調査用】UEFA Champions LeagueのリーグID・シーズン確認用。
-  // GET ?leagueLookup=1&name=Champions%20League
-  if (req.method === 'GET' && req.query.leagueLookup === '1') {
-    const name = String(req.query.name || 'Champions League');
-    const url = new URL('https://v3.football.api-sports.io/leagues');
-    url.searchParams.set('search', name);
-    const r = await fetch(url, { headers: { 'x-apisports-key': API_KEY } });
-    const d = await r.json();
-    return res.status(200).json({
-      results: d.results,
-      leagues: (d.response || []).map(l => ({
-        id: l.league.id,
-        name: l.league.name,
-        type: l.league.type,
-        country: l.country?.name,
-        seasons: (l.seasons || []).filter(s => s.current).map(s => ({ year: s.year, start: s.start, end: s.end, current: s.current })),
-      })),
-    });
-  }
-
-  // 【一時的な調査用】league=2(Champions League)season=2026の実際のfixture分布確認用。
-  // GET ?fixturesLookup=1&league=2&season=2026
-  if (req.method === 'GET' && req.query.fixturesLookup === '1') {
-    const league = String(req.query.league || '2');
-    const season = String(req.query.season || '2026');
-    const url = new URL('https://v3.football.api-sports.io/fixtures');
-    url.searchParams.set('league', league);
-    url.searchParams.set('season', season);
-    const r = await fetch(url, { headers: { 'x-apisports-key': API_KEY } });
-    const d = await r.json();
-    const fixtures = d.response || [];
-    const rounds = [...new Set(fixtures.map(f => f.league.round))];
-    const dates = fixtures.map(f => f.fixture.date).sort();
-    return res.status(200).json({
-      results: d.results,
-      errors: d.errors,
-      totalFixtures: fixtures.length,
-      firstDate: dates[0],
-      lastDate: dates[dates.length - 1],
-      rounds,
-      sample: fixtures.slice(0, 3).map(f => ({ id: f.fixture.id, date: f.fixture.date, round: f.league.round, status: f.fixture.status?.short, home: f.teams.home.name, away: f.teams.away.name })),
-    });
-  }
 
   // 保存済み記事一覧の確認用(簡易レビュー): GET /api/match-report-watch?list=1
   // 一般公開用の一覧・詳細APIは api/articles.js を使うこと(こちらは動作確認用の簡易版)。
@@ -368,13 +327,41 @@ export default async function handler(req, res) {
       }
     }
 
-    // 同じ試合がパイロット対象クラブ同士の対戦(例: PSG vs Juventus)で2回検知される
-    // ことがあるため、fixture.idで重複排除する。
+    // Champions Leagueは「大会単位」で全試合を取得する(対象クラブに関係なく検知対象に
+    // するため、PILOT_CLUBS単位の取得とは別経路)。取得したfixtureはこの後fixture.idで
+    // 一括して重複排除するため、PILOT_CLUBSのクラブが出場するCL戦がクラブ単位の経路と
+    // 大会単位の経路の両方から見つかっても、二重に記事化されることはない。
+    const clResult = await getChampionsLeagueFixtures(lookbackDays);
+    const clFinishedFixtures = clResult.fixtures.filter(f => FINISHED_STATUSES.includes(f.fixture.status?.short));
+
+    if (debugMode) {
+      clubDebug.push({
+        club: 'UEFA Champions League(大会単位)',
+        teamId: null,
+        apiResults: clResult.resultsCount,
+        apiErrors: clResult.errors,
+        finishedFixturesFound: clFinishedFixtures.length,
+        fixtures: clFinishedFixtures.map(f => ({
+          id: f.fixture.id,
+          date: f.fixture.date,
+          home: f.teams.home.name,
+          away: f.teams.away.name,
+          score: `${f.goals.home}-${f.goals.away}`,
+        })),
+      });
+    }
+
+    // 同じ試合がパイロット対象クラブ同士の対戦(例: PSG vs Juventus)や、クラブ単位・
+    // 大会単位の両経路(例: Real MadridがPILOT_CLUBSかつChampions League出場)で
+    // 2回検知されることがあるため、fixture.idで重複排除する。
     const uniqueFixtures = new Map();
     for (const { fixtures } of clubResults) {
       for (const f of fixtures) {
         if (!seenFixtureIds.has(f.fixture.id)) uniqueFixtures.set(f.fixture.id, f);
       }
+    }
+    for (const f of clFinishedFixtures) {
+      if (!seenFixtureIds.has(f.fixture.id)) uniqueFixtures.set(f.fixture.id, f);
     }
     const candidates = [...uniqueFixtures.values()];
 

@@ -36,6 +36,7 @@ import { generateArticleDraft, calcAge } from '../lib/academy-core.js';
 import { saveArticle, listArticles, slugify } from '../lib/article-store.js';
 import { PILOT_CLUBS } from '../lib/pilot-clubs.js';
 import { apiFootballFetch, mapWithConcurrency } from '../lib/api-football-client.js';
+import { getChampionsLeagueFixtures } from '../lib/champions-league.js';
 
 // Markdownの下書き本文から見出し(# で始まる行)を抜き出してタイトルにする。
 // プロンプト内のフォーマット仕様書見出しがそのまま複製されてしまうことがあるため、
@@ -230,10 +231,42 @@ export default async function handler(req, res) {
       }
     }
 
-    // 2) (クラブ, 試合) の組をフラットにし、lineupsを並列取得
-    const fixtureEntries = clubFixtureResults.flatMap(({ club, fixtures }) =>
-      fixtures.map(fixture => ({ club, fixture }))
-    );
+    // 1.5) Champions Leagueは「大会単位」で全試合を取得する(対象クラブに関係なく検知
+    // 対象にするため、PILOT_CLUBS単位の取得とは別経路)。この経路では「クラブ」の文脈が
+    // 無いため、fixture自身のhome/awayチーム情報から擬似的なclubオブジェクトを組み立てる
+    // (両チームのラインナップを見る必要がある点がPILOT_CLUBS単位の取得と異なる)。
+    const clResult = await getChampionsLeagueFixtures(lookbackDays);
+    if (debugMode) {
+      clubDebug.push({
+        club: 'UEFA Champions League(大会単位)',
+        teamId: null,
+        apiResults: clResult.resultsCount,
+        apiErrors: clResult.errors,
+        fixturesFound: clResult.fixtures.length,
+        fixtures: clResult.fixtures.map(f => ({ id: f.fixture.id, date: f.fixture.date, home: f.teams.home.name, away: f.teams.away.name })),
+      });
+    }
+    const clFixtureEntries = clResult.fixtures.flatMap(fixture => ([
+      { club: { name: fixture.teams.home.name, teamId: fixture.teams.home.id }, fixture },
+      { club: { name: fixture.teams.away.name, teamId: fixture.teams.away.id }, fixture },
+    ]));
+
+    // 2) (クラブ, 試合) の組をフラットにし、lineupsを並列取得。
+    // PILOT_CLUBS単位・Champions League大会単位の両経路で同じ(試合, クラブ)の組が
+    // 重複することがある(例: PILOT_CLUBSのクラブがCLに出場している場合)ため、
+    // ラインナップ取得の前に(fixture.id, teamId)単位で重複排除しておく
+    // (無駄なAPI呼び出しを避けるため。最終的な選手単位の重複はaddedPlayerIdsで別途防ぐ)。
+    const fixtureEntriesRaw = [
+      ...clubFixtureResults.flatMap(({ club, fixtures }) => fixtures.map(fixture => ({ club, fixture }))),
+      ...clFixtureEntries,
+    ];
+    const seenFixtureClubKeys = new Set();
+    const fixtureEntries = fixtureEntriesRaw.filter(({ club, fixture }) => {
+      const key = `${fixture.fixture.id}-${club.teamId}`;
+      if (seenFixtureClubKeys.has(key)) return false;
+      seenFixtureClubKeys.add(key);
+      return true;
+    });
     const lineupResults = await mapWithConcurrency(fixtureEntries, 5, async ({ club, fixture }) => {
       const players = await getLineup(fixture.fixture.id, club.teamId);
       return { club, fixture, players };
