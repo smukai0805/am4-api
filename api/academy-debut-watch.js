@@ -32,7 +32,7 @@
 // 環境変数: API_FOOTBALL_KEY が必要。
 
 import { put, get } from '@vercel/blob';
-import { generateArticleDraft, calcAge } from '../lib/academy-core.js';
+import { generateArticleDraft, calcAge, getPlayerProfile } from '../lib/academy-core.js';
 import { saveArticle, listArticles, slugify } from '../lib/article-store.js';
 import { PILOT_CLUBS } from '../lib/pilot-clubs.js';
 import { apiFootballFetch, mapWithConcurrency } from '../lib/api-football-client.js';
@@ -105,6 +105,18 @@ const LOOKBACK_DAYS = 3;
 // 検知済み選手リストの保存先(Vercel Blob、プライベートアクセス)。
 const SEEN_PATHNAME = 'seen-academy-players.json';
 
+// 選手ID→生年月日のキャッシュ(Vercel Blob、プライベートアクセス)。
+// Champions Leagueを大会単位で検知対象に追加したことで、馴染みの薄い予選ラウンド
+// 出場クラブの選手も毎回チェック対象になった。生年月日は変わらない情報のため、
+// 一度取得した選手は年齢判定の目的では二度とAPIに問い合わせないようにする
+// (キャッシュが無いと「既に成人と分かっている選手」を実行のたびに何十人〜何百人分も
+// 再取得することになり、apiFootballFetch側の1リクエストあたり1.1秒の間隔規制と
+// 合わせて実行時間上限(300秒)を圧迫し、実際にFUNCTION_INVOCATION_TIMEOUTになることを
+// 実データ検証で確認した)。年齢判定を通過した候補者本人の完全なプロフィール
+// (国籍・身長等、記事生成に必要な情報)は、このキャッシュがヒットした場合でも
+// 記事生成の直前に改めて1回だけ取得する(下記の記事生成ループ参照)。
+const PROFILE_CACHE_PATHNAME = 'academy-player-birthdate-cache.json';
+
 // 1回の実行で記事生成まで行う人数の上限(実行時間対策)。
 const MAX_ARTICLES_PER_RUN = 2;
 
@@ -173,6 +185,32 @@ async function saveSeenPlayers(entries) {
   }
 }
 
+async function loadProfileCache() {
+  try {
+    const result = await get(PROFILE_CACHE_PATHNAME, { access: 'private', useCache: false });
+    if (!result || !result.stream) return {};
+    const text = await new Response(result.stream).text();
+    const data = JSON.parse(text);
+    return (data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
+  } catch (err) {
+    console.error('profile cache load error:', err.message);
+    return {};
+  }
+}
+
+async function saveProfileCache(cache) {
+  try {
+    await put(PROFILE_CACHE_PATHNAME, JSON.stringify(cache), {
+      access: 'private',
+      addRandomSuffix: false,
+      allowOverwrite: true,
+      contentType: 'application/json',
+    });
+  } catch (err) {
+    console.error('profile cache save error:', err.message);
+  }
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
 
@@ -199,9 +237,10 @@ export default async function handler(req, res) {
   try {
     const seenEntries = await loadSeenPlayers();
     const seenIds = new Set(seenEntries.map(e => e.playerId));
+    const profileCache = await loadProfileCache();
+    let profileCacheDirty = false;
 
     const candidates = [];
-    const profilesById = new Map();
 
     // 【実行時間対策】各段階(fixtures取得→lineups取得→profiles取得)を、それぞれ
     // クラブ/試合/選手をまたいで並列化する。逐次awaitのままだと、プレシーズンで
@@ -278,20 +317,37 @@ export default async function handler(req, res) {
         .filter(p => !seenIds.has(p.id))
         .map(player => ({ club, fixture, player }))
     );
+    // 生年月日キャッシュにヒットする選手はAPIに問い合わせない(上記PROFILE_CACHE_PATHNAME参照)。
+    // キャッシュが温まるまでの間や、シーズン進行でCL大会単位の対象試合数が急増した場合の
+    // 保険として、キャッシュにヒットしない(=実際にAPIへ問い合わせる)人数にも上限を設ける
+    // (1回あたりapiFootballFetchはthrottleで約1.1秒かかるため、無制限だと実行時間上限
+    // (300秒)を超えるおそれがある)。上限を超えた分は今回はスキップされ、次回以降の実行で
+    // 改めて候補になる(MAX_ARTICLES_PER_RUNと同じ「今回処理しきれない分は次回に回す」考え方)。
+    const MAX_FRESH_PROFILE_LOOKUPS_PER_RUN = 60;
+    let freshProfileLookupCount = 0;
     const profileResults = await mapWithConcurrency(playerEntries, 5, async ({ club, fixture, player }) => {
-      // season非依存の /players/profiles で基礎プロフィール(生年月日含む)を取得。
-      // ここで取得したプロフィールは、年齢判定だけでなく後段の記事生成にもそのまま使う
-      // (二重にAPI-Footballへ問い合わせない)。
+      const cachedBirthDate = profileCache[player.id];
+      if (cachedBirthDate) {
+        return { club, fixture, player, birthDate: cachedBirthDate };
+      }
+      if (freshProfileLookupCount >= MAX_FRESH_PROFILE_LOOKUPS_PER_RUN) {
+        return { club, fixture, player, birthDate: null };
+      }
+      freshProfileLookupCount++;
       const data = await apiFootballFetch('/players/profiles', { player: player.id });
-      return { club, fixture, player, profile: data.response?.[0] || null };
+      const birthDate = data.response?.[0]?.player?.birth?.date || null;
+      return { club, fixture, player, birthDate };
     });
 
     // 同じ選手が期間中の複数試合(例: プレシーズンの連戦)で条件に合致した場合の重複防止。
     const addedPlayerIds = new Set();
 
-    for (const { club, fixture, player, profile } of profileResults) {
+    for (const { club, fixture, player, birthDate } of profileResults) {
+      if (birthDate && profileCache[player.id] !== birthDate) {
+        profileCache[player.id] = birthDate;
+        profileCacheDirty = true;
+      }
       if (addedPlayerIds.has(player.id)) continue;
-      const birthDate = profile?.player?.birth?.date;
       if (!birthDate) continue;
 
       const age = calcAge(birthDate, new Date(fixture.fixture.date));
@@ -311,7 +367,10 @@ export default async function handler(req, res) {
             : fixture.teams.home.name,
         competition: fixture.league?.name,
       });
-      profilesById.set(player.id, profile);
+    }
+
+    if (profileCacheDirty) {
+      await saveProfileCache(profileCache);
     }
 
     // 記事生成(Web検索+AI生成)は時間・コストがかかるため、1回あたり上限人数まで。
@@ -325,7 +384,11 @@ export default async function handler(req, res) {
         continue;
       }
       try {
-        const profile = profilesById.get(candidate.playerId) || null;
+        // 記事生成には生年月日だけでなく国籍・身長等の完全なプロフィールが必要なため、
+        // 年齢判定がキャッシュヒットで済んだ場合でも、実際に記事化する候補者本人については
+        // ここで1回だけ改めて取得する(候補者はMAX_ARTICLES_PER_RUNで少数に絞られているため、
+        // 追加の呼び出しコストは小さい)。
+        const profile = await getPlayerProfile(candidate.playerId);
         const article = await buildAndSaveArticle(candidate, profile);
         generated.push(article);
         seenEntries.push({
