@@ -434,13 +434,26 @@
   }
   .fixture-view-btn.active{ background:var(--amber); color:#ffffff; border-color:var(--amber); }
   .fixture-view-btn:hover:not(.active){ border-color:var(--amber-dim); color:var(--chalk); }
-  /* 2026-07-31: 「日付順/節別」は並び替えだけでなく、実際にどの日・どの節かを
-     選べるようプルダウンを追加(favorites-picker-rowの既存inputと同じダークトーン)。 */
-  .fixture-select{
-    background:#0E1424; border:1px solid var(--line); color:var(--chalk);
-    padding:6px 10px; font-size:12px; border-radius:20px; cursor:pointer;
+  /* 2026-07-31: 「日付順/節別」で、実際にどの日・どの節かを横スワイプのタブ
+     ストリップで選べるようにする(プルダウンから変更)。 */
+  .fixture-tab-strip{
+    display:flex; gap:4px; overflow-x:auto; scroll-snap-type:x proximity;
+    padding:2px 2px 10px; margin-bottom:6px; -webkit-overflow-scrolling:touch;
+    scrollbar-width:thin;
   }
-  .fixture-select:focus{ outline:2px solid var(--amber); outline-offset:1px; }
+  .fixture-tab-strip::-webkit-scrollbar{ height:4px; }
+  .fixture-tab-strip::-webkit-scrollbar-thumb{ background:var(--line); border-radius:2px; }
+  .fixture-tab{
+    flex:0 0 auto; scroll-snap-align:center;
+    display:flex; flex-direction:column; align-items:center; gap:2px;
+    background:none; border:none; border-bottom:2px solid transparent;
+    color:var(--chalk-dim); padding:6px 12px; cursor:pointer; white-space:nowrap;
+  }
+  .fixture-tab-top{ font-family:'JetBrains Mono',monospace; font-size:10px; }
+  .fixture-tab-main{ font-size:13px; font-weight:700; color:var(--chalk); }
+  .fixture-tab.active{ border-bottom-color:var(--amber); color:var(--amber); }
+  .fixture-tab.active .fixture-tab-main{ color:var(--amber); }
+  .fixture-tab:hover:not(.active){ color:var(--chalk); }
   .match-result-list{ display:flex; flex-direction:column; gap:10px; margin-bottom:28px; }
   .match-round-heading{
     font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--chalk-dim);
@@ -462,6 +475,10 @@
     display:flex; align-items:center; justify-content:center;
     font-family:'JetBrains Mono',monospace; font-size:10.5px; font-weight:700; color:var(--chalk-dim);
   }
+  /* 2026-07-31: 実データのクラブロゴ(順位表・スコアボードと同じAPI-Footballの
+     ロゴURL)。取得失敗時は既存のイニシャルバッジにフォールバックする。 */
+  .team-badge-logo{ flex-shrink:0; width:30px; height:30px; object-fit:contain; }
+  @media (max-width:480px){ .team-badge-logo{ width:24px; height:24px; } }
   .match-team-name{
     font-size:12.5px; font-weight:600; white-space:nowrap; overflow:hidden;
     text-overflow:ellipsis; min-width:0;
@@ -1218,9 +1235,9 @@
   <div class="fixture-view-toggle" id="fixtureViewToggle">
     <button class="fixture-view-btn active" data-view="date">日付順</button>
     <button class="fixture-view-btn" data-view="round">節別</button>
-    <select id="fixtureDateSelect" class="fixture-select"></select>
-    <select id="fixtureRoundSelect" class="fixture-select" style="display:none;"></select>
   </div>
+  <div class="fixture-tab-strip" id="fixtureDateTabs"></div>
+  <div class="fixture-tab-strip" id="fixtureRoundTabs" style="display:none;"></div>
   <span id="fixturesStatus" class="standings-status">読み込み中...</span>
   <div class="match-result-list" id="fixtureGrid"></div>
   <table class="standings">
@@ -5404,8 +5421,8 @@ renderTransfers('herewego');
 const leagueTabs = document.getElementById('leagueTabs');
 const fixtureGrid = document.getElementById('fixtureGrid');
 const fixtureViewToggle = document.getElementById('fixtureViewToggle');
-const fixtureDateSelect = document.getElementById('fixtureDateSelect');
-const fixtureRoundSelect = document.getElementById('fixtureRoundSelect');
+const fixtureDateTabs = document.getElementById('fixtureDateTabs');
+const fixtureRoundTabs = document.getElementById('fixtureRoundTabs');
 const fixturesStatus = document.getElementById('fixturesStatus');
 const standingsBody = document.getElementById('standingsBody');
 const leagueNames = Object.keys(leaguesData);
@@ -5415,17 +5432,29 @@ const standingsStatus = document.getElementById('standingsStatus');
 let currentActiveLeagueName = leagueNames[0];
 
 // 試合結果カード(Goalアプリ風): 「日付順」「節別」を切り替え、それぞれで実際に
-// どの日・どの節かをプルダウンで選べるようにする(2026-07-31、api/fixtures.js
-// による実データ取得に変更。以前はグルーピング表示だけで特定の日・節を選べなかった)。
+// どの日・どの節かを横スワイプのタブストリップで選べるようにする(2026-07-31、
+// api/fixtures.jsによる実データ取得に変更。以前はグルーピング表示だけで特定の
+// 日・節を選べなかった)。
+const WEEKDAY_JA = ['日','月','火','水','木','金','土'];
 let currentFixtureView = 'date';
 let currentSeasonFixtures = [];
 let currentSeasonRounds = [];
 let currentSeasonDates = [];
+let selectedFixtureDate = null;
+let selectedFixtureRound = null;
 
-// チーム名から簡易バッジ(先頭2文字)を生成する。実データのクラブ紋章画像は
-// まだ無いため、初期表示はイニシャル風の丸バッジで代用している。
+// チーム名から簡易バッジ(先頭2文字)を生成する。クラブロゴの取得に失敗した場合の
+// フォールバック表示に使う。
 function teamBadgeInitials(name){
   return (name || '').slice(0, 2);
+}
+
+// クラブロゴ(順位表・スコアボードと同じAPI-Footballのロゴ画像URL)。取得失敗時は
+// イニシャルバッジにフォールバックする。
+function teamLogoHtml(logo, name){
+  if(!logo) return `<span class="team-badge">${teamBadgeInitials(name)}</span>`;
+  const fallback = teamBadgeInitials(name).replace(/'/g, "\\'");
+  return `<img class="team-badge-logo" src="${logo}" alt="${escapeHtmlText(name)}" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'team-badge',textContent:'${fallback}'}))">`;
 }
 
 function renderMatchCard(f){
@@ -5434,11 +5463,11 @@ function renderMatchCard(f){
   el.innerHTML = `
     <div class="match-team match-team-home">
       <span class="match-team-name">${f.home}</span>
-      <span class="team-badge">${teamBadgeInitials(f.home)}</span>
+      ${teamLogoHtml(f.homeLogo, f.home)}
     </div>
     <div class="match-result-score">${f.score}</div>
     <div class="match-team match-team-away">
-      <span class="team-badge">${teamBadgeInitials(f.away)}</span>
+      ${teamLogoHtml(f.awayLogo, f.away)}
       <span class="match-team-name">${f.away}</span>
     </div>
   `;
@@ -5450,14 +5479,9 @@ function renderMatchCard(f){
 // 選んだ1件分だけを表示する)。
 function renderFixtureCards(){
   fixtureGrid.innerHTML = '';
-  let list;
-  if(currentFixtureView === 'round'){
-    const round = Number(fixtureRoundSelect.value);
-    list = currentSeasonFixtures.filter(f=>f.round===round);
-  } else {
-    const date = fixtureDateSelect.value;
-    list = currentSeasonFixtures.filter(f=>f.date===date);
-  }
+  const list = currentFixtureView === 'round'
+    ? currentSeasonFixtures.filter(f=>f.round===selectedFixtureRound)
+    : currentSeasonFixtures.filter(f=>f.date===selectedFixtureDate);
   if(list.length === 0){
     fixtureGrid.innerHTML = '<div class="archive-empty">該当する試合がありません</div>';
     return;
@@ -5465,34 +5489,78 @@ function renderFixtureCards(){
   list.forEach(f=> fixtureGrid.appendChild(renderMatchCard(f)));
 }
 
-// 日付・節のプルダウンを実データから作り、既定選択を「今日以前で直近、実際に
-// 試合がある日付/節」にする(シーズン開幕前で試合が無い場合は先頭にフォールバック)。
-function populateFixtureSelectors(){
-  const sortedDates = [...currentSeasonDates].sort((a,b)=> new Date(b) - new Date(a));
-  fixtureDateSelect.innerHTML = sortedDates.map(d=>`<option value="${d}">${d}</option>`).join('');
-  const sortedRounds = [...currentSeasonRounds].sort((a,b)=> b - a);
-  fixtureRoundSelect.innerHTML = sortedRounds.map(r=>`<option value="${r}">第${r}節</option>`).join('');
-
-  const todayStr = new Date().toISOString().slice(0,10);
-  const defaultDate = sortedDates.find(d=> d <= todayStr) || sortedDates[0];
-  if(defaultDate) fixtureDateSelect.value = defaultDate;
-
-  const playedRounds = new Set(currentSeasonFixtures.filter(f=>f.score!=='-').map(f=>f.round));
-  const defaultRound = sortedRounds.find(r=> playedRounds.has(r)) || sortedRounds[0];
-  if(defaultRound !== undefined) fixtureRoundSelect.value = String(defaultRound);
+function scrollActiveTabIntoView(container){
+  const active = container.querySelector('.fixture-tab.active');
+  if(active) active.scrollIntoView({ block:'nearest', inline:'center' });
 }
 
-fixtureDateSelect.addEventListener('change', renderFixtureCards);
-fixtureRoundSelect.addEventListener('change', renderFixtureCards);
+function renderDateTabs(){
+  const sortedDates = [...currentSeasonDates].sort((a,b)=> new Date(a) - new Date(b));
+  const todayStr = new Date().toISOString().slice(0,10);
+  fixtureDateTabs.innerHTML = sortedDates.map(d=>{
+    const dt = new Date(d+'T00:00:00Z');
+    const isToday = d === todayStr;
+    const active = d === selectedFixtureDate;
+    return `<button class="fixture-tab${active?' active':''}" data-date="${d}">
+      <span class="fixture-tab-top">${isToday ? '今日' : WEEKDAY_JA[dt.getUTCDay()]}</span>
+      <span class="fixture-tab-main">${dt.getUTCMonth()+1}/${dt.getUTCDate()}</span>
+    </button>`;
+  }).join('');
+  fixtureDateTabs.querySelectorAll('.fixture-tab').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      selectedFixtureDate = btn.dataset.date;
+      fixtureDateTabs.querySelectorAll('.fixture-tab').forEach(b=>b.classList.toggle('active', b===btn));
+      renderFixtureCards();
+    });
+  });
+  scrollActiveTabIntoView(fixtureDateTabs);
+}
+
+function renderRoundTabs(){
+  const sortedRounds = [...currentSeasonRounds].sort((a,b)=> a - b);
+  fixtureRoundTabs.innerHTML = sortedRounds.map(r=>{
+    const active = r === selectedFixtureRound;
+    return `<button class="fixture-tab${active?' active':''}" data-round="${r}">
+      <span class="fixture-tab-main">第${r}節</span>
+    </button>`;
+  }).join('');
+  fixtureRoundTabs.querySelectorAll('.fixture-tab').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      selectedFixtureRound = Number(btn.dataset.round);
+      fixtureRoundTabs.querySelectorAll('.fixture-tab').forEach(b=>b.classList.toggle('active', b===btn));
+      renderFixtureCards();
+    });
+  });
+  scrollActiveTabIntoView(fixtureRoundTabs);
+}
+
+// 日付・節のタブを実データから作り、既定選択を「今日以前で直近、実際に試合が
+// ある日付/節」にする(シーズン開幕前で試合が無い場合は先頭にフォールバック)。
+function populateFixtureSelectors(){
+  const sortedDates = [...currentSeasonDates].sort((a,b)=> new Date(a) - new Date(b));
+  const sortedRounds = [...currentSeasonRounds].sort((a,b)=> a - b);
+  const todayStr = new Date().toISOString().slice(0,10);
+
+  const pastDates = sortedDates.filter(d=> d <= todayStr);
+  selectedFixtureDate = pastDates.length ? pastDates[pastDates.length-1] : sortedDates[0];
+
+  const playedRounds = new Set(currentSeasonFixtures.filter(f=>f.score!=='-').map(f=>f.round));
+  const pastRounds = sortedRounds.filter(r=> playedRounds.has(r));
+  selectedFixtureRound = pastRounds.length ? pastRounds[pastRounds.length-1] : sortedRounds[0];
+
+  renderDateTabs();
+  renderRoundTabs();
+}
 
 fixtureViewToggle.querySelectorAll('.fixture-view-btn').forEach(btn=>{
   btn.addEventListener('click', ()=>{
     fixtureViewToggle.querySelectorAll('.fixture-view-btn').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
     currentFixtureView = btn.dataset.view;
-    fixtureDateSelect.style.display = currentFixtureView === 'date' ? '' : 'none';
-    fixtureRoundSelect.style.display = currentFixtureView === 'round' ? '' : 'none';
+    fixtureDateTabs.style.display = currentFixtureView === 'date' ? '' : 'none';
+    fixtureRoundTabs.style.display = currentFixtureView === 'round' ? '' : 'none';
     renderFixtureCards();
+    scrollActiveTabIntoView(currentFixtureView === 'date' ? fixtureDateTabs : fixtureRoundTabs);
   });
 });
 
