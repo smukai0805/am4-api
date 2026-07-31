@@ -940,17 +940,20 @@
   .scoreboard-score{ font-family:'Anton',sans-serif; font-size:18px; color:var(--amber); letter-spacing:1px; }
   /* 一覧カードではスコアをぼかして隠す(記事を開くと結果が分かる、という導線)。
      タップでその場でも解除できるようにする(.revealedでぼかし解除)。ぼかしただけだと
-     読み込み中なのか意図的に隠しているのか伝わらないため、目のアイコン付きラベルを
-     上に重ねて「タップして表示」を明示する。 */
-  .scoreboard-score-wrap{ position:relative; display:inline-flex; cursor:pointer; user-select:none; }
+     読み込み中なのか意図的に隠しているのか伝わらないため、ラベルを上に重ねて
+     「試合結果はタップして表示」を明示する。ラップ自体をflex:1でロゴ間の余白いっぱいに
+     広げ、ラベルはそのロゴ間の領域内(inset:0)に収めることで、ラベルがクラブロゴに
+     被らないようにしている(スコア数字自体の幅だけを基準に中央寄せすると、ラベルの
+     文字幅の方が広いためロゴにかぶってしまう)。 */
+  .scoreboard-score-wrap{ position:relative; display:flex; flex:1; min-width:0; justify-content:center; cursor:pointer; user-select:none; }
   .scoreboard-score-blurred{ filter:blur(7px); transition:filter .25s; }
   .scoreboard-score-wrap.revealed .scoreboard-score-blurred{ filter:blur(0); }
   .scoreboard-score-hint{
-    position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
-    display:flex; align-items:center; gap:3px; white-space:nowrap;
+    position:absolute; inset:0;
+    display:flex; align-items:center; justify-content:center; text-align:center;
     font-family:'JetBrains Mono',monospace; font-size:9px; font-weight:700;
     color:var(--chalk); background:rgba(14,20,36,.9); border:1px solid var(--line);
-    border-radius:10px; padding:3px 8px; pointer-events:none;
+    border-radius:10px; padding:3px 6px; pointer-events:none;
   }
   .scoreboard-score-wrap.revealed .scoreboard-score-hint{ display:none; }
   .am4-article-modal-body .scoreboard-logo,
