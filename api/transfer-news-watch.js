@@ -174,6 +174,69 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'ANTHROPIC_API_KEY が設定されていません' });
   }
 
+  // 【一時的な調査用】web_searchツールが実際にX(旧Twitter)の投稿本文まで取得できて
+  // いるかを確認するための診断エンドポイント。GET ?xDiag=1
+  // 生のweb_search_tool_result(url・title・snippet等)をそのまま返し、x.com/twitter.com
+  // のドメインが結果に含まれているか、含まれている場合に本文らしき内容(snippet等)が
+  // 取得できているかを直接確認する。検証後に削除予定。
+  if (req.method === 'GET' && req.query.xDiag === '1') {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 150000);
+    try {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-api-key': ANTHROPIC_API_KEY,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-5',
+          max_tokens: 2000,
+          tools: [{ type: 'web_search_20260209', name: 'web_search', max_uses: 6 }],
+          messages: [{
+            role: 'user',
+            content: `Web検索を使って、Fabrizio Romano(@FabrizioRomano)の直近のX(旧Twitter)への
+投稿(移籍関連)を調べてください。"site:x.com FabrizioRomano transfer" や
+"site:twitter.com FabrizioRomano" のようなクエリも試してください。
+見つかった投稿の内容を簡潔に日本語で要約してください。`,
+          }],
+          signal: controller.signal,
+        }),
+      });
+      clearTimeout(timeoutId);
+      const data = await response.json();
+      const rawResults = [];
+      for (const block of data.content || []) {
+        if (block.type === 'web_search_tool_result') {
+          rawResults.push({
+            toolUseError: Array.isArray(block.content) ? null : block.content, // エラー時はcontentが配列でなくオブジェクト
+            results: Array.isArray(block.content) ? block.content.map(r => ({
+              url: r.url,
+              title: r.title,
+              isXOrTwitter: /(^|\/\/)(x\.com|twitter\.com)\//.test(r.url || ''),
+              snippet: r.page_age || r.encrypted_content ? '(本文はencrypted_content/構造化フィールドのため直接プレビュー不可。titleのみ参照可)' : null,
+              fields: Object.keys(r || {}),
+            })) : null,
+          });
+        }
+      }
+      const finalText = (data.content || [])
+        .filter(b => b.type === 'text')
+        .map(b => b.text)
+        .join('\n\n');
+      return res.status(200).json({
+        finalText,
+        toolResultBlockCount: rawResults.length,
+        xOrTwitterUrlCount: rawResults.reduce((sum, r) => sum + (r.results || []).filter(x => x.isXOrTwitter).length, 0),
+        rawResults,
+      });
+    } catch (err) {
+      clearTimeout(timeoutId);
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
   try {
     const now = Date.now();
     const windowMs = DEDUPE_WINDOW_DAYS * 24 * 60 * 60 * 1000;
