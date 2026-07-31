@@ -118,7 +118,14 @@ const SEEN_PATHNAME = 'seen-academy-players.json';
 const PROFILE_CACHE_PATHNAME = 'academy-player-birthdate-cache.json';
 
 // 1回の実行で記事生成まで行う人数の上限(実行時間対策)。
-const MAX_ARTICLES_PER_RUN = 2;
+// 2026-07-31: Champions League大会単位の検知を追加した結果、検知フェーズ
+// (fixtures/lineups/profiles取得)自体の所要時間が実データ検証で最大約120秒まで
+// 伸びることを確認した(以前はPILOT_CLUBS単位のみで数十秒程度だった)。AI記事生成は
+// 1人あたり数十秒〜(まれに)数分かかることがあるため、2人分の生成枠を確保したままだと
+// 実行時間上限(300秒)に対して余裕が無くなり、実際にタイムアウトすることを確認した。
+// そのため1回の実行あたりの生成人数を1人に減らした(検知自体は複数人分行われており、
+// 生成しきれない分はpendingとして次回実行時に改めて候補になるため、検知漏れにはならない)。
+const MAX_ARTICLES_PER_RUN = 1;
 
 // ヨーロッパのシーズンは概ね7〜8月開始のため、7月以降なら「その年」がシーズン開始年、
 // それより前(1〜6月)なら前年開始のシーズンとして扱う(API-Footballのseason命名規則に合わせる)。
@@ -329,7 +336,7 @@ export default async function handler(req, res) {
     // (1回あたりapiFootballFetchはthrottleで約1.1秒かかるため、無制限だと実行時間上限
     // (300秒)を超えるおそれがある)。上限を超えた分は今回はスキップされ、次回以降の実行で
     // 改めて候補になる(MAX_ARTICLES_PER_RUNと同じ「今回処理しきれない分は次回に回す」考え方)。
-    const MAX_FRESH_PROFILE_LOOKUPS_PER_RUN = 60;
+    const MAX_FRESH_PROFILE_LOOKUPS_PER_RUN = 40;
     let freshProfileLookupCount = 0;
     const profileResults = await mapWithConcurrency(playerEntries, 5, async ({ club, fixture, player }) => {
       const cachedBirthDate = profileCache[player.id];
