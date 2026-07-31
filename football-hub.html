@@ -5234,6 +5234,13 @@ const leaguesData = {
       ['マルセイユ',23,13,5,5,'+16',44],
       ['リール',23,11,7,5,'+9',40]
     ]
+  },
+  // 2026-07-31追加。他5リーグと違い36チームの単一リーグフェーズ表(2024-25シーズン
+  // からの新形式)だが、standingsレスポンスの形状は他リーグと同じため、サンプルの
+  // プレースホルダーが無くても実データ取得(loadStandingsFromAPI)完了後は問題なく
+  // 表示される(空配列のままにしている)。
+  'チャンピオンズリーグ': {
+    standings:[]
   }
 };
 
@@ -5641,6 +5648,7 @@ const LEAGUE_LOGOS = {
   'セリエA': 'https://media.api-sports.io/football/leagues/135.png',
   'ブンデスリーガ': 'https://media.api-sports.io/football/leagues/78.png',
   'リーグ・アン': 'https://media.api-sports.io/football/leagues/61.png',
+  'チャンピオンズリーグ': 'https://media.api-sports.io/football/leagues/2.png',
 };
 
 // 2026-07-31: ボタン表記を英語表記に変更(内部的な識別子(leaguesDataのキー・
@@ -5653,6 +5661,7 @@ const LEAGUE_LABEL_EN = {
   'セリエA': 'Serie A',
   'ブンデスリーガ': 'Bundesliga',
   'リーグ・アン': 'Ligue 1',
+  'チャンピオンズリーグ': 'Champions League',
 };
 
 leagueNames.forEach(name=>{

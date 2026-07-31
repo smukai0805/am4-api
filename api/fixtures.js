@@ -23,7 +23,8 @@ const LEAGUES = {
   'ラ・リーガ': 140,
   'セリエA': 135,
   'ブンデスリーガ': 78,
-  'リーグ・アン': 61
+  'リーグ・アン': 61,
+  'チャンピオンズリーグ': 2
 };
 
 // api/standings.js・api/top-scorers.jsと同じ範囲・既定値(2026-07-31のPro
@@ -35,10 +36,21 @@ const DEFAULT_SEASON = 2025;
 // 終了済み(Match Finished)の試合のみスコア表示の対象にする(延長・PK戦を含む)。
 const FINISHED_STATUSES = ['FT', 'AET', 'PEN'];
 
-// API-Footballのleague.round(例: "Regular Season - 24")から節番号だけを取り出す。
+// API-Footballのleague.round(例: "Regular Season - 24"、Champions Leagueの
+// 場合は"League Stage - 3"等)から節番号だけを取り出す。
+//
+// 【2026-07-31、Champions League対応で修正】当初は文字列中の最初の数字を
+// そのまま拾っていたが、Champions Leagueの予選ラウンド("1st Qualifying Round"
+// 等)にも数字が含まれるため、本戦のリーグフェーズ("League Stage - 1")と
+// 同じ節番号1〜3として誤って衝突することが実データ検証で判明した(決勝
+// トーナメントの"Round of 16"/"Round of 32"も同様に数字を含み、節と紛らわしい)。
+// そのため「Regular Season - N」「League Stage - N」の2形式のみを節番号として
+// 扱うホワイトリスト方式にし、それ以外(予選ラウンド・プレーオフ・決勝
+// トーナメント各ラウンド)はnullを返す(節別タブには出ないが、日付順タブでは
+// 引き続き閲覧できる)。
 function parseRoundNumber(rawRound) {
   if (!rawRound) return null;
-  const match = String(rawRound).match(/(\d+)/);
+  const match = String(rawRound).match(/^(?:Regular Season|League Stage)\s*-\s*(\d+)$/i);
   return match ? Number(match[1]) : null;
 }
 

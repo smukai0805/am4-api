@@ -6,7 +6,8 @@
 //
 // 非公開・個人利用の想定なので、1日数回このエンドポイントを叩く程度なら
 // 無料枠(1日100リクエスト ※API-Football側への実際の通信回数でカウント)に
-// 余裕で収まります(1回の呼び出しで5リーグ分＝5リクエスト消費)。
+// 余裕で収まります(1回の呼び出しで6リーグ分(5大リーグ+Champions League)
+// ＝6リクエスト消費)。
 //
 // 2026-07-31: 5リーグを並行して問い合わせる際、api/fixtures.jsの同時実行と
 // API-Football側のレート制限に一部だけ引っかかる事例を確認したため、リトライ・
@@ -34,25 +35,6 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'API_FOOTBALL_KEY が設定されていません' });
   }
 
-  // 【一時的な調査用】Champions Leagueのstandingsレスポンス形式を確認するための診断用。
-  // GET ?clStandingsCheck=1&season=2025
-  if (req.method === 'GET' && req.query.clStandingsCheck === '1') {
-    const season = Number(req.query.season) || 2025;
-    const d = await apiFootballFetch('/standings', { league: 2, season });
-    const standingsGroups = d.response?.[0]?.league?.standings || [];
-    const leaguesResp = await apiFootballFetch('/leagues', { id: 2 });
-    const fixturesResp = await apiFootballFetch('/fixtures', { league: 2, season });
-    const roundLabels = [...new Set((fixturesResp.response || []).map(f => f.league.round))];
-    return res.status(200).json({
-      errors: d.errors,
-      groupCount: standingsGroups.length,
-      firstGroupLength: standingsGroups[0]?.length,
-      logo: leaguesResp.response?.[0]?.league?.logo || null,
-      totalFixtures: (fixturesResp.response || []).length,
-      roundLabels,
-    });
-  }
-
   // ?season=2023 のように指定可能。未指定ならデフォルト値を使う。
   const { season: seasonParam } = req.query;
   let SEASON = DEFAULT_SEASON;
@@ -66,13 +48,18 @@ export default async function handler(req, res) {
     }
   }
 
-  // サイト内の leaguesData のキー名と、API-Football側のリーグIDの対応表
+  // サイト内の leaguesData のキー名と、API-Football側のリーグIDの対応表。
+  // 2026-07-31: Champions League(league id=2)を追加。standingsのレスポンス形式を
+  // 実際に確認したところ、2024-25シーズンからの36チーム単一リーグフェーズ表は
+  // 他5リーグと全く同じ形状(response[0].league.standings[0]が単一のフラット配列)
+  // だったため、既存のマッピングロジックをそのまま流用できた(コード変更不要)。
   const LEAGUES = {
     'プレミアリーグ': 39,
     'ラ・リーガ': 140,
     'セリエA': 135,
     'ブンデスリーガ': 78,
-    'リーグ・アン': 61
+    'リーグ・アン': 61,
+    'チャンピオンズリーグ': 2
   };
 
   try {
