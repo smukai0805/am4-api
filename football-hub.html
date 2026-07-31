@@ -939,10 +939,20 @@
   .scoreboard-logo-placeholder{ width:24px; height:24px; border-radius:50%; background:var(--panel-2); display:flex; align-items:center; justify-content:center; font-size:12px; flex-shrink:0; }
   .scoreboard-score{ font-family:'Anton',sans-serif; font-size:18px; color:var(--amber); letter-spacing:1px; }
   /* 一覧カードではスコアをぼかして隠す(記事を開くと結果が分かる、という導線)。
-     タップでその場でも解除できるようにする(.revealedでぼかし解除)。 */
-  .scoreboard-score-blurred{ filter:blur(7px); cursor:pointer; user-select:none; transition:filter .25s; }
-  .scoreboard-score-blurred:hover{ filter:blur(4px); }
-  .scoreboard-score-blurred.revealed{ filter:blur(0); }
+     タップでその場でも解除できるようにする(.revealedでぼかし解除)。ぼかしただけだと
+     読み込み中なのか意図的に隠しているのか伝わらないため、目のアイコン付きラベルを
+     上に重ねて「タップして表示」を明示する。 */
+  .scoreboard-score-wrap{ position:relative; display:inline-flex; cursor:pointer; user-select:none; }
+  .scoreboard-score-blurred{ filter:blur(7px); transition:filter .25s; }
+  .scoreboard-score-wrap.revealed .scoreboard-score-blurred{ filter:blur(0); }
+  .scoreboard-score-hint{
+    position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+    display:flex; align-items:center; gap:3px; white-space:nowrap;
+    font-family:'JetBrains Mono',monospace; font-size:9px; font-weight:700;
+    color:var(--chalk); background:rgba(14,20,36,.9); border:1px solid var(--line);
+    border-radius:10px; padding:3px 8px; pointer-events:none;
+  }
+  .scoreboard-score-wrap.revealed .scoreboard-score-hint{ display:none; }
   .am4-article-modal-body .scoreboard-logo,
   .am4-article-modal-body .scoreboard-logo-placeholder{ width:36px; height:36px; }
   .am4-article-modal-body .scoreboard-score{ font-size:26px; }
@@ -5733,13 +5743,16 @@ function renderMarkdown(md){
 // 大会名ごとのバッジ色(一目でどの大会の試合か区別できるようにするため)。
 // 「第○節」の表記だけでは大会の区別がつかない問題への対応。未知の大会(親善試合・
 // 国内カップ戦等)はニュートラルな色にフォールバックする。
+// 2026-07-31: Champions League(旧#0E1E5B)・Ligue 1(旧#0E1FA3)がパネル背景
+// (#0E1424)と明度が近く視認しづらいとの指摘を受け、明るめの水色・インディゴ系に変更。
+// 他バッジと並べた時に浮きすぎないよう、明度は近い水準(#8B5CF6等)に揃えている。
 const COMPETITION_BADGE_COLORS = {
   'Premier League': '#8B5CF6',
   'La Liga': '#EE8707',
   'Serie A': '#1E88E5',
   'Bundesliga': '#D3010C',
-  'Ligue 1': '#0E1FA3',
-  'UEFA Champions League': '#0E1E5B',
+  'Ligue 1': '#5D7BFF',
+  'UEFA Champions League': '#4EA8FF',
   'UEFA Europa League': '#F16521',
   'UEFA Europa Conference League': '#00A651',
 };
@@ -5763,14 +5776,21 @@ function renderScoreboardHtml(scoreboard, { blurred = false } = {}){
     ? `<div class="scoreboard-competition" style="background:${color}22; color:${color}; border-color:${color}77;">${escapeHtmlText(scoreboard.competition)}</div>`
     : '';
   const roundHtml = scoreboard.round ? `<div class="scoreboard-round">第${escapeHtmlText(String(scoreboard.round))}節</div>` : '';
-  const scoreAttrs = blurred ? ' data-blur-toggle="1" title="タップして結果を表示"' : '';
-  const scoreClass = blurred ? 'scoreboard-score scoreboard-score-blurred' : 'scoreboard-score';
+  const scoreText = `${scoreboard.homeGoals} - ${scoreboard.awayGoals}`;
+  // ぼかしただけだと「読み込み中」なのか「意図的に隠している」のか伝わらないため、
+  // 目のアイコン+「タップして表示」のラベルをぼかしの上に重ねて明示する。
+  const scoreHtml = blurred
+    ? `<span class="scoreboard-score-wrap" data-blur-toggle="1" title="タップして結果を表示">
+         <span class="scoreboard-score scoreboard-score-blurred">${scoreText}</span>
+         <span class="scoreboard-score-hint">👁 タップして表示</span>
+       </span>`
+    : `<span class="scoreboard-score">${scoreText}</span>`;
   return `
     <div class="scoreboard">
       <div class="scoreboard-top-row">${competitionHtml}${roundHtml}</div>
       <div class="scoreboard-row">
         ${logoHtml(scoreboard.homeLogo)}
-        <span class="${scoreClass}"${scoreAttrs}>${scoreboard.homeGoals} - ${scoreboard.awayGoals}</span>
+        ${scoreHtml}
         ${logoHtml(scoreboard.awayLogo)}
       </div>
     </div>
