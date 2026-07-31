@@ -1,9 +1,10 @@
 // api/top-scorers.js
 // Vercelのサーバーレス関数(Node.js)。
 // 指定したリーグ・シーズンの得点ランキング(TOP10)を取得する。
-// 例: /api/top-scorers?league=プレミアリーグ&season=2023
+// 例: /api/top-scorers?league=プレミアリーグ&season=2025
 //
-// 無料プランの制限上、season は 2022〜2024 のみ対応(standings.jsと同じ制限)。
+// 2026-07-31: Proプランへの切り替えに伴いseason上限を引き上げた(standings.js
+// と同じ制限・同じ根拠。詳細はstandings.jsのコメント参照)。
 
 const LEAGUES = {
   'プレミアリーグ': 39,
@@ -14,7 +15,7 @@ const LEAGUES = {
 };
 
 const MIN_SEASON = 2022;
-const MAX_SEASON = 2024;
+const MAX_SEASON = 2026;
 
 export default async function handler(req, res) {
   // ブラウザから直接fetchできるようCORSを許可(standings.jsと同じ対応)
@@ -22,13 +23,13 @@ export default async function handler(req, res) {
 
   const API_KEY = process.env.API_FOOTBALL_KEY;
   const { league, season } = req.query;
-  const SEASON = Number(season) || 2024;
+  const SEASON = Number(season) || 2025;
 
   if (!API_KEY) {
     return res.status(500).json({ error: 'API_FOOTBALL_KEY が設定されていません' });
   }
   if (SEASON < MIN_SEASON || SEASON > MAX_SEASON) {
-    return res.status(400).json({ error: `season は ${MIN_SEASON}〜${MAX_SEASON} の範囲で指定してください(無料プランの制限)` });
+    return res.status(400).json({ error: `season は ${MIN_SEASON}〜${MAX_SEASON} の範囲で指定してください` });
   }
   const leagueId = LEAGUES[league];
   if (!leagueId) {

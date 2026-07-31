@@ -37,8 +37,9 @@ const TEAM_IDS = {
   'ナポリ': 492
 };
 
-// 対応シーズン一覧。有料プランに上げたら、ここに新しい年を足すだけでOK。
-const SEASONS = [2022, 2023, 2024];
+// 対応シーズン一覧。2026-07-31: Proプランへの切り替えに伴い2025・2026を追加
+// (2026は開幕前でまだ試合が無いため実データは薄いが、開幕後に自動的に反映される)。
+const SEASONS = [2022, 2023, 2024, 2025, 2026];
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -130,7 +131,7 @@ export default async function handler(req, res) {
     statsAvailable: statsFoundAny,
     statsNote: !teamId
       ? `クラブ「${team}」のID対応表が未登録のため、成績は取得していません(写真のみ)`
-      : (!statsFoundAny ? '実データ(2022〜2024)に該当する在籍記録が見つかりませんでした(写真のみ反映)' : null),
+      : (!statsFoundAny ? '実データ(2022〜2026)に該当する在籍記録が見つかりませんでした(写真のみ反映)' : null),
     seasons
   });
 }

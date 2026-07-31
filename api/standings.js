@@ -8,9 +8,16 @@
 // 無料枠(1日100リクエスト ※API-Football側への実際の通信回数でカウント)に
 // 余裕で収まります(1回の呼び出しで5リーグ分＝5リクエスト消費)。
 
+// 2026-07-31: Proプランへの切り替えに伴い、無料プラン時代の上限(2024固定)から
+// 引き上げた。API-Footballの/leaguesレスポンス(seasons配列)を実際に確認したところ
+// (5大リーグすべてで同じパターン): season=2025は2025-08〜2026-05で終了済みの
+// 「2025-26シーズン」(最新の完了シーズン、実データがフル)。season=2026は
+// current:trueだが2026-08開幕予定でまだ試合が無い(空の順位表になる)。そのため
+// MAX_SEASONは開幕後に備えて2026まで許容しつつ、DEFAULT_SEASONは実データが
+// そろっている2025(2025-26シーズン)にした。
 const MIN_SEASON = 2022;
-const MAX_SEASON = 2024;
-const DEFAULT_SEASON = 2024;
+const MAX_SEASON = 2026;
+const DEFAULT_SEASON = 2025;
 
 export default async function handler(req, res) {
   const API_KEY = process.env.API_FOOTBALL_KEY;
@@ -19,22 +26,6 @@ export default async function handler(req, res) {
 
   if (!API_KEY) {
     return res.status(500).json({ error: 'API_FOOTBALL_KEY が設定されていません' });
-  }
-
-  // 【一時的な調査用】Proプランで実際に利用可能なシーズンを確認するための診断用。
-  // GET ?seasonLookup=1&league=39(未指定時はプレミアリーグ=39)
-  // 推測ではなく、API-Footballの/leaguesレスポンスのseasons配列を直接確認する。
-  if (req.method === 'GET' && req.query.seasonLookup === '1') {
-    const leagueId = Number(req.query.league) || 39;
-    const r = await fetch(`https://v3.football.api-sports.io/leagues?id=${leagueId}`, {
-      headers: { 'x-apisports-key': API_KEY },
-    });
-    const d = await r.json();
-    const seasons = d.response?.[0]?.seasons || [];
-    return res.status(200).json({
-      leagueId,
-      seasons: seasons.map(s => ({ year: s.year, start: s.start, end: s.end, current: s.current })),
-    });
   }
 
   // ?season=2023 のように指定可能。未指定ならデフォルト値を使う。

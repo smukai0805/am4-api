@@ -1200,9 +1200,10 @@
   <div class="standings-controls">
     <label for="standingsSeasonSelect" class="standings-season-label">順位表シーズン(実データ):</label>
     <select id="standingsSeasonSelect">
-      <option value="2024">2024(無料プラン対応シーズン)</option>
-      <option value="2023">2023</option>
-      <option value="2022">2022</option>
+      <option value="2025" selected>2025-26(最新完了シーズン)</option>
+      <option value="2024">2024-25</option>
+      <option value="2023">2023-24</option>
+      <option value="2022">2022-23</option>
     </select>
     <span id="standingsStatus" class="standings-status">読み込み中...</span>
   </div>
@@ -1236,9 +1237,10 @@
     </select>
     <label class="standings-season-label">シーズン:</label>
     <select id="topScorersSeasonSelect">
-      <option value="2024">2024</option>
-      <option value="2023">2023</option>
-      <option value="2022">2022</option>
+      <option value="2025" selected>2025-26</option>
+      <option value="2024">2024-25</option>
+      <option value="2023">2023-24</option>
+      <option value="2022">2022-23</option>
     </select>
     <span id="topScorersStatus" class="standings-status">読み込み中...</span>
   </div>
@@ -7449,7 +7451,7 @@ async function loadLivePlayerStats(p){
     }).join('');
 
     section.innerHTML = `
-      <h4>過去成績(実データ / 2022〜2024シーズン)</h4>
+      <h4>過去成績(実データ / 2022〜2026シーズン)</h4>
       <table class="standings" style="font-size:12.5px;">
         <thead><tr><th>年</th><th>所属</th><th>出場</th><th>ゴール</th><th>アシスト</th></tr></thead>
         <tbody>${rowsHtml}</tbody>
