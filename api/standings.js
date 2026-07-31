@@ -40,12 +40,12 @@ export default async function handler(req, res) {
     const season = Number(req.query.season) || 2025;
     const d = await apiFootballFetch('/standings', { league: 2, season });
     const standingsGroups = d.response?.[0]?.league?.standings || [];
+    const leaguesResp = await apiFootballFetch('/leagues', { id: 2 });
     return res.status(200).json({
       errors: d.errors,
       groupCount: standingsGroups.length,
       firstGroupLength: standingsGroups[0]?.length,
-      sample: (standingsGroups[0] || []).slice(0, 5).map(r => ({ rank: r.rank, team: r.team.name, points: r.points, played: r.all.played, group: r.group })),
-      fullFirstRow: standingsGroups[0]?.[0] || null,
+      logo: leaguesResp.response?.[0]?.league?.logo || null,
     });
   }
 
