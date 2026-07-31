@@ -899,6 +899,8 @@
   .archive-section-head h3{ font-size:16px; font-weight:700; margin:0; }
   .archive-more-btn{ background:none; border:none; color:var(--amber); font-size:12.5px; font-weight:600; cursor:pointer; padding:0; }
   .archive-more-btn:hover{ color:var(--amber-dim); }
+  .transfer-news-showmore-btn{ display:block; width:100%; margin-top:8px; padding:9px; background:none; border:1px solid var(--line); color:var(--chalk-dim); font-size:12px; font-weight:600; border-radius:8px; cursor:pointer; }
+  .transfer-news-showmore-btn:hover{ border-color:var(--amber-dim); color:var(--amber); }
   .archive-card-list{ display:flex; flex-direction:column; gap:10px; }
   .archive-card{ display:flex; gap:12px; align-items:flex-start; padding:12px; background:var(--panel); border:1px solid var(--line); border-radius:10px; cursor:pointer; transition:border-color .15s; }
   .archive-card:hover{ border-color:var(--amber-dim); }
@@ -1068,6 +1070,16 @@
 
   <div class="archive-section">
     <div class="archive-section-head">
+      <h3 data-i18n="archive_transfer_news">移籍速報</h3>
+      <button class="archive-more-btn" data-archive-type="transfer_news" data-i18n="archive_more">もっと見る &rsaquo;</button>
+    </div>
+    <span class="standings-status" id="transferNewsStatus">読み込み中...</span>
+    <div class="transfer-news-list" id="transferNewsList"></div>
+    <button class="transfer-news-showmore-btn" id="transferNewsShowMoreBtn" style="display:none;">さらに表示</button>
+  </div>
+
+  <div class="archive-section">
+    <div class="archive-section-head">
       <h3 data-i18n="archive_match_report">試合解説</h3>
       <button class="archive-more-btn" data-archive-type="match_report" data-i18n="archive_more">もっと見る &rsaquo;</button>
     </div>
@@ -1082,14 +1094,6 @@
     </div>
     <span class="standings-status" id="playerIntroArchiveStatus">読み込み中...</span>
     <div class="archive-card-list" id="playerIntroArchiveList"></div>
-  </div>
-
-  <div class="archive-section">
-    <div class="archive-section-head">
-      <h3 data-i18n="archive_transfer_news">移籍速報</h3>
-    </div>
-    <span class="standings-status" id="transferNewsStatus">読み込み中...</span>
-    <div class="transfer-news-list" id="transferNewsList"></div>
   </div>
 
   <div class="feature-request-box">
@@ -5641,13 +5645,14 @@ const matchReportArchiveStatus = document.getElementById('matchReportArchiveStat
 const playerIntroArchiveStatus = document.getElementById('playerIntroArchiveStatus');
 const transferNewsList = document.getElementById('transferNewsList');
 const transferNewsStatus = document.getElementById('transferNewsStatus');
+const transferNewsShowMoreBtn = document.getElementById('transferNewsShowMoreBtn');
 const archiveFullList = document.getElementById('archiveFullList');
 const archiveListStatus = document.getElementById('archiveListStatus');
 const archivePagination = document.getElementById('archivePagination');
 const archiveBackBtn = document.getElementById('archiveBackBtn');
 const archivePageTitle = document.getElementById('archivePageTitle');
 
-const ARCHIVE_TYPE_LABEL = { match_report: '試合解説', player_intro: '選手紹介' };
+const ARCHIVE_TYPE_LABEL = { match_report: '試合解説', player_intro: '選手紹介', transfer_news: '移籍速報' };
 let archiveCurrentType = 'match_report';
 
 // 記事本文(Markdown)を最小限のHTMLに変換する。このリポジトリはビルド工程が無い
@@ -5781,13 +5786,18 @@ async function loadArchivePage(type, page){
   archiveListStatus.style.display = '';
   archiveFullList.innerHTML = '';
   archivePagination.innerHTML = '';
+  // 移籍速報はカード形式ではなくシンプルなリスト(renderTransferNewsItem)で表示する
+  // (特集タブ上部のセクションと同じ見た目に揃える)。
+  archiveFullList.classList.toggle('transfer-news-list', type === 'transfer_news');
+  archiveFullList.classList.toggle('archive-card-list', type !== 'transfer_news');
   try{
     const data = await fetchArticles(type, page, 10);
     archiveListStatus.style.display = 'none';
     if(data.items.length === 0){
       archiveFullList.innerHTML = '<div class="archive-empty">まだ記事がありません</div>';
     } else {
-      data.items.forEach(item => archiveFullList.appendChild(renderArchiveCard(item)));
+      const renderItem = type === 'transfer_news' ? renderTransferNewsItem : renderArchiveCard;
+      data.items.forEach(item => archiveFullList.appendChild(renderItem(item)));
     }
     renderArchivePagination(data);
   } catch(e){
@@ -5920,14 +5930,30 @@ function renderTransferNewsItem(item){
   return el;
 }
 
+// 特集タブ上部のセクションではデフォルトで直近この件数だけ表示し、残りは折りたたむ
+// (下にある試合解説・選手紹介セクションへの導線を妨げないため)。「さらに表示」で
+// 展開する。全件を後から見返したい場合は「もっと見る」→ページネーション付きの
+// 専用アーカイブページ(loadArchivePage('transfer_news', ...))を使う。
+const TRANSFER_NEWS_SECTION_DEFAULT_COUNT = 5;
+
 async function loadTransferNewsSection(){
   try{
     const data = await fetchArticles('transfer_news', 1, 15);
     transferNewsList.innerHTML = '';
+    transferNewsShowMoreBtn.style.display = 'none';
     if(data.items.length === 0){
       transferNewsList.innerHTML = '<div class="archive-empty">まだ移籍速報がありません</div>';
     } else {
-      data.items.forEach(item => transferNewsList.appendChild(renderTransferNewsItem(item)));
+      data.items.forEach((item, idx) => {
+        const el = renderTransferNewsItem(item);
+        if(idx >= TRANSFER_NEWS_SECTION_DEFAULT_COUNT) el.style.display = 'none';
+        transferNewsList.appendChild(el);
+      });
+      const hiddenCount = data.items.length - TRANSFER_NEWS_SECTION_DEFAULT_COUNT;
+      if(hiddenCount > 0){
+        transferNewsShowMoreBtn.textContent = `さらに表示(残り${hiddenCount}件)`;
+        transferNewsShowMoreBtn.style.display = '';
+      }
     }
     transferNewsStatus.style.display = 'none';
   } catch(e){
@@ -5936,6 +5962,10 @@ async function loadTransferNewsSection(){
     transferNewsStatus.className = 'standings-status error';
   }
 }
+transferNewsShowMoreBtn.addEventListener('click', () => {
+  transferNewsList.querySelectorAll('.transfer-news-item').forEach(el => { el.style.display = ''; });
+  transferNewsShowMoreBtn.style.display = 'none';
+});
 loadTransferNewsSection();
 
 /* ===================== 特集タブ 旧仕様(ai-column.js/旧match-report.js、削除済み) =====================

@@ -19,7 +19,11 @@
 //      (下記「Here we go連動」セクション参照)。新規ファイルは追加せず、
 //      academy-debut-watch.jsが使うlib/academy-core.jsの生成ロジックをここでも再利用する。
 //
-// 【永続化】Vercel Blob(academy-debut-watch.js等と同じプライベートストア)。
+// 【永続化について(重要・2026-07-31明記)】Vercel Blob(academy-debut-watch.js等と
+// 同じプライベートストア)。保存した速報は自動削除・自動ローテーションせず、恒久的に
+// 保持する(試合解説・選手紹介の記事アーカイブと同じ扱い)。特集タブ上部のセクションで
+// 表示件数を絞っているのはUI側の演出であり、データ自体は消えない
+// (lib/article-store.js冒頭のコメントも参照)。
 // 環境変数: ANTHROPIC_API_KEY, API_FOOTBALL_KEY が必要
 // (API_FOOTBALL_KEYはHere we go連動の選手プロフィール検索に使う)。
 
