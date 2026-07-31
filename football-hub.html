@@ -434,6 +434,13 @@
   }
   .fixture-view-btn.active{ background:var(--amber); color:#ffffff; border-color:var(--amber); }
   .fixture-view-btn:hover:not(.active){ border-color:var(--amber-dim); color:var(--chalk); }
+  /* 2026-07-31: 「日付順/節別」は並び替えだけでなく、実際にどの日・どの節かを
+     選べるようプルダウンを追加(favorites-picker-rowの既存inputと同じダークトーン)。 */
+  .fixture-select{
+    background:#0E1424; border:1px solid var(--line); color:var(--chalk);
+    padding:6px 10px; font-size:12px; border-radius:20px; cursor:pointer;
+  }
+  .fixture-select:focus{ outline:2px solid var(--amber); outline-offset:1px; }
   .match-result-list{ display:flex; flex-direction:column; gap:10px; margin-bottom:28px; }
   .match-round-heading{
     font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--chalk-dim);
@@ -1198,7 +1205,7 @@
     <span class="sub">PL / LIGA / SERIE A / BUNDESLIGA / LIGUE 1</span>
   </div>
   <div class="standings-controls">
-    <label for="standingsSeasonSelect" class="standings-season-label">順位表シーズン(実データ):</label>
+    <label for="standingsSeasonSelect" class="standings-season-label">シーズン(実データ):</label>
     <select id="standingsSeasonSelect">
       <option value="2025" selected>2025-26(最新完了シーズン)</option>
       <option value="2024">2024-25</option>
@@ -1211,7 +1218,10 @@
   <div class="fixture-view-toggle" id="fixtureViewToggle">
     <button class="fixture-view-btn active" data-view="date">日付順</button>
     <button class="fixture-view-btn" data-view="round">節別</button>
+    <select id="fixtureDateSelect" class="fixture-select"></select>
+    <select id="fixtureRoundSelect" class="fixture-select" style="display:none;"></select>
   </div>
+  <span id="fixturesStatus" class="standings-status">読み込み中...</span>
   <div class="match-result-list" id="fixtureGrid"></div>
   <table class="standings">
     <thead>
@@ -5142,32 +5152,11 @@ const transfers = [
   { player:'João Pedro', kana:'ホアン・ペドロ', from:'ブライトン', to:'チェルシー', fee:'€35M', status:'rumor', label:'噂', playerId:'joaopedro' }
 ];
 
+// 2026-07-31: fixturesフィールド(架空のサンプル試合結果)は、api/fixtures.js
+// からの実データ取得(loadFixturesFromAPI)に置き換えたため削除した。standingsは
+// 実データ取得(loadStandingsFromAPI)完了までの初期プレースホルダーとして残す。
 const leaguesData = {
   'プレミアリーグ': {
-    fixtures:[
-      {home:'マンチェスター・シティ',away:'アーセナル',score:'3-1',round:24,date:'2026-02-09',
-        scorers:[
-          {team:'home',player:'ハーランド',minute:"12'",desc:'GKとの1対1を余裕で沈める開始早々の一撃'},
-          {team:'home',player:'ハーランド',minute:"54'",desc:'ヘディングで叩き込むこの日2点目'},
-          {team:'home',player:'ドク',minute:"68'",desc:'サイドを切り裂くドリブルからの豪快な追加点'},
-          {team:'away',player:'サカ',minute:"77'",desc:'意地を見せるカットインからの強烈な一撃'}
-        ],
-        summary:'開始12分、ハーランドがGKとの1対1を涼しい顔で沈めシティが先制。後半にはヘディングで自身2点目を叩き込み試合をほぼ決定づけた。ドクの豪快なドリブル突破も決まりシティが3点目。終盤にサカが意地の一発を突き刺したが、時すでに遅し。シティが貫禄の勝利で首位を守った。',
-        lineup:{ home:['エデルソン(GK)','ルベン・ディアス(DF)','ロドリ(MF)','ドク(FW)','ハーランド(FW)'], away:['ラヤ(GK)','サリバ(DF)','ライス(MF)','サカ(FW)'] }, videoId:null },
-      {home:'リバプール',away:'チェルシー',score:'2-2',round:24,date:'2026-02-08',
-        scorers:[
-          {team:'home',player:'サラー',minute:"18'",desc:'得意の右足カットインからの正確無比なゴール'},
-          {team:'away',player:'パーマー',minute:"40'",desc:'冷静に沈めたPKで試合をタイに戻す'},
-          {team:'home',player:'ソボスライ',minute:"84'",desc:'ミドルレンジから突き刺すスーパーゴール'},
-          {team:'away',player:'パーマー',minute:"90+3'",desc:'絶望的な時間帯にねじ込んだ劇的な同点弾'}
-        ],
-        summary:'サラーの十八番カットインで先制したリバプールに対し、チェルシーはパーマーのPKで応戦。後半、ソボスライのミドルシュートが突き刺さりリバプールが再びリードを奪うも、アディショナルタイムに再びパーマーが劇的な同点ゴール。両者一歩も譲らない打ち合いは、最後の最後までもつれる大熱戦となった。',
-        lineup:{ home:['アリソン(GK)','ファン・ダイク(DF)','ソボスライ(MF)','サラー(FW)'], away:['サンチェス(GK)','コルウィル(DF)','パーマー(MF)','ジャクソン(FW)'] }, videoId:null },
-      {home:'トッテナム',away:'マンチェスター・U',score:'1-0',round:24,date:'2026-02-07',
-        scorers:[ {team:'home',player:'ソン・フンミン',minute:"63'",desc:'カウンターから流れるようなワンタッチフィニッシュ'} ],
-        summary:'両者チャンスを作りながらも決めきれない緊迫した展開が続いたが、63分に均衡が破れる。ソン・フンミンが鮮やかなカウンターをワンタッチで完結させ、値千金の決勝点に。マンチェスター・ユナイテッドは反撃の糸口を掴めないまま試合終了のホイッスルを聞くこととなった。',
-        lineup:{ home:['ヴィカーリオ(GK)','ロメロ(DF)','ソン・フンミン(FW)'], away:['オナナ(GK)','マグワイア(DF)','フェルナンデス(MF)'] }, videoId:null }
-    ],
     standings:[
       ['マンチェスター・シティ',24,18,4,2,'+42',58],
       ['アーセナル',24,16,6,2,'+35',54],
@@ -5176,31 +5165,6 @@ const leaguesData = {
     ]
   },
   'ラ・リーガ': {
-    fixtures:[
-      {home:'レアル・マドリード',away:'バルセロナ',score:'2-1',round:24,date:'2026-02-09',
-        scorers:[
-          {team:'home',player:'エムバペ',minute:"22'",desc:'圧倒的な加速からGKの逆をつく先制弾'},
-          {team:'home',player:'ヴィニシウス',minute:"75'",desc:'華麗なドリブルからの畳み掛ける追加点'},
-          {team:'away',player:'ヤマル',minute:"88'",desc:'意地を見せる終盤の一撃'}
-        ],
-        summary:'エル・クラシコは開始早々から一進一退の激しい攻防に。22分、エムバペが圧倒的な加速でDFを置き去りにし先制点。後半にはヴィニシウスが華麗なドリブルから追加点を突き刺し試合を決定づけたかに見えた。だが終盤、若きヤマルが意地の一発を突き刺し土壇場の反撃を試みるも、時間切れ。レアル・マドリードが白熱の一戦を制した。',
-        lineup:{ home:['クルトワ(GK)','リュディガー(DF)','ベリンガム(MF)','ヴィニシウス(FW)','エムバペ(FW)'], away:['テア・シュテーゲン(GK)','クンデ(DF)','ペドリ(MF)','ヤマル(FW)'] }, videoId:null },
-      {home:'アトレティコ',away:'ビジャレアル',score:'3-0',round:24,date:'2026-02-08',
-        scorers:[
-          {team:'home',player:'グリーズマン',minute:"10'",desc:'開始10分、抜け目のないポジショニングからの先制弾'},
-          {team:'home',player:'グリーズマン',minute:"34'",desc:'この日2点目、隙のない冷静なフィニッシュ'},
-          {team:'home',player:'ジュリアーノ・シメオネ',minute:"71'",desc:'圧巻の追い打ちとなるダメ押しの一撃'}
-        ],
-        summary:'開始からアトレティコが試合を支配する展開に。グリーズマンが立て続けに2得点を挙げ早々に試合の趨勢を決定づけると、終盤にはジュリアーノ・シメオネがダメ押し弾。ビジャレアルは為す術なく、アトレティコが危なげない完封勝利で勝ち点3を積み上げた。',
-        lineup:{ home:['オブラク(GK)','ヒメネス(DF)','グリーズマン(FW)'], away:['アルバレス(GK)','フォヨス(DF)','パルティド(MF)'] }, videoId:null },
-      {home:'セビージャ',away:'ベティス',score:'1-1',round:24,date:'2026-02-07',
-        scorers:[
-          {team:'home',player:'ロメロ',minute:"29'",desc:'こぼれ球に素早く反応した泥臭い先制点'},
-          {team:'away',player:'イスコ',minute:"81'",desc:'終盤に魅せる技ありのミドルシュート'}
-        ],
-        summary:'セビージャダービーは一進一退の緊迫した攻防に。前半、ロメロがこぼれ球を押し込みセビージャが先制するも、終盤にイスコが技ありのミドルシュートを突き刺し同点に追いつく。最後まで決着つかず、勝ち点を分け合う結果となった。',
-        lineup:{ home:['ボノ(GK)','バデ(DF)','ロメロ(FW)'], away:['アダマ(GK)','バルトラ(DF)','イスコ(MF)'] }, videoId:null }
-    ],
     standings:[
       ['レアル・マドリード',24,19,3,2,'+44',60],
       ['バルセロナ',24,17,5,2,'+38',56],
@@ -5209,26 +5173,6 @@ const leaguesData = {
     ]
   },
   'セリエA': {
-    fixtures:[
-      {home:'インテル',away:'ユベントス',score:'2-0',round:24,date:'2026-02-09',
-        scorers:[
-          {team:'home',player:'ラウタロ・マルティネス',minute:"25'",desc:'完璧なタイミングで抜け出しての先制弾'},
-          {team:'home',player:'ラウタロ・マルティネス',minute:"70'",desc:'この日2点目、試合を決定づけるダメ押し弾'}
-        ],
-        summary:'ダービー・ディタリアはインテルが終始主導権を握る展開に。ラウタロ・マルティネスが前半に完璧なタイミングで抜け出し先制すると、後半にも追加点を奪い2得点の大暴れ。ユベントスは反撃の糸口を掴めないまま、インテルが伝統の一戦を制して首位争いを優位に進めた。',
-        lineup:{ home:['ソンマー(GK)','バストーニ(DF)','ラウタロ・マルティネス(FW)'], away:['ディグレゴリオ(GK)','ブレメール(DF)','ヴラホヴィッチ(FW)'] }, videoId:null },
-      {home:'ミラン',away:'ナポリ',score:'1-1',round:24,date:'2026-02-08',
-        scorers:[
-          {team:'home',player:'ロイック',minute:"38'",desc:'クロスに合わせたタイミング抜群のヘディング弾'},
-          {team:'away',player:'ラスパドリ',minute:"64'",desc:'鮮やかなワンツーから決めた同点ゴール'}
-        ],
-        summary:'両者決定機を作り合う見応え十分の展開に。前半、ミランのロイックがタイミング抜群のヘディングで先制するも、後半にナポリのラスパドリが鮮やかなワンツーから同点弾。最後まで決めきれず、痛み分けに終わった。',
-        lineup:{ home:['マイニャン(GK)','トモリ(DF)','ロイック(FW)'], away:['メレト(GK)','ディロレンツォ(DF)','ラスパドリ(FW)'] }, videoId:null },
-      {home:'ローマ',away:'ラツィオ',score:'0-0',round:24,date:'2026-02-07',
-        scorers:[],
-        summary:'ローマ・ダービーは両者一歩も引かない堅守が光る展開に。決定機を作りながらも最後の精度を欠き、90分間ゴールが生まれることのないまま、緊張感あふれるスコアレスドローで幕を閉じた。',
-        lineup:{ home:['スヴィラール(GK)','ンドカ(DF)'], away:['プロヴェドル(GK)','ロマニョーリ(DF)'] }, videoId:null }
-    ],
     standings:[
       ['インテル',24,17,5,2,'+36',56],
       ['ナポリ',24,16,5,3,'+30',53],
@@ -5237,31 +5181,6 @@ const leaguesData = {
     ]
   },
   'ブンデスリーガ': {
-    fixtures:[
-      {home:'バイエルン',away:'ドルトムント',score:'4-2',round:23,date:'2026-02-08',
-        scorers:[
-          {team:'home',player:'ケイン',minute:"15'",desc:'完璧なポジショニングから叩き込む先制弾'},
-          {team:'away',player:'ギラシー',minute:"30'",desc:'裏への抜け出しから沈めた同点ゴール'},
-          {team:'home',player:'ケイン',minute:"49'",desc:'後半開始早々の突き放す一撃'},
-          {team:'home',player:'ムシアラ',minute:"60'",desc:'切れ味鋭いドリブルからのゴラッソ'},
-          {team:'away',player:'ギラシー',minute:"77'",desc:'意地を見せる終盤のこの日2点目'}
-        ],
-        summary:'デア・クラシカーは開始から得点が入り乱れる打ち合いに。ケインが先制すればギラシーが即座に同点弾と、譲らない展開が続いた。だが後半、再びケインが勝ち越すと、ムシアラの切れ味鋭いゴラッソで突き放しに成功。ギラシーが意地の2点目を返すも反撃はそこまで、バイエルンが壮絶な打ち合いを制した。',
-        lineup:{ home:['ノイアー(GK)','キミッヒ(MF)','ムシアラ(MF)','ケイン(FW)'], away:['コベル(GK)','ヒュメルス(DF)','ギラシー(FW)'] }, videoId:null },
-      {home:'レバークーゼン',away:'ライプツィヒ',score:'2-2',round:23,date:'2026-02-07',
-        scorers:[
-          {team:'home',player:'ヴィルツ',minute:"25'",desc:'ペナルティエリア外からの豪快なミドルシュート'},
-          {team:'away',player:'シモンズ',minute:"40'",desc:'正確なパスワークから沈めた同点弾'},
-          {team:'home',player:'ヴィルツ',minute:"58'",desc:'この日2点目、狭いスペースをこじ開ける技巧派ゴール'},
-          {team:'away',player:'シモンズ',minute:"80'",desc:'土壇場で試合を振り出しに戻す同点弾'}
-        ],
-        summary:'両チームのエースが真っ向勝負となった一戦。ヴィルツが豪快なミドルシュートで先制すれば、シモンズが正確なフィニッシュで即座に同点。後半も両者譲らず、ヴィルツとシモンズがそれぞれこの日2点目を突き刺す壮絶な撃ち合いとなり、最後まで決着つかず引き分けに終わった。',
-        lineup:{ home:['フラウンベルガー(GK)','ヴィルツ(MF)'], away:['グラーチ(GK)','シモンズ(MF)'] }, videoId:null },
-      {home:'シュツットガルト',away:'フランクフルト',score:'1-0',round:23,date:'2026-02-06',
-        scorers:[ {team:'home',player:'ウンダブ',minute:"55'",desc:'こぼれ球を逃さず押し込んだ値千金の決勝点'} ],
-        summary:'両者決定機を作りきれない我慢比べの展開が続いたが、55分についに均衡が破れる。ウンダブがペナルティエリア内のこぼれ球を逃さず押し込み、これが決勝点に。シュツットガルトが最少得点差ながら着実に勝ち点3を積み上げた。',
-        lineup:{ home:['ノイベルト(GK)','ウンダブ(FW)'], away:['トラップ(GK)','クナウフ(DF)'] }, videoId:null }
-    ],
     standings:[
       ['バイエルン',23,18,3,2,'+48',57],
       ['レバークーゼン',23,15,6,2,'+32',51],
@@ -5270,31 +5189,6 @@ const leaguesData = {
     ]
   },
   'リーグ・アン': {
-    fixtures:[
-      {home:'パリ・サンジェルマン',away:'マルセイユ',score:'3-1',round:23,date:'2026-02-08',
-        scorers:[
-          {team:'home',player:'デンベレ',minute:"20'",desc:'一人で完結させる圧巻のドリブル突破からの先制弾'},
-          {team:'home',player:'バルコラ',minute:"55'",desc:'スピードに乗ったカウンターからの追加点'},
-          {team:'home',player:'クヴァラツヘリア',minute:"80'",desc:'独特のリズムで守備陣を翻弄したダメ押しゴール'},
-          {team:'away',player:'グリニエ',minute:"87'",desc:'終了間際に意地を見せる一撃'}
-        ],
-        summary:'ル・クラシック(仏国内の伝統の一戦)はPSGが完全に試合を掌握。デンベレの独走ドリブルで先制すると、バルコラ、クヴァラツヘリアと立て続けに得点が生まれ、マルセイユを圧倒。終了間際にグリニエが意地の1点を返すのが精一杯で、PSGが首位を独走している。',
-        lineup:{ home:['ドンナルンマ(GK)','マルキーニョス(DF)','デンベレ(FW)','バルコラ(FW)'], away:['パウロ・ロペス(GK)','バリ(DF)','グリニエ(MF)'] }, videoId:null },
-      {home:'モナコ',away:'リヨン',score:'2-0',round:23,date:'2026-02-07',
-        scorers:[
-          {team:'home',player:'バロガン',minute:"33'",desc:'裏への抜け出しから沈めた先制弾'},
-          {team:'home',player:'バロガン',minute:"70'",desc:'この日2点目、危なげないダメ押しの一撃'}
-        ],
-        summary:'バロガンが1人で試合を決めた一戦。前半に裏への抜け出しから先制すると、後半にも追加点を奪い2得点の活躍。リヨンは反撃の糸口を掴めないまま、モナコが完封勝利で上位進出に向けて好調を維持した。',
-        lineup:{ home:['マジンス(GK)','バロガン(FW)'], away:['ロペス(GK)','タリク(MF)'] }, videoId:null },
-      {home:'リール',away:'ニース',score:'1-1',round:23,date:'2026-02-06',
-        scorers:[
-          {team:'home',player:'ダヴィド',minute:"44'",desc:'前半終了間際にねじ込んだ先制弾'},
-          {team:'away',player:'ムーサ',minute:"73'",desc:'意地の反撃を見せる同点ゴール'}
-        ],
-        summary:'一進一退の攻防が続いた一戦。前半終了間際にダヴィドが先制点をねじ込むも、後半にニースのムーサが意地の同点弾。最後までゴールを奪い合う展開となり、勝ち点を分け合う結果となった。',
-        lineup:{ home:['シェヴァリエ(GK)','ダヴィド(FW)'], away:['ブラン(GK)','ムーサ(FW)'] }, videoId:null }
-    ],
     standings:[
       ['パリ・サンジェルマン',23,19,3,1,'+50',60],
       ['モナコ',23,14,5,4,'+22',47],
@@ -5510,12 +5404,23 @@ renderTransfers('herewego');
 const leagueTabs = document.getElementById('leagueTabs');
 const fixtureGrid = document.getElementById('fixtureGrid');
 const fixtureViewToggle = document.getElementById('fixtureViewToggle');
+const fixtureDateSelect = document.getElementById('fixtureDateSelect');
+const fixtureRoundSelect = document.getElementById('fixtureRoundSelect');
+const fixturesStatus = document.getElementById('fixturesStatus');
 const standingsBody = document.getElementById('standingsBody');
 const leagueNames = Object.keys(leaguesData);
+const AM4_API_BASE = 'https://am4-api.vercel.app';
+const standingsSeasonSelect = document.getElementById('standingsSeasonSelect');
+const standingsStatus = document.getElementById('standingsStatus');
+let currentActiveLeagueName = leagueNames[0];
 
-// 試合結果カード(Goalアプリ風): 「日付順」「節別」の2表示を切り替えられるようにする。
+// 試合結果カード(Goalアプリ風): 「日付順」「節別」を切り替え、それぞれで実際に
+// どの日・どの節かをプルダウンで選べるようにする(2026-07-31、api/fixtures.js
+// による実データ取得に変更。以前はグルーピング表示だけで特定の日・節を選べなかった)。
 let currentFixtureView = 'date';
-let currentFixturesForView = [];
+let currentSeasonFixtures = [];
+let currentSeasonRounds = [];
+let currentSeasonDates = [];
 
 // チーム名から簡易バッジ(先頭2文字)を生成する。実データのクラブ紋章画像は
 // まだ無いため、初期表示はイニシャル風の丸バッジで代用している。
@@ -5541,40 +5446,84 @@ function renderMatchCard(f){
   return el;
 }
 
-function renderFixtureCards(fixtures){
-  currentFixturesForView = fixtures;
+// 現在選択中の日付/節に絞って表示する(グルーピングして全件並べるのではなく、
+// 選んだ1件分だけを表示する)。
+function renderFixtureCards(){
   fixtureGrid.innerHTML = '';
+  let list;
   if(currentFixtureView === 'round'){
-    // 節(round)ごとにグルーピングして表示(新しい節が上)
-    const rounds = [...new Set(fixtures.map(f=>f.round))].sort((a,b)=>(b||0)-(a||0));
-    rounds.forEach(round=>{
-      const heading = document.createElement('div');
-      heading.className = 'match-round-heading';
-      heading.textContent = round ? `第${round}節` : '節不明';
-      fixtureGrid.appendChild(heading);
-      fixtures.filter(f=>f.round===round).forEach(f=>{
-        fixtureGrid.appendChild(renderMatchCard(f));
-      });
-    });
+    const round = Number(fixtureRoundSelect.value);
+    list = currentSeasonFixtures.filter(f=>f.round===round);
   } else {
-    // 日付順(直近の試合から新しい順)
-    [...fixtures].sort((a,b)=> new Date(b.date||0) - new Date(a.date||0)).forEach(f=>{
-      fixtureGrid.appendChild(renderMatchCard(f));
-    });
+    const date = fixtureDateSelect.value;
+    list = currentSeasonFixtures.filter(f=>f.date===date);
   }
+  if(list.length === 0){
+    fixtureGrid.innerHTML = '<div class="archive-empty">該当する試合がありません</div>';
+    return;
+  }
+  list.forEach(f=> fixtureGrid.appendChild(renderMatchCard(f)));
 }
+
+// 日付・節のプルダウンを実データから作り、既定選択を「今日以前で直近、実際に
+// 試合がある日付/節」にする(シーズン開幕前で試合が無い場合は先頭にフォールバック)。
+function populateFixtureSelectors(){
+  const sortedDates = [...currentSeasonDates].sort((a,b)=> new Date(b) - new Date(a));
+  fixtureDateSelect.innerHTML = sortedDates.map(d=>`<option value="${d}">${d}</option>`).join('');
+  const sortedRounds = [...currentSeasonRounds].sort((a,b)=> b - a);
+  fixtureRoundSelect.innerHTML = sortedRounds.map(r=>`<option value="${r}">第${r}節</option>`).join('');
+
+  const todayStr = new Date().toISOString().slice(0,10);
+  const defaultDate = sortedDates.find(d=> d <= todayStr) || sortedDates[0];
+  if(defaultDate) fixtureDateSelect.value = defaultDate;
+
+  const playedRounds = new Set(currentSeasonFixtures.filter(f=>f.score!=='-').map(f=>f.round));
+  const defaultRound = sortedRounds.find(r=> playedRounds.has(r)) || sortedRounds[0];
+  if(defaultRound !== undefined) fixtureRoundSelect.value = String(defaultRound);
+}
+
+fixtureDateSelect.addEventListener('change', renderFixtureCards);
+fixtureRoundSelect.addEventListener('change', renderFixtureCards);
 
 fixtureViewToggle.querySelectorAll('.fixture-view-btn').forEach(btn=>{
   btn.addEventListener('click', ()=>{
     fixtureViewToggle.querySelectorAll('.fixture-view-btn').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
     currentFixtureView = btn.dataset.view;
-    renderFixtureCards(currentFixturesForView);
+    fixtureDateSelect.style.display = currentFixtureView === 'date' ? '' : 'none';
+    fixtureRoundSelect.style.display = currentFixtureView === 'round' ? '' : 'none';
+    renderFixtureCards();
   });
 });
 
+async function loadFixturesFromAPI(name, season){
+  fixturesStatus.textContent = '読み込み中...';
+  fixturesStatus.className = 'standings-status';
+  try{
+    const res = await fetch(`${AM4_API_BASE}/api/fixtures?league=${encodeURIComponent(name)}&season=${season}`);
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if(data.error) throw new Error(data.error);
+    currentSeasonFixtures = data.fixtures || [];
+    currentSeasonRounds = data.rounds || [];
+    currentSeasonDates = data.dates || [];
+    populateFixtureSelectors();
+    renderFixtureCards();
+    fixturesStatus.textContent = currentSeasonFixtures.length > 0
+      ? `● 実データ反映済み(${season}シーズン)`
+      : `このシーズンの試合はまだありません`;
+    fixturesStatus.className = currentSeasonFixtures.length > 0 ? 'standings-status live' : 'standings-status';
+  } catch(err){
+    console.error('fixtures fetch error:', err);
+    currentSeasonFixtures = []; currentSeasonRounds = []; currentSeasonDates = [];
+    fixtureGrid.innerHTML = '<div class="archive-empty">試合結果の取得に失敗しました</div>';
+    fixturesStatus.textContent = '取得失敗';
+    fixturesStatus.className = 'standings-status error';
+  }
+}
+
 function renderLeague(name){
-  renderFixtureCards(leaguesData[name].fixtures);
+  loadFixturesFromAPI(name, standingsSeasonSelect.value);
   standingsBody.innerHTML = '';
   leaguesData[name].standings.forEach((row,i)=>{
     const tr = document.createElement('tr');
@@ -5591,22 +5540,12 @@ leagueNames.forEach(name=>{
   const btn = document.createElement('button');
   btn.className = 'league-tab';
   btn.textContent = name;
-  btn.onclick = ()=>renderLeague(name);
+  btn.onclick = ()=>{ currentActiveLeagueName = name; renderLeague(name); };
   leagueTabs.appendChild(btn);
 });
 renderLeague(leagueNames[0]);
 
 /* ===================== 順位表(実データAPI連携) ===================== */
-const AM4_API_BASE = 'https://am4-api.vercel.app';
-const standingsSeasonSelect = document.getElementById('standingsSeasonSelect');
-const standingsStatus = document.getElementById('standingsStatus');
-let currentActiveLeagueName = leagueNames[0];
-
-// タブ切り替え時にも「今どのリーグを見ているか」を覚えておく(シーズン再取得後、同じタブを開き直すため)
-leagueTabs.querySelectorAll('.league-tab').forEach(btn=>{
-  btn.addEventListener('click', ()=>{ currentActiveLeagueName = btn.textContent; });
-});
-
 async function loadStandingsFromAPI(season){
   standingsStatus.textContent = '読み込み中...';
   standingsStatus.className = 'standings-status';
@@ -5625,7 +5564,13 @@ async function loadStandingsFromAPI(season){
       ]);
     });
 
-    renderLeague(currentActiveLeagueName);
+    standingsBody.innerHTML = '';
+    (leaguesData[currentActiveLeagueName].standings || []).forEach((row,i)=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td class="pos">${i+1}</td><td><span class="club-link" data-club="${row[0]}">${row[0]}</span></td><td>${row[1]}</td><td>${row[2]}</td><td>${row[3]}</td><td>${row[4]}</td><td>${row[5]}</td><td class="pts">${row[6]}</td>`;
+      tr.querySelector('.club-link').addEventListener('click', (e)=>{ e.stopPropagation(); openClubModal(row[0]); });
+      standingsBody.appendChild(tr);
+    });
     standingsStatus.textContent = `● 実データ反映済み(${season}シーズン)`;
     standingsStatus.className = 'standings-status live';
   } catch(err){
@@ -5635,8 +5580,11 @@ async function loadStandingsFromAPI(season){
   }
 }
 
+// シーズン変更時は順位表・試合結果の両方を再取得する(2026-07-31、試合結果の
+// 実データ化に伴いfixturesも連動させる必要があるため)。
 standingsSeasonSelect.addEventListener('change', ()=>{
   loadStandingsFromAPI(standingsSeasonSelect.value);
+  loadFixturesFromAPI(currentActiveLeagueName, standingsSeasonSelect.value);
 });
 loadStandingsFromAPI(standingsSeasonSelect.value);
 
