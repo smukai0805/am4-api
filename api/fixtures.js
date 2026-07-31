@@ -54,7 +54,7 @@ export default async function handler(req, res) {
   if (req.method === 'GET' && req.query.teamNameCheck === '1') {
     const teamId = Number(req.query.team);
     const d = await apiFootballFetch('/teams', { id: teamId });
-    return res.status(200).json({ teamsEndpoint: d.response?.[0]?.team || null });
+    return res.status(200).json({ full: d.response?.[0] || null });
   }
 
   const { league } = req.query;
