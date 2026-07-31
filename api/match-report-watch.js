@@ -34,14 +34,66 @@ import { saveArticle, listArticles, slugify } from '../lib/article-store.js';
 import { PILOT_CLUBS } from '../lib/pilot-clubs.js';
 import { apiFootballFetch, mapWithConcurrency } from '../lib/api-football-client.js';
 
-// Markdownの下書き本文から見出し(# で始まる行)を抜き出してタイトルにする。
-// プロンプト内のフォーマット仕様書見出しがそのまま複製されてしまうことがあるため、
-// 「フォーマット(AM4)」を含む見出しは除外し、実際の記事見出しだけを拾う。
-// 見つからない場合は対戦カード+スコアをフォールバックにする。
-function extractTitle(draft, fallback) {
-  const headings = [...(draft || '').matchAll(/^#\s+(.+)$/gm)].map(m => m[1].trim());
-  const real = headings.find(h => !h.includes('フォーマット(AM4)'));
-  return real || fallback;
+// クラブ名が長い場合の略称テーブル(PILOT_CLUBS分)。「3文字程度の略称」という
+// 要望に合わせ、一般的なサッカーメディアでの3文字表記に寄せた。対戦相手がこの表に
+// 無いクラブの場合は、長い場合のみ先頭3文字を大文字にしたものにフォールバックする。
+const CLUB_ABBREVIATIONS = {
+  'Manchester United': 'MUN',
+  'Barcelona': 'BAR',
+  'Real Madrid': 'RMA',
+  'Bayern Munich': 'BAY',
+  'Juventus': 'JUV',
+  'Paris Saint Germain': 'PSG',
+  'Manchester City': 'MCI',
+  'Liverpool': 'LIV',
+  'Chelsea': 'CHE',
+  'Arsenal': 'ARS',
+  'Tottenham': 'TOT',
+  'Newcastle United': 'NEW',
+  'AC Milan': 'MIL',
+  'Inter Milan': 'INT',
+  'Napoli': 'NAP',
+};
+// この文字数を超えるクラブ名だけ略称に切り替える(短い名前はそのまま読みやすく表示する)。
+const MAX_TITLE_CLUB_NAME_LENGTH = 15;
+
+function shortenClubName(name) {
+  if (!name) return '';
+  if (name.length <= MAX_TITLE_CLUB_NAME_LENGTH) return name;
+  return CLUB_ABBREVIATIONS[name] || name.replace(/[^A-Za-z]/g, '').slice(0, 3).toUpperCase();
+}
+
+// API-Footballのleague.round(例: "Regular Season - 32")から節番号だけを取り出す。
+// 見つからない場合(カップ戦のノックアウトラウンド等、数字が無い形式)はnullを返す。
+function parseRoundNumber(rawRound) {
+  if (!rawRound) return null;
+  const match = String(rawRound).match(/(\d+)/);
+  return match ? match[1] : null;
+}
+
+// 一覧・詳細ページのタイトル表示用。ドラマ調の見出し(本文側に残す)ではなく、
+// 「何の試合の記事か一覧でぱっと見て分かる」対戦カード形式にする。
+function buildMatchupTitle(matchInfo) {
+  const roundLabel = matchInfo.round ? `第${matchInfo.round}節 ` : '';
+  return `${roundLabel}${shortenClubName(matchInfo.homeTeam)} vs ${shortenClubName(matchInfo.awayTeam)}`;
+}
+
+// fixture(API-Footballの/fixturesレスポンス1件)からmatchInfoを組み立てる共通処理。
+// 元々POST用テスト経路とCron検知経路の2箇所に同じ組み立てコードが重複していたため統合した。
+function buildMatchInfo(fixture) {
+  return {
+    fixtureId: fixture.fixture.id,
+    homeTeam: fixture.teams.home.name,
+    awayTeam: fixture.teams.away.name,
+    homeGoals: fixture.goals.home,
+    awayGoals: fixture.goals.away,
+    homeLogo: fixture.teams.home.logo || null,
+    awayLogo: fixture.teams.away.logo || null,
+    competition: fixture.league?.name,
+    round: parseRoundNumber(fixture.league?.round),
+    date: fixture.fixture.date,
+    venue: fixture.fixture.venue?.name,
+  };
 }
 
 // ARTICLE_FORMAT_SPEC(構成:1. 見出し 2. リード文...という番号付きリストで
@@ -61,14 +113,28 @@ async function buildAndSaveArticle(matchInfo, ratingResult) {
   const draft = cleanArticleBody(rawDraft);
   const dateStr = (matchInfo.date || '').slice(0, 10);
   const id = slugify(`${dateStr}-${matchInfo.homeTeam}-vs-${matchInfo.awayTeam}`) || `match-report-${matchInfo.fixtureId}`;
-  const fallbackTitle = `${matchInfo.homeTeam} ${matchInfo.homeGoals}-${matchInfo.awayGoals} ${matchInfo.awayTeam}`;
   const article = {
     id,
     type: 'match_report',
-    title: extractTitle(draft, fallbackTitle),
+    // 2026-07-31: 一覧・詳細のタイトルをドラマ調見出し(本文冒頭に残す)から
+    // 対戦カード形式(第N節 ホーム vs アウェイ)に変更。何の試合の記事か一覧で
+    // ぱっと見て分かるようにするため。
+    title: buildMatchupTitle(matchInfo),
     publishedAt: new Date().toISOString(),
     body: draft,
     hasScoreTable: true, // このパイプラインは選手個別スタッツが無い試合を事前に除外している
+    // scoreboard: 一覧カード・詳細ページ上部のスコアボード風表示(クラブロゴ+スコア)用。
+    // ロゴはAPI-Footballのfixturesレスポンスに含まれるteams.{home,away}.logoをそのまま使う。
+    scoreboard: {
+      homeTeam: matchInfo.homeTeam,
+      homeLogo: matchInfo.homeLogo,
+      homeGoals: matchInfo.homeGoals,
+      awayTeam: matchInfo.awayTeam,
+      awayLogo: matchInfo.awayLogo,
+      awayGoals: matchInfo.awayGoals,
+      round: matchInfo.round,
+      competition: matchInfo.competition,
+    },
     sources: searchSources,
     status: 'draft',
     match: matchInfo,
@@ -197,16 +263,7 @@ export default async function handler(req, res) {
         return res.status(422).json({ error: 'この試合は選手個別スタッツが提供されていないため採点できません(親善試合等でAPI-Football側にデータが無い可能性があります)' });
       }
 
-      const matchInfo = {
-        fixtureId,
-        homeTeam: fixture.teams.home.name,
-        awayTeam: fixture.teams.away.name,
-        homeGoals: fixture.goals.home,
-        awayGoals: fixture.goals.away,
-        competition: fixture.league?.name,
-        date: fixture.fixture.date,
-        venue: fixture.fixture.venue?.name,
-      };
+      const matchInfo = buildMatchInfo(fixture);
       const tGen = Date.now();
       console.error('[timing] calling generateMatchReportDraft...');
       const article = await buildAndSaveArticle(matchInfo, ratingResult);
@@ -301,16 +358,7 @@ export default async function handler(req, res) {
         if (ratingResult.ratings.length === 0) {
           throw new Error('選手個別スタッツが提供されていないため採点できません(親善試合等の可能性)');
         }
-        const matchInfo = {
-          fixtureId: fixture.fixture.id,
-          homeTeam: fixture.teams.home.name,
-          awayTeam: fixture.teams.away.name,
-          homeGoals: fixture.goals.home,
-          awayGoals: fixture.goals.away,
-          competition: fixture.league?.name,
-          date: fixture.fixture.date,
-          venue: fixture.fixture.venue?.name,
-        };
+        const matchInfo = buildMatchInfo(fixture);
         const article = await buildAndSaveArticle(matchInfo, ratingResult);
         generated.push(article);
         seenEntries.push({

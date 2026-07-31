@@ -115,6 +115,9 @@ async function generateOrUpdatePlayerArticle(item) {
       sources: searchSources,
       status: 'draft',
       subject,
+      // club: 見出しがキャッチコピー形式になり選手名・クラブ名を含まなくなったため、
+      // 一覧カード・詳細ページのサブ情報として選手名+クラブ名を表示する用。
+      club: item.toClub,
       player: candidate,
     };
     await saveArticle(article);

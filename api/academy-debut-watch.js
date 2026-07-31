@@ -78,6 +78,9 @@ async function buildAndSaveArticle(candidate, profile) {
     // subject: transfer-news-watch.js側で「同一選手の記事が既にあるか」を検索する際の
     // キーになる(Here we go連動の重複生成防止。lib/article-store.jsのfindArticleBySubject参照)。
     subject: candidate.name,
+    // club: 見出しがキャッチコピー形式になり選手名・クラブ名を含まなくなったため、
+    // 一覧カード・詳細ページのサブ情報として選手名+クラブ名を表示する用。
+    club: candidate.club,
     player: candidate,
   };
   await saveArticle(article);
