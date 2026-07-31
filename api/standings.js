@@ -41,11 +41,15 @@ export default async function handler(req, res) {
     const d = await apiFootballFetch('/standings', { league: 2, season });
     const standingsGroups = d.response?.[0]?.league?.standings || [];
     const leaguesResp = await apiFootballFetch('/leagues', { id: 2 });
+    const fixturesResp = await apiFootballFetch('/fixtures', { league: 2, season });
+    const roundLabels = [...new Set((fixturesResp.response || []).map(f => f.league.round))];
     return res.status(200).json({
       errors: d.errors,
       groupCount: standingsGroups.length,
       firstGroupLength: standingsGroups[0]?.length,
       logo: leaguesResp.response?.[0]?.league?.logo || null,
+      totalFixtures: (fixturesResp.response || []).length,
+      roundLabels,
     });
   }
 
