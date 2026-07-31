@@ -412,8 +412,13 @@
     font-weight:600;
     border-radius:20px;
     cursor:pointer;
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
   }
   .league-tab.active{ background:var(--amber); color:#ffffff; border-color:var(--amber); }
+  /* 2026-07-31: リーグ選択ボタンにAPI-Footballのリーグロゴを追加(クラブロゴと同じCDN)。 */
+  .league-tab-logo{ width:18px; height:18px; object-fit:contain; flex-shrink:0; }
   .fixtures{ display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:12px; margin-bottom:28px; }
   .fixture{
     background:var(--panel);
@@ -5604,10 +5609,23 @@ function renderLeague(name){
   });
 }
 
+// 5大リーグのロゴ(API-Footballの/leaguesレスポンスで実際に確認したURL。
+// クラブロゴと同じmedia.api-sports.io CDNパターン)。
+const LEAGUE_LOGOS = {
+  'プレミアリーグ': 'https://media.api-sports.io/football/leagues/39.png',
+  'ラ・リーガ': 'https://media.api-sports.io/football/leagues/140.png',
+  'セリエA': 'https://media.api-sports.io/football/leagues/135.png',
+  'ブンデスリーガ': 'https://media.api-sports.io/football/leagues/78.png',
+  'リーグ・アン': 'https://media.api-sports.io/football/leagues/61.png',
+};
+
 leagueNames.forEach(name=>{
   const btn = document.createElement('button');
   btn.className = 'league-tab';
-  btn.textContent = name;
+  const logo = LEAGUE_LOGOS[name];
+  btn.innerHTML = logo
+    ? `<img class="league-tab-logo" src="${logo}" alt="" loading="lazy" onerror="this.remove()">${escapeHtmlText(name)}`
+    : escapeHtmlText(name);
   btn.onclick = ()=>{ currentActiveLeagueName = name; renderLeague(name); };
   leagueTabs.appendChild(btn);
 });
