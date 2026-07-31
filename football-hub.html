@@ -929,16 +929,24 @@
   .archive-card-title{ font-size:14px; font-weight:600; line-height:1.4; margin:0 0 4px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
   .archive-card-meta{ font-size:10.5px; color:var(--chalk-dim); font-family:'JetBrains Mono',monospace; }
 
-  /* ---- スコアボード(試合解説記事: クラブロゴ+スコア+節数) ---- */
+  /* ---- スコアボード(試合解説記事: クラブロゴ+スコア+節数+大会ラベル) ---- */
   .scoreboard{ margin-bottom:8px; }
-  .scoreboard-round{ font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--chalk-dim); text-transform:uppercase; letter-spacing:.3px; margin-bottom:4px; }
+  .scoreboard-top-row{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:4px; }
+  .scoreboard-competition{ font-size:9.5px; font-weight:700; padding:2px 8px; border-radius:10px; border:1px solid; text-transform:uppercase; letter-spacing:.2px; white-space:nowrap; }
+  .scoreboard-round{ font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--chalk-dim); text-transform:uppercase; letter-spacing:.3px; }
   .scoreboard-row{ display:flex; align-items:center; gap:10px; }
   .scoreboard-logo{ width:24px; height:24px; object-fit:contain; flex-shrink:0; }
   .scoreboard-logo-placeholder{ width:24px; height:24px; border-radius:50%; background:var(--panel-2); display:flex; align-items:center; justify-content:center; font-size:12px; flex-shrink:0; }
   .scoreboard-score{ font-family:'Anton',sans-serif; font-size:18px; color:var(--amber); letter-spacing:1px; }
+  /* 一覧カードではスコアをぼかして隠す(記事を開くと結果が分かる、という導線)。
+     タップでその場でも解除できるようにする(.revealedでぼかし解除)。 */
+  .scoreboard-score-blurred{ filter:blur(7px); cursor:pointer; user-select:none; transition:filter .25s; }
+  .scoreboard-score-blurred:hover{ filter:blur(4px); }
+  .scoreboard-score-blurred.revealed{ filter:blur(0); }
   .am4-article-modal-body .scoreboard-logo,
   .am4-article-modal-body .scoreboard-logo-placeholder{ width:36px; height:36px; }
   .am4-article-modal-body .scoreboard-score{ font-size:26px; }
+  .am4-article-modal-body .scoreboard-competition{ font-size:10.5px; }
 
   /* ---- 選手紹介記事のサブ情報(見出しがキャッチコピー形式のため選手名+クラブ名を別掲) ---- */
   .player-caption{ font-size:11px; font-weight:600; color:var(--chalk-dim); margin-bottom:4px; }
@@ -5722,21 +5730,47 @@ function renderMarkdown(md){
   return html;
 }
 
-// match_reportのスコアボード風表示(クラブロゴ+スコア+節数)。一覧カード・詳細ページ
-// モーダルの両方で使う共通レンダラー。ロゴが無い場合(APIから取得できなかった場合)は
-// プレースホルダーアイコンにフォールバックする。
-function renderScoreboardHtml(scoreboard){
+// 大会名ごとのバッジ色(一目でどの大会の試合か区別できるようにするため)。
+// 「第○節」の表記だけでは大会の区別がつかない問題への対応。未知の大会(親善試合・
+// 国内カップ戦等)はニュートラルな色にフォールバックする。
+const COMPETITION_BADGE_COLORS = {
+  'Premier League': '#8B5CF6',
+  'La Liga': '#EE8707',
+  'Serie A': '#1E88E5',
+  'Bundesliga': '#D3010C',
+  'Ligue 1': '#0E1FA3',
+  'UEFA Champions League': '#0E1E5B',
+  'UEFA Europa League': '#F16521',
+  'UEFA Europa Conference League': '#00A651',
+};
+function competitionBadgeColor(name){
+  return COMPETITION_BADGE_COLORS[name] || '#5A6B8C';
+}
+
+// match_reportのスコアボード風表示(クラブロゴ+スコア+節数+大会ラベル)。一覧カード・
+// 詳細ページモーダルの両方で使う共通レンダラー。ロゴが無い場合(APIから取得できなかった
+// 場合)はプレースホルダーアイコンにフォールバックする。
+// blurred=trueの場合、スコア部分にぼかしをかける(一覧カードでのネタバレ防止用。
+// 詳細ページを開けば結果が分かる、という導線にするため)。タップで解除できるよう
+// data-blur-toggle属性を付与する(実際のクリックハンドラは呼び出し側で配線する)。
+function renderScoreboardHtml(scoreboard, { blurred = false } = {}){
   if(!scoreboard) return '';
   const logoHtml = (logo) => logo
     ? `<img class="scoreboard-logo" src="${logo}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'scoreboard-logo-placeholder',textContent:'⚽'}))">`
     : `<span class="scoreboard-logo-placeholder">⚽</span>`;
+  const color = competitionBadgeColor(scoreboard.competition);
+  const competitionHtml = scoreboard.competition
+    ? `<div class="scoreboard-competition" style="background:${color}22; color:${color}; border-color:${color}77;">${escapeHtmlText(scoreboard.competition)}</div>`
+    : '';
   const roundHtml = scoreboard.round ? `<div class="scoreboard-round">第${escapeHtmlText(String(scoreboard.round))}節</div>` : '';
+  const scoreAttrs = blurred ? ' data-blur-toggle="1" title="タップして結果を表示"' : '';
+  const scoreClass = blurred ? 'scoreboard-score scoreboard-score-blurred' : 'scoreboard-score';
   return `
     <div class="scoreboard">
-      ${roundHtml}
+      <div class="scoreboard-top-row">${competitionHtml}${roundHtml}</div>
       <div class="scoreboard-row">
         ${logoHtml(scoreboard.homeLogo)}
-        <span class="scoreboard-score">${scoreboard.homeGoals} - ${scoreboard.awayGoals}</span>
+        <span class="${scoreClass}"${scoreAttrs}>${scoreboard.homeGoals} - ${scoreboard.awayGoals}</span>
         ${logoHtml(scoreboard.awayLogo)}
       </div>
     </div>
@@ -5758,7 +5792,7 @@ function renderArchiveCard(article){
     ? new Date(article.publishedAt).toLocaleDateString('ja-JP', {year:'numeric', month:'2-digit', day:'2-digit'}).replace(/\//g, '.')
     : '';
   const headerHtml = article.type === 'match_report'
-    ? renderScoreboardHtml(article.scoreboard)
+    ? renderScoreboardHtml(article.scoreboard, { blurred: true })
     : renderPlayerCaptionHtml(article);
   el.innerHTML = `
     <span class="archive-card-badge ${article.type}">${ARCHIVE_TYPE_LABEL[article.type] || article.type}</span>
@@ -5768,6 +5802,15 @@ function renderArchiveCard(article){
       <span class="archive-card-meta">${dateStr}</span>
     </div>
   `;
+  // スコアのぼかしはタップでその場でも解除できるようにする(記事を開くカード全体の
+  // クリックとは独立させるため、stopPropagationでカードの遷移を止める)。
+  const blurToggle = el.querySelector('[data-blur-toggle]');
+  if(blurToggle){
+    blurToggle.addEventListener('click', e => {
+      e.stopPropagation();
+      blurToggle.classList.toggle('revealed');
+    });
+  }
   el.addEventListener('click', () => openArchiveArticle(article.id));
   return el;
 }
