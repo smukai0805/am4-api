@@ -49,6 +49,14 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'API_FOOTBALL_KEY が設定されていません' });
   }
 
+  // 【一時的な調査用】/fixturesのteams.*.nameと/teamsのteam.nameの表記差を確認。
+  // GET ?teamNameCheck=1&team=34
+  if (req.method === 'GET' && req.query.teamNameCheck === '1') {
+    const teamId = Number(req.query.team);
+    const d = await apiFootballFetch('/teams', { id: teamId });
+    return res.status(200).json({ teamsEndpoint: d.response?.[0]?.team || null });
+  }
+
   const { league } = req.query;
   const leagueId = LEAGUES[league];
   if (!leagueId) {
