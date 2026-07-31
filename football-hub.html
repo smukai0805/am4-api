@@ -5778,11 +5778,11 @@ function renderScoreboardHtml(scoreboard, { blurred = false } = {}){
   const roundHtml = scoreboard.round ? `<div class="scoreboard-round">第${escapeHtmlText(String(scoreboard.round))}節</div>` : '';
   const scoreText = `${scoreboard.homeGoals} - ${scoreboard.awayGoals}`;
   // ぼかしただけだと「読み込み中」なのか「意図的に隠している」のか伝わらないため、
-  // 目のアイコン+「タップして表示」のラベルをぼかしの上に重ねて明示する。
+  // 「試合結果はタップして表示」のラベルをぼかしの上に重ねて明示する。
   const scoreHtml = blurred
     ? `<span class="scoreboard-score-wrap" data-blur-toggle="1" title="タップして結果を表示">
          <span class="scoreboard-score scoreboard-score-blurred">${scoreText}</span>
-         <span class="scoreboard-score-hint">👁 タップして表示</span>
+         <span class="scoreboard-score-hint">試合結果はタップして表示</span>
        </span>`
     : `<span class="scoreboard-score">${scoreText}</span>`;
   return `
