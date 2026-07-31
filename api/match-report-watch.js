@@ -233,21 +233,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ drafts: result.items });
   }
 
-  // 【一時的な調査用】特定fixtureの大会名・種別を確認するための診断用。
-  // GET ?fixtureDetail=1&id=12345
-  if (req.method === 'GET' && req.query.fixtureDetail === '1') {
-    const fixture = await getFixtureDetail(Number(req.query.id));
-    if (!fixture) return res.status(404).json({ error: 'not found' });
-    return res.status(200).json({
-      id: fixture.fixture.id,
-      date: fixture.fixture.date,
-      status: fixture.fixture.status,
-      league: fixture.league,
-      home: fixture.teams.home.name,
-      away: fixture.teams.away.name,
-    });
-  }
-
   // 特定の試合を手動で(再)生成したい場合の動作確認・単体テスト用:
   // POST /api/match-report-watch { "fixtureId": 12345 }
   if (req.method === 'POST') {
