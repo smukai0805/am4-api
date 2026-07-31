@@ -7,6 +7,16 @@
 // 無かった)。
 //
 // 例: /api/fixtures?league=プレミアリーグ&season=2025
+//
+// 【2026-07-31修正】ページ読み込み時、このエンドポイント(既定リーグ=プレミアリーグ)と
+// api/standings.js(5リーグ分を並列でAPI-Footballへ問い合わせる)がほぼ同時に実行され、
+// API-Football側のレート制限(data.errors.rateLimit、HTTPステータス自体は200)に
+// 一部だけ引っかかることを確認した(実データ検証で、初回読み込み時のプレミアリーグだけ
+// 「日付・節がありません」表示になり、その後の個別のリーグタブ切り替え(単発リクエスト、
+// 競合が無い)では問題なく取得できる、という症状で発覚)。リトライ・グローバル
+// スロットリング機能を持つlib/api-football-client.jsのapiFootballFetch()に統一した。
+
+import { apiFootballFetch } from '../lib/api-football-client.js';
 
 const LEAGUES = {
   'プレミアリーグ': 39,
@@ -52,12 +62,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const response = await fetch(
-      `https://v3.football.api-sports.io/fixtures?league=${leagueId}&season=${SEASON}`,
-      { headers: { 'x-apisports-key': API_KEY } }
-    );
-    if (!response.ok) throw new Error(`取得に失敗: ${response.status}`);
-    const data = await response.json();
+    const data = await apiFootballFetch('/fixtures', { league: leagueId, season: SEASON });
 
     if (data.errors && Object.keys(data.errors).length > 0) {
       console.error(`[fixtures] ${league} (league=${leagueId}, season=${SEASON}):`, data.errors);

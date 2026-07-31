@@ -4,7 +4,11 @@
 // 例: /api/top-scorers?league=プレミアリーグ&season=2025
 //
 // 2026-07-31: Proプランへの切り替えに伴いseason上限を引き上げた(standings.js
-// と同じ制限・同じ根拠。詳細はstandings.jsのコメント参照)。
+// と同じ制限・同じ根拠。詳細はstandings.jsのコメント参照)。ページ読み込み時に
+// 他の実データAPI(standings/fixtures)と同時に叩かれてもレート制限に耐えられるよう、
+// リトライ・グローバルスロットリング機能を持つapiFootballFetch()に統一した。
+
+import { apiFootballFetch } from '../lib/api-football-client.js';
 
 const LEAGUES = {
   'プレミアリーグ': 39,
@@ -37,12 +41,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const response = await fetch(
-      `https://v3.football.api-sports.io/players/topscorers?league=${leagueId}&season=${SEASON}`,
-      { headers: { 'x-apisports-key': API_KEY } }
-    );
-    if (!response.ok) throw new Error(`取得に失敗: ${response.status}`);
-    const data = await response.json();
+    const data = await apiFootballFetch('/players/topscorers', { league: leagueId, season: SEASON });
 
     if (data.errors && Object.keys(data.errors).length > 0) {
       res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate');

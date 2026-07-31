@@ -7,6 +7,12 @@
 // 非公開・個人利用の想定なので、1日数回このエンドポイントを叩く程度なら
 // 無料枠(1日100リクエスト ※API-Football側への実際の通信回数でカウント)に
 // 余裕で収まります(1回の呼び出しで5リーグ分＝5リクエスト消費)。
+//
+// 2026-07-31: 5リーグを並行して問い合わせる際、api/fixtures.jsの同時実行と
+// API-Football側のレート制限に一部だけ引っかかる事例を確認したため、リトライ・
+// グローバルスロットリング機能を持つapiFootballFetch()に統一した。
+
+import { apiFootballFetch } from '../lib/api-football-client.js';
 
 // 2026-07-31: Proプランへの切り替えに伴い、無料プラン時代の上限(2024固定)から
 // 引き上げた。API-Footballの/leaguesレスポンス(seasons配列)を実際に確認したところ
@@ -56,14 +62,7 @@ export default async function handler(req, res) {
     const errorsByLeague = {};
     const results = await Promise.all(
       entries.map(async ([name, leagueId]) => {
-        const response = await fetch(
-          `https://v3.football.api-sports.io/standings?league=${leagueId}&season=${SEASON}`,
-          { headers: { 'x-apisports-key': API_KEY } }
-        );
-        if (!response.ok) {
-          throw new Error(`${name} の取得に失敗: ${response.status}`);
-        }
-        const data = await response.json();
+        const data = await apiFootballFetch('/standings', { league: leagueId, season: SEASON });
 
         // api-footballはキー無効・プラン制限・シーズン範囲外などの場合でも
         // HTTPステータスは200を返し、代わりに data.errors にエラー理由を入れてくる。
