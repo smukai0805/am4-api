@@ -403,11 +403,21 @@ export default async function handler(req, res) {
 
     // 記事生成(Web検索+AI生成)は時間・コストがかかるため、1回あたり上限人数まで。
     // 生成に成功した人だけを検知済みリストに追加し、それ以外は次回実行時に再度候補になる。
+    //
+    // 【実行時間の安全弁】Champions League大会単位の検知を追加した結果、検知フェーズ
+    // (fixtures/lineups/profiles取得)自体の所要時間が試合数に応じて変動するように
+    // なった(実データ検証で最大約120秒)。検知フェーズがたまたま長引いた回に記事生成を
+    // 開始すると、実行時間上限(300秒)を超えてFUNCTION_INVOCATION_TIMEOUTになり、
+    // 生成中だった記事が完全に失われる(検知済みリストにも入らないため次回また候補には
+    // なるが、その回のAI呼び出し分のコストが無駄になる)。それを避けるため、記事生成を
+    // 開始する前に残り時間を確認し、安全マージン(SAFE_TIME_BUDGET_MS)を超えている場合は
+    // 生成を行わずpendingに回す(検知自体は完了しているため、次回実行時に改めて候補になる)。
+    const SAFE_TIME_BUDGET_MS = 250000; // maxDuration=300秒に対して50秒の安全マージン
     const generated = [];
     const pending = [];
 
     for (const candidate of candidates) {
-      if (generated.length >= MAX_ARTICLES_PER_RUN) {
+      if (generated.length >= MAX_ARTICLES_PER_RUN || (Date.now() - tStart) >= SAFE_TIME_BUDGET_MS) {
         pending.push(candidate);
         continue;
       }
