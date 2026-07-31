@@ -21,6 +21,22 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'API_FOOTBALL_KEY が設定されていません' });
   }
 
+  // 【一時的な調査用】Proプランで実際に利用可能なシーズンを確認するための診断用。
+  // GET ?seasonLookup=1&league=39(未指定時はプレミアリーグ=39)
+  // 推測ではなく、API-Footballの/leaguesレスポンスのseasons配列を直接確認する。
+  if (req.method === 'GET' && req.query.seasonLookup === '1') {
+    const leagueId = Number(req.query.league) || 39;
+    const r = await fetch(`https://v3.football.api-sports.io/leagues?id=${leagueId}`, {
+      headers: { 'x-apisports-key': API_KEY },
+    });
+    const d = await r.json();
+    const seasons = d.response?.[0]?.seasons || [];
+    return res.status(200).json({
+      leagueId,
+      seasons: seasons.map(s => ({ year: s.year, start: s.start, end: s.end, current: s.current })),
+    });
+  }
+
   // ?season=2023 のように指定可能。未指定ならデフォルト値を使う。
   const { season: seasonParam } = req.query;
   let SEASON = DEFAULT_SEASON;
