@@ -55,7 +55,10 @@ const CLUB_ABBREVIATIONS = {
   'Napoli': 'NAP',
 };
 // この文字数を超えるクラブ名だけ略称に切り替える(短い名前はそのまま読みやすく表示する)。
-const MAX_TITLE_CLUB_NAME_LENGTH = 15;
+// 実データ検証で15文字だと「Manchester United」(18文字)まで略称化されてしまい、
+// 片方だけ省略された不揃いな見た目になったため、主要クラブの標準的な名前は
+// フルネームのまま収まる20文字に引き上げた("Paris Saint Germain"=20文字も含む)。
+const MAX_TITLE_CLUB_NAME_LENGTH = 20;
 
 function shortenClubName(name) {
   if (!name) return '';
