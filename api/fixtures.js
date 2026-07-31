@@ -36,22 +36,57 @@ const DEFAULT_SEASON = 2025;
 // 終了済み(Match Finished)の試合のみスコア表示の対象にする(延長・PK戦を含む)。
 const FINISHED_STATUSES = ['FT', 'AET', 'PEN'];
 
+// Champions Leagueの決勝トーナメント各ラウンド(API-Football表記→日本語ラベル)。
+// 2026-07-31追加: リーグフェーズの「第N節」表記と紛らわしいとの指摘を受け、
+// 決勝トーナメントは段階名で表示するようにした。
+const KNOCKOUT_STAGE_LABELS = {
+  'Round of 32': 'ベスト32',
+  'Round of 16': 'ベスト16',
+  'Quarter-finals': '準々決勝',
+  'Semi-finals': '準決勝',
+  'Final': '決勝',
+};
+// 節別タブの並び順に使う値(数字の節より必ず後ろ、かつ決勝トーナメントの
+// 進行順になるよう大きめの値を割り振ってある)。
+const KNOCKOUT_STAGE_ORDER = {
+  'Round of 32': 100,
+  'Round of 16': 101,
+  'Quarter-finals': 102,
+  'Semi-finals': 103,
+  'Final': 104,
+};
+
 // API-Footballのleague.round(例: "Regular Season - 24"、Champions Leagueの
-// 場合は"League Stage - 3"等)から節番号だけを取り出す。
+// リーグフェーズなら"League Stage - 3"、決勝トーナメントなら"Round of 16"等)から、
+// 節別タブ用のキー・表示ラベル・並び順を求める。該当しない場合(予選ラウンド・
+// プレーオフ等)はnullを返し、節別タブには出さない(日付順タブでは引き続き閲覧できる)。
 //
 // 【2026-07-31、Champions League対応で修正】当初は文字列中の最初の数字を
-// そのまま拾っていたが、Champions Leagueの予選ラウンド("1st Qualifying Round"
+// そのまま拾うだけだったが、Champions Leagueの予選ラウンド("1st Qualifying Round"
 // 等)にも数字が含まれるため、本戦のリーグフェーズ("League Stage - 1")と
 // 同じ節番号1〜3として誤って衝突することが実データ検証で判明した(決勝
 // トーナメントの"Round of 16"/"Round of 32"も同様に数字を含み、節と紛らわしい)。
-// そのため「Regular Season - N」「League Stage - N」の2形式のみを節番号として
-// 扱うホワイトリスト方式にし、それ以外(予選ラウンド・プレーオフ・決勝
-// トーナメント各ラウンド)はnullを返す(節別タブには出ないが、日付順タブでは
-// 引き続き閲覧できる)。
-function parseRoundNumber(rawRound) {
+// そのため「Regular Season - N」「League Stage - N」の2形式のみを数字の節として
+// 扱うホワイトリスト方式にし、決勝トーナメントの各ラウンドは別途、段階名の
+// 固定リスト(KNOCKOUT_STAGE_LABELS)と突き合わせて判定する。
+function resolveRoundInfo(rawRound) {
   if (!rawRound) return null;
-  const match = String(rawRound).match(/^(?:Regular Season|League Stage)\s*-\s*(\d+)$/i);
-  return match ? Number(match[1]) : null;
+  const seasonMatch = String(rawRound).match(/^Regular Season\s*-\s*(\d+)$/i);
+  if (seasonMatch) {
+    const n = Number(seasonMatch[1]);
+    return { key: `season-${n}`, label: `第${n}節`, order: n };
+  }
+  // 2026-07-31: 国内リーグの「第N節」表記と紛らわしいとの指摘を受け、Champions
+  // Leagueのリーグフェーズ(旧グループステージ)は「GL第N節」表記にした。
+  const stageMatch = String(rawRound).match(/^League Stage\s*-\s*(\d+)$/i);
+  if (stageMatch) {
+    const n = Number(stageMatch[1]);
+    return { key: `league-stage-${n}`, label: `GL第${n}節`, order: n };
+  }
+  if (KNOCKOUT_STAGE_LABELS[rawRound]) {
+    return { key: `ko-${rawRound}`, label: KNOCKOUT_STAGE_LABELS[rawRound], order: KNOCKOUT_STAGE_ORDER[rawRound] };
+  }
+  return null;
 }
 
 export default async function handler(req, res) {
@@ -82,12 +117,18 @@ export default async function handler(req, res) {
       return res.status(200).json({ league, season: SEASON, errors: data.errors, fixtures: [], rounds: [], dates: [] });
     }
 
+    const roundInfoByKey = new Map();
     const fixtures = (data.response || []).map(f => {
       const played = FINISHED_STATUSES.includes(f.fixture.status?.short);
+      const roundInfo = resolveRoundInfo(f.league.round);
+      if (roundInfo && !roundInfoByKey.has(roundInfo.key)) {
+        roundInfoByKey.set(roundInfo.key, roundInfo);
+      }
       return {
         id: f.fixture.id,
         date: (f.fixture.date || '').slice(0, 10),
-        round: parseRoundNumber(f.league.round),
+        roundKey: roundInfo?.key || null,
+        roundLabel: roundInfo?.label || null,
         status: f.fixture.status?.short,
         home: f.teams.home.name,
         away: f.teams.away.name,
@@ -100,8 +141,10 @@ export default async function handler(req, res) {
       };
     });
 
-    // 節一覧(昇順)・日付一覧(昇順)。フロント側のプルダウン用。
-    const rounds = [...new Set(fixtures.map(f => f.round).filter(r => r !== null))].sort((a, b) => a - b);
+    // 節・段階タブ一覧(並び順つき)・日付一覧(昇順)。フロント側のタブ用。
+    const rounds = [...roundInfoByKey.values()]
+      .sort((a, b) => a.order - b.order)
+      .map(({ key, label }) => ({ key, label }));
     const dates = [...new Set(fixtures.map(f => f.date).filter(Boolean))].sort();
 
     res.setHeader('Cache-Control', 's-maxage=1800, stale-while-revalidate');

@@ -531,6 +531,14 @@
     display:flex; align-items:center; justify-content:center;
     font-family:'JetBrains Mono',monospace; font-size:8px; font-weight:700; color:var(--chalk-dim);
   }
+  /* 2026-07-31: 順位表を上位5チームのみ表示+「全順位を表示」で展開できるようにした
+     (5大リーグ・Champions League共通)。 */
+  .standings-expand-btn{
+    display:block; margin:12px auto 24px; padding:8px 20px;
+    background:none; border:1px solid var(--line); color:var(--chalk-dim);
+    border-radius:20px; font-size:12.5px; font-weight:600; cursor:pointer;
+  }
+  .standings-expand-btn:hover{ border-color:var(--amber-dim); color:var(--chalk); }
 
   /* World Cup */
   .wc-live-banner{
@@ -1268,6 +1276,7 @@
     </thead>
     <tbody id="standingsBody"></tbody>
   </table>
+  <button id="standingsExpandToggle" class="standings-expand-btn">全順位を表示</button>
 </section>
 
 <section id="topScorers">
@@ -5454,6 +5463,7 @@ const fixtureDateTabs = document.getElementById('fixtureDateTabs');
 const fixtureRoundTabs = document.getElementById('fixtureRoundTabs');
 const fixturesStatus = document.getElementById('fixturesStatus');
 const standingsBody = document.getElementById('standingsBody');
+const standingsExpandToggle = document.getElementById('standingsExpandToggle');
 const leagueNames = Object.keys(leaguesData);
 const AM4_API_BASE = 'https://am4-api.vercel.app';
 const standingsSeasonSelect = document.getElementById('standingsSeasonSelect');
@@ -5470,7 +5480,7 @@ let currentSeasonFixtures = [];
 let currentSeasonRounds = [];
 let currentSeasonDates = [];
 let selectedFixtureDate = null;
-let selectedFixtureRound = null;
+let selectedFixtureRoundKey = null;
 
 // チーム名から簡易バッジ(先頭2文字)を生成する。クラブロゴの取得に失敗した場合の
 // フォールバック表示に使う。
@@ -5516,7 +5526,7 @@ function renderMatchCard(f){
 function renderFixtureCards(){
   fixtureGrid.innerHTML = '';
   const list = currentFixtureView === 'round'
-    ? currentSeasonFixtures.filter(f=>f.round===selectedFixtureRound)
+    ? currentSeasonFixtures.filter(f=>f.roundKey===selectedFixtureRoundKey)
     : currentSeasonFixtures.filter(f=>f.date===selectedFixtureDate);
   if(list.length === 0){
     fixtureGrid.innerHTML = '<div class="archive-empty">該当する試合がありません</div>';
@@ -5552,17 +5562,20 @@ function renderDateTabs(){
   scrollActiveTabIntoView(fixtureDateTabs);
 }
 
+// currentSeasonRounds は既にAPI側で並び順(数字の節→決勝トーナメントの進行順)
+// 通りに並んでいるため、フロント側での再ソートは不要(節番号だけでなく
+// Champions Leagueの決勝トーナメント段階名も混在するため、単純な数値ソートは
+// できない)。
 function renderRoundTabs(){
-  const sortedRounds = [...currentSeasonRounds].sort((a,b)=> a - b);
-  fixtureRoundTabs.innerHTML = sortedRounds.map(r=>{
-    const active = r === selectedFixtureRound;
-    return `<button class="fixture-tab${active?' active':''}" data-round="${r}">
-      <span class="fixture-tab-main">第${r}節</span>
+  fixtureRoundTabs.innerHTML = currentSeasonRounds.map(r=>{
+    const active = r.key === selectedFixtureRoundKey;
+    return `<button class="fixture-tab${active?' active':''}" data-round-key="${r.key}">
+      <span class="fixture-tab-main">${escapeHtmlText(r.label)}</span>
     </button>`;
   }).join('');
   fixtureRoundTabs.querySelectorAll('.fixture-tab').forEach(btn=>{
     btn.addEventListener('click', ()=>{
-      selectedFixtureRound = Number(btn.dataset.round);
+      selectedFixtureRoundKey = btn.dataset.roundKey;
       fixtureRoundTabs.querySelectorAll('.fixture-tab').forEach(b=>b.classList.toggle('active', b===btn));
       renderFixtureCards();
     });
@@ -5571,18 +5584,20 @@ function renderRoundTabs(){
 }
 
 // 日付・節のタブを実データから作り、既定選択を「今日以前で直近、実際に試合が
-// ある日付/節」にする(シーズン開幕前で試合が無い場合は先頭にフォールバック)。
+// ある日付/節(決勝トーナメントであればその段階)」にする(シーズン開幕前で
+// 試合が無い場合は先頭にフォールバック)。
 function populateFixtureSelectors(){
   const sortedDates = [...currentSeasonDates].sort((a,b)=> new Date(a) - new Date(b));
-  const sortedRounds = [...currentSeasonRounds].sort((a,b)=> a - b);
   const todayStr = new Date().toISOString().slice(0,10);
 
   const pastDates = sortedDates.filter(d=> d <= todayStr);
   selectedFixtureDate = pastDates.length ? pastDates[pastDates.length-1] : sortedDates[0];
 
-  const playedRounds = new Set(currentSeasonFixtures.filter(f=>f.score!=='-').map(f=>f.round));
-  const pastRounds = sortedRounds.filter(r=> playedRounds.has(r));
-  selectedFixtureRound = pastRounds.length ? pastRounds[pastRounds.length-1] : sortedRounds[0];
+  const playedRoundKeys = new Set(currentSeasonFixtures.filter(f=>f.score!=='-').map(f=>f.roundKey));
+  const pastRounds = currentSeasonRounds.filter(r=> playedRoundKeys.has(r.key));
+  selectedFixtureRoundKey = pastRounds.length
+    ? pastRounds[pastRounds.length-1].key
+    : (currentSeasonRounds[0]?.key ?? null);
 
   renderDateTabs();
   renderRoundTabs();
@@ -5626,15 +5641,41 @@ async function loadFixturesFromAPI(name, season){
   }
 }
 
-function renderLeague(name){
-  loadFixturesFromAPI(name, standingsSeasonSelect.value);
+// 2026-07-31: 順位表がチーム数分縦に長くなるため、デフォルトでは上位5チームのみ
+// 表示し、「全順位を表示」ボタンで残りを展開できるようにした(5大リーグ・
+// Champions League共通)。データが切り替わるたび(リーグ切り替え・シーズン変更)
+// デフォルトの折りたたみ状態に戻す。
+const STANDINGS_COLLAPSED_COUNT = 5;
+let standingsExpanded = false;
+
+function renderStandingsTable(rows){
   standingsBody.innerHTML = '';
-  leaguesData[name].standings.forEach((row,i)=>{
+  const visibleRows = standingsExpanded ? rows : rows.slice(0, STANDINGS_COLLAPSED_COUNT);
+  visibleRows.forEach((row,i)=>{
     const tr = document.createElement('tr');
     tr.innerHTML = `<td class="pos">${i+1}</td><td><span class="standings-club-cell">${standingsLogoHtml(row[7], row[0])}<span class="club-link" data-club="${row[0]}">${row[0]}</span></span></td><td>${row[1]}</td><td>${row[2]}</td><td>${row[3]}</td><td>${row[4]}</td><td>${row[5]}</td><td class="pts">${row[6]}</td>`;
     tr.querySelector('.club-link').addEventListener('click', (e)=>{ e.stopPropagation(); openClubModal(row[0]); });
     standingsBody.appendChild(tr);
   });
+  if(rows.length > STANDINGS_COLLAPSED_COUNT){
+    standingsExpandToggle.style.display = '';
+    standingsExpandToggle.textContent = standingsExpanded
+      ? '上位5チームのみ表示'
+      : `全順位を表示(残り${rows.length - STANDINGS_COLLAPSED_COUNT}チーム)`;
+  } else {
+    standingsExpandToggle.style.display = 'none';
+  }
+}
+
+standingsExpandToggle.addEventListener('click', ()=>{
+  standingsExpanded = !standingsExpanded;
+  renderStandingsTable(leaguesData[currentActiveLeagueName]?.standings || []);
+});
+
+function renderLeague(name){
+  loadFixturesFromAPI(name, standingsSeasonSelect.value);
+  standingsExpanded = false;
+  renderStandingsTable(leaguesData[name].standings);
   [...leagueTabs.children].forEach(btn=>{
     btn.classList.toggle('active', btn.dataset.league===name);
   });
@@ -5697,13 +5738,8 @@ async function loadStandingsFromAPI(season){
       ]);
     });
 
-    standingsBody.innerHTML = '';
-    (leaguesData[currentActiveLeagueName].standings || []).forEach((row,i)=>{
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td class="pos">${i+1}</td><td><span class="standings-club-cell">${standingsLogoHtml(row[7], row[0])}<span class="club-link" data-club="${row[0]}">${row[0]}</span></span></td><td>${row[1]}</td><td>${row[2]}</td><td>${row[3]}</td><td>${row[4]}</td><td>${row[5]}</td><td class="pts">${row[6]}</td>`;
-      tr.querySelector('.club-link').addEventListener('click', (e)=>{ e.stopPropagation(); openClubModal(row[0]); });
-      standingsBody.appendChild(tr);
-    });
+    standingsExpanded = false;
+    renderStandingsTable(leaguesData[currentActiveLeagueName]?.standings || []);
     standingsStatus.textContent = `● 実データ反映済み(${season}シーズン)`;
     standingsStatus.className = 'standings-status live';
   } catch(err){
