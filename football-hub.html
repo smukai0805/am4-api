@@ -240,6 +240,7 @@
     padding:9px 12px; font-size:14px; border-radius:3px; min-width:220px;
   }
   .squad-capture-area{
+    position:relative;
     background:linear-gradient(180deg, #0d2b1c, #0a1f14);
     border:1px solid var(--line); border-radius:8px;
     padding:20px 10px 10px; margin:18px 0; max-width:480px;
@@ -322,11 +323,23 @@
     padding:0 6px 14px;
   }
   .squad-bench .squad-slot{ position:static; transform:none; }
+  /* 2026-08-02: AM4ロゴの透かし(常に表示、書き出し画像にも同じものが写る)と、
+     クラブから編成モードで選択したクラブのロゴ(対応表にあるクラブのみ)。 */
+  .squad-am4-watermark{
+    position:absolute; bottom:8px; right:10px; width:52px; height:auto;
+    opacity:.4; pointer-events:none; z-index:5;
+  }
+  .squad-club-watermark{
+    position:absolute; top:10px; right:10px; width:38px; height:38px; object-fit:contain;
+    opacity:.95; pointer-events:none; z-index:5;
+  }
+  .squad-action-row{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px; }
   .squad-download-btn{
     background:var(--amber); color:#ffffff; border:none; font-weight:700;
-    padding:12px 22px; border-radius:4px; font-size:14px; cursor:pointer; margin-bottom:20px;
+    padding:12px 22px; border-radius:4px; font-size:14px; cursor:pointer; margin-bottom:0;
   }
   .squad-download-btn:hover{ opacity:.9; }
+  .squad-share-btn{ background:#1c9b5e; }
 
   /* Legends */
   .legend-top5{ margin-bottom:30px; }
@@ -1451,16 +1464,21 @@
   <div class="favorites-picker-row" style="margin-top:2px;">
     <label class="checkbox-row"><input type="checkbox" id="squadIncludeLegends"> レジェンド選手も含める(オフ推奨)</label>
   </div>
-  <div class="favorites-note">枠をタップすると選手を検索して配置できます。選手が入った枠はドラッグで入れ替え、×で削除できます。</div>
+  <div class="favorites-note">空いている枠をタップすると選手を検索して配置できます。配置済みの枠は⇄で移動先を選んで入れ替え、×で削除できます。</div>
 
   <div id="squadCaptureArea" class="squad-capture-area">
+    <img id="squadClubWatermark" class="squad-club-watermark" alt="" style="display:none;">
+    <img src="/am4-logo.png" alt="AM4" class="squad-am4-watermark">
     <div class="squad-capture-title" id="squadCaptureTitle">MY SQUAD</div>
     <div class="squad-pitch" id="squadPitch"></div>
     <div class="squad-bench-label">ベンチメンバー</div>
     <div class="squad-bench" id="squadBench"></div>
   </div>
 
-  <button class="squad-download-btn" id="squadDownloadBtn">📥 画像としてダウンロード</button>
+  <div class="squad-action-row">
+    <button class="squad-download-btn" id="squadDownloadBtn">📥 画像としてダウンロード</button>
+    <button class="squad-download-btn squad-share-btn" id="squadShareBtn">📤 シェア</button>
+  </div>
 </section>
 </div>
 
@@ -7938,6 +7956,7 @@ const squadClubRow = document.getElementById('squadClubRow');
 const squadFormationSelect = document.getElementById('squadFormationSelect');
 const squadNameInput = document.getElementById('squadNameInput');
 const squadCaptureTitle = document.getElementById('squadCaptureTitle');
+const squadClubWatermark = document.getElementById('squadClubWatermark');
 const squadModeClub = document.getElementById('squadModeClub');
 const squadModeFree = document.getElementById('squadModeFree');
 const squadPickerOverlay = document.getElementById('squadPickerOverlay');
@@ -8328,9 +8347,27 @@ function refillCurrentSquad(){
 // フォールバックする。フォーメーションは取得できた選手プールに対して
 // bestFormationForClub()で標準的なものを自動選択する(ユーザーが手動変更した場合は
 // squadFormationSelectのchangeハンドラ側でrefillCurrentSquad()を使うため上書きしない)。
+// 2026-08-02: 書き出し画像にクラブロゴを表示するため、クラブ選択に合わせて
+// squadClubWatermarkのsrc・表示/非表示を切り替える。ロゴURLが確認できているのは
+// SQUAD_CLUB_EN_INFO(=lib/team-ids.jsと同じ22クラブ)のみで、それ以外のクラブ
+// (サンプル配列にしか無い大多数のクラブ)ではロゴを表示しない(未検証のURLを
+// 推測で使わないため)。
+function updateSquadClubWatermark(clubName){
+  const info = clubName ? SQUAD_CLUB_EN_INFO[clubName] : null;
+  if(info){
+    squadClubWatermark.src = `https://media.api-sports.io/football/teams/${info.id}.png`;
+    squadClubWatermark.alt = info.en;
+    squadClubWatermark.style.display = '';
+  } else {
+    squadClubWatermark.style.display = 'none';
+    squadClubWatermark.removeAttribute('src');
+  }
+}
+
 async function applyClubSelection(clubName){
   liveSquadPlayers = {};
   currentSquadPlayerPool = [];
+  updateSquadClubWatermark(clubName);
   if(!clubName){ refillCurrentSquad(); return; }
 
   try{
@@ -8378,6 +8415,7 @@ squadModeFree.addEventListener('click', ()=>{
   squadClubRow.style.display = 'none';
   liveSquadPlayers = {};
   currentSquadPlayerPool = [];
+  updateSquadClubWatermark(null);
   squadState = Array(formations[currentFormationKey].length).fill(null);
   renderSquadPitch();
 });
@@ -8393,25 +8431,106 @@ squadNameInput.addEventListener('input', ()=>{
   squadCaptureTitle.textContent = squadNameInput.value || 'MY SQUAD';
 });
 
-document.getElementById('squadDownloadBtn').addEventListener('click', ()=>{
+// 2026-08-02: ダウンロードボタンが機能しない不具合を調査した結果、複数の要因が
+// 重なりうることが分かったため、まとめて対策した。
+// ① html2canvas実行時、loading="lazy"の選手写真がまだ読み込み完了していないと
+//    欠けた状態でキャプチャされることがあるため、事前に全<img>の読み込み完了を待つ。
+// ② html2canvas自体が(CDN読み込み失敗等で)未定義の場合、従来はhtml2canvas(...)の
+//    呼び出し自体が例外を投げてcatchされず、ボタンが「生成中...」のまま固まって
+//    いたため、明示的にチェックしてエラーメッセージを出すようにした。
+// ③ canvas.toDataURL()による長大なdata: URIをそのまま<a download>のhrefに使う方式は
+//    iOS Safariで信頼できない(download属性が無視され、タップしても何も起きない
+//    ことがある)。canvas.toBlob()+Blob URLに変更し、iOSでは新しいタブで画像を開いて
+//    長押し保存してもらう形にフォールバックする(最も確実な方法)。
+async function waitForImagesLoaded(container){
+  const imgs = Array.from(container.querySelectorAll('img'));
+  await Promise.all(imgs.map(img=>{
+    if(img.complete) return Promise.resolve();
+    return new Promise(resolve=>{
+      img.addEventListener('load', resolve, { once:true });
+      img.addEventListener('error', resolve, { once:true }); // 個別の写真取得失敗では止めない
+    });
+  }));
+}
+
+async function generateSquadCanvas(){
+  if(typeof html2canvas !== 'function'){
+    throw new Error('画像生成ライブラリの読み込みに失敗しました。ページを再読み込みしてください。');
+  }
+  const area = document.getElementById('squadCaptureArea');
+  await waitForImagesLoaded(area);
+  // ライブ取得したクラブ選手の顔写真・クラブロゴ(media.api-sports.io)がクロス
+  // オリジンのため、useCORS:trueを付けないとキャンバスが「汚染」されPNG化に失敗しうる
+  // (media.api-sports.io自体はAccess-Control-Allow-Origin:*を返すことを確認済み)。
+  return html2canvas(area, { backgroundColor:null, scale:2, useCORS:true });
+}
+
+function squadImageFilename(){
+  return `${(squadNameInput.value || 'my-squad').replace(/\s+/g,'_')}.png`;
+}
+
+document.getElementById('squadDownloadBtn').addEventListener('click', async ()=>{
   const btn = document.getElementById('squadDownloadBtn');
   const originalText = btn.textContent;
   btn.textContent = '生成中...';
   btn.disabled = true;
-  // 2026-08-01: ライブ取得したクラブ選手の顔写真(media.api-sports.io)がクロス
-  // オリジンのため、useCORS:trueを付けないとキャンバスが「汚染」されPNG化に失敗しうる。
-  html2canvas(document.getElementById('squadCaptureArea'), { backgroundColor:null, scale:2, useCORS:true }).then(canvas=>{
-    const link = document.createElement('a');
-    link.download = `${(squadNameInput.value || 'my-squad').replace(/\s+/g,'_')}.png`;
-    link.href = canvas.toDataURL('image/png');
-    link.click();
+  try{
+    const canvas = await generateSquadCanvas();
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+    if(!blob) throw new Error('画像の生成に失敗しました');
+    const url = URL.createObjectURL(blob);
+    const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent);
+    if(isIOS){
+      // iOS Safariはdownload属性を無視することがあるため、新しいタブで開いて
+      // 長押しで「写真に追加」してもらう形にする。
+      window.open(url, '_blank');
+    } else {
+      const link = document.createElement('a');
+      link.download = squadImageFilename();
+      link.href = url;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    }
+    setTimeout(()=> URL.revokeObjectURL(url), 30000);
+  } catch(err){
+    console.error('squad image download failed:', err);
+    btn.textContent = 'ダウンロードに失敗しました';
+    setTimeout(()=>{ btn.textContent = originalText; btn.disabled = false; }, 2500);
+    return;
+  }
+  btn.textContent = originalText;
+  btn.disabled = false;
+});
+
+// 2026-08-02: シェアボタンを新規追加。Web Share API(navigator.share)でスマホの
+// ネイティブ共有シートを呼び出し、生成した画像をLINE・X・写真アプリ等に直接共有できる
+// ようにした。対応していない環境(主にデスクトップブラウザ)では、その旨を伝えて
+// 「画像としてダウンロード」の利用を促す。
+document.getElementById('squadShareBtn').addEventListener('click', async ()=>{
+  const btn = document.getElementById('squadShareBtn');
+  const originalText = btn.textContent;
+  btn.textContent = '準備中...';
+  btn.disabled = true;
+  try{
+    const canvas = await generateSquadCanvas();
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+    if(!blob) throw new Error('画像の生成に失敗しました');
+    const file = new File([blob], squadImageFilename(), { type: 'image/png' });
+    if(navigator.canShare && navigator.canShare({ files: [file] })){
+      await navigator.share({ files: [file], title: squadNameInput.value || 'MY SQUAD' });
+    } else {
+      alert('お使いのブラウザは画像の共有に対応していません。「画像としてダウンロード」をお使いください。');
+    }
+  } catch(err){
+    if(err.name !== 'AbortError'){ // ユーザーが共有シートをキャンセルした場合は何もしない
+      console.error('squad share failed:', err);
+      alert('共有に失敗しました。');
+    }
+  } finally {
     btn.textContent = originalText;
     btn.disabled = false;
-  }).catch(err=>{
-    console.error(err);
-    btn.textContent = 'ダウンロードに失敗しました';
-    setTimeout(()=>{ btn.textContent = originalText; btn.disabled = false; }, 2000);
-  });
+  }
 });
 
 renderSquadPitch();
