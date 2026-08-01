@@ -241,11 +241,19 @@
   }
   .squad-capture-area{
     position:relative;
-    background:linear-gradient(180deg, #0d2b1c, #0a1f14);
+    /* 2026-08-03: 上下パディング(ロゴ・タイトル用の余白)がピッチ自体(.squad-pitchが
+       aspect-ratio:3/4.2で独自に比率を持つ)の緑グラデーションと地続きだと、書き出し
+       画像全体の縦横比が間延びして見える(「横が狭くなった」)との指摘を受け、余白部分は
+       ピッチと切り離した黒帯にし、AM4ロゴを薄く連続配置したパターンを敷いた。ピッチ自体
+       (.squad-pitch)は不透明な独自背景を持つため、この黒帯パターンはピッチと重ならない
+       余白部分(タイトル上・ベンチ下)にのみ実質的に見える。 */
+    background-color:#050b08;
+    background-image:
+      linear-gradient(rgba(5,11,8,.88), rgba(5,11,8,.88)),
+      url('/am4-logo.png');
+    background-repeat: no-repeat, repeat;
+    background-size: auto, 40px 40px;
     border:1px solid var(--line); border-radius:8px;
-    /* 2026-08-02: 上部はAM4ロゴ・クラブロゴ(どちらもtop:12px、高さ最大52px)と
-       タイトルが重ならないよう56pxに拡大、下部もベンチ欄との間に余白を持たせた
-       (以前は20px 10px 10pxで、ロゴがタイトルと衝突して見づらかった)。 */
     padding:56px 10px 22px; margin:18px 0; max-width:480px;
   }
   .squad-capture-title{
@@ -1474,8 +1482,7 @@
   </div>
 
   <div class="squad-action-row">
-    <button class="squad-download-btn" id="squadDownloadBtn">📥 画像としてダウンロード</button>
-    <button class="squad-download-btn squad-share-btn" id="squadShareBtn">📤 シェア</button>
+    <button class="squad-download-btn squad-share-btn" id="squadSaveShareBtn">📤 保存 / シェア</button>
   </div>
 </section>
 </div>
@@ -7191,7 +7198,12 @@ const allPlayerClubs = [...new Set(players.flatMap(p=>p.career.map(c=>c.club)))]
 // 2026-08-02: onInputコールバックを引数化した(以前は選手検索タブ専用の
 // renderPlayerSearchResult()を直接呼んでいたため、他の用途(スカッド作成のクラブ選択等)
 // で再利用すると無関係なタブの再描画が毎回走ってしまっていた)。
-function setupCombobox({ inputEl, optionsEl, allOptions, formatLabel, onAfterSelect, onInput }){
+// 2026-08-03: formatInputValueを追加。選択確定時、入力欄には従来allOptionsの生値(o)を
+// そのまま入れていたが、スカッド作成のクラブ選択は候補一覧こそ英語名+ロゴで表示
+// (formatLabel)しつつ、allOptions自体は日本語クラブ名の配列のため、選択直後に入力欄が
+// 日本語表記に戻ってしまう不具合があった。formatInputValueを渡すと、入力欄への反映にも
+// その変換後の表示名を使う(未指定の既存2箇所は従来通りoをそのまま使う)。
+function setupCombobox({ inputEl, optionsEl, allOptions, formatLabel, formatInputValue, onAfterSelect, onInput }){
   function renderOptions(query){
     const q = toKatakana(query.trim()).toLowerCase();
     const matches = q ? allOptions.filter(o => toKatakana(o).toLowerCase().includes(q)) : allOptions;
@@ -7206,7 +7218,7 @@ function setupCombobox({ inputEl, optionsEl, allOptions, formatLabel, onAfterSel
         el.addEventListener('mousedown', (e)=>{
           // blur(候補リストが閉じる)より先にクリックを処理する必要があるためmousedownで拾う
           e.preventDefault();
-          inputEl.value = o;
+          inputEl.value = formatInputValue ? formatInputValue(o) : o;
           optionsEl.classList.remove('open');
           if(onInput) onInput();
           if(onAfterSelect) onAfterSelect(o);
@@ -8151,6 +8163,7 @@ setupCombobox({
       ? `<img src="https://media.api-sports.io/football/teams/${info.id}.png" alt="" loading="lazy" style="width:20px;height:20px;object-fit:contain;flex-shrink:0;" onerror="this.remove()"><span>${label}</span>`
       : `<span>${label}</span>`;
   },
+  formatInputValue: squadClubDisplayLabel,
   onAfterSelect: (name)=>{
     if(squadMode === 'club') applyClubSelection(name);
   },
@@ -8599,49 +8612,19 @@ function squadImageFilename(){
   return `${(squadNameInput.value || 'my-squad').replace(/\s+/g,'_')}.png`;
 }
 
-document.getElementById('squadDownloadBtn').addEventListener('click', async ()=>{
-  const btn = document.getElementById('squadDownloadBtn');
-  const originalText = btn.textContent;
-  btn.textContent = '生成中...';
-  btn.disabled = true;
-  try{
-    const canvas = await generateSquadCanvas();
-    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
-    if(!blob) throw new Error('画像の生成に失敗しました');
-    const url = URL.createObjectURL(blob);
-    const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent);
-    if(isIOS){
-      // iOS Safariはdownload属性を無視することがあるため、新しいタブで開いて
-      // 長押しで「写真に追加」してもらう形にする。
-      window.open(url, '_blank');
-    } else {
-      const link = document.createElement('a');
-      link.download = squadImageFilename();
-      link.href = url;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-    }
-    setTimeout(()=> URL.revokeObjectURL(url), 30000);
-  } catch(err){
-    console.error('squad image download failed:', err);
-    btn.textContent = 'ダウンロードに失敗しました';
-    setTimeout(()=>{ btn.textContent = originalText; btn.disabled = false; }, 2500);
-    return;
-  }
-  btn.textContent = originalText;
-  btn.disabled = false;
-});
-
-// 2026-08-02: シェアボタンを新規追加。Web Share API(navigator.share)でスマホの
-// ネイティブ共有シートを呼び出し、生成した画像をLINE・X・写真アプリ等に直接共有できる
-// ようにした。対応していない環境(主にデスクトップブラウザ)では、その旨を伝えて
-// 「画像としてダウンロード」の利用を促す。
-document.getElementById('squadShareBtn').addEventListener('click', async ()=>{
-  const btn = document.getElementById('squadShareBtn');
+// 2026-08-03: 「画像としてダウンロード」(<a download>+Blob URL方式)と「シェア」
+// (Web Share API方式)の2ボタン運用をやめ、1ボタンに統合した。実機検証の結果、
+// <a download>方式は保存できず、Web Share API経由(共有シートの「画像を保存」)だけが
+// 確実に機能していたため、動作実績のあるWeb Share API方式を主経路にする。
+// navigator.canShareが使えない環境(主にデスクトップブラウザ)だけ、従来のBlob URL+
+// <a download>方式にフォールバックする(iOS Safariのdownload属性無視問題は、iOS側は
+// ほぼ必ずWeb Share APIに対応しているため主経路の方で回避される)。
+document.getElementById('squadSaveShareBtn').addEventListener('click', async ()=>{
+  const btn = document.getElementById('squadSaveShareBtn');
   const originalText = btn.textContent;
   btn.textContent = '準備中...';
   btn.disabled = true;
+  let failed = false;
   try{
     const canvas = await generateSquadCanvas();
     const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
@@ -8650,14 +8633,25 @@ document.getElementById('squadShareBtn').addEventListener('click', async ()=>{
     if(navigator.canShare && navigator.canShare({ files: [file] })){
       await navigator.share({ files: [file], title: squadNameInput.value || 'MY SQUAD' });
     } else {
-      alert('お使いのブラウザは画像の共有に対応していません。「画像としてダウンロード」をお使いください。');
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.download = squadImageFilename();
+      link.href = url;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(()=> URL.revokeObjectURL(url), 30000);
     }
   } catch(err){
     if(err.name !== 'AbortError'){ // ユーザーが共有シートをキャンセルした場合は何もしない
-      console.error('squad share failed:', err);
-      alert('共有に失敗しました。');
+      console.error('squad save/share failed:', err);
+      failed = true;
     }
-  } finally {
+  }
+  if(failed){
+    btn.textContent = '失敗しました';
+    setTimeout(()=>{ btn.textContent = originalText; btn.disabled = false; }, 2500);
+  } else {
     btn.textContent = originalText;
     btn.disabled = false;
   }
