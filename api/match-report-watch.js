@@ -233,28 +233,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ drafts: result.items });
   }
 
-  // 【一時的な調査用】特定fixtureの現在のstatus・スタッツ有無を確認するための診断用。
-  // GET ?fixtureDetail=1&id=12345
-  if (req.method === 'GET' && req.query.fixtureDetail === '1') {
-    const fixtureId = Number(req.query.id);
-    const fixture = await getFixtureDetail(fixtureId);
-    if (!fixture) return res.status(404).json({ error: 'not found' });
-    const [events, fixturePlayers] = await Promise.all([
-      getFixtureEvents(fixtureId),
-      getFixturePlayers(fixtureId),
-    ]);
-    return res.status(200).json({
-      status: fixture.fixture.status,
-      date: fixture.fixture.date,
-      home: fixture.teams.home.name,
-      away: fixture.teams.away.name,
-      score: `${fixture.goals.home}-${fixture.goals.away}`,
-      eventsCount: events.length,
-      fixturePlayersTeams: fixturePlayers.length,
-      fixturePlayersPerTeam: fixturePlayers.map(t => t.players?.length ?? 0),
-    });
-  }
-
   // 特定の試合を手動で(再)生成したい場合の動作確認・単体テスト用:
   // POST /api/match-report-watch { "fixtureId": 12345 }
   if (req.method === 'POST') {
