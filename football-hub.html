@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Noto+Sans+JP:wght@700;900&display=swap" rel="stylesheet">
 <style>
   :root{
     --bg: #05070D;
@@ -257,8 +257,15 @@
      ロゴ2つは.squad-pitch-wrap側(ピッチ枠の左右の隅)に固定する形に変更した。
      titleは1行に収まるよう、white-space:nowrap+ellipsisと、入力側のmaxlength(16文字、
      HTML側squadNameInput参照)の二重の対策をしている。 */
+  /* 2026-08-04: 'Anton'は英数字専用の欧文ディスプレイ書体で日本語グリフを持たない
+     ため、日本語を含むスカッド名だと英字部分はAnton・日本語部分はブラウザ既定の
+     フォールバック書体になり、書体が不統一に見えるとの指摘を受けた。'Noto Sans JP'
+     (太字ウェイト、Anton同様の力強さに近づけている)をフォールバックに追加し、
+     Antonが対応しないグリフ(日本語)はNoto Sans JPに統一してレンダリングされる
+     ようにした(Antonがカバーする英数字はそのままAnton)。 */
   .squad-capture-title{
-    font-family:'Anton',sans-serif; font-size:22px; text-align:center; color:#fff;
+    font-family:'Anton','Noto Sans JP',sans-serif; font-weight:900;
+    font-size:22px; text-align:center; color:#fff;
     letter-spacing:1px; text-shadow:0 1px 3px rgba(0,0,0,.5); margin-bottom:14px;
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:0 4px;
   }
@@ -1458,7 +1465,7 @@
 <section id="favorites">
   <div class="section-head">
     <h2>⚽ スカッド作成</h2>
-    <span class="sub">クラブから編成 or 自由に選抜 — フォーメーションを組んで画像で保存</span>
+    <span class="sub">クラブから編成 or フリー編成 — フォーメーションを組んで画像で保存</span>
   </div>
 
   <div class="squad-controls">
@@ -1466,7 +1473,7 @@
       <label>編成モード</label>
       <div class="squad-mode-toggle">
         <button class="squad-mode-btn active" id="squadModeClub">クラブから編成</button>
-        <button class="squad-mode-btn" id="squadModeFree">自由に選抜(ワールド選抜)</button>
+        <button class="squad-mode-btn" id="squadModeFree">フリー編成</button>
       </div>
     </div>
     <div class="favorites-picker-row" id="squadClubRow">
@@ -1484,9 +1491,6 @@
       <label for="squadNameInput">スカッド名(画像に表示・16文字まで)</label>
       <input type="text" id="squadNameInput" placeholder="例: マイベストイレブン" value="MY SQUAD" maxlength="16">
     </div>
-  </div>
-  <div class="favorites-picker-row" style="margin-top:2px;">
-    <label class="checkbox-row"><input type="checkbox" id="squadIncludeLegends"> レジェンド選手も含める(オフ推奨)</label>
   </div>
   <div class="favorites-note">空いている枠をタップすると選手を検索して配置できます。配置済みの枠をタップすると「入れ替え」「削除」を選べます。</div>
 
@@ -7575,9 +7579,12 @@ function savePhotoCache(){
 }
 
 async function fetchPlayerLiveData(p){
-  // API-Footballの検索仕様上、フルネームよりも姓(名前の最後の単語)の方がヒットしやすいため、姓のみを送る
+  // API-Footballの検索仕様上、フルネームよりも姓(名前の最後の単語)の方がヒットしやすいため、姓のみを送る。
+  // 2026-08-04: fullNameも併せて送るようにした。姓だけの検索が同姓の別人に当たった場合
+  // (例: 'Yamal'→無名の同姓選手がヒット)、サーバー側(lib/name-search.js)でフルネーム
+  // 検索へのフォールバックが働く。
   const surname = p.name.trim().split(/\s+/).pop();
-  const params = new URLSearchParams({ search:surname, team:p.team });
+  const params = new URLSearchParams({ search:surname, team:p.team, fullName:p.name });
   const res = await fetch(`${AM4_API_BASE}/api/player-stats?${params.toString()}`);
   if(!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
@@ -7639,8 +7646,11 @@ async function getPlayerPhoto(p){
     if(playerPhotoCache[p.id]) return playerPhotoCache[p.id]; // キュー待機中に他所で解決済みの場合
     let photo = null;
     try{
+      // 2026-08-04: fullNameも併せて送る(姓だけの検索が同姓の別人に当たった場合の
+      // サーバー側フォールバック用。lib/name-search.js参照)。
       const surname = p.name.trim().split(/\s+/).pop();
-      const res = await fetch(`${AM4_API_BASE}/api/player-photo?search=${encodeURIComponent(surname)}`);
+      const params = new URLSearchParams({ search:surname, fullName:p.name });
+      const res = await fetch(`${AM4_API_BASE}/api/player-photo?${params.toString()}`);
       const data = res.ok ? await res.json() : { photo: null };
       photo = data.photo || null;
     } catch(err){
@@ -7992,7 +8002,6 @@ function findSquadPlayer(pid){
 }
 
 const squadBench = document.getElementById('squadBench');
-const squadIncludeLegends = document.getElementById('squadIncludeLegends');
 
 const squadPitch = document.getElementById('squadPitch');
 const squadClubSelect = document.getElementById('squadClubSelect');
@@ -8389,13 +8398,18 @@ function renderSquadPickerItem(p){
   return el;
 }
 
+// 2026-08-04: 選手ピッカーの一覧をFW→MF→DF→GKのポジション別にまとめて表示する
+// (それまではAPIやサンプル配列が返す順のまま、ポジションがバラバラに並んでいた)。
+// Array.prototype.sortはstableなので、同ポジション内の元の並び順(出場数順・API順等)は保たれる。
+const SQUAD_PICKER_POS_ORDER = { FW:0, MF:1, DF:2, GK:3 };
 function renderSquadPickerList(list){
   squadPickerResults.innerHTML = '';
   if(list.length === 0){
     squadPickerResults.innerHTML = '<div class="search-empty">一致する選手が見つかりません</div>';
     return;
   }
-  list.slice(0, 30).forEach(p=> squadPickerResults.appendChild(renderSquadPickerItem(p)));
+  const sorted = [...list].sort((a,b)=> (SQUAD_PICKER_POS_ORDER[a.pos] ?? 4) - (SQUAD_PICKER_POS_ORDER[b.pos] ?? 4));
+  sorted.slice(0, 30).forEach(p=> squadPickerResults.appendChild(renderSquadPickerItem(p)));
 }
 
 // 2026-08-01: クラブから編成モードでは、枠をタップした時点でまず「そのクラブで
@@ -8427,12 +8441,10 @@ squadPickerInput.addEventListener('input', ()=>{
   }
   squadPickerResults.innerHTML = '';
   if(!q) return;
-  const pool = squadIncludeLegends.checked ? players : players.filter(p=>!p.legend);
+  // 2026-08-04: レジェンド選手を含める機能は使わないため廃止(常に除外)。
+  const pool = players.filter(p=>!p.legend);
   const matches = pool.filter(p=>p.name.toLowerCase().includes(q) || p.kana.toLowerCase().includes(q)).slice(0,10);
   renderSquadPickerList(matches);
-});
-squadIncludeLegends.addEventListener('change', ()=>{
-  if(squadMode === 'club') applyClubSelection(squadClubSelect.value);
 });
 
 const SQUAD_POS_MAP = { GK:['GK'], DF:['DF'], MF:['MF'], FW:['FW'] };
@@ -8593,8 +8605,8 @@ async function applyClubSelection(clubName){
   }
 
   // ライブ取得できなかった場合(対応表未登録・APIエラー等)は、従来のサンプル配列を使う。
-  const includeLegends = squadIncludeLegends.checked;
-  currentSquadPlayerPool = players.filter(p=>p.team===clubName && !p.prospect && (includeLegends || !p.legend));
+  // 2026-08-04: レジェンド選手を含める機能は使わないため廃止(常に除外)。
+  currentSquadPlayerPool = players.filter(p=>p.team===clubName && !p.prospect && !p.legend);
   currentFormationKey = CLUB_PREFERRED_FORMATION[clubName] || bestFormationForClub(currentSquadPlayerPool);
   squadFormationSelect.value = currentFormationKey;
   fillSquadFromPlayerList(currentSquadPlayerPool);

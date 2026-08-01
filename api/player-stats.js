@@ -13,6 +13,10 @@
 
 // 2026-08-01: lib/team-ids.jsへ集約(api/squad.jsとの共有・二重管理防止)。
 import { TEAM_IDS } from '../lib/team-ids.js';
+// 2026-08-04: lib/name-search.jsへ集約(api/player-photo.jsとの共有・二重管理防止)。
+// アクセント記号付きの姓(Mbappé等)で0件になる問題、姓だけの検索が同姓の別人
+// (Yamal等)に当たる問題への対策。
+import { resolvePlayerProfile } from '../lib/name-search.js';
 
 // 対応シーズン一覧。2026-07-31: Proプランへの切り替えに伴い2025・2026を追加
 // (2026は開幕前でまだ試合が無いため実データは薄いが、開幕後に自動的に反映される)。
@@ -22,7 +26,7 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
 
   const API_KEY = process.env.API_FOOTBALL_KEY;
-  const { search, team } = req.query;
+  const { search, team, fullName } = req.query;
 
   if (!API_KEY) {
     return res.status(500).json({ error: 'API_FOOTBALL_KEY が設定されていません' });
@@ -36,18 +40,11 @@ export default async function handler(req, res) {
   let profileName = null;
   let profileNationality = null;
   try {
-    const profileRes = await fetch(
-      `https://v3.football.api-sports.io/players/profiles?search=${encodeURIComponent(search)}`,
-      { headers: { 'x-apisports-key': API_KEY } }
-    );
-    if (profileRes.ok) {
-      const profileData = await profileRes.json();
-      const profile = profileData.response?.[0]?.player;
-      if (profile) {
-        photo = profile.photo || null;
-        profileName = profile.name || null;
-        profileNationality = profile.nationality || null;
-      }
+    const profile = await resolvePlayerProfile(API_KEY, { search, fullName });
+    if (profile) {
+      photo = profile.photo || null;
+      profileName = profile.name || null;
+      profileNationality = profile.nationality || null;
     }
   } catch (err) {
     console.error('profile fetch error:', err);
