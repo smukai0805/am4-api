@@ -36,6 +36,19 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'API_FOOTBALL_KEY が設定されていません' });
   }
 
+  // 【一時的な調査用】TEAM_IDSに登録されている全チームの英語名を一括確認するための診断用。
+  // GET ?namesCheck=1
+  if (req.method === 'GET' && req.query.namesCheck === '1') {
+    const uniqueIds = [...new Set(Object.values(TEAM_IDS))];
+    const results = {};
+    for (const id of uniqueIds) {
+      const r = await fetch(`https://v3.football.api-sports.io/teams?id=${id}`, { headers: { 'x-apisports-key': API_KEY } });
+      const d = await r.json();
+      results[id] = d.response?.[0]?.team?.name || null;
+    }
+    return res.status(200).json(results);
+  }
+
   const { club } = req.query;
   if (!club) {
     return res.status(400).json({ error: 'club パラメータが必要です' });

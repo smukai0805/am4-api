@@ -288,10 +288,12 @@
     line-height:1.2; max-width:64px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
   }
   .squad-slot-pos{ font-size:8.5px; color:var(--amber); font-family:'JetBrains Mono',monospace; }
+  /* 2026-08-02: 常時表示に変更(以前は:hoverでのみ表示していたが、モバイル端末では
+     hoverが安定して発火せずボタンが事実上押せないことがあったため)。 */
   .squad-slot-remove{
     position:absolute; top:-4px; right:-4px; width:16px; height:16px; border-radius:50%;
     background:#c1502e; color:#fff; font-size:11px; line-height:16px; text-align:center;
-    cursor:pointer; display:none;
+    cursor:pointer;
   }
   /* 2026-08-01: 背番号バッジ(api/squad.js経由のライブ選手のみ、サンプル選手データには
      背番号情報が無いため表示されない)。 */
@@ -301,15 +303,16 @@
     font-family:'JetBrains Mono',monospace; font-size:8.5px; font-weight:700; line-height:1;
     display:flex; align-items:center; justify-content:center;
   }
-  .squad-slot:not(.empty):hover .squad-slot-remove{ display:block; }
-  .squad-slot:not(.empty){ cursor:grab; }
-  .squad-slot.dragging-source{ opacity:.3; }
-  .squad-slot.drag-target .squad-slot-avatar{ border-color:#fff; box-shadow:0 0 0 4px rgba(255,255,255,.35); }
-  .squad-slot-ghost{
-    position:fixed !important; top:0; left:0;
-    transform:translate(-50%,-50%) !important;
-    pointer-events:none; z-index:300; opacity:.85;
+  /* 2026-08-02: ドラッグ&ドロップ(Pointer Events)がiPhone実機で機能しないと確認された
+     ため、タップだけで完結する「入れ替えモード」に置き換えた。この⇄ボタンをタップして
+     移動元を選び、続けて別の枠をタップすると入れ替わる。 */
+  .squad-slot-move{
+    position:absolute; bottom:-4px; right:-4px; width:16px; height:16px; border-radius:50%;
+    background:var(--panel); border:1px solid var(--amber); color:var(--amber);
+    font-size:9px; line-height:14px; text-align:center; cursor:pointer;
   }
+  .squad-slot.move-selected .squad-slot-avatar{ border-color:#fff; box-shadow:0 0 0 4px rgba(255,255,255,.35); }
+  .squad-slot.move-selected .squad-slot-move{ background:#fff; color:#000; border-color:#fff; }
   .squad-bench-label{
     font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--chalk-dim);
     text-align:center; margin:16px 0 10px; letter-spacing:1px;
@@ -7964,67 +7967,64 @@ Object.keys(formations).forEach(key=>{
   squadFormationSelect.appendChild(opt);
 });
 
-function swapSlots(stateArr, i, j, renderFn){
-  const tmp = stateArr[i];
-  stateArr[i] = stateArr[j];
-  stateArr[j] = tmp;
-  renderFn();
+// 2026-08-02: Pointer Events(pointerdown/move/up)によるドラッグ&ドロップ実装は、
+// draggable="false"を追加しても実機(iPhone Safari)で解消せず、2回目の修正でも
+// 直っていないとの実機報告を受けた。ブラウザ操作環境が無く実機での再現・検証が
+// できないため、ジェスチャー検出(移動量・タイミング・ネイティブドラッグとの競合)に
+// 依存しない、単純なタップ操作だけで完結する「入れ替えモード」に置き換えた
+// (「タップして選ぶ→別の枠をタップして入れ替え完了」。コードレビューだけで正しさを
+// 確認できる単純さを優先している)。
+let moveSource = null; // { target: 'pitch'|'bench', index: number } | null
+
+function getSlotArray(target){
+  return target === 'pitch' ? squadState : benchState;
 }
 
-// ポインターイベントでのドラッグ操作(PC・スマホどちらのタッチでも動く)
-function attachSlotDrag(el, index, stateArr, containerEl, renderFn, target){
-  el.addEventListener('pointerdown', (e)=>{
-    if(e.target.dataset.remove !== undefined) return; // ×ボタンは別処理
-    if(!stateArr[index]) return; // 空き枠はドラッグ元にしない(タップでピッカーを開くだけ)
+// 入れ替え元(moveSource)が選ばれている状態で、別の枠をタップした時に呼ぶ。
+// ピッチ⇄ベンチをまたぐ移動にも対応する(片方が空き枠でも「移動」として成立する)。
+function completeMove(toTarget, toIndex){
+  const fromArr = getSlotArray(moveSource.target);
+  const toArr = getSlotArray(toTarget);
+  if(moveSource.target === toTarget && moveSource.index === toIndex){
+    moveSource = null; // 選択中の枠自体を再タップ→選択解除のみ
+  } else {
+    const tmp = toArr[toIndex];
+    toArr[toIndex] = fromArr[moveSource.index];
+    fromArr[moveSource.index] = tmp;
+    moveSource = null;
+  }
+  renderSquadPitch();
+  renderBench();
+}
 
-    const startX = e.clientX, startY = e.clientY;
-    let moved = false, ghost = null;
-
-    function onMove(ev){
-      const dx = ev.clientX - startX, dy = ev.clientY - startY;
-      if(!moved && Math.hypot(dx, dy) > 8){
-        moved = true;
-        ghost = el.cloneNode(true);
-        ghost.classList.add('squad-slot-ghost');
-        document.body.appendChild(ghost);
-        el.classList.add('dragging-source');
-      }
-      if(moved && ghost){
-        ghost.style.left = ev.clientX + 'px';
-        ghost.style.top = ev.clientY + 'px';
-        document.querySelectorAll('.squad-slot.drag-target').forEach(s=>s.classList.remove('drag-target'));
-        const under = document.elementFromPoint(ev.clientX, ev.clientY);
-        const targetSlot = under && under.closest('.squad-slot');
-        if(targetSlot && targetSlot !== el && targetSlot.closest(target==='pitch' ? '#squadPitch' : '#squadBench')){
-          targetSlot.classList.add('drag-target');
-        }
-      }
+// スカッド枠(ピッチ・ベンチ共通)のクリックを一箇所で処理する。
+// 優先順位: ×ボタン(削除)→⇄ボタン(入れ替えモードの開始/解除)→
+// 入れ替えモード中なら移動先として確定→通常は選手ピッカーを開く。
+function handleSlotClick(e, target, index){
+  if(e.target.dataset.remove !== undefined){
+    getSlotArray(target)[index] = null;
+    if(moveSource && moveSource.target===target && moveSource.index===index) moveSource = null;
+    renderSquadPitch();
+    renderBench();
+    return;
+  }
+  if(e.target.dataset.move !== undefined){
+    if(moveSource && moveSource.target===target && moveSource.index===index){
+      moveSource = null;
+      renderSquadPitch();
+      renderBench();
+    } else {
+      moveSource = { target, index };
+      renderSquadPitch();
+      renderBench();
     }
-    function onUp(ev){
-      document.removeEventListener('pointermove', onMove);
-      document.removeEventListener('pointerup', onUp);
-      if(moved){
-        const under = document.elementFromPoint(ev.clientX, ev.clientY);
-        const targetSlot = under && under.closest('.squad-slot');
-        if(ghost) ghost.remove();
-        document.querySelectorAll('.squad-slot.drag-target').forEach(s=>s.classList.remove('drag-target'));
-        let swapped = false;
-        if(targetSlot && targetSlot.closest(target==='pitch' ? '#squadPitch' : '#squadBench')){
-          const targetIndex = Array.from(containerEl.children).indexOf(targetSlot);
-          if(targetIndex !== -1 && targetIndex !== index){ swapSlots(stateArr, index, targetIndex, renderFn); swapped = true; }
-        }
-        // 2026-08-01修正: 有効な移動先の外で離した場合(swapが起きずrenderFn()による
-        // 全体再描画が発生しない場合)、dragging-source(半透明表示)クラスが残ったままに
-        // なり、枠が「グレーアウトして操作できない」ように見えるバグがあったため、
-        // 明示的に解除する。
-        if(!swapped) el.classList.remove('dragging-source');
-      } else {
-        openSquadPicker(target, index); // 動かなければタップ扱い→選手を入れ替え
-      }
-    }
-    document.addEventListener('pointermove', onMove);
-    document.addEventListener('pointerup', onUp);
-  });
+    return;
+  }
+  if(moveSource){
+    completeMove(target, index);
+    return;
+  }
+  openSquadPicker(target, index);
 }
 
 // 2026-08-01: スカッド枠(ピッチ・ベンチ)にも顔写真を表示する。api/squad.js経由の
@@ -8065,11 +8065,11 @@ function renderSquadPitch(){
   slots.forEach((slot, i)=>{
     const pid = squadState[i];
     const p = pid ? findSquadPlayer(pid) : null;
+    const isMoveSource = !!(moveSource && moveSource.target==='pitch' && moveSource.index===i);
     const el = document.createElement('div');
-    el.className = 'squad-slot' + (p ? '' : ' empty');
+    el.className = 'squad-slot' + (p ? '' : ' empty') + (isMoveSource ? ' move-selected' : '');
     el.style.top = slot.top + '%';
     el.style.left = slot.left + '%';
-    el.style.touchAction = 'none';
     const avatarUid = p ? `squad-avatar-${avatarUidCounter++}` : null;
     el.innerHTML = `
       <div class="squad-slot-avatar">
@@ -8077,21 +8077,13 @@ function renderSquadPitch(){
           ${p ? avatarSilhouetteSvg : `<span class="squad-slot-plus">+</span>`}
         </span>
         ${p && p.number ? `<span class="squad-slot-number">${p.number}</span>` : ''}
+        ${p ? `<span class="squad-slot-move" data-move="${i}" title="別の枠へ移動">⇄</span>` : ''}
         ${p ? `<span class="squad-slot-remove" data-remove="${i}">×</span>` : ''}
       </div>
       <div class="squad-slot-pos">${slot.label}</div>
       ${p ? `<div class="squad-slot-name">${shortenPlayerName(p.name)}</div>` : ''}
     `;
-    if(p){
-      attachSlotDrag(el, i, squadState, squadPitch, renderSquadPitch, 'pitch');
-      el.querySelector('.squad-slot-remove').addEventListener('click', (e)=>{
-        e.stopPropagation();
-        squadState[i] = null;
-        renderSquadPitch();
-      });
-    } else {
-      el.addEventListener('click', ()=>openSquadPicker('pitch', i));
-    }
+    el.addEventListener('click', (e)=> handleSlotClick(e, 'pitch', i));
     // 2026-08-01修正: loadSquadAvatarPhotoInto()はdocument.getElementById(uid)で要素を
     // 探すため、appendChildで実際にDOMへ挿入した後に呼ぶ必要がある(挿入前に呼ぶと、
     // ライブ選手写真の同期パスがnullを引いて無言で失敗し、シルエットのままになっていた)。
@@ -8104,9 +8096,9 @@ function renderBench(){
   squadBench.innerHTML = '';
   benchState.forEach((pid, i)=>{
     const p = pid ? findSquadPlayer(pid) : null;
+    const isMoveSource = !!(moveSource && moveSource.target==='bench' && moveSource.index===i);
     const el = document.createElement('div');
-    el.className = 'squad-slot' + (p ? '' : ' empty');
-    el.style.touchAction = 'none';
+    el.className = 'squad-slot' + (p ? '' : ' empty') + (isMoveSource ? ' move-selected' : '');
     const avatarUid = p ? `squad-avatar-${avatarUidCounter++}` : null;
     el.innerHTML = `
       <div class="squad-slot-avatar">
@@ -8114,21 +8106,13 @@ function renderBench(){
           ${p ? avatarSilhouetteSvg : `<span class="squad-slot-plus">+</span>`}
         </span>
         ${p && p.number ? `<span class="squad-slot-number">${p.number}</span>` : ''}
+        ${p ? `<span class="squad-slot-move" data-move="${i}" title="別の枠へ移動">⇄</span>` : ''}
         ${p ? `<span class="squad-slot-remove" data-remove="${i}">×</span>` : ''}
       </div>
       <div class="squad-slot-pos">SUB</div>
       ${p ? `<div class="squad-slot-name">${shortenPlayerName(p.name)}</div>` : ''}
     `;
-    if(p){
-      attachSlotDrag(el, i, benchState, squadBench, renderBench, 'bench');
-      el.querySelector('.squad-slot-remove').addEventListener('click', (e)=>{
-        e.stopPropagation();
-        benchState[i] = null;
-        renderBench();
-      });
-    } else {
-      el.addEventListener('click', ()=>openSquadPicker('bench', i));
-    }
+    el.addEventListener('click', (e)=> handleSlotClick(e, 'bench', i));
     squadBench.appendChild(el);
     if(p) loadSquadAvatarPhotoInto(avatarUid, p);
   });
@@ -8303,7 +8287,10 @@ async function applyClubSelection(clubName){
       if(data.found && Array.isArray(data.players) && data.players.length > 0){
         data.players.forEach(sp=>{
           const id = `live-${sp.id}`;
-          liveSquadPlayers[id] = { id, name: sp.name, pos: sp.position, photo: sp.photo || null, team: clubName };
+          // 2026-08-02修正: api/squad.jsのレスポンスには背番号(number)が含まれている
+          // ことを実データで確認済みだったが、ここでオブジェクトに含めるのを忘れていた
+          // ため、背番号バッジが常にp.number未定義で表示されない不具合になっていた。
+          liveSquadPlayers[id] = { id, name: sp.name, pos: sp.position, photo: sp.photo || null, number: sp.number || null, team: clubName };
         });
         currentSquadPlayerPool = Object.values(liveSquadPlayers);
         currentFormationKey = bestFormationForClub(currentSquadPlayerPool);
