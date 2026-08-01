@@ -62,27 +62,6 @@ export default async function handler(req, res) {
     'チャンピオンズリーグ': 2
   };
 
-  // 2026-08-02: lib/team-ids.jsを22→96クラブへ拡張する作業のための一時的な診断分岐。
-  // クラブ名(英語)→API-FootballチームIDを「推測せず」検証するため、5リーグの
-  // 順位表からteam.id/team.nameだけを抜き出して返す(通常のsimplified形式には
-  // team.idが含まれていないため)。突き合わせが終わったら削除する。
-  if (req.query.idsCheck === '1') {
-    const entries = Object.entries(LEAGUES).filter(([name])=> name !== 'チャンピオンズリーグ');
-    const results = await Promise.all(
-      entries.map(async ([name, leagueId]) => {
-        const data = await apiFootballFetch('/standings', { league: leagueId, season: SEASON });
-        const table = data.response?.[0]?.league?.standings?.[0] || [];
-        return [name, table.map(row => ({ id: row.team.id, name: row.team.name }))];
-      })
-    );
-    return res.status(200).json({ season: SEASON, teams: Object.fromEntries(results) });
-  }
-  // 5大リーグ外のクラブ(ポルト、ガラタサライ等)のID検証用。/teams?search=で問い合わせる。
-  if (req.query.teamSearch) {
-    const data = await apiFootballFetch('/teams', { search: req.query.teamSearch });
-    return res.status(200).json({ results: (data.response||[]).map(r=>({ id: r.team.id, name: r.team.name, country: r.team.country })) });
-  }
-
   try {
     // 5リーグ分を並行して取得(Promise.allでまとめて投げる)
     const entries = Object.entries(LEAGUES);

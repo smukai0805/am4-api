@@ -8005,32 +8005,137 @@ SQUAD_LEAGUE_ORDER.forEach(league=>{
 // <option>内に画像を表示できないため、既存のsetupCombobox(選手検索の国籍/クラブ
 // フィルターで使っているもの)を流用した。
 //
-// 英語名・ロゴが確認できているのはlib/team-ids.js(api/squad.jsのライブ選手取得
-// 対応表)と同じ22クラブのみ(API-Footballの/teams?id=で実際に検索して確認済み)。
-// それ以外のクラブは、未検証の英語名を推測で表示することは避け、日本語名のまま
-// ロゴ無しで表示する。
+// 【2026-08-02、22→113クラブへ拡張】lib/team-ids.js(api/squad.jsのライブ選手取得
+// 対応表)を22→113クラブに拡張したのに合わせ、こちらも同じ113クラブ全件に
+// 英語名・ロゴを追加した(以前は元22クラブのみ英語名+ロゴ表示、それ以外は
+// 日本語名のみロゴ無し表示だった)。英語名はすべてapi/standings.js経由で
+// API-Footballの/standings(5大リーグ)・/teams?search(ガラタサライ・FCポルト)を
+// 実際に検索して確認済み(推測なし)。ロゴIDはlib/team-ids.jsと同じ値を使っている。
 const SQUAD_CLUB_EN_INFO = {
-  'マンチェスター・シティ': { en: 'Manchester City', id: 50 },
-  'レアル・マドリード': { en: 'Real Madrid', id: 541 },
-  'バイエルン・ミュンヘン': { en: 'Bayern München', id: 157 },
+  // プレミアリーグ
   'アーセナル': { en: 'Arsenal', id: 42 },
-  'パリ・サンジェルマン': { en: 'Paris Saint Germain', id: 85 },
-  'FCバルセロナ': { en: 'Barcelona', id: 529 },
-  'ガラタサライ': { en: 'Galatasaray', id: 645 },
+  'マンチェスター・シティ': { en: 'Manchester City', id: 50 },
   'マンチェスター・ユナイテッド': { en: 'Manchester United', id: 33 },
-  'ウェストハム': { en: 'West Ham', id: 48 },
-  'ブライトン': { en: 'Brighton', id: 51 },
-  'チェルシー': { en: 'Chelsea', id: 49 },
+  'アストン・ヴィラ': { en: 'Aston Villa', id: 66 },
   'リヴァプール': { en: 'Liverpool', id: 40 },
-  'インテル': { en: 'Inter', id: 505 },
-  'ユヴェントス': { en: 'Juventus', id: 496 },
-  'アトレティコ・マドリード': { en: 'Atletico Madrid', id: 530 },
-  'バイヤー・レバークーゼン': { en: 'Bayer Leverkusen', id: 168 },
-  'ボルシア・ドルトムント': { en: 'Borussia Dortmund', id: 165 },
-  'ミラン': { en: 'AC Milan', id: 489 },
-  'トッテナム': { en: 'Tottenham', id: 47 },
+  'ボーンマス': { en: 'Bournemouth', id: 35 },
+  'サンダーランド': { en: 'Sunderland', id: 746 },
+  'ブライトン': { en: 'Brighton', id: 51 },
+  'ブレントフォード': { en: 'Brentford', id: 55 },
+  'チェルシー': { en: 'Chelsea', id: 49 },
+  'フルアム': { en: 'Fulham', id: 36 },
   'ニューカッスル・ユナイテッド': { en: 'Newcastle', id: 34 },
+  'エヴァートン': { en: 'Everton', id: 45 },
+  'リーズ': { en: 'Leeds', id: 63 },
+  'クリスタル・パレス': { en: 'Crystal Palace', id: 52 },
+  'ノッティンガム・フォレスト': { en: 'Nottingham Forest', id: 65 },
+  'トッテナム': { en: 'Tottenham', id: 47 },
+  'ウェストハム': { en: 'West Ham', id: 48 },
+  'バーンリー': { en: 'Burnley', id: 44 },
+  'ウォルヴァーハンプトン': { en: 'Wolves', id: 39 },
+  'イプスウィッチ・タウン': { en: 'Ipswich', id: 57 },
+  'サウサンプトン': { en: 'Southampton', id: 41 },
+  'レスター・シティ': { en: 'Leicester', id: 46 },
+
+  // ラ・リーガ
+  'FCバルセロナ': { en: 'Barcelona', id: 529 },
+  'レアル・マドリード': { en: 'Real Madrid', id: 541 },
+  'ビジャレアル': { en: 'Villarreal', id: 533 },
+  'アトレティコ・マドリード': { en: 'Atletico Madrid', id: 530 },
+  'レアル・ベティス': { en: 'Real Betis', id: 543 },
+  'セルタ・ビーゴ': { en: 'Celta Vigo', id: 538 },
+  'ヘタフェ': { en: 'Getafe', id: 546 },
+  'ラージョ・バジェカーノ': { en: 'Rayo Vallecano', id: 728 },
+  'バレンシア': { en: 'Valencia', id: 532 },
+  'レアル・ソシエダ': { en: 'Real Sociedad', id: 548 },
+  'エスパニョール': { en: 'Espanyol', id: 540 },
+  'アスレティック・ビルバオ': { en: 'Athletic Club', id: 531 },
+  'セビージャ': { en: 'Sevilla', id: 536 },
+  'デポルティーボ・アラベス': { en: 'Alaves', id: 542 },
+  'エルチェ': { en: 'Elche', id: 797 },
+  'レバンテ': { en: 'Levante', id: 539 },
+  'オサスナ': { en: 'Osasuna', id: 727 },
+  'マジョルカ': { en: 'Mallorca', id: 798 },
+  'ジローナ': { en: 'Girona', id: 547 },
+  'レアル・オビエド': { en: 'Oviedo', id: 718 },
+  'CDレガネス': { en: 'Leganes', id: 537 },
+  'ラス・パルマス': { en: 'Las Palmas', id: 534 },
+  'レアル・バジャドリード': { en: 'Valladolid', id: 720 },
+
+  // セリエA
+  'インテル': { en: 'Inter', id: 505 },
   'ナポリ': { en: 'Napoli', id: 492 },
+  'ASローマ': { en: 'AS Roma', id: 497 },
+  'コモ': { en: 'Como', id: 895 },
+  'ミラン': { en: 'AC Milan', id: 489 },
+  'ユヴェントス': { en: 'Juventus', id: 496 },
+  'アタランタ': { en: 'Atalanta', id: 499 },
+  'ボローニャ': { en: 'Bologna', id: 500 },
+  'ラツィオ': { en: 'Lazio', id: 487 },
+  'ウディネーゼ': { en: 'Udinese', id: 494 },
+  'サッスオーロ': { en: 'Sassuolo', id: 488 },
+  'トリノ': { en: 'Torino', id: 503 },
+  'パルマ': { en: 'Parma', id: 523 },
+  'カリアリ': { en: 'Cagliari', id: 490 },
+  'フィオレンティーナ': { en: 'Fiorentina', id: 502 },
+  'ジェノア': { en: 'Genoa', id: 495 },
+  'レッチェ': { en: 'Lecce', id: 867 },
+  'クレモネーゼ': { en: 'Cremonese', id: 520 },
+  'ヴェローナ': { en: 'Hellas Verona', id: 504 },
+  'ピサ': { en: 'Pisa', id: 801 },
+  'エンポリ': { en: 'Empoli', id: 511 },
+  'ヴェネツィア': { en: 'Venezia', id: 517 },
+  'モンツァ': { en: 'Monza', id: 1579 },
+
+  // ブンデスリーガ
+  'バイエルン・ミュンヘン': { en: 'Bayern München', id: 157 },
+  'ボルシア・ドルトムント': { en: 'Borussia Dortmund', id: 165 },
+  'RBライプツィヒ': { en: 'RB Leipzig', id: 173 },
+  'VfBシュトゥットガルト': { en: 'VfB Stuttgart', id: 172 },
+  'TSGホッフェンハイム': { en: '1899 Hoffenheim', id: 167 },
+  'バイヤー・レバークーゼン': { en: 'Bayer Leverkusen', id: 168 },
+  'SCフライブルク': { en: 'SC Freiburg', id: 160 },
+  'アイントラハト・フランクフルト': { en: 'Eintracht Frankfurt', id: 169 },
+  'FCアウクスブルク': { en: 'FC Augsburg', id: 170 },
+  'マインツ05': { en: 'FSV Mainz 05', id: 164 },
+  '1.FCウニオン・ベルリン': { en: 'Union Berlin', id: 182 },
+  'ボルシア・メンヒェングラートバッハ': { en: 'Borussia Mönchengladbach', id: 163 },
+  'ハンブルガーSV': { en: 'Hamburger SV', id: 175 },
+  '1.FCケルン': { en: '1. FC Köln', id: 192 },
+  'ヴェルダー・ブレーメン': { en: 'Werder Bremen', id: 162 },
+  'VfLヴォルフスブルク': { en: 'VfL Wolfsburg', id: 161 },
+  '1.FCハイデンハイム': { en: '1. FC Heidenheim', id: 180 },
+  'FCザンクトパウリ': { en: 'FC St. Pauli', id: 186 },
+  'ホルシュタイン・キール': { en: 'Holstein Kiel', id: 191 },
+  'VfLボーフム': { en: 'VfL Bochum', id: 176 },
+
+  // リーグ・アン
+  'パリ・サンジェルマン': { en: 'Paris Saint Germain', id: 85 },
+  'RCランス': { en: 'Lens', id: 116 },
+  'リール': { en: 'Lille', id: 79 },
+  'リヨン': { en: 'Lyon', id: 80 },
+  'マルセイユ': { en: 'Marseille', id: 81 },
+  'レンヌ': { en: 'Rennes', id: 94 },
+  'モナコ': { en: 'Monaco', id: 91 },
+  'ストラスブール': { en: 'Strasbourg', id: 95 },
+  'ロリアン': { en: 'Lorient', id: 97 },
+  'トゥールーズ': { en: 'Toulouse', id: 96 },
+  'パリFC': { en: 'Paris FC', id: 114 },
+  'スタッド・ブレスト': { en: 'Stade Brestois 29', id: 106 },
+  'アンジェ': { en: 'Angers', id: 77 },
+  'ル・アーヴル': { en: 'Le Havre', id: 111 },
+  'オーセール': { en: 'Auxerre', id: 108 },
+  'ニース': { en: 'Nice', id: 84 },
+  'ナント': { en: 'Nantes', id: 83 },
+  'メス': { en: 'Metz', id: 112 },
+  'スタッド・ランス': { en: 'Reims', id: 93 },
+  'サンテティエンヌ': { en: 'Saint Etienne', id: 1063 },
+  'モンペリエ': { en: 'Montpellier', id: 82 },
+
+  // その他
+  'ガラタサライ': { en: 'Galatasaray', id: 645 },
+  'FCポルト': { en: 'FC Porto', id: 212 },
+  'スポルティングCP': { en: 'Sporting CP', id: 228 },
 };
 function squadClubDisplayLabel(jaName){
   return SQUAD_CLUB_EN_INFO[jaName]?.en || jaName;
@@ -8375,9 +8480,8 @@ function refillCurrentSquad(){
 // squadFormationSelectのchangeハンドラ側でrefillCurrentSquad()を使うため上書きしない)。
 // 2026-08-02: 書き出し画像にクラブロゴを表示するため、クラブ選択に合わせて
 // squadClubWatermarkのsrc・表示/非表示を切り替える。ロゴURLが確認できているのは
-// SQUAD_CLUB_EN_INFO(=lib/team-ids.jsと同じ22クラブ)のみで、それ以外のクラブ
-// (サンプル配列にしか無い大多数のクラブ)ではロゴを表示しない(未検証のURLを
-// 推測で使わないため)。
+// SQUAD_CLUB_EN_INFO(=lib/team-ids.jsと同じ113クラブ、2026-08-02に22→113へ拡張)
+// のみで、それ以外のクラブではロゴを表示しない(未検証のURLを推測で使わないため)。
 function updateSquadClubWatermark(clubName){
   const info = clubName ? SQUAD_CLUB_EN_INFO[clubName] : null;
   if(info){
