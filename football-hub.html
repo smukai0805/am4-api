@@ -242,13 +242,22 @@
   .squad-capture-area{
     position:relative;
     /* 2026-08-03: 黒帯+AM4ロゴタイル柄(前回対応)が見た目が良くないとの指摘を受け廃止。
-       代わりにカード全体(タイトル・ピッチ・ベンチすべて)に、芝目のような縞模様
-       (repeating-linear-gradientによる明暗の横縞)を重ねた緑のグラデーションを敷いた。
-       .squad-pitch自体の背景は透過にして、この芝生がピッチ・ベンチ両方で地続きに
-       見えるようにしている(下記.squad-pitch参照)。 */
-    background:
-      repeating-linear-gradient(180deg, rgba(255,255,255,.05) 0, rgba(255,255,255,.05) 26px, rgba(0,0,0,.06) 26px, rgba(0,0,0,.06) 52px),
+       代わりにカード全体(タイトル・ピッチ・ベンチすべて)に、芝目のような縞模様を
+       重ねた緑のグラデーションを敷いた。.squad-pitch自体の背景は透過にして、この
+       芝生がピッチ・ベンチ両方で地続きに見えるようにしている(下記.squad-pitch参照)。
+       【2026-08-04修正】画面表示とhtml2canvasでの書き出し画像とで見た目が違う
+       (書き出し側は縞模様が消える)との実機報告を受けて調査した結果、この
+       html2canvas(1.4.1)がCSSのrepeating-linear-gradientを書き出し時に正しく
+       描画できないことが原因と判明した(画面表示側は普通のCSSとして問題なく描画
+       されるため、ライブ表示と書き出し画像とで差が生まれていた)。縞模様は
+       repeating-linear-gradientではなく、実画像(/grass-stripes.png、4x52pxの
+       半透明帯を縦にタイル表示)に置き換えることで、画面表示・書き出し画像の
+       両方で同じ見た目になるようにした。 */
+    background-image:
+      url('/grass-stripes.png'),
       linear-gradient(160deg, #2f9350 0%, #1b6b39 45%, #0d3d20 100%);
+    background-repeat: repeat, no-repeat;
+    background-size: auto 52px, auto;
     border:1px solid var(--line); border-radius:8px;
     padding:20px 10px 18px; margin:18px 0; max-width:480px;
   }
@@ -353,12 +362,6 @@
        との指摘を受け20pxに縮小した。 */
     position:absolute; top:8px; left:8px; height:20px; width:auto;
     pointer-events:none; z-index:5;
-    /* 2026-08-03: /am4-logo.png自体が青色(rgb(0,77,231)前後)の画像のため、緑の芝生
-       背景に対して見えづらいとの指摘を受け、filterで白に変換した(brightness(0)で
-       不透明ピクセルを黒化→invert(1)で白へ反転、透過部分はアルファが保たれるため
-       影響を受けない)。クラブエンブレム(.squad-club-watermark)は各クラブ本来の色を
-       保ちたいため対象外。 */
-    filter: brightness(0) invert(1);
   }
   .squad-club-watermark{
     position:absolute; top:8px; right:8px; height:32px; width:32px; object-fit:contain;
@@ -1498,7 +1501,7 @@
     <div class="squad-capture-title" id="squadCaptureTitle">MY SQUAD</div>
     <div class="squad-pitch-wrap">
       <img id="squadClubWatermark" class="squad-club-watermark" alt="" style="display:none;">
-      <img src="/am4-logo.png" alt="AM4" class="squad-am4-watermark">
+      <img src="/am4-logo-white.png" alt="AM4" class="squad-am4-watermark">
       <div class="squad-pitch" id="squadPitch"></div>
     </div>
     <div class="squad-bench-label">SUB</div>
