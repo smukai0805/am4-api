@@ -78,7 +78,10 @@ export default async function handler(req, res) {
     const results = {};
     for (const [name, teamId] of Object.entries(MAJOR_22)) {
       try {
-        const fx = await apiFootballFetch('/fixtures', { team: teamId, last: 5 });
+        // 2026-08シーズン開幕前で、team+lastだけだとプレシーズン親善試合(Birmingham戦等、
+        // 主力を試す実験的フォーメーションになりがち)を拾ってしまうため、完了済みの
+        // 2025-26シーズン(season=2025)の公式戦に絞って直近の1試合を見る。
+        const fx = await apiFootballFetch('/fixtures', { team: teamId, season: 2025, last: 5 });
         const finished = (fx.response || []).find(f => ['FT', 'AET', 'PEN'].includes(f.fixture.status?.short));
         if (!finished) { results[name] = { error: 'no finished fixture in last 5' }; continue; }
         const lu = await apiFootballFetch('/fixtures/lineups', { fixture: finished.fixture.id });
