@@ -7538,20 +7538,31 @@ async function runPhotoQueue(){
 // 従来は /api/player-stats(1人あたり最大4回のAPI-Footballリクエスト)を使い回していたが、
 // それだと選手一覧を開いただけで無料プランの上限(1分10回・1日100回)にすぐ達してしまうため、
 // プロフィール写真だけを取得する軽量エンドポイント /api/player-photo(1回のみ)に切り替えた。
+//
+// 【2026-08-01修正】以前は取得失敗(null)もキャッシュに書き込んでいたため、
+// api/player-photo.js自体がリポジトリに存在せず常に404していた期間にキャッシュされた
+// nullがlocalStorageに残り続け、エンドポイントを追加した後も「一度nullを引いた選手は
+// 二度と再取得されない」状態になっていた(スカッド作成で実装済みのはずの顔写真が
+// 実際にはシルエットのままだった不具合の原因)。取得できた写真URLだけをキャッシュし、
+// null(失敗)はキャッシュしない(=次回のページ読み込みで再試行される)ように変更した。
 async function getPlayerPhoto(p){
-  if(p.id in playerPhotoCache) return playerPhotoCache[p.id];
+  if(playerPhotoCache[p.id]) return playerPhotoCache[p.id];
   return enqueuePhotoFetch(async ()=>{
-    if(p.id in playerPhotoCache) return playerPhotoCache[p.id]; // キュー待機中に他所で解決済みの場合
+    if(playerPhotoCache[p.id]) return playerPhotoCache[p.id]; // キュー待機中に他所で解決済みの場合
+    let photo = null;
     try{
       const surname = p.name.trim().split(/\s+/).pop();
       const res = await fetch(`${AM4_API_BASE}/api/player-photo?search=${encodeURIComponent(surname)}`);
       const data = res.ok ? await res.json() : { photo: null };
-      playerPhotoCache[p.id] = data.photo || null;
+      photo = data.photo || null;
     } catch(err){
-      playerPhotoCache[p.id] = null;
+      photo = null;
     }
-    savePhotoCache();
-    return playerPhotoCache[p.id];
+    if(photo){
+      playerPhotoCache[p.id] = photo;
+      savePhotoCache();
+    }
+    return photo;
   });
 }
 
@@ -7561,10 +7572,11 @@ async function loadLivePlayerStats(p){
   try{
     const data = await fetchPlayerLiveData(p);
 
-    // 写真は名前一致だけで取れるので、成績の有無に関わらず反映する
-    playerPhotoCache[p.id] = data.photo || null;
-    savePhotoCache();
+    // 写真は名前一致だけで取れるので、成績の有無に関わらず反映する。取得できた
+    // 場合のみキャッシュする(getPlayerPhoto()と同じ理由、失敗をキャッシュしない)。
     if(data.photo){
+      playerPhotoCache[p.id] = data.photo;
+      savePhotoCache();
       const photoEl = document.getElementById('modalPlayerPhoto');
       if(photoEl) photoEl.innerHTML = `<img src="${data.photo}" alt="${p.name}" loading="lazy">`;
     }
