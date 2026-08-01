@@ -276,6 +276,13 @@
   }
   .squad-slot-avatar svg{ width:24px; height:24px; fill:var(--chalk-dim); }
   .squad-slot-plus{ color:#fff; font-size:20px; font-weight:700; }
+  /* 2026-08-01: 顔写真の差し替え先を.squad-slot-avatar全体ではなく、この内側の
+     .squad-slot-photoだけに絞った(以前は差し替え時にinnerHTMLを丸ごと上書きしていた
+     ため、兄弟要素の×削除ボタン・背番号バッジまで巻き込んで消えてしまっていた)。 */
+  .squad-slot-photo{
+    width:100%; height:100%; border-radius:50%; overflow:hidden;
+    display:flex; align-items:center; justify-content:center;
+  }
   .squad-slot-name{
     font-size:10px; font-weight:700; color:#fff; text-align:center; text-shadow:0 1px 3px rgba(0,0,0,.8);
     line-height:1.2; max-width:64px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
@@ -285,6 +292,14 @@
     position:absolute; top:-4px; right:-4px; width:16px; height:16px; border-radius:50%;
     background:#c1502e; color:#fff; font-size:11px; line-height:16px; text-align:center;
     cursor:pointer; display:none;
+  }
+  /* 2026-08-01: 背番号バッジ(api/squad.js経由のライブ選手のみ、サンプル選手データには
+     背番号情報が無いため表示されない)。 */
+  .squad-slot-number{
+    position:absolute; top:-4px; left:-4px; width:17px; height:17px; border-radius:50%;
+    background:var(--panel); border:1px solid var(--amber); color:var(--amber);
+    font-family:'JetBrains Mono',monospace; font-size:8.5px; font-weight:700; line-height:1;
+    display:flex; align-items:center; justify-content:center;
   }
   .squad-slot:not(.empty):hover .squad-slot-remove{ display:block; }
   .squad-slot:not(.empty){ cursor:grab; }
@@ -7993,10 +8008,16 @@ function attachSlotDrag(el, index, stateArr, containerEl, renderFn, target){
         const targetSlot = under && under.closest('.squad-slot');
         if(ghost) ghost.remove();
         document.querySelectorAll('.squad-slot.drag-target').forEach(s=>s.classList.remove('drag-target'));
+        let swapped = false;
         if(targetSlot && targetSlot.closest(target==='pitch' ? '#squadPitch' : '#squadBench')){
           const targetIndex = Array.from(containerEl.children).indexOf(targetSlot);
-          if(targetIndex !== -1 && targetIndex !== index) swapSlots(stateArr, index, targetIndex, renderFn);
+          if(targetIndex !== -1 && targetIndex !== index){ swapSlots(stateArr, index, targetIndex, renderFn); swapped = true; }
         }
+        // 2026-08-01修正: 有効な移動先の外で離した場合(swapが起きずrenderFn()による
+        // 全体再描画が発生しない場合)、dragging-source(半透明表示)クラスが残ったままに
+        // なり、枠が「グレーアウトして操作できない」ように見えるバグがあったため、
+        // 明示的に解除する。
+        if(!swapped) el.classList.remove('dragging-source');
       } else {
         openSquadPicker(target, index); // 動かなければタップ扱い→選手を入れ替え
       }
@@ -8011,17 +8032,31 @@ function attachSlotDrag(el, index, stateArr, containerEl, renderFn, target){
 // 選手は既存のavatarHtml/getPlayerPhotoと同じ非同期取得・キャッシュの仕組みを使う。
 // 写真が取得できない(API-Football側に無い)選手は、既存のシルエットSVGのまま
 // フォールバックする。
+//
+// 【2026-08-01修正】draggable="false"が無いと、<img>はブラウザ標準でドラッグ可能な
+// 要素のため、写真が表示された枠だけネイティブの画像ドラッグ(HTML5 Drag and Drop)が
+// 発動し、独自実装のPointer Eventsベースのドラッグ&入れ替えと競合して固まる
+// (見た目が半透明のままドラッグ移動できなくなる)不具合の原因になっていた。
 function loadSquadAvatarPhotoInto(uid, p){
   if(p.photo){
     const el = document.getElementById(uid);
-    if(el) el.innerHTML = `<img src="${p.photo}" alt="${p.name}" loading="lazy" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`;
+    if(el) el.innerHTML = `<img src="${p.photo}" alt="${p.name}" loading="lazy" draggable="false" style="width:100%; height:100%; object-fit:cover;">`;
     return;
   }
   getPlayerPhoto(p).then(photo=>{
     if(!photo) return;
     const el = document.getElementById(uid);
-    if(el) el.innerHTML = `<img src="${photo}" alt="${p.name}" loading="lazy" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`;
+    if(el) el.innerHTML = `<img src="${photo}" alt="${p.name}" loading="lazy" draggable="false" style="width:100%; height:100%; object-fit:cover;">`;
   });
+}
+
+// 選手名を「姓のみ」に短縮して表示する(API-Footballのライブ選手データは
+// 「イニシャル+姓」("E. Haaland")と「フルネーム」("Charlie Gray")が混在しており、
+// 表示の長さがバラつくため、最後の単語(姓)だけに統一する)。
+function shortenPlayerName(name){
+  if(!name) return '';
+  const parts = name.trim().split(/\s+/);
+  return parts[parts.length - 1];
 }
 
 function renderSquadPitch(){
@@ -8037,12 +8072,15 @@ function renderSquadPitch(){
     el.style.touchAction = 'none';
     const avatarUid = p ? `squad-avatar-${avatarUidCounter++}` : null;
     el.innerHTML = `
-      <div class="squad-slot-avatar"${avatarUid ? ` id="${avatarUid}"` : ''}>
-        ${p ? avatarSilhouetteSvg : `<span class="squad-slot-plus">+</span>`}
+      <div class="squad-slot-avatar">
+        <span class="squad-slot-photo"${avatarUid ? ` id="${avatarUid}"` : ''}>
+          ${p ? avatarSilhouetteSvg : `<span class="squad-slot-plus">+</span>`}
+        </span>
+        ${p && p.number ? `<span class="squad-slot-number">${p.number}</span>` : ''}
         ${p ? `<span class="squad-slot-remove" data-remove="${i}">×</span>` : ''}
       </div>
       <div class="squad-slot-pos">${slot.label}</div>
-      ${p ? `<div class="squad-slot-name">${p.name}</div>` : ''}
+      ${p ? `<div class="squad-slot-name">${shortenPlayerName(p.name)}</div>` : ''}
     `;
     if(p){
       attachSlotDrag(el, i, squadState, squadPitch, renderSquadPitch, 'pitch');
@@ -8071,12 +8109,15 @@ function renderBench(){
     el.style.touchAction = 'none';
     const avatarUid = p ? `squad-avatar-${avatarUidCounter++}` : null;
     el.innerHTML = `
-      <div class="squad-slot-avatar"${avatarUid ? ` id="${avatarUid}"` : ''}>
-        ${p ? avatarSilhouetteSvg : `<span class="squad-slot-plus">+</span>`}
+      <div class="squad-slot-avatar">
+        <span class="squad-slot-photo"${avatarUid ? ` id="${avatarUid}"` : ''}>
+          ${p ? avatarSilhouetteSvg : `<span class="squad-slot-plus">+</span>`}
+        </span>
+        ${p && p.number ? `<span class="squad-slot-number">${p.number}</span>` : ''}
         ${p ? `<span class="squad-slot-remove" data-remove="${i}">×</span>` : ''}
       </div>
       <div class="squad-slot-pos">SUB</div>
-      ${p ? `<div class="squad-slot-name">${p.name}</div>` : ''}
+      ${p ? `<div class="squad-slot-name">${shortenPlayerName(p.name)}</div>` : ''}
     `;
     if(p){
       attachSlotDrag(el, i, benchState, squadBench, renderBench, 'bench');
@@ -8093,11 +8134,63 @@ function renderBench(){
   });
 }
 
+// ライブ選手(p.photoを既に持っている)は既存の写真URLをそのまま使い、無駄な
+// getPlayerPhoto()呼び出し(名前検索による再取得)を避ける。それ以外は既存の
+// avatarHtml()をそのまま使う(サンプル配列の選手用、非同期取得・キャッシュを再利用)。
+function pickerAvatarHtml(p){
+  if(p.photo){
+    return `<div class="avatar-placeholder"><img src="${p.photo}" alt="${p.name}" loading="lazy" style="width:100%; height:100%; object-fit:cover; border-radius:inherit;"></div>`;
+  }
+  return avatarHtml(p);
+}
+
+// 現在のクラブ選手プール(currentSquadPlayerPool)のうち、まだスタメン・ベンチの
+// どこにも配置されていない選手だけを返す。
+function unplacedClubPlayers(){
+  const usedIds = new Set([...squadState, ...benchState].filter(Boolean));
+  return currentSquadPlayerPool.filter(p=>!usedIds.has(p.id));
+}
+
+function renderSquadPickerItem(p){
+  const el = document.createElement('div');
+  el.className = 'search-result-item';
+  const subInfo = [p.team, p.pos, p.number ? `#${p.number}` : null].filter(Boolean).join(' / ');
+  el.innerHTML = `<div class="sr-main">${pickerAvatarHtml(p)}<span>${p.name}${p.kana ? ` <span class="kana">${p.kana}</span>` : ''}<br><span style="font-size:11px; color:var(--chalk-dim);">${subInfo}</span></span></div>`;
+  el.addEventListener('click', ()=>{
+    if(activeSlotTarget === 'bench'){
+      benchState[activeSlotIndex] = p.id;
+      renderBench();
+    } else {
+      squadState[activeSlotIndex] = p.id;
+      renderSquadPitch();
+    }
+    squadPickerOverlay.classList.add('hidden');
+  });
+  return el;
+}
+
+function renderSquadPickerList(list){
+  squadPickerResults.innerHTML = '';
+  if(list.length === 0){
+    squadPickerResults.innerHTML = '<div class="search-empty">一致する選手が見つかりません</div>';
+    return;
+  }
+  list.slice(0, 30).forEach(p=> squadPickerResults.appendChild(renderSquadPickerItem(p)));
+}
+
+// 2026-08-01: クラブから編成モードでは、枠をタップした時点でまず「そのクラブで
+// まだ配置されていない選手」の一覧を表示する(入力しなくても選べるように)。
+// 検索窓に入力すれば、その一覧をさらに名前で絞り込める。自由選抜モード・クラブ
+// 選手プールが無い場合(対応表未登録クラブ等)は、従来通り入力して探す形式のまま。
 function openSquadPicker(target, slotIndex){
   activeSlotTarget = target;
   activeSlotIndex = slotIndex;
   squadPickerInput.value = '';
-  squadPickerResults.innerHTML = '';
+  if(squadMode === 'club' && currentSquadPlayerPool.length > 0){
+    renderSquadPickerList(unplacedClubPlayers());
+  } else {
+    squadPickerResults.innerHTML = '';
+  }
   squadPickerOverlay.classList.remove('hidden');
   squadPickerInput.focus();
 }
@@ -8106,30 +8199,17 @@ squadPickerOverlay.addEventListener('click', (e)=>{ if(e.target===squadPickerOve
 
 squadPickerInput.addEventListener('input', ()=>{
   const q = toKatakana(squadPickerInput.value.trim()).toLowerCase();
+  if(squadMode === 'club' && currentSquadPlayerPool.length > 0){
+    const base = unplacedClubPlayers();
+    const filtered = q ? base.filter(p=> p.name.toLowerCase().includes(q) || (p.kana && p.kana.toLowerCase().includes(q))) : base;
+    renderSquadPickerList(filtered);
+    return;
+  }
   squadPickerResults.innerHTML = '';
   if(!q) return;
   const pool = squadIncludeLegends.checked ? players : players.filter(p=>!p.legend);
   const matches = pool.filter(p=>p.name.toLowerCase().includes(q) || p.kana.toLowerCase().includes(q)).slice(0,10);
-  if(matches.length === 0){
-    squadPickerResults.innerHTML = '<div class="search-empty">一致する選手が見つかりません</div>';
-    return;
-  }
-  matches.forEach(p=>{
-    const el = document.createElement('div');
-    el.className = 'search-result-item';
-    el.innerHTML = `<div class="sr-main">${avatarHtml(p)}<span>${p.name} <span class="kana">${p.kana}</span><br><span style="font-size:11px; color:var(--chalk-dim);">${p.team} / ${p.pos}</span></span></div>`;
-    el.addEventListener('click', ()=>{
-      if(activeSlotTarget === 'bench'){
-        benchState[activeSlotIndex] = p.id;
-        renderBench();
-      } else {
-        squadState[activeSlotIndex] = p.id;
-        renderSquadPitch();
-      }
-      squadPickerOverlay.classList.add('hidden');
-    });
-    squadPickerResults.appendChild(el);
-  });
+  renderSquadPickerList(matches);
 });
 squadIncludeLegends.addEventListener('change', ()=>{
   if(squadMode === 'club') applyClubSelection(squadClubSelect.value);
