@@ -241,29 +241,31 @@
   }
   .squad-capture-area{
     position:relative;
-    /* 2026-08-03: 上下パディング(ロゴ・タイトル用の余白)がピッチ自体(.squad-pitchが
-       aspect-ratio:3/4.2で独自に比率を持つ)の緑グラデーションと地続きだと、書き出し
-       画像全体の縦横比が間延びして見える(「横が狭くなった」)との指摘を受け、余白部分は
-       ピッチと切り離した黒帯にし、AM4ロゴを薄く連続配置したパターンを敷いた。ピッチ自体
-       (.squad-pitch)は不透明な独自背景を持つため、この黒帯パターンはピッチと重ならない
-       余白部分(タイトル上・ベンチ下)にのみ実質的に見える。 */
-    background-color:#050b08;
-    background-image:
-      linear-gradient(rgba(5,11,8,.88), rgba(5,11,8,.88)),
-      url('/am4-logo.png');
-    background-repeat: no-repeat, repeat;
-    background-size: auto, 40px 40px;
+    /* 2026-08-03: 黒帯+AM4ロゴタイル柄(前回対応)が見た目が良くないとの指摘を受け廃止。
+       代わりにカード全体(タイトル・ピッチ・ベンチすべて)に、芝目のような縞模様
+       (repeating-linear-gradientによる明暗の横縞)を重ねた緑のグラデーションを敷いた。
+       .squad-pitch自体の背景は透過にして、この芝生がピッチ・ベンチ両方で地続きに
+       見えるようにしている(下記.squad-pitch参照)。 */
+    background:
+      repeating-linear-gradient(180deg, rgba(255,255,255,.05) 0, rgba(255,255,255,.05) 26px, rgba(0,0,0,.06) 26px, rgba(0,0,0,.06) 52px),
+      linear-gradient(160deg, #2f9350 0%, #1b6b39 45%, #0d3d20 100%);
     border:1px solid var(--line); border-radius:8px;
-    padding:56px 10px 22px; margin:18px 0; max-width:480px;
+    padding:20px 10px 18px; margin:18px 0; max-width:480px;
+  }
+  /* 2026-08-03: クラブロゴ・AM4ロゴを左上/右上の分散配置からタイトル行にまとめた
+     (.squad-title-row、下記HTML側)ので、位置・余白調整用だったmargin-bottomは
+     .squad-title-row側に移した。 */
+  .squad-title-row{
+    display:flex; align-items:center; justify-content:center; gap:10px;
+    margin-bottom:14px;
   }
   .squad-capture-title{
     font-family:'Anton',sans-serif; font-size:22px; text-align:center; color:var(--amber);
-    letter-spacing:1px; margin-bottom:12px;
+    letter-spacing:1px; text-shadow:0 1px 3px rgba(0,0,0,.5);
   }
   .squad-pitch{
     position:relative; width:100%; aspect-ratio:3/4.2;
-    background:
-      repeating-linear-gradient(180deg, #141B30 0, #141B30 10%, #141B30 10%, #141B30 20%);
+    background:transparent;
     border:2px solid rgba(255,255,255,.35); border-radius:4px; overflow:hidden;
   }
   .squad-pitch::before{
@@ -299,7 +301,7 @@
     font-size:10px; font-weight:700; color:#fff; text-align:center; text-shadow:0 1px 3px rgba(0,0,0,.8);
     line-height:1.2; max-width:64px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
   }
-  .squad-slot-pos{ font-size:8.5px; color:var(--amber); font-family:'JetBrains Mono',monospace; }
+  .squad-slot-pos{ font-size:8.5px; color:var(--amber); font-family:'JetBrains Mono',monospace; text-shadow:0 1px 2px rgba(0,0,0,.5); }
   /* 2026-08-02: 背番号バッジ(api/squad.js経由のライブ選手のみ、サンプル選手データには
      背番号情報が無いため表示されない)。以前は背景が--panel(#0E1424)・文字と枠線が
      --amber(#2F6FFF)で、ピッチ背景(--panel-2、#141B30)とほぼ同系色の濃紺同士のため
@@ -320,24 +322,23 @@
   .squad-bench-label{
     font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--chalk-dim);
     text-align:center; margin:16px 0 10px; letter-spacing:1px;
+    text-shadow:0 1px 3px rgba(0,0,0,.5);
   }
   .squad-bench{
     display:flex; flex-wrap:wrap; justify-content:center; gap:14px 10px;
     padding:0 6px 14px;
   }
   .squad-bench .squad-slot{ position:static; transform:none; }
-  /* 2026-08-02: AM4ロゴ(常に表示、書き出し画像にも同じものが写る)と、クラブから編成
-     モードで選択したクラブのロゴ(対応表にあるクラブのみ)。以前はAM4ロゴが右下に
-     半透明(opacity:.4)の透かしとして配置されクラブロゴ(右上)と別の隅だったが、
-     「透過させる必要はない、クラブロゴと反対側に」との指摘を受け、不透明にした上で
-     クラブロゴ(右上)と対称の左上に変更した。 */
+  /* 2026-08-03: AM4ロゴ・クラブロゴ(クラブから編成モードで選択したクラブのみ、
+     対応表にあるクラブのみ)は、左上/右上の分散配置だと余白調整のたびに衝突が起きて
+     いたため、.squad-title-row内でタイトル文字と横並びにまとめた。どちらも
+     width/height一方をautoにする(またはobject-fit:contain)ことで、元画像の
+     縦横比を保ったまま表示している(比率を絶対に崩さないための指定)。 */
   .squad-am4-watermark{
-    position:absolute; top:12px; left:10px; width:48px; height:auto;
-    opacity:1; pointer-events:none; z-index:5;
+    height:28px; width:auto; flex-shrink:0; pointer-events:none;
   }
   .squad-club-watermark{
-    position:absolute; top:12px; right:10px; width:38px; height:38px; object-fit:contain;
-    opacity:1; pointer-events:none; z-index:5;
+    height:28px; width:28px; object-fit:contain; flex-shrink:0; pointer-events:none;
   }
   .squad-action-row{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px; }
   .squad-download-btn{
@@ -1473,11 +1474,13 @@
   <div class="favorites-note">空いている枠をタップすると選手を検索して配置できます。配置済みの枠をタップすると「入れ替え」「削除」を選べます。</div>
 
   <div id="squadCaptureArea" class="squad-capture-area">
-    <img id="squadClubWatermark" class="squad-club-watermark" alt="" style="display:none;">
-    <img src="/am4-logo.png" alt="AM4" class="squad-am4-watermark">
-    <div class="squad-capture-title" id="squadCaptureTitle">MY SQUAD</div>
+    <div class="squad-title-row">
+      <img id="squadClubWatermark" class="squad-club-watermark" alt="" style="display:none;">
+      <div class="squad-capture-title" id="squadCaptureTitle">MY SQUAD</div>
+      <img src="/am4-logo.png" alt="AM4" class="squad-am4-watermark">
+    </div>
     <div class="squad-pitch" id="squadPitch"></div>
-    <div class="squad-bench-label">ベンチメンバー</div>
+    <div class="squad-bench-label">SUB</div>
     <div class="squad-bench" id="squadBench"></div>
   </div>
 
