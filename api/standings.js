@@ -62,6 +62,13 @@ export default async function handler(req, res) {
     'チャンピオンズリーグ': 2
   };
 
+  // 単発のfixtureIdからlineupsのformationだけを見る(前段のformationCheckで取れなかった
+  // クラブ(親善試合しか無い等)をピンポイントで確認する用)。
+  if (req.query.lineupCheck) {
+    const lu = await apiFootballFetch('/fixtures/lineups', { fixture: Number(req.query.lineupCheck) });
+    return res.status(200).json({ teams: (lu.response||[]).map(r=>({ team: r.team.name, formation: r.formation })) });
+  }
+
   // 2026-08-03: スカッド作成の「クラブから編成」で主要22クラブの実際のフォーメーションを
   // 反映する作業のための一時的な診断分岐。各クラブの直近の終了済み試合のlineupsから
   // formation文字列を実際に取得する(推測なし)。突き合わせが終わったら削除する。
