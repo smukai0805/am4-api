@@ -340,7 +340,11 @@
      にする(またはobject-fit:contain)ことで、元画像の縦横比を保ったまま表示している
      (比率を絶対に崩さないための指定)。 */
   .squad-am4-watermark{
-    position:absolute; top:8px; left:8px; height:32px; width:auto;
+    /* 2026-08-03: ロゴ画像自体が横長(307x97px、比率約3.16:1)のため、他の要素と同じ
+       height基準で合わせると横幅がかなり広くなり、クラブエンブレム(32x32pxの正方形)
+       より目立ちすぎていた。「MY SQUAD」タイトル(font-size:22px)くらいの大きさに、
+       との指摘を受け20pxに縮小した。 */
+    position:absolute; top:8px; left:8px; height:20px; width:auto;
     pointer-events:none; z-index:5;
     /* 2026-08-03: /am4-logo.png自体が青色(rgb(0,77,231)前後)の画像のため、緑の芝生
        背景に対して見えづらいとの指摘を受け、filterで白に変換した(brightness(0)で
