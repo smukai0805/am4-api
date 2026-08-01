@@ -8051,11 +8051,14 @@ function renderSquadPitch(){
         squadState[i] = null;
         renderSquadPitch();
       });
-      loadSquadAvatarPhotoInto(avatarUid, p);
     } else {
       el.addEventListener('click', ()=>openSquadPicker('pitch', i));
     }
+    // 2026-08-01修正: loadSquadAvatarPhotoInto()はdocument.getElementById(uid)で要素を
+    // 探すため、appendChildで実際にDOMへ挿入した後に呼ぶ必要がある(挿入前に呼ぶと、
+    // ライブ選手写真の同期パスがnullを引いて無言で失敗し、シルエットのままになっていた)。
     squadPitch.appendChild(el);
+    if(p) loadSquadAvatarPhotoInto(avatarUid, p);
   });
 }
 
@@ -8082,11 +8085,11 @@ function renderBench(){
         benchState[i] = null;
         renderBench();
       });
-      loadSquadAvatarPhotoInto(avatarUid, p);
     } else {
       el.addEventListener('click', ()=>openSquadPicker('bench', i));
     }
     squadBench.appendChild(el);
+    if(p) loadSquadAvatarPhotoInto(avatarUid, p);
   });
 }
 
