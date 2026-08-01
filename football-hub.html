@@ -252,17 +252,17 @@
     border:1px solid var(--line); border-radius:8px;
     padding:20px 10px 18px; margin:18px 0; max-width:480px;
   }
-  /* 2026-08-03: クラブロゴ・AM4ロゴを左上/右上の分散配置からタイトル行にまとめた
-     (.squad-title-row、下記HTML側)ので、位置・余白調整用だったmargin-bottomは
-     .squad-title-row側に移した。 */
-  .squad-title-row{
-    display:flex; align-items:center; justify-content:center; gap:10px;
-    margin-bottom:14px;
-  }
+  /* 2026-08-03: タイトル行にロゴを横並びさせる方式(.squad-title-row)は、幅が狭い
+     端末で3要素が窮屈になり見づらいとの指摘を受け廃止。タイトルは単独の行に戻し、
+     ロゴ2つは.squad-pitch-wrap側(ピッチ枠の左右の隅)に固定する形に変更した。
+     titleは1行に収まるよう、white-space:nowrap+ellipsisと、入力側のmaxlength(16文字、
+     HTML側squadNameInput参照)の二重の対策をしている。 */
   .squad-capture-title{
     font-family:'Anton',sans-serif; font-size:22px; text-align:center; color:var(--amber);
-    letter-spacing:1px; text-shadow:0 1px 3px rgba(0,0,0,.5);
+    letter-spacing:1px; text-shadow:0 1px 3px rgba(0,0,0,.5); margin-bottom:14px;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:0 4px;
   }
+  .squad-pitch-wrap{ position:relative; }
   .squad-pitch{
     position:relative; width:100%; aspect-ratio:3/4.2;
     background:transparent;
@@ -329,16 +329,19 @@
     padding:0 6px 14px;
   }
   .squad-bench .squad-slot{ position:static; transform:none; }
-  /* 2026-08-03: AM4ロゴ・クラブロゴ(クラブから編成モードで選択したクラブのみ、
-     対応表にあるクラブのみ)は、左上/右上の分散配置だと余白調整のたびに衝突が起きて
-     いたため、.squad-title-row内でタイトル文字と横並びにまとめた。どちらも
-     width/height一方をautoにする(またはobject-fit:contain)ことで、元画像の
-     縦横比を保ったまま表示している(比率を絶対に崩さないための指定)。 */
+  /* 2026-08-03: タイトル行にロゴを並べる方式(.squad-title-row)をやめ、AM4ロゴは
+     ピッチ枠(.squad-pitch-wrap)の左隅、クラブエンブレム(クラブから編成モードで
+     選択したクラブのみ、対応表にあるクラブのみ)は右隅に固定する形に戻した。
+     タイトルはロゴと別の行になったため重ならない。どちらもwidth/height一方をauto
+     にする(またはobject-fit:contain)ことで、元画像の縦横比を保ったまま表示している
+     (比率を絶対に崩さないための指定)。 */
   .squad-am4-watermark{
-    height:28px; width:auto; flex-shrink:0; pointer-events:none;
+    position:absolute; top:8px; left:8px; height:32px; width:auto;
+    pointer-events:none; z-index:5;
   }
   .squad-club-watermark{
-    height:28px; width:28px; object-fit:contain; flex-shrink:0; pointer-events:none;
+    position:absolute; top:8px; right:8px; height:32px; width:32px; object-fit:contain;
+    pointer-events:none; z-index:5;
   }
   .squad-action-row{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px; }
   .squad-download-btn{
@@ -1464,8 +1467,8 @@
       <select id="squadFormationSelect"></select>
     </div>
     <div class="favorites-picker-row">
-      <label for="squadNameInput">スカッド名(画像に表示)</label>
-      <input type="text" id="squadNameInput" placeholder="例: マイベストイレブン" value="MY SQUAD">
+      <label for="squadNameInput">スカッド名(画像に表示・16文字まで)</label>
+      <input type="text" id="squadNameInput" placeholder="例: マイベストイレブン" value="MY SQUAD" maxlength="16">
     </div>
   </div>
   <div class="favorites-picker-row" style="margin-top:2px;">
@@ -1474,12 +1477,12 @@
   <div class="favorites-note">空いている枠をタップすると選手を検索して配置できます。配置済みの枠をタップすると「入れ替え」「削除」を選べます。</div>
 
   <div id="squadCaptureArea" class="squad-capture-area">
-    <div class="squad-title-row">
+    <div class="squad-capture-title" id="squadCaptureTitle">MY SQUAD</div>
+    <div class="squad-pitch-wrap">
       <img id="squadClubWatermark" class="squad-club-watermark" alt="" style="display:none;">
-      <div class="squad-capture-title" id="squadCaptureTitle">MY SQUAD</div>
       <img src="/am4-logo.png" alt="AM4" class="squad-am4-watermark">
+      <div class="squad-pitch" id="squadPitch"></div>
     </div>
-    <div class="squad-pitch" id="squadPitch"></div>
     <div class="squad-bench-label">SUB</div>
     <div class="squad-bench" id="squadBench"></div>
   </div>
