@@ -7982,6 +7982,18 @@ function attachSlotDrag(el, index, stateArr, containerEl, renderFn, target){
   });
 }
 
+// 2026-08-01: スカッド枠(ピッチ・ベンチ)にも顔写真を表示する。既存のavatarHtml/
+// getPlayerPhotoと同じ非同期取得・キャッシュの仕組みを使うが、.squad-slot-avatar
+// (円形44px)にフィットさせるため専用のマークアップにしている。写真が取得できない
+// (API-Football側に無い)選手は、既存のシルエットSVGのままフォールバックする。
+function loadSquadAvatarPhotoInto(uid, p){
+  getPlayerPhoto(p).then(photo=>{
+    if(!photo) return;
+    const el = document.getElementById(uid);
+    if(el) el.innerHTML = `<img src="${photo}" alt="${p.name}" loading="lazy" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`;
+  });
+}
+
 function renderSquadPitch(){
   const slots = formations[currentFormationKey];
   squadPitch.innerHTML = '';
@@ -7993,8 +8005,9 @@ function renderSquadPitch(){
     el.style.top = slot.top + '%';
     el.style.left = slot.left + '%';
     el.style.touchAction = 'none';
+    const avatarUid = p ? `squad-avatar-${avatarUidCounter++}` : null;
     el.innerHTML = `
-      <div class="squad-slot-avatar">
+      <div class="squad-slot-avatar"${avatarUid ? ` id="${avatarUid}"` : ''}>
         ${p ? avatarSilhouetteSvg : `<span class="squad-slot-plus">+</span>`}
         ${p ? `<span class="squad-slot-remove" data-remove="${i}">×</span>` : ''}
       </div>
@@ -8008,6 +8021,7 @@ function renderSquadPitch(){
         squadState[i] = null;
         renderSquadPitch();
       });
+      loadSquadAvatarPhotoInto(avatarUid, p);
     } else {
       el.addEventListener('click', ()=>openSquadPicker('pitch', i));
     }
@@ -8022,8 +8036,9 @@ function renderBench(){
     const el = document.createElement('div');
     el.className = 'squad-slot' + (p ? '' : ' empty');
     el.style.touchAction = 'none';
+    const avatarUid = p ? `squad-avatar-${avatarUidCounter++}` : null;
     el.innerHTML = `
-      <div class="squad-slot-avatar">
+      <div class="squad-slot-avatar"${avatarUid ? ` id="${avatarUid}"` : ''}>
         ${p ? avatarSilhouetteSvg : `<span class="squad-slot-plus">+</span>`}
         ${p ? `<span class="squad-slot-remove" data-remove="${i}">×</span>` : ''}
       </div>
@@ -8037,6 +8052,7 @@ function renderBench(){
         benchState[i] = null;
         renderBench();
       });
+      loadSquadAvatarPhotoInto(avatarUid, p);
     } else {
       el.addEventListener('click', ()=>openSquadPicker('bench', i));
     }
@@ -8086,21 +8102,70 @@ squadIncludeLegends.addEventListener('change', ()=>{
   if(squadMode === 'club') autoFillFromClub(squadClubSelect.value);
 });
 
+const SQUAD_POS_MAP = { GK:['GK'], DF:['DF'], MF:['MF'], FW:['FW'] };
+function squadPosGroup(label){ return /GK/.test(label) ? 'GK' : /CB|LB|RB|WB/.test(label) ? 'DF' : /ST|LW|RW/.test(label) ? 'FW' : 'MF'; }
+
+// クラブの保有選手をAPI-Footballの出場数(サンプルデータではstats.出場)が多い順に
+// 並べる。主力選手ほど先に割り当てられるようにするための優先順位付け。
+function sortByAppearances(list){
+  return [...list].sort((a,b)=> (b.stats?.出場 || 0) - (a.stats?.出場 || 0));
+}
+
+// クラブの保有選手(ポジション分布)に対して、最も多くの枠を実在の選手で埋められる
+// フォーメーションを選ぶ(「このクラブが実際にこの布陣を使っている」という事実データ
+// ではなく、保有選手構成から妥当と考えられる標準的な布陣を推定するもの)。
+function bestFormationForClub(clubPlayers){
+  let best = currentFormationKey;
+  let bestFilled = -1;
+  Object.keys(formations).forEach(key=>{
+    const used = new Set();
+    let filled = 0;
+    formations[key].forEach(slot=>{
+      const group = squadPosGroup(slot.label);
+      const candidate = clubPlayers.find(p=>!used.has(p.id) && SQUAD_POS_MAP[group].includes(p.pos));
+      if(candidate){ used.add(candidate.id); filled++; }
+    });
+    if(filled > bestFilled){ bestFilled = filled; best = key; }
+  });
+  return best;
+}
+
+// スタメン(フォーメーション枠)+ベンチメンバーを、そのクラブの主力選手(出場数の
+// 多い順)で自動編成する。ベンチは控えGKが確保できる場合は優先的に1枠使い、
+// 残りは出場数の多い順に最大7人まで埋める。
 function autoFillFromClub(clubName){
   squadState = Array(formations[currentFormationKey].length).fill(null);
-  if(!clubName) { renderSquadPitch(); return; }
+  benchState = Array(7).fill(null);
+  if(!clubName) { renderSquadPitch(); renderBench(); return; }
   const slots = formations[currentFormationKey];
-  const posGroup = label => /GK/.test(label) ? 'GK' : /CB|LB|RB/.test(label) ? 'DF' : /ST|LW|RW/.test(label) ? 'FW' : 'MF';
   const includeLegends = squadIncludeLegends.checked;
-  const clubPlayers = players.filter(p=>p.team===clubName && !p.prospect && (includeLegends || !p.legend));
+  const clubPlayers = sortByAppearances(players.filter(p=>p.team===clubName && !p.prospect && (includeLegends || !p.legend)));
   const used = new Set();
   slots.forEach((slot, i)=>{
-    const group = posGroup(slot.label);
-    const posMap = { GK:['GK'], DF:['DF'], MF:['MF'], FW:['FW'] };
-    const candidate = clubPlayers.find(p=>!used.has(p.id) && posMap[group].includes(p.pos));
+    const group = squadPosGroup(slot.label);
+    const candidate = clubPlayers.find(p=>!used.has(p.id) && SQUAD_POS_MAP[group].includes(p.pos));
     if(candidate){ squadState[i] = candidate.id; used.add(candidate.id); }
   });
+  const remaining = clubPlayers.filter(p=>!used.has(p.id));
+  const backupGK = remaining.find(p=>p.pos==='GK');
+  const benchPicks = backupGK ? [backupGK, ...remaining.filter(p=>p!==backupGK)] : remaining;
+  benchPicks.slice(0, 7).forEach((p,i)=>{ benchState[i] = p.id; used.add(p.id); });
   renderSquadPitch();
+  renderBench();
+}
+
+// クラブ選択(クラブ変更・「クラブから編成」モードへの切り替え時)にだけ、そのクラブの
+// 保有選手に合わせた標準的なフォーメーションを自動選択する。フォーメーションを
+// ユーザーが手動で変更した場合(squadFormationSelectのchange)は、ここを経由しない
+// ため上書きされない。
+function applyClubSelection(clubName){
+  if(clubName){
+    const includeLegends = squadIncludeLegends.checked;
+    const clubPlayers = players.filter(p=>p.team===clubName && !p.prospect && (includeLegends || !p.legend));
+    currentFormationKey = bestFormationForClub(clubPlayers);
+    squadFormationSelect.value = currentFormationKey;
+  }
+  autoFillFromClub(clubName);
 }
 
 squadModeClub.addEventListener('click', ()=>{
@@ -8108,7 +8173,7 @@ squadModeClub.addEventListener('click', ()=>{
   squadModeClub.classList.add('active');
   squadModeFree.classList.remove('active');
   squadClubRow.style.display = '';
-  autoFillFromClub(squadClubSelect.value);
+  applyClubSelection(squadClubSelect.value);
 });
 squadModeFree.addEventListener('click', ()=>{
   squadMode = 'free';
@@ -8119,7 +8184,7 @@ squadModeFree.addEventListener('click', ()=>{
   renderSquadPitch();
 });
 squadClubSelect.addEventListener('change', ()=>{
-  if(squadMode === 'club') autoFillFromClub(squadClubSelect.value);
+  if(squadMode === 'club') applyClubSelection(squadClubSelect.value);
 });
 squadFormationSelect.addEventListener('change', ()=>{
   currentFormationKey = squadFormationSelect.value;
