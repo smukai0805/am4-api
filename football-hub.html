@@ -258,7 +258,7 @@
      titleは1行に収まるよう、white-space:nowrap+ellipsisと、入力側のmaxlength(16文字、
      HTML側squadNameInput参照)の二重の対策をしている。 */
   .squad-capture-title{
-    font-family:'Anton',sans-serif; font-size:22px; text-align:center; color:var(--amber);
+    font-family:'Anton',sans-serif; font-size:22px; text-align:center; color:#fff;
     letter-spacing:1px; text-shadow:0 1px 3px rgba(0,0,0,.5); margin-bottom:14px;
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:0 4px;
   }
@@ -277,7 +277,7 @@
   }
   .squad-slot{
     position:absolute; transform:translate(-50%,-50%);
-    display:flex; flex-direction:column; align-items:center; gap:2px;
+    display:flex; flex-direction:column; align-items:center; gap:0;
     width:64px; cursor:pointer;
   }
   .squad-slot-avatar{
@@ -299,9 +299,13 @@
   }
   .squad-slot-name{
     font-size:10px; font-weight:700; color:#fff; text-align:center; text-shadow:0 1px 3px rgba(0,0,0,.8);
-    line-height:1.2; max-width:64px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    line-height:1.1; max-width:64px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    margin-top:1px;
   }
-  .squad-slot-pos{ font-size:8.5px; color:var(--amber); font-family:'JetBrains Mono',monospace; text-shadow:0 1px 2px rgba(0,0,0,.5); }
+  /* 2026-08-03: 顔写真と選手名の間の余白を詰める指摘を受け、.squad-slot自体のgapを
+     0にした上で、この要素にline-height:1(ブラウザ既定値だとfont-sizeより余分に
+     行間が付き、写真と名前の間が間延びして見えていた)を明示した。 */
+  .squad-slot-pos{ font-size:8.5px; line-height:1; color:var(--amber); font-family:'JetBrains Mono',monospace; text-shadow:0 1px 2px rgba(0,0,0,.5); }
   /* 2026-08-02: 背番号バッジ(api/squad.js経由のライブ選手のみ、サンプル選手データには
      背番号情報が無いため表示されない)。以前は背景が--panel(#0E1424)・文字と枠線が
      --amber(#2F6FFF)で、ピッチ背景(--panel-2、#141B30)とほぼ同系色の濃紺同士のため
@@ -338,6 +342,12 @@
   .squad-am4-watermark{
     position:absolute; top:8px; left:8px; height:32px; width:auto;
     pointer-events:none; z-index:5;
+    /* 2026-08-03: /am4-logo.png自体が青色(rgb(0,77,231)前後)の画像のため、緑の芝生
+       背景に対して見えづらいとの指摘を受け、filterで白に変換した(brightness(0)で
+       不透明ピクセルを黒化→invert(1)で白へ反転、透過部分はアルファが保たれるため
+       影響を受けない)。クラブエンブレム(.squad-club-watermark)は各クラブ本来の色を
+       保ちたいため対象外。 */
+    filter: brightness(0) invert(1);
   }
   .squad-club-watermark{
     position:absolute; top:8px; right:8px; height:32px; width:32px; object-fit:contain;
