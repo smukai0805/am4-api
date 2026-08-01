@@ -77,6 +77,11 @@ export default async function handler(req, res) {
     );
     return res.status(200).json({ season: SEASON, teams: Object.fromEntries(results) });
   }
+  // 5大リーグ外のクラブ(ポルト、ガラタサライ等)のID検証用。/teams?search=で問い合わせる。
+  if (req.query.teamSearch) {
+    const data = await apiFootballFetch('/teams', { search: req.query.teamSearch });
+    return res.status(200).json({ results: (data.response||[]).map(r=>({ id: r.team.id, name: r.team.name, country: r.team.country })) });
+  }
 
   try {
     // 5リーグ分を並行して取得(Promise.allでまとめて投げる)
