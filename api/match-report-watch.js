@@ -14,7 +14,11 @@
 //   3. 検知済みリスト(seen-match-reports.json、Vercel Blob)と突き合わせ、未処理の試合を抽出
 //   4. 未処理の試合について、generate-match-report-article.js の
 //      computePlayerRatings() で機械採点→generateMatchReportDraft() で記事下書き生成
-//   5. 生成に成功した試合だけを検知済みリストに追加する(失敗時は次回実行時に再度候補になる)
+//   5. 生成に成功した試合だけを検知済みリストに追加する(失敗時は次回実行時に再度候補になる)。
+//      ただし選手個別スタッツが提供されていない試合(親善試合等)は、今後データが
+//      追加される見込みが薄いため、status:'skipped'として検知済みリストに記録し、
+//      以降は再検知しない(2026-08-01追加。それ以前はpending扱いのままLOOKBACK_DAYS
+//      の間、毎回同じ理由で失敗を繰り返していた)。
 //
 // 【永続化】Vercel Blob(academy-debut-watch.js / ai-column.jsと同じプライベートストア)。
 // 【実行時間対策】fixtures取得は全クラブ並列。1回の実行で記事生成まで行うのは
@@ -369,6 +373,13 @@ export default async function handler(req, res) {
     // 生成に成功した試合だけを検知済みリストに追加し、それ以外は次回実行時に再度候補になる。
     const generated = [];
     const pending = [];
+    // 2026-08-01追加: 「選手個別スタッツが提供されていない」試合(親善試合等)は、
+    // API-Football側に今後データが追加される見込みが薄く、放置するとLOOKBACK_DAYSの
+    // 範囲内は毎回同じ理由で失敗を繰り返すだけになる(実データで確認済み)。そのため
+    // pending(次回リトライ対象)ではなく、検知済みリストに「スキップ済み」として
+    // 記録し、以降の実行では再検知の対象から外す。
+    const SKIP_REASON_NO_STATS = '選手個別スタッツが提供されていないため採点できません(親善試合等の可能性)';
+    const skipped = [];
 
     for (const fixture of candidates) {
       if (generated.length >= MAX_ARTICLES_PER_RUN) {
@@ -388,9 +399,22 @@ export default async function handler(req, res) {
           fixturePlayers, events, fixture.teams.home.id, fixture.teams.away.id, teamGoalsConceded
         );
         // 親善試合など、API-Footballが選手個別スタッツを提供していない試合はスキップする
-        // (採点表が必須のフォーマットのため、空の採点で記事化はしない)。
+        // (採点表が必須のフォーマットのため、空の採点で記事化はしない)。pendingには
+        // 積まず、検知済みリストに「スキップ済み」として記録して再検知を止める。
         if (ratingResult.ratings.length === 0) {
-          throw new Error('選手個別スタッツが提供されていないため採点できません(親善試合等の可能性)');
+          const home = fixture.teams.home.name;
+          const away = fixture.teams.away.name;
+          console.error(`match report skipped (no player stats) for fixture ${fixture.fixture.id}: ${home} vs ${away}`);
+          skipped.push({ fixtureId: fixture.fixture.id, home, away, reason: SKIP_REASON_NO_STATS });
+          seenEntries.push({
+            fixtureId: fixture.fixture.id,
+            home,
+            away,
+            seenAt: new Date().toISOString(),
+            status: 'skipped',
+            reason: SKIP_REASON_NO_STATS,
+          });
+          continue;
         }
         const matchInfo = buildMatchInfo(fixture);
         const article = await buildAndSaveArticle(matchInfo, ratingResult);
@@ -400,6 +424,7 @@ export default async function handler(req, res) {
           home: matchInfo.homeTeam,
           away: matchInfo.awayTeam,
           seenAt: new Date().toISOString(),
+          status: 'generated',
         });
       } catch (err) {
         console.error(`match report generation failed for fixture ${fixture.fixture.id}:`, err.message);
@@ -407,7 +432,7 @@ export default async function handler(req, res) {
       }
     }
 
-    if (generated.length > 0) {
+    if (generated.length > 0 || skipped.length > 0) {
       await saveSeenMatches(seenEntries);
     }
 
@@ -415,6 +440,7 @@ export default async function handler(req, res) {
       detectedCount: candidates.length,
       generatedCount: generated.length,
       generated,
+      skipped, // 選手個別スタッツが無く記事化を諦め、検知済みリストに記録した試合(以降は再検知されない)
       pending, // 次回実行で処理される(または今回生成に失敗した)候補
       lookbackDays,
       ...(debugMode ? { debug: { clubDebug } } : {}),
