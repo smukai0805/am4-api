@@ -6,7 +6,10 @@
 
 export const config = { maxDuration: 60 };
 
-import { fetchAllNewsItems, attachEmbedUrls, fetchWikipediaImage, fetchWikipediaSummary } from './news.js';
+// 2026-08-01: api/news.js(HTTPハンドラー自体はフロントから未使用と確認)から
+// lib/news-core.js(共有ヘルパーのみ)へ移設。Vercel Hobbyプランの関数数上限
+// 対策(api/直下のファイルだけが関数としてカウントされるため)。
+import { fetchAllNewsItems, attachEmbedUrls, fetchWikipediaImage, fetchWikipediaSummary } from '../lib/news-core.js';
 
 const LEAGUES_JA = ['プレミアリーグ', 'ラ・リーガ', 'セリエA', 'ブンデスリーガ', 'リーグ・アン', 'ワールドカップ', 'その他'];
 const LEAGUES_EN = ['Premier League', 'La Liga', 'Serie A', 'Bundesliga', 'Ligue 1', 'World Cup', 'Other'];
