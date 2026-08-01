@@ -96,6 +96,22 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'API_FOOTBALL_KEY が設定されていません' });
   }
 
+  // 【一時的な調査用】/players/squadsの実レスポンス形状を確認するための診断用。
+  // GET ?squadCheck=1&team=541
+  if (req.method === 'GET' && req.query.squadCheck === '1') {
+    const teamId = Number(req.query.team) || 541;
+    const d = await apiFootballFetch('/players/squads', { team: teamId });
+    const squad = d.response?.[0]?.players || [];
+    return res.status(200).json({
+      results: d.results,
+      errors: d.errors,
+      teamName: d.response?.[0]?.team?.name,
+      playerCount: squad.length,
+      positions: [...new Set(squad.map(p => p.position))],
+      sample: squad.slice(0, 5),
+    });
+  }
+
   const { league } = req.query;
   const leagueId = LEAGUES[league];
   if (!leagueId) {
