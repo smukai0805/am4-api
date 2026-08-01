@@ -243,7 +243,10 @@
     position:relative;
     background:linear-gradient(180deg, #0d2b1c, #0a1f14);
     border:1px solid var(--line); border-radius:8px;
-    padding:20px 10px 10px; margin:18px 0; max-width:480px;
+    /* 2026-08-02: 上部はAM4ロゴ・クラブロゴ(どちらもtop:12px、高さ最大52px)と
+       タイトルが重ならないよう56pxに拡大、下部もベンチ欄との間に余白を持たせた
+       (以前は20px 10px 10pxで、ロゴがタイトルと衝突して見づらかった)。 */
+    padding:56px 10px 22px; margin:18px 0; max-width:480px;
   }
   .squad-capture-title{
     font-family:'Anton',sans-serif; font-size:22px; text-align:center; color:var(--amber);
@@ -289,31 +292,23 @@
     line-height:1.2; max-width:64px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
   }
   .squad-slot-pos{ font-size:8.5px; color:var(--amber); font-family:'JetBrains Mono',monospace; }
-  /* 2026-08-02: 常時表示に変更(以前は:hoverでのみ表示していたが、モバイル端末では
-     hoverが安定して発火せずボタンが事実上押せないことがあったため)。 */
-  .squad-slot-remove{
-    position:absolute; top:-4px; right:-4px; width:16px; height:16px; border-radius:50%;
-    background:#c1502e; color:#fff; font-size:11px; line-height:16px; text-align:center;
-    cursor:pointer;
-  }
-  /* 2026-08-01: 背番号バッジ(api/squad.js経由のライブ選手のみ、サンプル選手データには
-     背番号情報が無いため表示されない)。 */
+  /* 2026-08-02: 背番号バッジ(api/squad.js経由のライブ選手のみ、サンプル選手データには
+     背番号情報が無いため表示されない)。以前は背景が--panel(#0E1424)・文字と枠線が
+     --amber(#2F6FFF)で、ピッチ背景(--panel-2、#141B30)とほぼ同系色の濃紺同士のため
+     視認性が低いとの指摘を受け、背景を--amberの単色塗り+白文字の高コントラスト配色に
+     変更した。 */
   .squad-slot-number{
     position:absolute; top:-4px; left:-4px; width:17px; height:17px; border-radius:50%;
-    background:var(--panel); border:1px solid var(--amber); color:var(--amber);
+    background:var(--amber); border:1px solid rgba(255,255,255,.6); color:#fff;
     font-family:'JetBrains Mono',monospace; font-size:8.5px; font-weight:700; line-height:1;
     display:flex; align-items:center; justify-content:center;
   }
-  /* 2026-08-02: ドラッグ&ドロップ(Pointer Events)がiPhone実機で機能しないと確認された
-     ため、タップだけで完結する「入れ替えモード」に置き換えた。この⇄ボタンをタップして
-     移動元を選び、続けて別の枠をタップすると入れ替わる。 */
-  .squad-slot-move{
-    position:absolute; bottom:-4px; right:-4px; width:16px; height:16px; border-radius:50%;
-    background:var(--panel); border:1px solid var(--amber); color:var(--amber);
-    font-size:9px; line-height:14px; text-align:center; cursor:pointer;
-  }
+  /* 2026-08-02: ⇄ボタン方式(枠の隅の小さいアイコンをタップして移動元を選ぶ)が実機で
+     機能しないとの報告を受け、枠全体をタップ→「入れ替え/削除」の2択メニュー方式に
+     変更した(小さいアイコンをピンポイントでタップする必要が無くなり、タップ判定の
+     取りこぼしという根本原因ごと回避できる)。移動元選択後の「別の枠をタップして
+     入れ替え完了」の仕組み自体はcompleteMove()をそのまま流用している。 */
   .squad-slot.move-selected .squad-slot-avatar{ border-color:#fff; box-shadow:0 0 0 4px rgba(255,255,255,.35); }
-  .squad-slot.move-selected .squad-slot-move{ background:#fff; color:#000; border-color:#fff; }
   .squad-bench-label{
     font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--chalk-dim);
     text-align:center; margin:16px 0 10px; letter-spacing:1px;
@@ -323,15 +318,18 @@
     padding:0 6px 14px;
   }
   .squad-bench .squad-slot{ position:static; transform:none; }
-  /* 2026-08-02: AM4ロゴの透かし(常に表示、書き出し画像にも同じものが写る)と、
-     クラブから編成モードで選択したクラブのロゴ(対応表にあるクラブのみ)。 */
+  /* 2026-08-02: AM4ロゴ(常に表示、書き出し画像にも同じものが写る)と、クラブから編成
+     モードで選択したクラブのロゴ(対応表にあるクラブのみ)。以前はAM4ロゴが右下に
+     半透明(opacity:.4)の透かしとして配置されクラブロゴ(右上)と別の隅だったが、
+     「透過させる必要はない、クラブロゴと反対側に」との指摘を受け、不透明にした上で
+     クラブロゴ(右上)と対称の左上に変更した。 */
   .squad-am4-watermark{
-    position:absolute; bottom:8px; right:10px; width:52px; height:auto;
-    opacity:.4; pointer-events:none; z-index:5;
+    position:absolute; top:12px; left:10px; width:48px; height:auto;
+    opacity:1; pointer-events:none; z-index:5;
   }
   .squad-club-watermark{
-    position:absolute; top:10px; right:10px; width:38px; height:38px; object-fit:contain;
-    opacity:.95; pointer-events:none; z-index:5;
+    position:absolute; top:12px; right:10px; width:38px; height:38px; object-fit:contain;
+    opacity:1; pointer-events:none; z-index:5;
   }
   .squad-action-row{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px; }
   .squad-download-btn{
@@ -1464,7 +1462,7 @@
   <div class="favorites-picker-row" style="margin-top:2px;">
     <label class="checkbox-row"><input type="checkbox" id="squadIncludeLegends"> レジェンド選手も含める(オフ推奨)</label>
   </div>
-  <div class="favorites-note">空いている枠をタップすると選手を検索して配置できます。配置済みの枠は⇄で移動先を選んで入れ替え、×で削除できます。</div>
+  <div class="favorites-note">空いている枠をタップすると選手を検索して配置できます。配置済みの枠をタップすると「入れ替え」「削除」を選べます。</div>
 
   <div id="squadCaptureArea" class="squad-capture-area">
     <img id="squadClubWatermark" class="squad-club-watermark" alt="" style="display:none;">
@@ -1488,6 +1486,20 @@
     <h2 style="font-size:18px;">選手を選ぶ</h2>
     <input type="text" id="squadPickerInput" placeholder="選手名で検索(ひらがな可)" autocomplete="off" style="width:100%; margin:10px 0; background:#0E1424; border:1px solid var(--line); color:var(--chalk); padding:10px 14px; border-radius:3px; font-size:15px;">
     <div id="squadPickerResults" class="search-results"></div>
+  </div>
+</div>
+
+<!-- 2026-08-02追加: 配置済みの枠(スタメン・ベンチ)をタップした時の「入れ替え/削除」
+     2択メニュー。以前の⇄ボタン(枠の隅の小さいアイコン)方式が実機で反応しないとの
+     報告を受け、枠全体タップ→大きいボタン2つの選択、に変更した。 -->
+<div class="modal-overlay hidden" id="squadSlotActionOverlay">
+  <div class="modal-box" id="squadSlotActionBox" style="max-width:300px; text-align:center;">
+    <button class="modal-close" id="squadSlotActionClose">×</button>
+    <h2 id="squadSlotActionName" style="font-size:18px; margin-bottom:16px;"></h2>
+    <div style="display:flex; flex-direction:column; gap:10px;">
+      <button class="squad-download-btn" id="squadSlotActionSwap" style="margin:0; width:100%;">⇄ 入れ替え</button>
+      <button class="squad-download-btn" id="squadSlotActionRemove" style="margin:0; width:100%; background:#c1502e;">🗑 削除</button>
+    </div>
   </div>
 </div>
 
@@ -7963,6 +7975,11 @@ const squadPickerOverlay = document.getElementById('squadPickerOverlay');
 const squadPickerInput = document.getElementById('squadPickerInput');
 const squadPickerResults = document.getElementById('squadPickerResults');
 const squadPickerClose = document.getElementById('squadPickerClose');
+const squadSlotActionOverlay = document.getElementById('squadSlotActionOverlay');
+const squadSlotActionName = document.getElementById('squadSlotActionName');
+const squadSlotActionSwap = document.getElementById('squadSlotActionSwap');
+const squadSlotActionRemove = document.getElementById('squadSlotActionRemove');
+const squadSlotActionClose = document.getElementById('squadSlotActionClose');
 
 // スカッド作成で選べるクラブ一覧。players配列に実在する(レジェンド・有望株を除く)選手が
 // 1人以上いるクラブを、リーグ別にグルーピングして自動生成する。
@@ -8039,14 +8056,13 @@ Object.keys(formations).forEach(key=>{
   squadFormationSelect.appendChild(opt);
 });
 
-// 2026-08-02: Pointer Events(pointerdown/move/up)によるドラッグ&ドロップ実装は、
-// draggable="false"を追加しても実機(iPhone Safari)で解消せず、2回目の修正でも
-// 直っていないとの実機報告を受けた。ブラウザ操作環境が無く実機での再現・検証が
-// できないため、ジェスチャー検出(移動量・タイミング・ネイティブドラッグとの競合)に
-// 依存しない、単純なタップ操作だけで完結する「入れ替えモード」に置き換えた
-// (「タップして選ぶ→別の枠をタップして入れ替え完了」。コードレビューだけで正しさを
-// 確認できる単純さを優先している)。
+// 2026-08-02: Pointer Events(pointerdown/move/up)によるドラッグ&ドロップ、続く
+// ⇄ボタン方式(枠の隅の小さいアイコンをタップして移動元を選ぶ)のどちらも実機
+// (iPhone Safari)で機能しないとの報告が続いたため、「枠全体をタップ→入れ替え/削除の
+// 2択メニュー(squadSlotActionOverlay)を表示→入れ替えなら移動元として選択状態になり、
+// 続けて別の枠をタップすると完了」という、小さいタップ判定に依存しない方式に変更した。
 let moveSource = null; // { target: 'pitch'|'bench', index: number } | null
+let slotActionTarget = null; // メニュー表示中に対象になっている枠。{ target, index } | null
 
 function getSlotArray(target){
   return target === 'pitch' ? squadState : benchState;
@@ -8069,34 +8085,48 @@ function completeMove(toTarget, toIndex){
   renderBench();
 }
 
+function closeSlotActionMenu(){
+  slotActionTarget = null;
+  squadSlotActionOverlay.classList.add('hidden');
+}
+
+function openSlotActionMenu(target, index, p){
+  slotActionTarget = { target, index };
+  squadSlotActionName.textContent = p.name;
+  squadSlotActionOverlay.classList.remove('hidden');
+}
+
+squadSlotActionSwap.addEventListener('click', ()=>{
+  moveSource = { target: slotActionTarget.target, index: slotActionTarget.index };
+  closeSlotActionMenu();
+  renderSquadPitch();
+  renderBench();
+});
+squadSlotActionRemove.addEventListener('click', ()=>{
+  const { target, index } = slotActionTarget;
+  getSlotArray(target)[index] = null;
+  if(moveSource && moveSource.target===target && moveSource.index===index) moveSource = null;
+  closeSlotActionMenu();
+  renderSquadPitch();
+  renderBench();
+});
+squadSlotActionClose.addEventListener('click', closeSlotActionMenu);
+squadSlotActionOverlay.addEventListener('click', (e)=>{ if(e.target===squadSlotActionOverlay) closeSlotActionMenu(); });
+
 // スカッド枠(ピッチ・ベンチ共通)のクリックを一箇所で処理する。
-// 優先順位: ×ボタン(削除)→⇄ボタン(入れ替えモードの開始/解除)→
-// 入れ替えモード中なら移動先として確定→通常は選手ピッカーを開く。
+// 優先順位: 入れ替えモード中(moveSource)なら移動先として確定→選手が入っている枠なら
+// 入れ替え/削除メニューを表示→空き枠なら選手ピッカーを開く。
 function handleSlotClick(e, target, index){
-  if(e.target.dataset.remove !== undefined){
-    getSlotArray(target)[index] = null;
-    if(moveSource && moveSource.target===target && moveSource.index===index) moveSource = null;
-    renderSquadPitch();
-    renderBench();
-    return;
-  }
-  if(e.target.dataset.move !== undefined){
-    if(moveSource && moveSource.target===target && moveSource.index===index){
-      moveSource = null;
-      renderSquadPitch();
-      renderBench();
-    } else {
-      moveSource = { target, index };
-      renderSquadPitch();
-      renderBench();
-    }
-    return;
-  }
   if(moveSource){
     completeMove(target, index);
     return;
   }
-  openSquadPicker(target, index);
+  const p = getSlotArray(target)[index] ? findSquadPlayer(getSlotArray(target)[index]) : null;
+  if(p){
+    openSlotActionMenu(target, index, p);
+  } else {
+    openSquadPicker(target, index);
+  }
 }
 
 // 2026-08-01: スカッド枠(ピッチ・ベンチ)にも顔写真を表示する。api/squad.js経由の
@@ -8149,8 +8179,6 @@ function renderSquadPitch(){
           ${p ? avatarSilhouetteSvg : `<span class="squad-slot-plus">+</span>`}
         </span>
         ${p && p.number ? `<span class="squad-slot-number">${p.number}</span>` : ''}
-        ${p ? `<span class="squad-slot-move" data-move="${i}" title="別の枠へ移動">⇄</span>` : ''}
-        ${p ? `<span class="squad-slot-remove" data-remove="${i}">×</span>` : ''}
       </div>
       <div class="squad-slot-pos">${slot.label}</div>
       ${p ? `<div class="squad-slot-name">${shortenPlayerName(p.name)}</div>` : ''}
@@ -8178,8 +8206,6 @@ function renderBench(){
           ${p ? avatarSilhouetteSvg : `<span class="squad-slot-plus">+</span>`}
         </span>
         ${p && p.number ? `<span class="squad-slot-number">${p.number}</span>` : ''}
-        ${p ? `<span class="squad-slot-move" data-move="${i}" title="別の枠へ移動">⇄</span>` : ''}
-        ${p ? `<span class="squad-slot-remove" data-remove="${i}">×</span>` : ''}
       </div>
       <div class="squad-slot-pos">SUB</div>
       ${p ? `<div class="squad-slot-name">${shortenPlayerName(p.name)}</div>` : ''}
