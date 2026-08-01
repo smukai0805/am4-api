@@ -62,6 +62,40 @@ export default async function handler(req, res) {
     'チャンピオンズリーグ': 2
   };
 
+  // 2026-08-03: スカッド作成の「クラブから編成」で主要22クラブの実際のフォーメーションを
+  // 反映する作業のための一時的な診断分岐。各クラブの直近の終了済み試合のlineupsから
+  // formation文字列を実際に取得する(推測なし)。突き合わせが終わったら削除する。
+  if (req.query.formationCheck === '1') {
+    const MAJOR_22 = {
+      'マンチェスター・シティ': 50, 'レアル・マドリード': 541, 'バイエルン・ミュンヘン': 157,
+      'アーセナル': 42, 'パリ・サンジェルマン': 85, 'FCバルセロナ': 529, 'ガラタサライ': 645,
+      'マンチェスター・ユナイテッド': 33, 'ウェストハム': 48, 'ベンフィカ': 211,
+      'ブライトン': 51, 'チェルシー': 49, 'リヴァプール': 40, 'インテル': 505,
+      'ユヴェントス': 496, 'アトレティコ・マドリード': 530, 'バイヤー・レバークーゼン': 168,
+      'ボルシア・ドルトムント': 165, 'ミラン': 489, 'トッテナム': 47,
+      'ニューカッスル・ユナイテッド': 34, 'ナポリ': 492
+    };
+    const results = {};
+    for (const [name, teamId] of Object.entries(MAJOR_22)) {
+      try {
+        const fx = await apiFootballFetch('/fixtures', { team: teamId, last: 5 });
+        const finished = (fx.response || []).find(f => ['FT', 'AET', 'PEN'].includes(f.fixture.status?.short));
+        if (!finished) { results[name] = { error: 'no finished fixture in last 5' }; continue; }
+        const lu = await apiFootballFetch('/fixtures/lineups', { fixture: finished.fixture.id });
+        const teamLineup = (lu.response || []).find(r => r.team.id === teamId);
+        results[name] = {
+          fixtureId: finished.fixture.id,
+          date: finished.fixture.date,
+          opponent: finished.teams.home.id === teamId ? finished.teams.away.name : finished.teams.home.name,
+          formation: teamLineup?.formation || null
+        };
+      } catch (err) {
+        results[name] = { error: err.message };
+      }
+    }
+    return res.status(200).json({ results });
+  }
+
   try {
     // 5リーグ分を並行して取得(Promise.allでまとめて投げる)
     const entries = Object.entries(LEAGUES);
