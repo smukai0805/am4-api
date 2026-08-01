@@ -7890,6 +7890,18 @@ let benchState = Array(7).fill(null); // ベンチメンバー(今はサンプ�
 let squadMode = 'club'; // 'club' | 'free'
 let activeSlotIndex = null;
 let activeSlotTarget = 'pitch'; // 'pitch' | 'bench'
+// 2026-08-01: クラブから編成モードで、api/squad.js経由で取得したライブのクラブ全選手
+// (id='live-<API-FootballのplayerId>'をキーに保持)。サンプル配列(players)には
+// 数人しか登録が無いクラブでも、対応表にあるクラブなら実際の全選手で編成できるように
+// するため追加した。currentSquadPlayerPoolは「今フォーメーション自動編成に使っている
+// 選手プール」(ライブ取得できた場合はliveSquadPlayers、できなければサンプル配列の
+// 該当クラブ選手)を指し、フォーメーション変更時の再編成に使う。
+let liveSquadPlayers = {};
+let currentSquadPlayerPool = [];
+function findSquadPlayer(pid){
+  if(typeof pid === 'string' && pid.startsWith('live-')) return liveSquadPlayers[pid] || null;
+  return players.find(pl=>pl.id===pid) || null;
+}
 
 const squadBench = document.getElementById('squadBench');
 const squadIncludeLegends = document.getElementById('squadIncludeLegends');
@@ -7994,11 +8006,17 @@ function attachSlotDrag(el, index, stateArr, containerEl, renderFn, target){
   });
 }
 
-// 2026-08-01: スカッド枠(ピッチ・ベンチ)にも顔写真を表示する。既存のavatarHtml/
-// getPlayerPhotoと同じ非同期取得・キャッシュの仕組みを使うが、.squad-slot-avatar
-// (円形44px)にフィットさせるため専用のマークアップにしている。写真が取得できない
-// (API-Football側に無い)選手は、既存のシルエットSVGのままフォールバックする。
+// 2026-08-01: スカッド枠(ピッチ・ベンチ)にも顔写真を表示する。api/squad.js経由の
+// ライブ選手は写真URLを既に持っているので同期的にそのまま使い、サンプル配列由来の
+// 選手は既存のavatarHtml/getPlayerPhotoと同じ非同期取得・キャッシュの仕組みを使う。
+// 写真が取得できない(API-Football側に無い)選手は、既存のシルエットSVGのまま
+// フォールバックする。
 function loadSquadAvatarPhotoInto(uid, p){
+  if(p.photo){
+    const el = document.getElementById(uid);
+    if(el) el.innerHTML = `<img src="${p.photo}" alt="${p.name}" loading="lazy" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`;
+    return;
+  }
   getPlayerPhoto(p).then(photo=>{
     if(!photo) return;
     const el = document.getElementById(uid);
@@ -8011,7 +8029,7 @@ function renderSquadPitch(){
   squadPitch.innerHTML = '';
   slots.forEach((slot, i)=>{
     const pid = squadState[i];
-    const p = pid ? players.find(pl=>pl.id===pid) : null;
+    const p = pid ? findSquadPlayer(pid) : null;
     const el = document.createElement('div');
     el.className = 'squad-slot' + (p ? '' : ' empty');
     el.style.top = slot.top + '%';
@@ -8044,7 +8062,7 @@ function renderSquadPitch(){
 function renderBench(){
   squadBench.innerHTML = '';
   benchState.forEach((pid, i)=>{
-    const p = pid ? players.find(pl=>pl.id===pid) : null;
+    const p = pid ? findSquadPlayer(pid) : null;
     const el = document.createElement('div');
     el.className = 'squad-slot' + (p ? '' : ' empty');
     el.style.touchAction = 'none';
@@ -8111,7 +8129,7 @@ squadPickerInput.addEventListener('input', ()=>{
   });
 });
 squadIncludeLegends.addEventListener('change', ()=>{
-  if(squadMode === 'club') autoFillFromClub(squadClubSelect.value);
+  if(squadMode === 'club') applyClubSelection(squadClubSelect.value);
 });
 
 const SQUAD_POS_MAP = { GK:['GK'], DF:['DF'], MF:['MF'], FW:['FW'] };
@@ -8119,6 +8137,9 @@ function squadPosGroup(label){ return /GK/.test(label) ? 'GK' : /CB|LB|RB|WB/.te
 
 // クラブの保有選手をAPI-Footballの出場数(サンプルデータではstats.出場)が多い順に
 // 並べる。主力選手ほど先に割り当てられるようにするための優先順位付け。
+// 【2026-08-01】api/squad.js経由のライブ選手には出場数データが無い(/players/squadsは
+// 選手名・ポジション・写真のみを返す)ため、その場合は0扱いになりAPIが返した順序の
+// ままになる(捏造した重要度で並べ替えるよりは正直な挙動として許容している)。
 function sortByAppearances(list){
   return [...list].sort((a,b)=> (b.stats?.出場 || 0) - (a.stats?.出場 || 0));
 }
@@ -8142,23 +8163,22 @@ function bestFormationForClub(clubPlayers){
   return best;
 }
 
-// スタメン(フォーメーション枠)+ベンチメンバーを、そのクラブの主力選手(出場数の
-// 多い順)で自動編成する。ベンチは控えGKが確保できる場合は優先的に1枠使い、
-// 残りは出場数の多い順に最大7人まで埋める。
-function autoFillFromClub(clubName){
+// スタメン(フォーメーション枠)+ベンチメンバーを、与えられた選手プールから自動編成する
+// (ライブ取得したクラブ全選手・サンプル配列どちらにも使う共通ロジック)。ベンチは
+// 控えGKが確保できる場合は優先的に1枠使い、残りは出場数の多い順(sortByAppearances)に
+// 最大7人まで埋める。
+function fillSquadFromPlayerList(playerList){
   squadState = Array(formations[currentFormationKey].length).fill(null);
   benchState = Array(7).fill(null);
-  if(!clubName) { renderSquadPitch(); renderBench(); return; }
   const slots = formations[currentFormationKey];
-  const includeLegends = squadIncludeLegends.checked;
-  const clubPlayers = sortByAppearances(players.filter(p=>p.team===clubName && !p.prospect && (includeLegends || !p.legend)));
+  const sorted = sortByAppearances(playerList);
   const used = new Set();
   slots.forEach((slot, i)=>{
     const group = squadPosGroup(slot.label);
-    const candidate = clubPlayers.find(p=>!used.has(p.id) && SQUAD_POS_MAP[group].includes(p.pos));
+    const candidate = sorted.find(p=>!used.has(p.id) && SQUAD_POS_MAP[group].includes(p.pos));
     if(candidate){ squadState[i] = candidate.id; used.add(candidate.id); }
   });
-  const remaining = clubPlayers.filter(p=>!used.has(p.id));
+  const remaining = sorted.filter(p=>!used.has(p.id));
   const backupGK = remaining.find(p=>p.pos==='GK');
   const benchPicks = backupGK ? [backupGK, ...remaining.filter(p=>p!==backupGK)] : remaining;
   benchPicks.slice(0, 7).forEach((p,i)=>{ benchState[i] = p.id; used.add(p.id); });
@@ -8166,18 +8186,59 @@ function autoFillFromClub(clubName){
   renderBench();
 }
 
-// クラブ選択(クラブ変更・「クラブから編成」モードへの切り替え時)にだけ、そのクラブの
-// 保有選手に合わせた標準的なフォーメーションを自動選択する。フォーメーションを
-// ユーザーが手動で変更した場合(squadFormationSelectのchange)は、ここを経由しない
-// ため上書きされない。
-function applyClubSelection(clubName){
-  if(clubName){
-    const includeLegends = squadIncludeLegends.checked;
-    const clubPlayers = players.filter(p=>p.team===clubName && !p.prospect && (includeLegends || !p.legend));
-    currentFormationKey = bestFormationForClub(clubPlayers);
-    squadFormationSelect.value = currentFormationKey;
+// 現在保持している選手プール(currentSquadPlayerPool)でフォーメーション枠を
+// 再編成するだけ(再取得はしない)。フォーメーションをユーザーが手動変更した際に使う。
+function refillCurrentSquad(){
+  if(currentSquadPlayerPool.length > 0){
+    fillSquadFromPlayerList(currentSquadPlayerPool);
+  } else {
+    squadState = Array(formations[currentFormationKey].length).fill(null);
+    benchState = Array(7).fill(null);
+    renderSquadPitch();
+    renderBench();
   }
-  autoFillFromClub(clubName);
+}
+
+// クラブ選択(クラブ変更・「クラブから編成」モードへの切り替え・レジェンド含める
+// チェックボックス変更時)に、そのクラブの選手データを取得して自動編成する。
+//
+// 【2026-08-01】まずapi/squad.js(API-Football /players/squads、クラブ全選手を
+// ポジション・写真つきで1回取得)を試す。対応表(lib/team-ids.js)に無いクラブ・
+// APIエラー時は、従来のサンプル選手配列(players、クラブごとに数人しか無い)に
+// フォールバックする。フォーメーションは取得できた選手プールに対して
+// bestFormationForClub()で標準的なものを自動選択する(ユーザーが手動変更した場合は
+// squadFormationSelectのchangeハンドラ側でrefillCurrentSquad()を使うため上書きしない)。
+async function applyClubSelection(clubName){
+  liveSquadPlayers = {};
+  currentSquadPlayerPool = [];
+  if(!clubName){ refillCurrentSquad(); return; }
+
+  try{
+    const res = await fetch(`${AM4_API_BASE}/api/squad?club=${encodeURIComponent(clubName)}`);
+    if(res.ok){
+      const data = await res.json();
+      if(data.found && Array.isArray(data.players) && data.players.length > 0){
+        data.players.forEach(sp=>{
+          const id = `live-${sp.id}`;
+          liveSquadPlayers[id] = { id, name: sp.name, pos: sp.position, photo: sp.photo || null, team: clubName };
+        });
+        currentSquadPlayerPool = Object.values(liveSquadPlayers);
+        currentFormationKey = bestFormationForClub(currentSquadPlayerPool);
+        squadFormationSelect.value = currentFormationKey;
+        fillSquadFromPlayerList(currentSquadPlayerPool);
+        return;
+      }
+    }
+  } catch(err){
+    console.error('squad fetch failed, falling back to sample data', err);
+  }
+
+  // ライブ取得できなかった場合(対応表未登録・APIエラー等)は、従来のサンプル配列を使う。
+  const includeLegends = squadIncludeLegends.checked;
+  currentSquadPlayerPool = players.filter(p=>p.team===clubName && !p.prospect && (includeLegends || !p.legend));
+  currentFormationKey = bestFormationForClub(currentSquadPlayerPool);
+  squadFormationSelect.value = currentFormationKey;
+  fillSquadFromPlayerList(currentSquadPlayerPool);
 }
 
 squadModeClub.addEventListener('click', ()=>{
@@ -8192,6 +8253,8 @@ squadModeFree.addEventListener('click', ()=>{
   squadModeFree.classList.add('active');
   squadModeClub.classList.remove('active');
   squadClubRow.style.display = 'none';
+  liveSquadPlayers = {};
+  currentSquadPlayerPool = [];
   squadState = Array(formations[currentFormationKey].length).fill(null);
   renderSquadPitch();
 });
@@ -8200,9 +8263,8 @@ squadClubSelect.addEventListener('change', ()=>{
 });
 squadFormationSelect.addEventListener('change', ()=>{
   currentFormationKey = squadFormationSelect.value;
-  squadState = Array(formations[currentFormationKey].length).fill(null);
-  if(squadMode === 'club') autoFillFromClub(squadClubSelect.value);
-  else renderSquadPitch();
+  if(squadMode === 'club') refillCurrentSquad();
+  else { squadState = Array(formations[currentFormationKey].length).fill(null); renderSquadPitch(); }
 });
 squadNameInput.addEventListener('input', ()=>{
   squadCaptureTitle.textContent = squadNameInput.value || 'MY SQUAD';
@@ -8213,7 +8275,9 @@ document.getElementById('squadDownloadBtn').addEventListener('click', ()=>{
   const originalText = btn.textContent;
   btn.textContent = '生成中...';
   btn.disabled = true;
-  html2canvas(document.getElementById('squadCaptureArea'), { backgroundColor:null, scale:2 }).then(canvas=>{
+  // 2026-08-01: ライブ取得したクラブ選手の顔写真(media.api-sports.io)がクロス
+  // オリジンのため、useCORS:trueを付けないとキャンバスが「汚染」されPNG化に失敗しうる。
+  html2canvas(document.getElementById('squadCaptureArea'), { backgroundColor:null, scale:2, useCORS:true }).then(canvas=>{
     const link = document.createElement('a');
     link.download = `${(squadNameInput.value || 'my-squad').replace(/\s+/g,'_')}.png`;
     link.href = canvas.toDataURL('image/png');
