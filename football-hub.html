@@ -1434,7 +1434,10 @@
     </div>
     <div class="favorites-picker-row" id="squadClubRow">
       <label for="squadClubSelect">クラブ</label>
-      <select id="squadClubSelect"><option value="">選択してください</option></select>
+      <div class="ps-combobox" id="squadClubCombobox">
+        <input type="text" id="squadClubSelect" placeholder="クラブ名で検索(例: Real Madrid)" autocomplete="off">
+        <div class="ps-combobox-options" id="squadClubOptions"></div>
+      </div>
     </div>
     <div class="favorites-picker-row">
       <label for="squadFormationSelect">フォーメーション</label>
@@ -7155,7 +7158,10 @@ const allPlayerClubs = [...new Set(players.flatMap(p=>p.career.map(c=>c.club)))]
 // 1つの検索可能なコンボボックス(入力しながら候補が絞り込まれ、候補からも選べる)に統合。
 // 既存のsiteSearchInput/siteSearchResultsの見た目・挙動(input欄+候補リスト、クリックで
 // 選択)のデザイントーンに合わせつつ、ドロップダウン形式でコンパクトに表示する。
-function setupCombobox({ inputEl, optionsEl, allOptions, formatLabel, onAfterSelect }){
+// 2026-08-02: onInputコールバックを引数化した(以前は選手検索タブ専用の
+// renderPlayerSearchResult()を直接呼んでいたため、他の用途(スカッド作成のクラブ選択等)
+// で再利用すると無関係なタブの再描画が毎回走ってしまっていた)。
+function setupCombobox({ inputEl, optionsEl, allOptions, formatLabel, onAfterSelect, onInput }){
   function renderOptions(query){
     const q = toKatakana(query.trim()).toLowerCase();
     const matches = q ? allOptions.filter(o => toKatakana(o).toLowerCase().includes(q)) : allOptions;
@@ -7172,7 +7178,7 @@ function setupCombobox({ inputEl, optionsEl, allOptions, formatLabel, onAfterSel
           e.preventDefault();
           inputEl.value = o;
           optionsEl.classList.remove('open');
-          renderPlayerSearchResult();
+          if(onInput) onInput();
           if(onAfterSelect) onAfterSelect(o);
         });
         optionsEl.appendChild(el);
@@ -7182,7 +7188,7 @@ function setupCombobox({ inputEl, optionsEl, allOptions, formatLabel, onAfterSel
   }
   inputEl.addEventListener('input', ()=>{
     renderOptions(inputEl.value);
-    renderPlayerSearchResult();
+    if(onInput) onInput();
   });
   inputEl.addEventListener('focus', ()=> renderOptions(inputEl.value));
   inputEl.addEventListener('keydown', (e)=>{
@@ -7200,11 +7206,13 @@ setupCombobox({
   optionsEl: document.getElementById('psNationalityOptions'),
   allOptions: allPlayerNationalities,
   formatLabel: n => `<span>${flagFor(n)}</span><span>${n}</span>`,
+  onInput: renderPlayerSearchResult,
 });
 setupCombobox({
   inputEl: psClubFilter,
   optionsEl: document.getElementById('psClubOptions'),
   allOptions: allPlayerClubs,
+  onInput: renderPlayerSearchResult,
 });
 
 const psIncludePastClubs = document.getElementById('psIncludePastClubs');
@@ -7949,17 +7957,62 @@ players.forEach(p=>{
   squadClubSeen.add(p.team);
   (squadClubsByLeague[p.league] ||= new Set()).add(p.team);
 });
+const squadClubNamesFlat = [];
 SQUAD_LEAGUE_ORDER.forEach(league=>{
   const names = squadClubsByLeague[league];
   if(!names || names.size === 0) return;
-  const group = document.createElement('optgroup');
-  group.label = league;
-  [...names].sort((a,b)=>a.localeCompare(b,'ja')).forEach(name=>{
-    const opt = document.createElement('option');
-    opt.value = name; opt.textContent = name;
-    group.appendChild(opt);
-  });
-  squadClubSelect.appendChild(group);
+  [...names].sort((a,b)=>a.localeCompare(b,'ja')).forEach(name=> squadClubNamesFlat.push(name));
+});
+
+// 2026-08-02: クラブ選択を英語表記+ロゴ表示付きの検索可能コンボボックスに変更した
+// (リーグ選択ボタンと同じAPI-Footballのロゴ画像を使う要領)。ネイティブの<select>は
+// <option>内に画像を表示できないため、既存のsetupCombobox(選手検索の国籍/クラブ
+// フィルターで使っているもの)を流用した。
+//
+// 英語名・ロゴが確認できているのはlib/team-ids.js(api/squad.jsのライブ選手取得
+// 対応表)と同じ22クラブのみ(API-Footballの/teams?id=で実際に検索して確認済み)。
+// それ以外のクラブは、未検証の英語名を推測で表示することは避け、日本語名のまま
+// ロゴ無しで表示する。
+const SQUAD_CLUB_EN_INFO = {
+  'マンチェスター・シティ': { en: 'Manchester City', id: 50 },
+  'レアル・マドリード': { en: 'Real Madrid', id: 541 },
+  'バイエルン・ミュンヘン': { en: 'Bayern München', id: 157 },
+  'アーセナル': { en: 'Arsenal', id: 42 },
+  'パリ・サンジェルマン': { en: 'Paris Saint Germain', id: 85 },
+  'FCバルセロナ': { en: 'Barcelona', id: 529 },
+  'ガラタサライ': { en: 'Galatasaray', id: 645 },
+  'マンチェスター・ユナイテッド': { en: 'Manchester United', id: 33 },
+  'ウェストハム': { en: 'West Ham', id: 48 },
+  'ブライトン': { en: 'Brighton', id: 51 },
+  'チェルシー': { en: 'Chelsea', id: 49 },
+  'リヴァプール': { en: 'Liverpool', id: 40 },
+  'インテル': { en: 'Inter', id: 505 },
+  'ユヴェントス': { en: 'Juventus', id: 496 },
+  'アトレティコ・マドリード': { en: 'Atletico Madrid', id: 530 },
+  'バイヤー・レバークーゼン': { en: 'Bayer Leverkusen', id: 168 },
+  'ボルシア・ドルトムント': { en: 'Borussia Dortmund', id: 165 },
+  'ミラン': { en: 'AC Milan', id: 489 },
+  'トッテナム': { en: 'Tottenham', id: 47 },
+  'ニューカッスル・ユナイテッド': { en: 'Newcastle', id: 34 },
+  'ナポリ': { en: 'Napoli', id: 492 },
+};
+function squadClubDisplayLabel(jaName){
+  return SQUAD_CLUB_EN_INFO[jaName]?.en || jaName;
+}
+setupCombobox({
+  inputEl: squadClubSelect,
+  optionsEl: document.getElementById('squadClubOptions'),
+  allOptions: squadClubNamesFlat,
+  formatLabel: name => {
+    const info = SQUAD_CLUB_EN_INFO[name];
+    const label = escapeHtmlText(squadClubDisplayLabel(name));
+    return info
+      ? `<img src="https://media.api-sports.io/football/teams/${info.id}.png" alt="" loading="lazy" style="width:20px;height:20px;object-fit:contain;flex-shrink:0;" onerror="this.remove()"><span>${label}</span>`
+      : `<span>${label}</span>`;
+  },
+  onAfterSelect: (name)=>{
+    if(squadMode === 'club') applyClubSelection(name);
+  },
 });
 Object.keys(formations).forEach(key=>{
   const opt = document.createElement('option');
@@ -8328,9 +8381,9 @@ squadModeFree.addEventListener('click', ()=>{
   squadState = Array(formations[currentFormationKey].length).fill(null);
   renderSquadPitch();
 });
-squadClubSelect.addEventListener('change', ()=>{
-  if(squadMode === 'club') applyClubSelection(squadClubSelect.value);
-});
+// 2026-08-02: squadClubSelectは<select>から検索可能コンボボックス(テキスト入力)に
+// 変更したため、選択の確定はsetupComboboxのonAfterSelectで処理する(上記参照)。
+// changeイベントでは拾わない(テキスト入力はchangeが選択確定のタイミングと一致しないため)。
 squadFormationSelect.addEventListener('change', ()=>{
   currentFormationKey = squadFormationSelect.value;
   if(squadMode === 'club') refillCurrentSquad();
