@@ -8424,6 +8424,42 @@ squadIncludeLegends.addEventListener('change', ()=>{
 const SQUAD_POS_MAP = { GK:['GK'], DF:['DF'], MF:['MF'], FW:['FW'] };
 function squadPosGroup(label){ return /GK/.test(label) ? 'GK' : /CB|LB|RB|WB/.test(label) ? 'DF' : /ST|LW|RW/.test(label) ? 'FW' : 'MF'; }
 
+// 2026-08-03: ライブスカッド取得に対応している主要22クラブについて、実際の(直近の)
+// フォーメーションを反映する。api/standings.jsの一時診断分岐(formationCheck/
+// lineupCheck)経由で、各クラブの2025-26シーズン最終戦のlineups.formationを実際に
+// 取得して検証した(推測なし。診断分岐は突き合わせ後に削除)。この対応表にあるクラブは
+// bestFormationForClub()の位置分布ヒューリスティック(こちらは全クラブ共通で常に
+// 最初のキー'4-4-2'に収束してしまう)より優先される。対応表に無いクラブ(113クラブ中、
+// 主要22クラブ以外)は、指示により従来通り4-4-2をデフォルトとして使う。
+// 【表記ゆれ注意】チェルシーの実際の布陣は3-4-1-2だが、このアプリのformationsカタログ
+// (GK/DF/MF/FWの大分類でしか選手を割り当てないため、CAM/CMのようなMF内の細分ラベルの
+// 違いは実質的に無関係)には3-4-1-2そのものが無いため、DF/MF/FW構成が同一(3-5-2)の
+// 既存キーに対応させている。
+const CLUB_PREFERRED_FORMATION = {
+  'マンチェスター・シティ': '4-2-2-2',
+  'レアル・マドリード': '4-4-2',
+  'バイエルン・ミュンヘン': '4-2-3-1',
+  'アーセナル': '4-2-3-1',
+  'パリ・サンジェルマン': '4-3-3',
+  'FCバルセロナ': '4-2-3-1',
+  'ガラタサライ': '4-2-3-1',
+  'マンチェスター・ユナイテッド': '4-2-3-1',
+  'ウェストハム': '4-2-3-1',
+  'ベンフィカ': '4-2-3-1',
+  'ブライトン': '4-2-3-1',
+  'チェルシー': '3-5-2', // 実際は3-4-1-2(DF/MF/FW構成が同じ3-5-2に対応、上記コメント参照)
+  'リヴァプール': '4-2-3-1',
+  'インテル': '3-5-2',
+  'ユヴェントス': '3-4-2-1',
+  'アトレティコ・マドリード': '4-3-3',
+  'バイヤー・レバークーゼン': '3-4-2-1',
+  'ボルシア・ドルトムント': '3-4-2-1',
+  'ミラン': '3-5-2',
+  'トッテナム': '4-2-3-1',
+  'ニューカッスル・ユナイテッド': '3-5-2',
+  'ナポリ': '3-4-3',
+};
+
 // クラブの保有選手をAPI-Footballの出場数(サンプルデータではstats.出場)が多い順に
 // 並べる。主力選手ほど先に割り当てられるようにするための優先順位付け。
 // 【2026-08-01】api/squad.js経由のライブ選手には出場数データが無い(/players/squadsは
@@ -8532,7 +8568,7 @@ async function applyClubSelection(clubName){
           liveSquadPlayers[id] = { id, name: sp.name, pos: sp.position, photo: sp.photo || null, number: sp.number || null, team: clubName };
         });
         currentSquadPlayerPool = Object.values(liveSquadPlayers);
-        currentFormationKey = bestFormationForClub(currentSquadPlayerPool);
+        currentFormationKey = CLUB_PREFERRED_FORMATION[clubName] || bestFormationForClub(currentSquadPlayerPool);
         squadFormationSelect.value = currentFormationKey;
         fillSquadFromPlayerList(currentSquadPlayerPool);
         return;
@@ -8545,7 +8581,7 @@ async function applyClubSelection(clubName){
   // ライブ取得できなかった場合(対応表未登録・APIエラー等)は、従来のサンプル配列を使う。
   const includeLegends = squadIncludeLegends.checked;
   currentSquadPlayerPool = players.filter(p=>p.team===clubName && !p.prospect && (includeLegends || !p.legend));
-  currentFormationKey = bestFormationForClub(currentSquadPlayerPool);
+  currentFormationKey = CLUB_PREFERRED_FORMATION[clubName] || bestFormationForClub(currentSquadPlayerPool);
   squadFormationSelect.value = currentFormationKey;
   fillSquadFromPlayerList(currentSquadPlayerPool);
 }
