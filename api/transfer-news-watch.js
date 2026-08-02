@@ -8,8 +8,8 @@
 // (検知→その場で生成→新規性がある分だけ検知済みリストに追加)。
 //
 // フロー:
-//   1. lib/transfer-news-core.js の checkTransferNews() で、PILOT_CLUBS全体を対象に
-//      Fabrizio Romano発信の最新移籍情報をWeb検索でまとめて取得(1回のAI呼び出し)
+//   1. lib/transfer-news-core.js の checkTransferNews() で、クラブを限定せず
+//      Fabrizio Romano本人の直近の発信内容を横断的に検索・取得(1回のAI呼び出し)
 //   2. 各アイテムを (選手, 移籍先クラブ) の正規化キーで検知済みリストと突き合わせ、
 //      新規性があるものだけを速報として保存する(この時点でseenKeysを保存し確定させる)
 //   3. 保存はlib/article-store.js経由(type:'transfer_news')。一覧・詳細は
@@ -18,6 +18,16 @@
 //      選手紹介記事(type:'player_intro')を生成/更新し、両記事を相互リンクする
 //      (下記「Here we go連動」セクション参照)。新規ファイルは追加せず、
 //      academy-debut-watch.jsが使うlib/academy-core.jsの生成ロジックをここでも再利用する。
+//
+// 【2026-08-04 根本的に再設計】以前は対象15クラブ(PILOT_CLUBS)それぞれについて
+// Web検索する設計になっており、これが原因で検索範囲が広くなりすぎ、research呼び出しが
+// 恒常的にタイムアウト(移籍速報が1件も生成されない)していた。移籍速報はロマーノ本人の
+// 発信を拾うことが目的でクラブを限定する必要が無いため、クラブ横断ループをやめ、
+// checkTransferNews()側でロマーノ本人の直近の発信を直接調べる軽量な設計に変更した
+// (詳細はlib/transfer-news-core.js冒頭のコメント参照)。これに伴いPILOT_CLUBSは
+// このファイルでは使わなくなった(選手紹介記事の下部組織デビュー検知
+// (api/academy-debut-watch.js)は、これまで通りPILOT_CLUBS(対象15クラブ)に
+// 限定したままで変更していない)。
 //
 // 【永続化について(重要・2026-07-31明記)】Vercel Blob(academy-debut-watch.js等と
 // 同じプライベートストア)。保存した速報は自動削除・自動ローテーションせず、恒久的に
@@ -31,7 +41,6 @@ import { put, get } from '@vercel/blob';
 import { checkTransferNews, transferDedupeKey } from '../lib/transfer-news-core.js';
 import { generateArticleDraft, searchPlayerProfileByName, calcAge, extractTitle } from '../lib/academy-core.js';
 import { saveArticle, getArticle, findArticleBySubject, listArticles, slugify } from '../lib/article-store.js';
-import { PILOT_CLUBS } from '../lib/pilot-clubs.js';
 
 export const config = { maxDuration: 300 };
 
@@ -45,10 +54,11 @@ const SEEN_PATHNAME = 'seen-transfer-news.json';
 const DEDUPE_WINDOW_DAYS = 21;
 
 // 【Here we go連動】1回の実行で選手紹介記事の生成/更新まで行うのは最大この件数まで。
-// checkTransferNews自体が最大280秒(research 220秒+write 60秒、2026-07-31に
-// research/write 2段階構成へ変更)かかりうる上に、選手紹介記事の生成(research+write)も
-// 最大270秒かかりうるため(academy-core.js参照)、合計でVercelの実行時間上限(300秒)を
-// 超えるリスクがある。件数を絞ることで最悪ケースの影響範囲を限定している。
+// checkTransferNews自体が最大180秒(research 120秒+write 60秒、2026-08-04にクラブ横断
+// 検索を廃止し短縮。lib/transfer-news-core.js参照)かかりうる上に、選手紹介記事の生成
+// (research+write)も最大270秒かかりうるため(academy-core.js参照)、合計でVercelの
+// 実行時間上限(300秒)を超えるリスクがある。件数を絞ることで最悪ケースの影響範囲を
+// 限定している。
 // 速報本体の検知・保存・重複排除(このファイルの主目的)は、この処理より前に完了・保存
 // 済みのため、仮にここでタイムアウトしても速報自体が失われることはない。
 const MAX_PLAYER_ARTICLES_PER_RUN = 1;
@@ -179,9 +189,8 @@ export default async function handler(req, res) {
     const seenEntries = seenEntriesRaw.filter(e => now - new Date(e.seenAt).getTime() < windowMs);
     const seenKeys = new Set(seenEntries.map(e => e.key));
 
-    const clubNames = PILOT_CLUBS.map(c => c.name);
     const debugMode = req.query.debug === '1';
-    const { items, rejected, searchSources } = await checkTransferNews(clubNames);
+    const { items, rejected, searchSources } = await checkTransferNews();
 
     // 【デバッグ用】本人確認基準を満たさず却下された候補を理由付きでログ出力する。
     // 条件が厳しすぎるのか、そもそも検索がヒットしていないのかを切り分けるための情報
@@ -268,7 +277,6 @@ export default async function handler(req, res) {
     }
 
     return res.status(200).json({
-      checkedClubs: clubNames.length,
       detectedCount: items.length,
       generatedCount: generated.length,
       generated,
