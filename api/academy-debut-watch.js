@@ -32,21 +32,14 @@
 // 環境変数: API_FOOTBALL_KEY が必要。
 
 import { put, get } from '@vercel/blob';
-import { generateArticleDraft, calcAge, getPlayerProfile } from '../lib/academy-core.js';
+import { generateArticleDraft, calcAge, getPlayerProfile, extractTitle } from '../lib/academy-core.js';
 import { saveArticle, listArticles, slugify } from '../lib/article-store.js';
 import { PILOT_CLUBS } from '../lib/pilot-clubs.js';
 import { apiFootballFetch, mapWithConcurrency } from '../lib/api-football-client.js';
 import { getChampionsLeagueFixtures } from '../lib/champions-league.js';
 
-// Markdownの下書き本文から見出し(# で始まる行)を抜き出してタイトルにする。
-// プロンプト内のフォーマット仕様書見出しがそのまま複製されてしまうことがあるため、
-// 「フォーマット(AM4)」を含む見出しは除外し、実際の記事見出しだけを拾う。
-// 見つからない場合は選手名+クラブ名をフォールバックにする。
-function extractTitle(draft, fallback) {
-  const headings = [...(draft || '').matchAll(/^#\s+(.+)$/gm)].map(m => m[1].trim());
-  const real = headings.find(h => !h.includes('フォーマット(AM4)'));
-  return real || fallback;
-}
+// 2026-08-04: extractTitle()はlib/academy-core.jsへ集約(api/transfer-news-watch.js
+// との重複解消、機械的な見出しへのフォールバック不具合の修正を1箇所で反映するため)。
 
 // ARTICLE_FORMAT_SPEC(構成:1. 見出し 2. プロフィール表...という番号付きリストで
 // 指示している)の内容が、そのまま本文に混入してしまうことがある実データ検証で確認した

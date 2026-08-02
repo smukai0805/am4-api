@@ -29,7 +29,7 @@
 
 import { put, get } from '@vercel/blob';
 import { checkTransferNews, transferDedupeKey } from '../lib/transfer-news-core.js';
-import { generateArticleDraft, searchPlayerProfileByName, calcAge } from '../lib/academy-core.js';
+import { generateArticleDraft, searchPlayerProfileByName, calcAge, extractTitle } from '../lib/academy-core.js';
 import { saveArticle, getArticle, findArticleBySubject, listArticles, slugify } from '../lib/article-store.js';
 import { PILOT_CLUBS } from '../lib/pilot-clubs.js';
 
@@ -53,13 +53,8 @@ const DEDUPE_WINDOW_DAYS = 21;
 // 済みのため、仮にここでタイムアウトしても速報自体が失われることはない。
 const MAX_PLAYER_ARTICLES_PER_RUN = 1;
 
-// academy-debut-watch.jsと同じ見出しクリーニング処理(フォーマット仕様書見出しの
-// 誤混入除去)。3ファイル目の重複になるが、既存2ファイルの構成を崩さないための判断。
-function extractTitle(draft, fallback) {
-  const headings = [...(draft || '').matchAll(/^#\s+(.+)$/gm)].map(m => m[1].trim());
-  const real = headings.find(h => !h.includes('フォーマット(AM4)'));
-  return real || fallback;
-}
+// 2026-08-04: extractTitle()はlib/academy-core.jsへ集約(api/academy-debut-watch.js
+// との重複解消、機械的な見出しへのフォールバック不具合の修正を1箇所で反映するため)。
 function cleanArticleBody(draft) {
   let text = (draft || '').replace(/^.*フォーマット\(AM4\).*\n+/m, '');
   text = text.replace(/^(#{1,3})\s+\d+\.\s*/gm, '$1 ');
