@@ -54,11 +54,12 @@ const SEEN_PATHNAME = 'seen-transfer-news.json';
 const DEDUPE_WINDOW_DAYS = 21;
 
 // 【Here we go連動】1回の実行で選手紹介記事の生成/更新まで行うのは最大この件数まで。
-// checkTransferNews自体が最大180秒(research 120秒+write 60秒、2026-08-04にクラブ横断
-// 検索を廃止し短縮。lib/transfer-news-core.js参照)かかりうる上に、選手紹介記事の生成
-// (research+write)も最大270秒かかりうるため(academy-core.js参照)、合計でVercelの
-// 実行時間上限(300秒)を超えるリスクがある。件数を絞ることで最悪ケースの影響範囲を
-// 限定している。
+// checkTransferNews自体が最大270秒(research 210秒+write 60秒、2026-08-04にクラブ横断
+// 検索を廃止。実データ検証で1トピックに絞った検索でも120秒では頻繁にタイムアウトする
+// ことが判明したため210秒まで引き上げた。lib/transfer-news-core.js参照)かかりうる上に、
+// 選手紹介記事の生成(research+write)も最大270秒かかりうるため(academy-core.js参照)、
+// 合計でVercelの実行時間上限(300秒)を大きく超えるリスクがある。件数を絞ることで
+// 最悪ケースの影響範囲を限定している。
 // 速報本体の検知・保存・重複排除(このファイルの主目的)は、この処理より前に完了・保存
 // 済みのため、仮にここでタイムアウトしても速報自体が失われることはない。
 const MAX_PLAYER_ARTICLES_PER_RUN = 1;
