@@ -108,6 +108,7 @@ async function generateOrUpdatePlayerArticle(item) {
     name: subject,
     club: item.toClub,
     age: calcAge(profile.player?.birth?.date),
+    playerId: profile.player?.id ?? null,
     triggerDescription: `移籍情報: Fabrizio Romanoが"Here we go"と報道、${item.fromClub ? `${item.fromClub}から` : ''}${item.toClub}への移籍が正式に確定`,
   };
 
@@ -117,6 +118,18 @@ async function generateOrUpdatePlayerArticle(item) {
     const dateStr = new Date().toISOString().slice(0, 10);
     const id = slugify(`${dateStr}-${subject}`) || `player-intro-herewego-${Date.now()}`;
     const fallbackTitle = `${subject}(${item.toClub})`;
+
+    // 2026-08-04: 一覧カードのサムネイル(選手写真+クラブロゴ+国籍の国旗)用に、移籍先
+    // クラブのAPI-FootballチームIDをtransfer_news保存時と同じ方法で解決しておく
+    // (transfer.toClubIdとは別に、こちらは選手紹介記事側の一覧カードで使う)。
+    let clubId = null;
+    try {
+      clubId = item.toClub ? await searchTeamIdByName(item.toClub) : null;
+    } catch (err) {
+      console.error(`transfer news: 選手紹介記事のクラブID解決に失敗しました(${item.toClub}):`, err.message);
+    }
+    const playerInfo = { ...candidate, nationality: profile.player?.nationality || null, clubId };
+
     const article = {
       id,
       type: 'player_intro',
@@ -130,7 +143,7 @@ async function generateOrUpdatePlayerArticle(item) {
       // club: 見出しがキャッチコピー形式になり選手名・クラブ名を含まなくなったため、
       // 一覧カード・詳細ページのサブ情報として選手名+クラブ名を表示する用。
       club: item.toClub,
-      player: candidate,
+      player: playerInfo,
     };
     await saveArticle(article);
     console.error(`transfer news: Here we go連動で新規に選手紹介記事を生成しました: ${article.id}`);

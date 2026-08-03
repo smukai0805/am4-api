@@ -35,7 +35,7 @@ import { put, get } from '@vercel/blob';
 import { generateArticleDraft, calcAge, getPlayerProfile, extractTitle } from '../lib/academy-core.js';
 import { saveArticle, listArticles, slugify } from '../lib/article-store.js';
 import { PILOT_CLUBS } from '../lib/pilot-clubs.js';
-import { apiFootballFetch, mapWithConcurrency } from '../lib/api-football-client.js';
+import { apiFootballFetch, mapWithConcurrency, searchTeamIdByName } from '../lib/api-football-client.js';
 import { getChampionsLeagueFixtures } from '../lib/champions-league.js';
 
 // 2026-08-04: extractTitle()はlib/academy-core.jsへ集約(api/transfer-news-watch.js
@@ -60,6 +60,19 @@ async function buildAndSaveArticle(candidate, profile) {
   const dateStr = (candidate.fixtureDate || '').slice(0, 10);
   const id = slugify(`${dateStr}-${candidate.name}`) || `player-intro-${candidate.playerId}`;
   const fallbackTitle = `${candidate.name}(${candidate.club})`;
+
+  // 2026-08-04: 一覧カードのサムネイル(選手写真+クラブロゴ+国籍の国旗)用に、国籍
+  // (プロフィール取得済みのprofile.player.nationalityをそのまま使う)とクラブID
+  // (API-Footballで解決)を選手情報に追加しておく。クラブID解決の失敗はサムネイルの
+  // クラブロゴが出ないだけで記事自体は生成できるため、失敗しても処理は続行する。
+  let clubId = null;
+  try {
+    clubId = candidate.club ? await searchTeamIdByName(candidate.club) : null;
+  } catch (err) {
+    console.error(`academy debut: クラブID解決に失敗しました(${candidate.club}):`, err.message);
+  }
+  const playerInfo = { ...candidate, nationality: profile?.player?.nationality || null, clubId };
+
   const article = {
     id,
     type: 'player_intro',
@@ -75,7 +88,7 @@ async function buildAndSaveArticle(candidate, profile) {
     // club: 見出しがキャッチコピー形式になり選手名・クラブ名を含まなくなったため、
     // 一覧カード・詳細ページのサブ情報として選手名+クラブ名を表示する用。
     club: candidate.club,
-    player: candidate,
+    player: playerInfo,
   };
   await saveArticle(article);
   return article;
