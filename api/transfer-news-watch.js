@@ -166,8 +166,48 @@ async function saveSeenKeys(entries) {
   }
 }
 
+// 2026-08-04: 一時的な診断分岐。web_searchツールがx.com(旧twitter.com)の投稿本文を
+// 実際に読めているか(URLだけでなく本文まで取得できているか)を確認するための直接テスト。
+// 突き合わせが終わったら削除する。
+async function runXCheck() {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 100000);
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-5',
+        max_tokens: 3000,
+        tools: [{ type: 'web_search_20260209', name: 'web_search', max_uses: 3 }],
+        messages: [{
+          role: 'user',
+          content: `site:x.com/FabrizioRomano を使って、Fabrizio Romano(@FabrizioRomano)の
+直近の投稿をWeb検索で調べてください。見つかった投稿について、投稿の本文テキストを
+実際に読めた場合はそのまま引用し、読めなかった場合(URLやページタイトルしか
+得られなかった場合)はその旨を明記してください。`,
+        }],
+        signal: controller.signal,
+      }),
+    });
+    const data = await response.json();
+    return data;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
+
+  if (req.query.xCheck === '1') {
+    const data = await runXCheck();
+    return res.status(200).json(data);
+  }
 
   // 保存済み速報一覧の確認用(簡易レビュー): GET /api/transfer-news-watch?list=1
   // 一般公開用の一覧・詳細APIは api/articles.js を使うこと(こちらは動作確認用の簡易版)。
