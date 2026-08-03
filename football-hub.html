@@ -1108,8 +1108,32 @@
   .transfer-news-row-top{ display:flex; align-items:baseline; gap:8px; margin-bottom:3px; }
   .transfer-news-date{ font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--chalk-dim); flex-shrink:0; }
   .transfer-news-headline{ font-size:13.5px; font-weight:600; line-height:1.4; }
+  /* 2026-08-04: 選手写真+移籍元/先クラブロゴのサムネイルを本文の左に配置する行。 */
+  .transfer-news-body-row{ display:flex; gap:10px; align-items:flex-start; }
+  .transfer-news-thumb{ flex-shrink:0; display:flex; flex-direction:column; align-items:center; gap:4px; padding-top:1px; }
+  .tnt-player-photo{
+    width:38px; height:38px; border-radius:50%; overflow:hidden; background:var(--panel-2);
+    display:flex; align-items:center; justify-content:center; border:1.5px solid var(--line);
+  }
+  .tnt-player-photo img{ width:100%; height:100%; object-fit:cover; }
+  .tnt-player-photo svg{ width:20px; height:20px; fill:var(--chalk-dim); }
+  .tnt-club-pair{ display:flex; align-items:center; gap:2px; }
+  .tnt-club-logo{ width:15px; height:15px; object-fit:contain; }
+  .tnt-arrow{ font-size:9px; color:var(--chalk-dim); }
+  .transfer-news-text-col{ flex:1; min-width:0; }
   .transfer-news-summary{ font-size:12px; color:var(--chalk-dim); line-height:1.55; margin:0; }
-  .transfer-news-links{ display:flex; gap:14px; margin-top:6px; }
+  /* 2026-08-04: 本文全体を最初から見せず、冒頭2行だけ表示して「続きを読む」で
+     全文展開する形式に変更。折りたたみ中は-webkit-line-clampで2行に切り詰める。 */
+  .transfer-news-summary.collapsed{
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+    overflow:hidden; text-overflow:ellipsis;
+  }
+  .transfer-news-toggle-btn{
+    display:block; margin-top:4px; padding:0; background:none; border:none;
+    color:#4C8DFF; font-size:11.5px; font-weight:600; cursor:pointer;
+  }
+  .transfer-news-toggle-btn:hover{ color:var(--amber); }
+  .transfer-news-links{ display:flex; gap:14px; margin-top:8px; }
   .transfer-news-links:empty{ display:none; }
   .transfer-news-link{ font-size:11px; font-weight:600; color:#4C8DFF; }
   .transfer-news-link:hover{ color:var(--amber); }
@@ -6203,6 +6227,17 @@ loadArchiveSection('player_intro', playerIntroArchiveList, playerIntroArchiveSta
 // 移籍速報: 試合解説・選手紹介とは違い、カード形式ではなくニュースサイトの速報欄のような
 // シンプルなリスト(日時+見出し+要約)で表示する。1件が短文のため、一覧APIのレスポンスに
 // 含まれるbody/sourcesをそのまま使い、個別取得(?id=)は行わない。
+//
+// 【2026-08-04追加】
+// ①本文は最初は冒頭2行だけ表示(.summaryにcollapsedクラス、-webkit-line-clampで
+//   切り詰め)し、「続きを読む」ボタンで全文展開する形式に変更(以前は最初から全文
+//   表示されていた)。「元記事を見る」等のリンクは展開後にのみ表示する。
+// ②選手写真+移籍元→移籍先クラブロゴのサムネイルを追加。item.transferは
+//   api/transfer-news-watch.js生成時にAPI-Footballで解決済みのfromClubId/toClubIdを
+//   持つ(lib/article-store.jsのメタデータにも含まれる、2026-08-04追加)。文字列の
+//   表記ゆれに振り回されないよう、IDでロゴURLを組み立てる。選手写真は既存の
+//   getPlayerPhoto()(lib/name-search.js側のMbappé等の表記ゆれ対策込み)をそのまま使う。
+let transferNewsAvatarUidCounter = 0;
 function renderTransferNewsItem(item){
   const el = document.createElement('div');
   el.className = 'transfer-news-item';
@@ -6212,16 +6247,60 @@ function renderTransferNewsItem(item){
     : '';
   // Here we go: ロマーノが移籍合意成立を告げる代名詞的な表現。バッジで目立たせる。
   const hereWeGoBadge = item.isHereWeGo ? '<span class="herewego-badge">🚨 HERE WE GO</span>' : '';
+
+  const transfer = item.transfer || null;
+  const photoUid = `tnt-photo-${transferNewsAvatarUidCounter++}`;
+  const clubPairHtml = (transfer && transfer.fromClubId && transfer.toClubId)
+    ? `<span class="tnt-club-pair">
+         <img class="tnt-club-logo" src="https://media.api-sports.io/football/teams/${transfer.fromClubId}.png" alt="${escapeHtmlText(transfer.fromClub||'')}" loading="lazy" onerror="this.remove()">
+         <span class="tnt-arrow">→</span>
+         <img class="tnt-club-logo" src="https://media.api-sports.io/football/teams/${transfer.toClubId}.png" alt="${escapeHtmlText(transfer.toClub||'')}" loading="lazy" onerror="this.remove()">
+       </span>`
+    : '';
+
   el.innerHTML = `
     <div class="transfer-news-row-top">
       <span class="transfer-news-date">${dateStr}</span>
       ${hereWeGoBadge}
       <span class="transfer-news-headline">${item.title || ''}</span>
     </div>
-    <p class="transfer-news-summary">${item.body || ''}</p>
-    <div class="transfer-news-links"></div>
+    <div class="transfer-news-body-row">
+      <div class="transfer-news-thumb">
+        <span class="tnt-player-photo" id="${photoUid}">${avatarSilhouetteSvg}</span>
+        ${clubPairHtml}
+      </div>
+      <div class="transfer-news-text-col">
+        <p class="transfer-news-summary collapsed">${item.body || ''}</p>
+        <button type="button" class="transfer-news-toggle-btn">続きを読む</button>
+        <div class="transfer-news-links" style="display:none;"></div>
+      </div>
+    </div>
   `;
+
+  if(transfer && transfer.player){
+    getPlayerPhoto({ id: `transfer-${item.id}`, name: transfer.player }).then(photo=>{
+      if(!photo) return;
+      const photoEl = document.getElementById(photoUid);
+      if(photoEl) photoEl.innerHTML = `<img src="${photo}" alt="${escapeHtmlText(transfer.player)}" loading="lazy">`;
+    });
+  }
+
+  const summaryEl = el.querySelector('.transfer-news-summary');
+  const toggleBtn = el.querySelector('.transfer-news-toggle-btn');
   const linksEl = el.querySelector('.transfer-news-links');
+  toggleBtn.addEventListener('click', ()=>{
+    const expanded = !summaryEl.classList.contains('collapsed');
+    if(expanded){
+      summaryEl.classList.add('collapsed');
+      linksEl.style.display = 'none';
+      toggleBtn.textContent = '続きを読む';
+    } else {
+      summaryEl.classList.remove('collapsed');
+      linksEl.style.display = '';
+      toggleBtn.textContent = '閉じる';
+    }
+  });
+
   if(sourceUrl){
     const srcLink = document.createElement('a');
     srcLink.className = 'transfer-news-link';

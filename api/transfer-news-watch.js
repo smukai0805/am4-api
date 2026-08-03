@@ -41,6 +41,7 @@ import { put, get } from '@vercel/blob';
 import { checkTransferNews, transferDedupeKey } from '../lib/transfer-news-core.js';
 import { generateArticleDraft, searchPlayerProfileByName, calcAge, extractTitle } from '../lib/academy-core.js';
 import { saveArticle, getArticle, findArticleBySubject, listArticles, slugify } from '../lib/article-store.js';
+import { searchTeamIdByName } from '../lib/api-football-client.js';
 
 export const config = { maxDuration: 300 };
 
@@ -218,6 +219,24 @@ export default async function handler(req, res) {
 
       const dateStr = new Date().toISOString().slice(0, 10);
       const id = slugify(`${dateStr}-${item.player}-${item.toClub}`) || `transfer-${now}-${generated.length}`;
+
+      // 2026-08-04: 特集タブのサムネイル画像(移籍元→移籍先クラブのロゴ)用に、クラブ名
+      // (英語表記)からAPI-FootballのチームIDを解決しておく。フロント側で文字列の表記ゆれ
+      // (例: AI生成の"Paris Saint-Germain"とlib/team-ids.jsの"Paris Saint Germain"の
+      // ハイフン有無)に振り回されないよう、生成時にIDまで確定させて保存する。検索失敗は
+      // 致命的ではない(フロント側はIDが無ければロゴを省略するだけ)ため、失敗しても
+      // 速報自体の保存は続行する。
+      let fromClubId = null;
+      let toClubId = null;
+      try {
+        [fromClubId, toClubId] = await Promise.all([
+          item.fromClub ? searchTeamIdByName(item.fromClub) : Promise.resolve(null),
+          item.toClub ? searchTeamIdByName(item.toClub) : Promise.resolve(null),
+        ]);
+      } catch (err) {
+        console.error(`transfer news: クラブID解決に失敗しました(${item.fromClub} → ${item.toClub}):`, err.message);
+      }
+
       const article = {
         id,
         type: 'transfer_news',
@@ -230,7 +249,11 @@ export default async function handler(req, res) {
         isHereWeGo: item.isHereWeGo === true,
         sources: [{ title: 'Fabrizio Romano', url: item.sourceUrl }],
         status: 'published', // 速報性を優先するため、記事アーカイブ(下書き運用)とは異なり即時公開扱い
-        transfer: { player: item.player, fromClub: item.fromClub, toClub: item.toClub, status: item.status, isHereWeGo: item.isHereWeGo === true },
+        transfer: {
+          player: item.player, fromClub: item.fromClub, toClub: item.toClub,
+          fromClubId, toClubId,
+          status: item.status, isHereWeGo: item.isHereWeGo === true,
+        },
       };
       await saveArticle(article);
       generated.push(article);
