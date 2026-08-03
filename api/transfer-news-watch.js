@@ -191,8 +191,8 @@ async function runXCheck() {
 実際に読めた場合はそのまま引用し、読めなかった場合(URLやページタイトルしか
 得られなかった場合)はその旨を明記してください。`,
         }],
-        signal: controller.signal,
       }),
+      signal: controller.signal,
     });
     const data = await response.json();
     return data;
