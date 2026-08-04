@@ -18,13 +18,58 @@
 // 記事データ全般を扱う本ファイルに統合した(実体はlib/trending-players.js)。
 // vercel.jsonのcronはこのファイルを?trendingRefresh=1付きで定期実行する。
 
-import { listArticles, getArticle } from '../lib/article-store.js';
+import { listArticles, getArticle, saveArticle } from '../lib/article-store.js';
 import { getTrendingPlayersForDisplay, computeAndSaveTrendingPlayers } from '../lib/trending-players.js';
+import { searchTeamIdByName } from '../lib/api-football-client.js';
 
 const VALID_TYPES = ['match_report', 'player_intro', 'transfer_news'];
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
+
+  // 一時的なデータ修正用。searchTeamIdByName('PSG')が誤って無関係のインドネシアの
+  // 弱小クラブ(id:4234)を返していた不具合(lib/api-football-client.jsで修正済み)の
+  // 影響で、修正前に生成されたtransfer_news記事にはこの誤ったclubIdが焼き込まれた
+  // ままになっている。既存の全transfer_news記事を走査し、fromClubId/toClubIdが
+  // 4234の記事だけを新しいsearchTeamIdByName()で再解決して保存し直す。
+  // 修正確認後に削除する。
+  if (req.query.fixStaleClubIds === '1') {
+    const STALE_ID = 4234;
+    const fixed = [];
+
+    const { items: transferItems } = await listArticles({ type: 'transfer_news', pageSize: 500 });
+    for (const meta of transferItems) {
+      const t = meta.transfer;
+      if (!t || (t.fromClubId !== STALE_ID && t.toClubId !== STALE_ID)) continue;
+      const article = await getArticle(meta.id);
+      if (!article || !article.transfer) continue;
+      let changed = false;
+      if (article.transfer.fromClubId === STALE_ID && article.transfer.fromClub) {
+        article.transfer.fromClubId = await searchTeamIdByName(article.transfer.fromClub);
+        changed = true;
+      }
+      if (article.transfer.toClubId === STALE_ID && article.transfer.toClub) {
+        article.transfer.toClubId = await searchTeamIdByName(article.transfer.toClub);
+        changed = true;
+      }
+      if (changed) {
+        await saveArticle(article);
+        fixed.push({ id: article.id, type: 'transfer_news', fromClubId: article.transfer.fromClubId, toClubId: article.transfer.toClubId });
+      }
+    }
+
+    const { items: playerItems } = await listArticles({ type: 'player_intro', pageSize: 500 });
+    for (const meta of playerItems) {
+      if (!meta.player || meta.player.clubId !== STALE_ID) continue;
+      const article = await getArticle(meta.id);
+      if (!article || !article.player || !article.player.club) continue;
+      article.player.clubId = await searchTeamIdByName(article.player.club);
+      await saveArticle(article);
+      fixed.push({ id: article.id, type: 'player_intro', clubId: article.player.clubId });
+    }
+
+    return res.status(200).json({ scannedTransfer: transferItems.length, scannedPlayerIntro: playerItems.length, fixed });
+  }
 
   if (req.query.trendingRefresh === '1') {
     try {
