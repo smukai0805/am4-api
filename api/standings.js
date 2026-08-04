@@ -62,13 +62,6 @@ export default async function handler(req, res) {
     'チャンピオンズリーグ': 2
   };
 
-  // 一時診断: searchTeamIdByName('PSG')が想定外のID(4234)を返した件を調査するための
-  // /teams?search=検証。突き合わせが終わったら削除する。
-  if (req.query.teamSearch) {
-    const data = await apiFootballFetch('/teams', { search: req.query.teamSearch });
-    return res.status(200).json({ results: (data.response||[]).map(r=>({ id: r.team.id, name: r.team.name, country: r.team.country })) });
-  }
-
   try {
     // 5リーグ分を並行して取得(Promise.allでまとめて投げる)
     const entries = Object.entries(LEAGUES);
