@@ -1155,6 +1155,21 @@
   .transfer-news-links:empty{ display:none; }
   .transfer-news-link{ font-size:11px; font-weight:600; color:#4C8DFF; }
   .transfer-news-link:hover{ color:var(--amber); }
+
+  /* ---- 急上昇選手ランキング(2026-08-04追加) ---- */
+  .trending-players-list{ display:flex; flex-direction:column; }
+  .trending-player-item{ display:flex; align-items:center; gap:10px; padding:10px 4px; border-bottom:1px solid rgba(255,255,255,.08); }
+  .trending-player-item:last-child{ border-bottom:none; }
+  .trending-player-rank{ font-family:'Anton',sans-serif; font-size:18px; color:var(--amber-dim); width:24px; flex-shrink:0; text-align:center; }
+  .trending-player-info{ flex:1; min-width:0; }
+  .trending-player-name{ font-size:13.5px; font-weight:600; display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+  .trending-player-club{ font-size:11px; color:var(--chalk-dim); margin-top:1px; }
+  .trending-player-rank-change{ font-size:10.5px; font-weight:700; font-family:'JetBrains Mono',monospace; }
+  .trending-player-rank-change.up{ color:#2ecc71; }
+  .trending-player-rank-change.down{ color:var(--chalk-dim); }
+  .trending-player-rank-change.new{ color:#4C8DFF; }
+  .trending-player-fire{ font-size:11px; }
+  .trending-players-meta{ font-size:10.5px; color:var(--chalk-dim); margin-top:8px; font-family:'JetBrains Mono',monospace; }
   .herewego-badge{
     flex-shrink:0;
     background:#e0245e; color:#fff;
@@ -1273,6 +1288,14 @@
       <h2 data-i18n="news_title">特集</h2>
       <span class="sub" data-i18n="news_sub">AM4編集部による試合解説・選手紹介アーカイブ</span>
     </div>
+  </div>
+
+  <div class="archive-section">
+    <div class="archive-section-head">
+      <h3 data-i18n="archive_trending">🔥 急上昇選手ランキング</h3>
+    </div>
+    <span class="standings-status" id="trendingPlayersStatus">読み込み中...</span>
+    <div class="trending-players-list" id="trendingPlayersList"></div>
   </div>
 
   <div class="archive-section">
@@ -1617,7 +1640,7 @@ const i18n = {
     search_btn_label:'検索',
     news_title:'特集', news_sub:'AM4編集部による試合解説・選手紹介アーカイブ',
     news_refresh:'更新',
-    archive_match_report:'試合解説', archive_player_intro:'選手紹介', archive_transfer_news:'移籍速報', archive_more:'もっと見る ›', archive_back:'特集に戻る',
+    archive_match_report:'試合解説', archive_player_intro:'選手紹介', archive_transfer_news:'移籍速報', archive_trending:'🔥 急上昇選手ランキング', archive_more:'もっと見る ›', archive_back:'特集に戻る',
     news_disclaimer:'※これはAM4編集部が実際の報道記事を根拠に(AIの補助を受けて)執筆した記事です。各記事下部の「元記事」から出典を確認できます。断定的な数値・発言は参考情報としてお読みください。',
     league_all:'全体', league_wc:'W杯', league_pl:'プレミア', league_laliga:'ラ・リーガ',
     league_seriea:'セリエA', league_bundes:'ブンデス', league_ligue1:'リーグ・アン',
@@ -1644,7 +1667,7 @@ const i18n = {
     search_btn_label:'Search',
     news_title:'Featured', news_sub:'Match reports and player features by the AM4 editorial desk',
     news_refresh:'Refresh',
-    archive_match_report:'Match Reports', archive_player_intro:'Player Features', archive_transfer_news:'Transfer News', archive_more:'More ›', archive_back:'Back to Featured',
+    archive_match_report:'Match Reports', archive_player_intro:'Player Features', archive_transfer_news:'Transfer News', archive_trending:'🔥 Trending Players', archive_more:'More ›', archive_back:'Back to Featured',
     news_disclaimer:'*These articles are written by the AM4 editorial desk (AI-assisted) based on real news articles. Check the "source" links below each article. Treat specific figures/quotes as reference only.',
     league_all:'All', league_wc:'World Cup', league_pl:'Premier League', league_laliga:'La Liga',
     league_seriea:'Serie A', league_bundes:'Bundesliga', league_ligue1:'Ligue 1',
@@ -1671,7 +1694,7 @@ const i18n = {
     search_btn_label:'Buscar',
     news_title:'Destacados', news_sub:'Crónicas de partidos y perfiles de jugadores de la redacción de AM4',
     news_refresh:'Actualizar',
-    archive_match_report:'Crónicas de Partidos', archive_player_intro:'Perfiles de Jugadores', archive_transfer_news:'Fichajes en Directo', archive_more:'Ver más ›', archive_back:'Volver a Destacados',
+    archive_match_report:'Crónicas de Partidos', archive_player_intro:'Perfiles de Jugadores', archive_transfer_news:'Fichajes en Directo', archive_trending:'🔥 Jugadores en Tendencia', archive_more:'Ver más ›', archive_back:'Volver a Destacados',
     news_disclaimer:'*Estos artículos están escritos por la redacción de AM4 (con ayuda de IA) a partir de noticias reales. Consulta los enlaces "fuente" debajo de cada artículo. Trata las cifras/citas específicas solo como referencia.',
     league_all:'Todo', league_wc:'Mundial', league_pl:'Premier League', league_laliga:'La Liga',
     league_seriea:'Serie A', league_bundes:'Bundesliga', league_ligue1:'Ligue 1',
@@ -5956,6 +5979,8 @@ const playerIntroArchiveStatus = document.getElementById('playerIntroArchiveStat
 const transferNewsList = document.getElementById('transferNewsList');
 const transferNewsStatus = document.getElementById('transferNewsStatus');
 const transferNewsShowMoreBtn = document.getElementById('transferNewsShowMoreBtn');
+const trendingPlayersList = document.getElementById('trendingPlayersList');
+const trendingPlayersStatus = document.getElementById('trendingPlayersStatus');
 const archiveFullList = document.getElementById('archiveFullList');
 const archiveListStatus = document.getElementById('archiveListStatus');
 const archivePagination = document.getElementById('archivePagination');
@@ -6401,6 +6426,90 @@ transferNewsShowMoreBtn.addEventListener('click', () => {
   transferNewsShowMoreBtn.style.display = 'none';
 });
 loadTransferNewsSection();
+
+// ==== 急上昇選手ランキング(2026-08-04追加) ====
+// api/articles.js?trending=1 を叩くだけの軽量な表示専用エンドポイント。ランキング自体の
+// 計算(Google Trends取得・記事言及頻度の集計)はVercel Cron(?trendingRefresh=1、
+// vercel.json参照)が定期的に行い、結果をVercel Blobに保存している。このページ側は
+// 保存済みの結果を読むだけなので高速。
+//
+// 選手写真・クラブロゴ・国籍の国旗は選手紹介記事カード(renderPlayerCaptionHtml)と
+// 同じ.pct-*クラス・countryFlagsEnを再利用している。
+function renderTrendingPlayerItem(p){
+  const el = document.createElement('div');
+  el.className = 'trending-player-item';
+
+  const photoHtml = p.playerId
+    ? `<img src="https://media.api-sports.io/football/players/${p.playerId}.png" alt="${escapeHtmlText(p.player)}" loading="lazy" onerror="this.remove()">`
+    : avatarSilhouetteSvg;
+  const clubLogoHtml = p.clubId
+    ? `<img class="pct-club-logo" src="https://media.api-sports.io/football/teams/${p.clubId}.png" alt="" loading="lazy" onerror="this.remove()">`
+    : '';
+  const flagHtml = p.nationality ? `<span class="pct-flag" title="${escapeHtmlText(p.nationality)}">${flagForEn(p.nationality)}</span>` : '';
+
+  // 前回のランキング取得時と比較した順位変動。新規ランクインはNEW、順位が上がった
+  // (数字としては小さくなった)選手は▲(緑)、下がった選手は▼(グレー)で示す。
+  let changeHtml = '';
+  if(p.previousRank === null || p.previousRank === undefined){
+    changeHtml = `<span class="trending-player-rank-change new">NEW</span>`;
+  } else if(p.previousRank > p.rank){
+    changeHtml = `<span class="trending-player-rank-change up">▲${p.previousRank - p.rank}</span>`;
+  } else if(p.previousRank < p.rank){
+    changeHtml = `<span class="trending-player-rank-change down">▼${p.rank - p.previousRank}</span>`;
+  }
+  const fireHtml = p.isGoogleTrending ? `<span class="trending-player-fire" title="Googleの急上昇ワードにも登場">🔥</span>` : '';
+
+  const linksHtml = [
+    p.playerIntroArticleId ? `<a href="#" data-open-article="${p.playerIntroArticleId}" class="transfer-news-link">選手紹介を見る</a>` : '',
+    p.transferNewsArticleId ? `<a href="#" data-open-article="${p.transferNewsArticleId}" class="transfer-news-link">移籍速報を見る</a>` : '',
+  ].filter(Boolean).join('');
+
+  el.innerHTML = `
+    <span class="trending-player-rank">${p.rank}</span>
+    <div class="player-thumb">
+      ${flagHtml}
+      <span class="pct-player-photo">${photoHtml}</span>
+      ${clubLogoHtml}
+    </div>
+    <div class="trending-player-info">
+      <div class="trending-player-name">${escapeHtmlText(p.player)} ${fireHtml} ${changeHtml}</div>
+      ${p.club ? `<div class="trending-player-club">${escapeHtmlText(p.club)}</div>` : ''}
+      <div class="transfer-news-links">${linksHtml}</div>
+    </div>
+  `;
+  el.querySelectorAll('[data-open-article]').forEach(a=>{
+    a.addEventListener('click', e => { e.preventDefault(); openArchiveArticle(a.dataset.openArticle); });
+  });
+  return el;
+}
+
+async function loadTrendingPlayers(){
+  try{
+    const res = await fetch(`${AM4_API_BASE}/api/articles?trending=1`);
+    const data = await res.json();
+    trendingPlayersList.innerHTML = '';
+    if((!data.ranking || data.ranking.length === 0)){
+      // 指示にあった「取得失敗時のフォールバック」: dataがエラー付きで返ってきた場合も、
+      // まだ一度もランキングが計算されていない場合も、同じ空状態表示にまとめている
+      // (前回データがあればそちらを表示する挙動はサーバー側で既に行っている。
+      // ここに来るのは「前回データも無い」場合のみ)。
+      trendingPlayersList.innerHTML = data.error
+        ? '<div class="archive-empty">急上昇選手ランキングを取得できませんでした</div>'
+        : '<div class="archive-empty">まだ急上昇選手のデータがありません</div>';
+    } else {
+      data.ranking.forEach(p => trendingPlayersList.appendChild(renderTrendingPlayerItem(p)));
+      if(!data.trendsOk){
+        trendingPlayersList.insertAdjacentHTML('beforeend', '<div class="trending-players-meta">※Google Trendsのデータが取得できなかったため、サイト内の話題度のみで算出しています</div>');
+      }
+    }
+    trendingPlayersStatus.style.display = 'none';
+  } catch(e){
+    console.error('trending players fetch failed:', e);
+    trendingPlayersStatus.textContent = '取得に失敗しました';
+    trendingPlayersStatus.className = 'standings-status error';
+  }
+}
+loadTrendingPlayers();
 
 /* ===================== 特集タブ 旧仕様(ai-column.js/旧match-report.js、削除済み) =====================
    【2026-07-31】このタブは試合解説・選手紹介の記事アーカイブ(上記「特集タブ(記事アーカイブ)」

@@ -12,6 +12,7 @@
     { "path": "/api/transfer-news-watch", "schedule": "10 12 * * *" },
     { "path": "/api/transfer-news-watch", "schedule": "10 15 * * *" },
     { "path": "/api/transfer-news-watch", "schedule": "10 18 * * *" },
-    { "path": "/api/transfer-news-watch", "schedule": "10 21 * * *" }
+    { "path": "/api/transfer-news-watch", "schedule": "10 21 * * *" },
+    { "path": "/api/articles?trendingRefresh=1", "schedule": "45 8 * * *" }
   ]
 }
