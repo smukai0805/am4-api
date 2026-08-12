@@ -62,6 +62,23 @@ export default async function handler(req, res) {
     'チャンピオンズリーグ': 2
   };
 
+  // 一時診断: EL BLANCO連携作業のため、"International Friendlies"のAPI-FootballリーグID
+  // とレアル・マドリードの直近親善試合の有無を検証する。突き合わせ後に削除する。
+  if (req.query.leagueSearch) {
+    const data = await apiFootballFetch('/leagues', { search: req.query.leagueSearch });
+    return res.status(200).json({ results: (data.response||[]).map(r=>({ id: r.league.id, name: r.league.name, type: r.league.type, country: r.country?.name })) });
+  }
+  if (req.query.friendliesCheck === '1') {
+    const leagueId = Number(req.query.leagueId) || 10;
+    const seasonParam = Number(req.query.season) || 2026;
+    const data = await apiFootballFetch('/fixtures', { team: 541, league: leagueId, season: seasonParam });
+    return res.status(200).json({
+      leagueId, season: seasonParam,
+      errors: data.errors,
+      fixtures: (data.response||[]).map(f => ({ date: f.fixture.date, status: f.fixture.status?.short, home: f.teams.home.name, away: f.teams.away.name, roundRaw: f.league.round }))
+    });
+  }
+
   try {
     // 5リーグ分を並行して取得(Promise.allでまとめて投げる)
     const entries = Object.entries(LEAGUES);
