@@ -453,34 +453,54 @@
 <script>
 // AM4 API (api-football連携) から次節のレアル・マドリード戦を取得して
 // 試合カードに反映する。
-// Claude Codeでの実データ検証結果を反映:
+// 【2026-08-12、Claude Codeによる実URLデプロイ後の実データ検証で判明・修正】
 // - レスポンスは { league, season, fixtures, rounds, dates } (data.responseではない)
 // - fixtures配列の各要素は f.home / f.away がフラットな文字列(f.teams.home.name ではない)
 // - キックオフ日時は f.kickoff (完全なISO8601)。f.date は日付のみなので使わない
-// - league パラメータが必須。無指定だと400エラーになりダミー表示に落ちていた
+// - leagueパラメータは「日本語のリーグ名文字列」(例: 'ラ・リーガ')が必須。
+//   以前のコードは数値ID(140, 2, 667)をそのまま渡していたため、api/fixtures.js側の
+//   LEAGUES対応表(キーが日本語名)と一致せず、3件とも常に400エラーになっていた。
+//   res.ok ? ... : null で握りつぶす設計のため例外は発生せず、コンソールにエラーは
+//   出ないまま無言でダミー表示にフォールバックし続けていた(しかもダミー表示の内容が
+//   たまたま本日の実際の対戦カードと一致していたため、一見動いているように見えて
+//   実際には一度もfetchが成功していなかった)。
+// - season未指定だとデフォルトの2025(完了済み2025-26シーズン)が使われ、未来の試合が
+//   1件も含まれない。season=2026(進行中の2026-27シーズン)を明示する必要がある。
+// - fixture要素にleagueName/roundフィールドは存在しない。大会名はfetch元のリーグ名を
+//   こちら側で付与し、節表示にはroundLabel(存在する場合のみ、親善試合はnull)を使う。
 // - 「Real Madrid」は完全一致にしないと下部組織「Real Madrid II」も拾ってしまう
-// - ラ・リーガ(140)・CL(2)・クラブ親善試合(667)の3リーグをPromise.allSettledで並行取得
+// - ラ・リーガ・チャンピオンズリーグ・クラブ親善試合の3リーグをPromise.allSettledで並行取得
 (async function () {
-  const LEAGUE_IDS = [140, 2, 667]; // La Liga, Champions League, Friendlies Clubs
+  const SEASON = 2026; // 進行中のシーズン。シーズンが変わったら要更新。
+  const LEAGUES = [
+    { key: 'ラ・リーガ', label: 'LA LIGA' },
+    { key: 'チャンピオンズリーグ', label: 'UEFA CHAMPIONS LEAGUE' },
+    { key: 'クラブ親善試合', label: '親善試合' },
+  ];
+  const EXCLUDED_STATUSES = ['FT', 'AET', 'PEN', 'PST', 'CANC', 'ABD', 'AWD', 'WO'];
   const isRealMadrid = (name) => name === 'Real Madrid';
 
   try {
     const results = await Promise.allSettled(
-      LEAGUE_IDS.map(id =>
-        fetch(`https://am4-api.vercel.app/api/fixtures?league=${id}`)
+      LEAGUES.map(({ key, label }) =>
+        fetch(`https://am4-api.vercel.app/api/fixtures?league=${encodeURIComponent(key)}&season=${SEASON}`)
           .then(res => (res.ok ? res.json() : null))
+          .then(data => (data && Array.isArray(data.fixtures))
+            ? data.fixtures.map(f => ({ ...f, competitionLabel: label }))
+            : [])
       )
     );
 
     const allFixtures = results
-      .filter(r => r.status === 'fulfilled' && r.value && Array.isArray(r.value.fixtures))
-      .flatMap(r => r.value.fixtures);
+      .filter(r => r.status === 'fulfilled')
+      .flatMap(r => r.value);
 
     if (!allFixtures.length) return;
 
     const now = new Date();
     const upcoming = allFixtures
       .filter(f => isRealMadrid(f.home) || isRealMadrid(f.away))
+      .filter(f => !EXCLUDED_STATUSES.includes(f.status))
       .filter(f => f.kickoff && new Date(f.kickoff) >= now)
       .sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff));
 
@@ -505,9 +525,10 @@
     if (match.home) document.getElementById('mcHomeName').textContent = match.home;
     if (match.away) document.getElementById('mcAwayName').textContent = match.away;
 
-    if (match.leagueName || match.round) {
-      const round = match.round ? '・' + match.round : '';
-      document.getElementById('mcCompetition').textContent = (match.leagueName || '') + round;
+    const competitionEl = document.getElementById('mcCompetition');
+    if (competitionEl) {
+      const round = match.roundLabel ? '・' + match.roundLabel : '';
+      competitionEl.textContent = (match.competitionLabel || '') + round;
     }
 
     const d = new Date(match.kickoff);
