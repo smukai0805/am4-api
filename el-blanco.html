@@ -78,9 +78,11 @@
   /* ===== HERO ===== */
   .hero{
     position:relative;
-    aspect-ratio:16/11;
-    max-height:640px;
-    overflow:hidden;
+    min-height:560px;
+    padding:56px 0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
     background:radial-gradient(ellipse at 50% 30%, #221c14 0%, #0c0a07 70%);
   }
   .hero-img-note{
@@ -90,8 +92,8 @@
       linear-gradient(0deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.1) 55%, transparent 80%);
   }
   .hero-content{
-    position:absolute;left:0;right:0;bottom:0;
-    padding:40px 28px 44px;
+    position:relative;
+    padding:0 28px;
     color:var(--white);
     max-width:760px;
     margin:0 auto;
