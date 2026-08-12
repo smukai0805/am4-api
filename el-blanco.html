@@ -271,7 +271,13 @@
     .num-grid{grid-template-columns:1fr;}
   }
   @media (max-width:560px){
-    .hero{aspect-ratio:4/5;max-height:none;}
+    /* 2026-08-12: .heroの固定高さ(aspect-ratio)を可変高さ(min-height)に変更した際、
+       ここに残っていたaspect-ratio:4/5の上書きが原因で右側に余白ができる不具合が
+       発生した(aspect-ratio:4/5とmin-height:560pxが両方指定されている場合、
+       ブラウザが高さ560pxを基準に幅を560×4/5=448pxと算出してしまい、親(390px幅)
+       からはみ出していた。実機Puppeteerで実測し、この1行の削除でscrollWidthと
+       clientWidthが一致することを確認済み)。.hero自体は幅を固定していないため、
+       このルールは不要だったので削除した。 */
     .fcard{aspect-ratio:16/9;}
     .hero-fab{width:100px;height:100px;border-top-right-radius:50px;font-size:0.72rem;}
   }
