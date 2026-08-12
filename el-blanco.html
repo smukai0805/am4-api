@@ -107,39 +107,55 @@
     margin:0 auto 22px;
     display:block;
   }
+  .match-cards-wrap{
+    display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin-bottom:30px;
+  }
   .match-card{
-    max-width:420px;margin:0 auto 30px;
+    flex:1 1 260px;max-width:300px;
     border:1px solid rgba(191,155,104,0.4);
     border-radius:6px;
     background:rgba(255,255,255,0.03);
-    padding:16px 20px 14px;
+    padding:14px 18px 12px;
   }
+  .match-card .mc-label{
+    font-family:'Poppins',sans-serif;font-size:0.6rem;letter-spacing:0.14em;font-weight:600;
+    text-transform:uppercase;text-align:center;margin-bottom:8px;
+  }
+  .match-card.is-last .mc-label{color:#9c9689;}
+  .match-card.is-next .mc-label{color:var(--brown-light);}
   .match-card .mc-meta{
-    display:flex;justify-content:center;align-items:center;gap:8px;
-    font-family:'Poppins',sans-serif;font-size:0.62rem;letter-spacing:0.1em;
-    color:var(--brown-light);text-transform:uppercase;margin-bottom:14px;
+    display:flex;justify-content:center;align-items:center;gap:8px;flex-wrap:wrap;
+    font-family:'Poppins',sans-serif;font-size:0.58rem;letter-spacing:0.08em;
+    color:var(--brown-light);text-transform:uppercase;margin-bottom:12px;
   }
-  .match-card .mc-meta .dot{width:3px;height:3px;border-radius:50%;background:var(--brown-light);}
-  .match-card .mc-row{display:flex;align-items:center;justify-content:center;gap:18px;margin-bottom:12px;}
-  .match-card .club{display:flex;flex-direction:column;align-items:center;gap:8px;width:96px;}
+  .match-card .mc-meta .dot{width:3px;height:3px;border-radius:50%;background:var(--brown-light);flex-shrink:0;}
+  .match-card .mc-row{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:10px;}
+  .match-card .club{display:flex;flex-direction:column;align-items:center;gap:8px;width:88px;}
   .match-card .club-badge{
-    width:44px;height:44px;border-radius:50%;
+    width:40px;height:40px;border-radius:50%;
     border:1.4px solid rgba(255,255,255,0.5);
     display:flex;align-items:center;justify-content:center;
-    font-family:'Zen Kaku Gothic New',sans-serif;font-weight:700;font-size:0.78rem;color:var(--white);
+    font-family:'Zen Kaku Gothic New',sans-serif;font-weight:700;font-size:0.72rem;color:var(--white);
     overflow:hidden;background:rgba(255,255,255,0.06);
   }
   .match-card .club-badge img{width:70%;height:70%;object-fit:contain;}
   .match-card .club-badge.home{border-color:var(--brown-light);color:var(--brown-light);}
-  .match-card .club-name{font-family:'Zen Kaku Gothic New',sans-serif;font-size:0.72rem;color:#e6ddc9;text-align:center;line-height:1.3;}
-  .match-card .vs{font-family:'Poppins',sans-serif;font-size:0.8rem;color:#7a7264;}
+  .match-card .club-name{font-family:'Zen Kaku Gothic New',sans-serif;font-size:0.68rem;color:#e6ddc9;text-align:center;line-height:1.3;}
+  .match-card .vs{font-family:'Poppins',sans-serif;font-size:0.75rem;color:#7a7264;}
+  .match-card .mc-score{
+    font-family:'Poppins',sans-serif;font-weight:700;font-size:1.3rem;color:var(--white);
+  }
   .match-card .mc-ai{
     display:block;text-align:center;
-    font-family:'Zen Kaku Gothic New',sans-serif;font-weight:500;font-size:0.78rem;
-    color:var(--white);border-top:1px solid rgba(255,255,255,0.1);padding-top:12px;
+    font-family:'Zen Kaku Gothic New',sans-serif;font-weight:500;font-size:0.74rem;
+    color:var(--white);border-top:1px solid rgba(255,255,255,0.1);padding-top:10px;
     letter-spacing:0.02em;
   }
   .match-card .mc-ai .arrow{color:var(--brown-light);margin-left:4px;}
+  @media (max-width:520px){
+    .match-cards-wrap{flex-direction:column;align-items:center;}
+    .match-card{width:100%;max-width:340px;}
+  }
   .hero-content h1{
     font-family:'Anton', sans-serif;
     font-weight:400;
@@ -462,14 +478,13 @@
 // - レスポンスは1リーグにつき { league, season, fixtures, ... } という形で、
 //   大会名はfixture単位ではなくレスポンス直下の league フィールドにある
 // - match.leagueName / match.round という存在しないフィールドを参照していたため削除
-// 【2026-08-12、再デプロイ前のClaude Codeによる実データ再検証で判明・修正】
-// - season: '2026-27'という文字列を渡していたが、api/fixtures.js側はNumber()で
-//   数値化できないとデフォルト値(season=2025、完了済みの2025-26シーズン)に
-//   フォールバックする仕様だった。実際に確認したところ、この文字列指定では
-//   ラ・リーガ/CLとも season=2025 のまま返ってきており、未来の試合が1件も
-//   含まれなかった。数値の2026に修正。
-// - 'クラブ親善試合' ではなく '親善試合' と書かれており、api/fixtures.jsの対応表の
-//   キーと一致せず400エラーになっていた(実際に確認済み)。正しいキーに修正。
+// 【2026-08-13、再デプロイ前のClaude Codeによる実データ再検証で判明・再修正】
+// この2箇所は過去2回のデプロイで実データ検証の上修正済みだったが、今回のアップロード
+// ファイルでまた元の(誤った)値に戻っていた。ソース側のドラフトが巻き戻っている
+// と思われるので、次回また同じファイルを送る際はご注意ください。
+// - season: '2026-27'という文字列だとNumber()で数値化できずデフォルト値
+//   (season=2025、完了済みシーズン)にフォールバックし、未来の試合が0件になる。
+// - 'クラブ親善試合'ではなく'親善試合'だとapi/fixtures.jsの対応表と不一致で400エラー。
 (async function () {
   const LEAGUES = ['ラ・リーガ', 'チャンピオンズリーグ', 'クラブ親善試合'];
   const SEASON = 2026;
