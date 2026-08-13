@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light">
+<title>選手名鑑 ― EL BLANCO</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=Poppins:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    color-scheme: light;
+    --white:#FFFFFF;
+    --black:#111111;
+    --brown:#8B6F47;
+    --brown-dark:#6E5636;
+    --brown-light:#B79868;
+    --gray:#6B6B6B;
+    --beige:#EFE9DC;
+    --line:#E8E4D9;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{scroll-behavior:smooth;background:#FFFFFF !important;}
+  body{
+    background:#FFFFFF !important;
+    color:var(--black);
+    font-family:'Noto Sans JP', sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:inherit;text-decoration:none;}
+  img{display:block;max-width:100%;}
+  .en{font-family:'Poppins', sans-serif;}
+  .jp-head{font-family:'Zen Kaku Gothic New', sans-serif;}
+
+  /* ===== HEADER ===== */
+  header{
+    background:var(--white);
+    border-bottom:1px solid var(--line);
+    position:sticky;top:0;z-index:50;
+  }
+  .nav-inner{
+    max-width:1200px;margin:0 auto;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:14px 24px;
+  }
+  .brand{display:flex;align-items:center;gap:12px;}
+  .brand .crest{
+    width:38px;height:38px;border-radius:50%;
+    border:1.6px solid var(--brown);
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Zen Kaku Gothic New',sans-serif;font-weight:700;
+    color:var(--brown);font-size:0.85rem;
+  }
+  .brand-text{line-height:1.25;}
+  .brand-text .name{font-family:'Zen Kaku Gothic New',sans-serif;font-weight:900;font-size:1.05rem;letter-spacing:0.02em;}
+  .brand-text .sub{font-family:'Poppins',sans-serif;font-size:0.6rem;letter-spacing:0.06em;color:var(--gray);}
+  .nav-right{display:flex;align-items:stretch;gap:0;height:44px;}
+  .btn-join{
+    background:var(--brown);color:var(--white);
+    font-family:'Zen Kaku Gothic New',sans-serif;font-weight:700;font-size:0.85rem;
+    padding:0 22px;display:flex;align-items:center;
+    transition:background .2s;
+  }
+  .btn-join:hover{background:var(--brown-dark);}
+  .lang-toggle{
+    background:var(--beige);color:var(--black);
+    font-family:'Poppins',sans-serif;font-weight:600;font-size:0.8rem;
+    padding:0 16px;display:flex;align-items:center;gap:6px;
+  }
+  .hamburger{margin-left:20px;display:flex;flex-direction:column;gap:5px;cursor:pointer;}
+  .hamburger span{width:22px;height:2px;background:var(--black);display:block;}
+  nav.links{display:flex;gap:26px;margin-left:36px;}
+  nav.links a{font-family:'Zen Kaku Gothic New',sans-serif;font-weight:500;font-size:0.86rem;color:var(--black);opacity:0.78;}
+  nav.links a:hover{opacity:1;color:var(--brown);}
+  nav.links a.active{opacity:1;color:var(--brown);}
+
+  /* ===== PAGE HEADER ===== */
+  .page-head{
+    background:radial-gradient(ellipse at 50% 20%, #221c14 0%, #0c0a07 70%);
+    padding:56px 24px 44px;
+    text-align:center;
+  }
+  .page-head .eyebrow{
+    font-family:'Poppins',sans-serif;font-size:0.68rem;letter-spacing:0.16em;
+    color:var(--brown-light);text-transform:uppercase;margin-bottom:10px;
+  }
+  .page-head h1{
+    font-family:'Anton', sans-serif;font-weight:400;
+    font-size:clamp(1.9rem, 5.5vw, 3rem);
+    color:var(--white);letter-spacing:0.01em;text-transform:uppercase;
+    margin-bottom:12px;
+  }
+  .page-head p{
+    font-family:'Zen Kaku Gothic New', sans-serif;font-weight:500;font-size:0.85rem;
+    color:#cfc4ac;letter-spacing:0.02em;
+  }
+
+  /* ===== FILTER BAR ===== */
+  .filter-bar{
+    max-width:1000px;margin:0 auto;
+    display:flex;gap:8px;flex-wrap:wrap;justify-content:center;
+    padding:26px 24px 0;
+  }
+  .filter-bar button{
+    font-family:'Zen Kaku Gothic New',sans-serif;font-weight:700;font-size:0.8rem;
+    padding:9px 20px;border-radius:100px;border:1px solid var(--line);
+    background:var(--white);color:var(--gray);cursor:pointer;
+    transition:all .18s;
+  }
+  .filter-bar button:hover{border-color:var(--brown-light);color:var(--brown-dark);}
+  .filter-bar button.active{background:var(--brown);border-color:var(--brown);color:var(--white);}
+
+  /* ===== ROSTER ===== */
+  .roster{max-width:1000px;margin:0 auto;padding:44px 24px 80px;}
+  .pos-section{margin-bottom:48px;}
+  .pos-section:last-child{margin-bottom:0;}
+  .pos-head{
+    display:flex;align-items:baseline;gap:14px;margin-bottom:22px;
+    border-bottom:1px solid var(--line);padding-bottom:12px;
+  }
+  .pos-head .num{
+    font-family:'Poppins',sans-serif;font-weight:700;font-size:0.72rem;
+    color:var(--brown-light);letter-spacing:0.1em;
+  }
+  .pos-head h2{
+    font-family:'Zen Kaku Gothic New',sans-serif;font-weight:900;font-size:1.3rem;color:var(--black);
+  }
+  .pos-head .count{
+    margin-left:auto;font-family:'Poppins',sans-serif;font-size:0.72rem;color:var(--gray);
+  }
+
+  .player-grid{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:14px;
+  }
+  .player-card{
+    background:#F8F6F0;border:1px solid var(--line);border-radius:4px;
+    overflow:hidden;display:flex;flex-direction:column;
+    transition:transform .18s, box-shadow .18s, border-color .18s;
+  }
+  .player-card:hover{
+    transform:translateY(-3px);
+    box-shadow:0 10px 24px rgba(20,16,8,0.08);
+    border-color:var(--brown-light);
+  }
+  .player-photo{
+    position:relative;aspect-ratio:1/1;
+    background:linear-gradient(150deg,#2c2419,#0f0d09 75%);
+    display:flex;align-items:center;justify-content:center;
+  }
+  .player-photo .initials{
+    font-family:'Anton',sans-serif;font-size:2.2rem;color:rgba(255,255,255,0.16);
+  }
+  .player-photo .num-badge{
+    position:absolute;top:8px;left:8px;
+    width:28px;height:28px;border-radius:50%;
+    background:rgba(255,255,255,0.92);
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Poppins',sans-serif;font-weight:700;font-size:0.72rem;color:var(--black);
+  }
+  .player-photo .cap-badge{
+    position:absolute;top:8px;right:8px;
+    width:22px;height:22px;border-radius:50%;
+    background:var(--brown);
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Poppins',sans-serif;font-weight:700;font-size:0.62rem;color:var(--white);
+  }
+  .player-info{padding:12px 14px 14px;}
+  .player-info .name-en{
+    font-family:'Poppins',sans-serif;font-weight:700;font-size:0.62rem;
+    letter-spacing:0.04em;color:var(--brown);text-transform:uppercase;margin-bottom:3px;
+  }
+  .player-info .name-jp{
+    font-family:'Zen Kaku Gothic New',sans-serif;font-weight:700;font-size:0.98rem;
+    color:var(--black);line-height:1.3;margin-bottom:6px;
+  }
+  .player-info .meta{
+    display:flex;gap:8px;align-items:center;
+    font-family:'Poppins',sans-serif;font-size:0.66rem;color:var(--gray);
+  }
+  .player-info .meta .flag{font-size:0.8rem;}
+  .player-info .meta .dot{width:3px;height:3px;border-radius:50%;background:var(--line);flex-shrink:0;}
+
+  @media (max-width:720px){
+    .player-grid{grid-template-columns:repeat(2,1fr);}
+  }
+  @media (max-width:420px){
+    .player-grid{grid-template-columns:1fr 1fr;gap:10px;}
+    .player-info{padding:10px 10px 12px;}
+  }
+
+  /* ===== FOOTER ===== */
+  footer{background:var(--black);color:#bdb6a5;padding:60px 24px 30px;}
+  .footer-inner{max-width:1000px;margin:0 auto;text-align:center;}
+  .footer-brand{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:26px;}
+  .footer-brand .crest{
+    width:46px;height:46px;border-radius:50%;border:1.6px solid var(--brown-light);
+    display:flex;align-items:center;justify-content:center;color:var(--brown-light);
+    font-family:'Zen Kaku Gothic New',sans-serif;font-weight:700;
+  }
+  .footer-brand .name{font-family:'Zen Kaku Gothic New',sans-serif;font-weight:900;color:var(--white);font-size:1.3rem;}
+  .footer-rule{width:48px;height:1px;background:linear-gradient(90deg,transparent,#5a5142,transparent);margin:0 auto 26px;}
+  footer .tagline{font-family:'Zen Kaku Gothic New',sans-serif;font-style:italic;font-size:0.85rem;color:#bcae8c;margin-bottom:40px;letter-spacing:0.02em;}
+  .social-row{display:flex;justify-content:center;gap:16px;margin-bottom:44px;}
+  .social-row span{
+    width:38px;height:38px;border-radius:50%;border:1px solid #3a352c;
+    display:flex;align-items:center;justify-content:center;font-size:0.85rem;color:#bdb6a5;
+    transition:border-color .2s,color .2s;
+  }
+  .social-row span:hover{border-color:var(--brown-light);color:var(--brown-light);}
+  .footer-links{
+    display:flex;justify-content:center;flex-wrap:wrap;gap:10px 22px;
+    font-size:0.8rem;color:#a49d8c;
+    border-top:1px solid #2a261e;padding-top:26px;
+  }
+  .footer-bottom{margin-top:26px;font-size:0.72rem;color:#6f6a5d;}
+
+  @media (max-width:860px){
+    nav.links{display:none;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="nav-inner">
+    <div style="display:flex;align-items:center;">
+      <div class="brand">
+        <div class="crest">RM</div>
+        <div class="brand-text">
+          <div class="name">EL BLANCO</div>
+          <div class="sub en">MADRIDISTA MEDIA</div>
+        </div>
+      </div>
+      <nav class="links">
+        <a href="el-blanco-articles.html">試合速報</a>
+        <a href="el-blanco-articles.html">コラム</a>
+        <a href="el-blanco-articles.html">移籍情報</a>
+        <a href="el-blanco-players.html" class="active">選手名鑑</a>
+      </nav>
+    </div>
+    <div class="nav-right">
+      <div class="btn-join">会員登録</div>
+      <div class="lang-toggle">🌐 JA ▾</div>
+      <div class="hamburger"><span></span><span></span><span></span></div>
+    </div>
+  </div>
+</header>
+
+<section class="page-head">
+  <div class="eyebrow en">SQUAD 2025-26</div>
+  <h1>選手名鑑</h1>
+  <p>PLANTILLA ― レアル・マドリード全選手</p>
+</section>
+
+<div class="filter-bar" id="filterBar">
+  <button class="active" data-filter="all">全員</button>
+  <button data-filter="gk">GK</button>
+  <button data-filter="df">DF</button>
+  <button data-filter="mf">MF</button>
+  <button data-filter="fw">FW</button>
+</div>
+
+<main class="roster" id="roster">
+
+  <section class="pos-section" data-pos="gk">
+    <div class="pos-head">
+      <span class="num en">01</span>
+      <h2>ゴールキーパー</h2>
+      <span class="count en">GOALKEEPERS</span>
+    </div>
+    <div class="player-grid">
+      <!-- players injected by JS -->
+    </div>
+  </section>
+
+  <section class="pos-section" data-pos="df">
+    <div class="pos-head">
+      <span class="num en">02</span>
+      <h2>ディフェンダー</h2>
+      <span class="count en">DEFENDERS</span>
+    </div>
+    <div class="player-grid"></div>
+  </section>
+
+  <section class="pos-section" data-pos="mf">
+    <div class="pos-head">
+      <span class="num en">03</span>
+      <h2>ミッドフィルダー</h2>
+      <span class="count en">MIDFIELDERS</span>
+    </div>
+    <div class="player-grid"></div>
+  </section>
+
+  <section class="pos-section" data-pos="fw">
+    <div class="pos-head">
+      <span class="num en">04</span>
+      <h2>フォワード</h2>
+      <span class="count en">FORWARDS</span>
+    </div>
+    <div class="player-grid"></div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <div class="crest">RM</div>
+      <div class="name">EL BLANCO</div>
+    </div>
+    <div class="footer-rule"></div>
+    <div class="tagline">OF THE MADRIDISTAS, BY THE MADRIDISTAS, FOR THE MADRIDISTAS ― Hala Madrid y nada más</div>
+    <div class="social-row">
+      <span>f</span><span>X</span><span>▶</span><span>◎</span><span>♪</span>
+    </div>
+    <div class="footer-links">
+      <span>このサイトについて</span>
+      <span>プライバシーポリシー</span>
+      <span>お問い合わせ</span>
+    </div>
+    <div class="footer-bottom">© 2026 EL BLANCO</div>
+  </div>
+</footer>
+
+<script>
+// ============================================================
+// 選手データは am4-api の api/squad.js から取得する。
+// team=541 は API-FOOTBALL 上の Real Madrid のチームID(確認済み)。
+// レスポンス形式: { found: true, players: [{ id, name, position, number, age, photo }] }
+// position は "GK" / "DF" / "MF" / "FW" の4種類に変換済み。
+// number・age・photo は null になる場合があるため、その前提で表示する。
+// ============================================================
+const SQUAD_API_URL = 'https://am4-api.vercel.app/api/squad?team=541';
+
+const POSITION_MAP = {
+  'GK': 'gk',
+  'DF': 'df',
+  'MF': 'mf',
+  'FW': 'fw',
+};
+
+function initials(name){
+  if (!name) return '';
+  return name.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+}
+
+function playerCardHtml(p){
+  const photoBlock = p.photo
+    ? `<img src="${p.photo}" alt="${p.name}" loading="lazy"
+         onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'initials',textContent:'${initials(p.name)}'}))">`
+    : `<span class="initials">${initials(p.name)}</span>`;
+
+  return `
+    <a class="player-card" href="#" data-name="${p.name}">
+      <div class="player-photo">
+        <span class="num-badge en">${p.number ?? '-'}</span>
+        ${photoBlock}
+      </div>
+      <div class="player-info">
+        <div class="name-en">${p.name}</div>
+        <div class="meta">
+          <span>${p.age ? p.age + '歳' : ''}</span>
+          <span class="dot"></span>
+          <span>#${p.number ?? '-'}</span>
+        </div>
+      </div>
+    </a>
+  `;
+}
+
+function groupByPosition(players){
+  const grouped = { gk: [], df: [], mf: [], fw: [] };
+  players.forEach(p => {
+    const key = POSITION_MAP[p.position];
+    if (key) grouped[key].push(p);
+  });
+  Object.values(grouped).forEach(list => list.sort((a, b) => (a.number ?? 99) - (b.number ?? 99)));
+  return grouped;
+}
+
+function renderSquad(grouped){
+  Object.keys(grouped).forEach(pos => {
+    const section = document.querySelector(`.pos-section[data-pos="${pos}"] .player-grid`);
+    const countEl = document.querySelector(`.pos-section[data-pos="${pos}"] .count`);
+    if (!section) return;
+    const players = grouped[pos];
+    section.innerHTML = players.map(playerCardHtml).join('');
+    if (countEl) countEl.textContent = `${countEl.textContent.split(' ・')[0]} ・ ${players.length}`;
+  });
+}
+
+function renderError(){
+  const roster = document.getElementById('roster');
+  roster.innerHTML = `
+    <div style="text-align:center;padding:60px 24px;font-family:'Zen Kaku Gothic New',sans-serif;color:var(--gray);">
+      選手情報の取得に失敗しました。しばらくしてから再度お試しください。
+    </div>
+  `;
+}
+
+function initFilter(){
+  const buttons = document.querySelectorAll('#filterBar button');
+  const sections = document.querySelectorAll('.pos-section');
+  buttons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      buttons.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const filter = btn.dataset.filter;
+      sections.forEach(sec => {
+        sec.style.display = (filter === 'all' || sec.dataset.pos === filter) ? '' : 'none';
+      });
+    });
+  });
+}
+
+(async function () {
+  try {
+    const res = await fetch(SQUAD_API_URL);
+    if (!res.ok) throw new Error('squad fetch failed');
+    const data = await res.json();
+    // api/squad.js の応答形式: { found: true, players: [{ id, name, position, number, age, photo }] }
+    const players = data?.players || [];
+    if (!players.length) throw new Error('empty squad');
+    renderSquad(groupByPosition(players));
+    initFilter();
+  } catch (e) {
+    console.warn('squad fetch skipped:', e);
+    renderError();
+  }
+})();
+</script>
+</body>
+</html>
