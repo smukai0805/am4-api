@@ -17,6 +17,15 @@
 // 従来のサンプル選手配列にフォールバックする。
 //
 // 例: /api/squad?club=レアル・マドリード
+//
+// 【2026-08-14追加】EL BLANCO連携で、外部フロントエンドから数値のAPI-Football
+// チームID(例: team=541)で直接叩こうとして404/500になる問い合わせが複数回あった
+// (実際にはclub=<日本語クラブ名>のみ対応で、teamパラメータ自体を読んでいなかった
+// ため、常に「club パラメータが必要です」の400になっていた)。外部連携では
+// 日本語クラブ名対応表(lib/team-ids.js)への収録有無に依存せず任意のAPI-Football
+// チームIDを直接指定できた方が扱いやすいため、team(または teamId)パラメータで
+// 数値IDを直接渡せるようにした(club指定時と同じレスポンス形式)。既存のclub=
+// 呼び出し元(スカッド作成機能)への影響は無い。
 
 import { TEAM_IDS } from '../lib/team-ids.js';
 
@@ -36,16 +45,22 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'API_FOOTBALL_KEY が設定されていません' });
   }
 
-  const { club } = req.query;
-  if (!club) {
-    return res.status(400).json({ error: 'club パラメータが必要です' });
+  const { club, team, teamId: teamIdParam } = req.query;
+  if (!club && !team && !teamIdParam) {
+    return res.status(400).json({ error: 'club(日本語クラブ名)または team/teamId(API-FootballチームID)のいずれかのパラメータが必要です' });
   }
 
-  const teamId = TEAM_IDS[club];
-  if (!teamId) {
-    // 対応表に無いクラブはエラーではなくfound:falseで返す。フロント側はこれを見て
-    // 従来のサンプル選手配列による自動編成にフォールバックする。
-    return res.status(200).json({ found: false, reason: `クラブ「${club}」のID対応表が未登録です` });
+  // club(日本語クラブ名)が指定されていればlib/team-ids.jsで解決し、無ければ
+  // team/teamId(数値のAPI-FootballチームID)をそのまま使う。
+  let teamId = club ? TEAM_IDS[club] : Number(team ?? teamIdParam);
+  if (!teamId || Number.isNaN(teamId)) {
+    // clubが対応表に無い場合・team/teamIdが数値として不正な場合は、エラーではなく
+    // found:falseで返す。フロント側はこれを見て従来のサンプル選手配列による
+    // 自動編成にフォールバックする。
+    const reason = club
+      ? `クラブ「${club}」のID対応表が未登録です`
+      : `team/teamId「${team ?? teamIdParam}」が有効な数値のチームIDではありません`;
+    return res.status(200).json({ found: false, reason });
   }
 
   try {
