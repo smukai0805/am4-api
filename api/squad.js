@@ -63,6 +63,51 @@ export default async function handler(req, res) {
     return res.status(200).json({ found: false, reason });
   }
 
+  // 【一時診断用 2026-08-14】下部組織混入疑惑の調査用。本番投入前に削除予定。
+  if (req.query.diag === '1') {
+    try {
+      const squadRes = await fetch(
+        `https://v3.football.api-sports.io/players/squads?team=${teamId}`,
+        { headers: { 'x-apisports-key': API_KEY } }
+      );
+      const squadData = await squadRes.json();
+      const rawPlayers = squadData.response?.[0]?.players || [];
+
+      const teamsRes = await fetch(
+        `https://v3.football.api-sports.io/teams?search=Real Madrid`,
+        { headers: { 'x-apisports-key': API_KEY } }
+      );
+      const teamsData = await teamsRes.json();
+
+      // 重複背番号の代表選手数名について、/players?id=...&season=2025 で
+      // 所属リーグ(statistics[].league)を確認する
+      const suspects = rawPlayers.filter(p => p.age && p.age <= 22).slice(0, 8);
+      const details = [];
+      for (const s of suspects) {
+        const r = await fetch(
+          `https://v3.football.api-sports.io/players?id=${s.id}&season=2025`,
+          { headers: { 'x-apisports-key': API_KEY } }
+        );
+        const d = await r.json();
+        const stats = d.response?.[0]?.statistics || [];
+        details.push({
+          id: s.id, name: s.name, number: s.number, age: s.age,
+          leagues: stats.map(st => ({ league: st.league?.name, leagueId: st.league?.id, team: st.team?.name, teamId: st.team?.id, appearences: st.games?.appearences })),
+        });
+      }
+
+      return res.status(200).json({
+        diag: true,
+        rawPlayerCount: rawPlayers.length,
+        rawPlayers: rawPlayers.map(p => ({ id: p.id, name: p.name, number: p.number, position: p.position, age: p.age })),
+        teamsSearch: (teamsData.response || []).map(t => ({ id: t.team?.id, name: t.team?.name })),
+        youngSuspectDetails: details,
+      });
+    } catch (err) {
+      return res.status(500).json({ diag: true, error: err.message });
+    }
+  }
+
   try {
     const response = await fetch(
       `https://v3.football.api-sports.io/players/squads?team=${teamId}`,
