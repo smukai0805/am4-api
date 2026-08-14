@@ -44,7 +44,8 @@ const DEFAULT_SEASON = 2025;
 // 終了済み(Match Finished)の試合のみスコア表示の対象にする(延長・PK戦を含む)。
 const FINISHED_STATUSES = ['FT', 'AET', 'PEN'];
 const FEATURED_LEAGUES = [
-  'プレミアリーグ', 'クラブ親善試合'
+  'プレミアリーグ', 'ラ・リーガ', 'セリエA', 'ブンデスリーガ', 'リーグ・アン',
+  'チャンピオンズリーグ', 'クラブ親善試合'
 ];
 const FEATURED_FIXTURE_LIMIT = 3;
 const FEATURED_HORIZON_DAYS = 45;
@@ -136,6 +137,35 @@ function featuredScore(fixture) {
   return prominentTeams * 10 + competitionWeight;
 }
 
+export function selectFeaturedFixtures(fixtures) {
+  const ranked = [...fixtures]
+    .sort((a, b) => featuredScore(b) - featuredScore(a) || Date.parse(a.kickoff) - Date.parse(b.kickoff));
+  const selected = [];
+  const usedTeams = new Set();
+  const usedCompetitions = new Set();
+
+  // 最初は大会もクラブも重複させず、トップを見ただけで複数リーグが伝わる構成にする。
+  for (const fixture of ranked) {
+    if (selected.length === FEATURED_FIXTURE_LIMIT) break;
+    if (usedCompetitions.has(fixture.competition) || usedTeams.has(fixture.homeId) || usedTeams.has(fixture.awayId)) continue;
+    selected.push(fixture);
+    usedCompetitions.add(fixture.competition);
+    usedTeams.add(fixture.homeId); usedTeams.add(fixture.awayId);
+  }
+  // 大会数が足りない時は、クラブ重複だけ避けて残り枠を埋める。
+  for (const fixture of ranked) {
+    if (selected.length === FEATURED_FIXTURE_LIMIT) break;
+    if (selected.some((item) => item.id === fixture.id) || usedTeams.has(fixture.homeId) || usedTeams.has(fixture.awayId)) continue;
+    selected.push(fixture);
+    usedTeams.add(fixture.homeId); usedTeams.add(fixture.awayId);
+  }
+  for (const fixture of ranked) {
+    if (selected.length === FEATURED_FIXTURE_LIMIT) break;
+    if (!selected.some((item) => item.id === fixture.id)) selected.push(fixture);
+  }
+  return selected;
+}
+
 async function getFeaturedFixtures(season) {
   const responses = [];
   const successfulSources = [];
@@ -144,21 +174,28 @@ async function getFeaturedFixtures(season) {
   const horizonDate = new Date(now.getTime() + FEATURED_HORIZON_DAYS * 24 * 60 * 60 * 1000);
   const from = now.toISOString().slice(0, 10);
   const to = horizonDate.toISOString().slice(0, 10);
-  for (const name of FEATURED_LEAGUES) {
-    try {
-      const data = await apiFootballFetch('/fixtures', { league: LEAGUES[name], season, from, to });
+  // 全大会を同時に処理へ載せる。実際の外部送信はapiFootballFetch()の共通
+  // スロットルが1.1秒間隔に整列するためレート制限を守りつつ、各レスポンス待ちを
+  // 直列に積み上げずに済む。大会ごとの失敗はallSettledで独立して扱う。
+  const leagueResults = await Promise.allSettled(FEATURED_LEAGUES.map(async (name) => {
+      const data = await apiFootballFetch('/fixtures', { league: LEAGUES[name], season, from, to }, { timeoutMs: 10000 });
       if (data.errors && Object.keys(data.errors).length > 0) {
-        console.error(`[featured fixtures] ${name}:`, data.errors);
-        errors[name] = data.errors;
-        continue;
+        throw Object.assign(new Error(`${name} data unavailable`), { providerErrors: data.errors });
       }
+      return { name, fixtures: (data.response || []).map((fixture) => simplifyFixture(fixture, name, true)) };
+  }));
+
+  leagueResults.forEach((result, index) => {
+    const name = FEATURED_LEAGUES[index];
+    if (result.status === 'fulfilled') {
       successfulSources.push(name);
-      responses.push(...(data.response || []).map((fixture) => simplifyFixture(fixture, name, true)));
-    } catch (caughtError) {
+      responses.push(...result.value.fixtures);
+    } else {
+      const caughtError = result.reason;
       console.error(`[featured fixtures] ${name} unavailable:`, caughtError);
-      errors[name] = { unavailable: true };
+      errors[name] = caughtError?.providerErrors || { unavailable: true };
     }
-  }
+  });
 
   const nowMs = now.getTime();
   const horizon = horizonDate.getTime();
@@ -168,20 +205,7 @@ async function getFeaturedFixtures(season) {
     SCHEDULED_STATUSES.has(fixture.status)
   );
   const candidates = upcoming.filter((fixture) => Date.parse(fixture.kickoff) <= horizon);
-  const ranked = (candidates.length >= FEATURED_FIXTURE_LIMIT ? candidates : upcoming)
-    .sort((a, b) => featuredScore(b) - featuredScore(a) || Date.parse(a.kickoff) - Date.parse(b.kickoff));
-  const selected = [];
-  const usedTeams = new Set();
-  for (const fixture of ranked) {
-    if (selected.length === FEATURED_FIXTURE_LIMIT) break;
-    if (usedTeams.has(fixture.homeId) || usedTeams.has(fixture.awayId)) continue;
-    selected.push(fixture);
-    usedTeams.add(fixture.homeId); usedTeams.add(fixture.awayId);
-  }
-  for (const fixture of ranked) {
-    if (selected.length === FEATURED_FIXTURE_LIMIT) break;
-    if (!selected.some((item) => item.id === fixture.id)) selected.push(fixture);
-  }
+  const selected = selectFeaturedFixtures(candidates.length >= FEATURED_FIXTURE_LIMIT ? candidates : upcoming);
   return { fixtures: selected, sources: successfulSources, errors };
 }
 
@@ -203,7 +227,7 @@ export default async function handler(req, res) {
   try {
     if (featured === '1') {
       const featuredResult = await getFeaturedFixtures(SEASON);
-      res.setHeader('Cache-Control', 's-maxage=1800, stale-while-revalidate');
+      res.setHeader('Cache-Control', 's-maxage=1800, stale-while-revalidate=86400');
       return res.status(200).json({ season: SEASON, ...featuredResult });
     }
 
