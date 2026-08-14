@@ -144,22 +144,39 @@
     border-color:var(--brown-light);
   }
   .player-photo{
-    position:relative;aspect-ratio:1/1;
+    position:relative;aspect-ratio:1/1;overflow:hidden;
     background:linear-gradient(150deg,#2c2419,#0f0d09 75%);
     display:flex;align-items:center;justify-content:center;
   }
+  /* 選手写真(API-Football提供、150x150程度の低解像度)をカード全面に敷き詰める。
+     object-fit:coverが無いと写真が原寸のまま中央に小さく表示され、周囲の
+     ダークグラデーションが額縁のように大きく余ってしまっていた。 */
+  .player-photo img{
+    position:relative;z-index:1;
+    width:100%;height:100%;object-fit:cover;object-position:center 18%;
+    filter:saturate(1.08) contrast(1.05);
+  }
+  /* 低解像度の引き伸ばしや、写真の白背景とカードのダーク背景の境目を
+     縁でなじませて目立たなくするビネット。バッジより下・写真より上に重ねる。 */
+  .player-photo::after{
+    content:'';position:absolute;inset:0;z-index:2;pointer-events:none;
+    background:radial-gradient(ellipse at 50% 38%, rgba(0,0,0,0) 42%, rgba(12,10,7,0.5) 100%);
+  }
   .player-photo .initials{
+    position:relative;z-index:1;
     font-family:'Anton',sans-serif;font-size:2.2rem;color:rgba(255,255,255,0.16);
   }
   .player-photo .num-badge{
-    position:absolute;top:8px;left:8px;
-    width:28px;height:28px;border-radius:50%;
-    background:rgba(255,255,255,0.92);
+    position:absolute;top:10px;left:10px;z-index:3;
+    min-width:32px;height:32px;padding:0 7px;border-radius:9px;
+    background:linear-gradient(135deg,var(--brown-light),var(--brown-dark));
+    box-shadow:0 3px 8px rgba(12,10,7,0.45), inset 0 1px 0 rgba(255,255,255,0.28);
     display:flex;align-items:center;justify-content:center;
-    font-family:'Poppins',sans-serif;font-weight:700;font-size:0.72rem;color:var(--black);
+    font-family:'Poppins',sans-serif;font-weight:800;font-size:0.85rem;color:var(--white);
+    letter-spacing:0.01em;
   }
   .player-photo .cap-badge{
-    position:absolute;top:8px;right:8px;
+    position:absolute;top:10px;right:10px;z-index:3;
     width:22px;height:22px;border-radius:50%;
     background:var(--brown);
     display:flex;align-items:center;justify-content:center;
