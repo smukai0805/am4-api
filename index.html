@@ -12,6 +12,9 @@
 <meta property="og:title" content="AM4｜選手とクラブの物語に出会う">
 <meta property="og:description" content="スコアの、その先へ。欧州5大リーグを物語とデータで深く追う。">
 <meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;700;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -62,11 +65,12 @@
     border-bottom:1px solid var(--line);
   }
   .wordmark{
-    font-family:var(--display);
-    font-weight:900;
-    font-size:26px;
-    letter-spacing:0.02em;
-    display:flex; align-items:baseline; gap:8px;
+    display:flex; align-items:center; gap:12px;
+  }
+  .wordmark img{
+    display:block;
+    width:clamp(78px,9vw,104px);
+    height:auto;
   }
   .wordmark small{
     font-family:var(--mono);
@@ -745,7 +749,10 @@
 <body>
 
 <div class="topbar">
-  <div class="wordmark">AM4 <small>Soccer&nbsp;Media</small></div>
+  <a class="wordmark" href="/" aria-label="AM4 ホーム">
+    <img src="/am4-logo.png" alt="AM4">
+    <small>Soccer&nbsp;Media</small>
+  </a>
   <div class="lang">日本語</div>
 </div>
 
