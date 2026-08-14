@@ -889,7 +889,7 @@
       <span class="live-pill">SAMPLE</span>
       <div class="live-crests"><div class="crest d" style="width:26px;height:26px;font-size:8.5px;">LIV</div><div class="crest a" style="width:26px;height:26px;font-size:8.5px;">CHE</div></div>
       <span class="live-comp">PL · 第3節</span>
-      <span class="live-title">Liverpool vs Chelsea · API未接続のデモデータ</span>
+      <span class="live-title">Liverpool vs Chelsea · デモデータ</span>
     </div>
 
     <div class="carousel">
@@ -1225,12 +1225,12 @@
   <div class="data-grid">
     <div class="data-panel reveal">
       <div class="data-panel-head"><h3>注目試合</h3><span class="sample-label" id="fixtures-source">読み込み中</span></div>
-      <div class="data-status" id="fixtures-status" aria-live="polite">APIへ接続しています</div>
+      <div class="data-status" id="fixtures-status" aria-live="polite">最新情報を読み込んでいます</div>
       <div id="fixture-list"></div>
     </div>
     <div class="data-panel reveal" id="standings">
       <div class="data-panel-head"><h3>Premier League</h3><span class="sample-label" id="standings-source">読み込み中</span></div>
-      <div class="data-status" id="standings-status" aria-live="polite">APIへ接続しています</div>
+      <div class="data-status" id="standings-status" aria-live="polite">最新情報を読み込んでいます</div>
       <div id="standing-list"></div>
     </div>
   </div>
@@ -1367,7 +1367,7 @@
         const time = document.createElement('span');
         time.textContent = `${new Intl.DateTimeFormat('ja-JP', { hour:'2-digit', minute:'2-digit' }).format(kickoff)} キックオフ`;
         kickoffNode.replaceChildren(document.createTextNode(dateLabel), time);
-        slide.querySelector('.broadcast').replaceChildren(document.createTextNode('API-Football 試合情報'));
+        slide.querySelector('.broadcast').replaceChildren(document.createTextNode('試合情報'));
         const cta = slide.querySelector('.slide-cta');
         cta.textContent = '予想ラインナップは試合前に公開'; cta.disabled = true; cta.setAttribute('aria-expanded', 'false');
 
@@ -1388,15 +1388,15 @@
 
       const first = fixtures[0];
       const ticker = document.querySelector('.live-ticker');
-      ticker.querySelector('.live-pill').textContent = degraded ? 'API PARTIAL' : 'API-FOOTBALL';
+      ticker.querySelector('.live-pill').textContent = degraded ? '一部取得' : '注目';
       const tickerCrests = ticker.querySelectorAll('.crest');
       renderCrest(tickerCrests[0], { name:first.home, logo:first.homeLogo });
       renderCrest(tickerCrests[1], { name:first.away, logo:first.awayLogo });
       ticker.querySelector('.live-comp').textContent = competitionLabel(first.competition);
       ticker.querySelector('.live-title').textContent = `${first.home} vs ${first.away} · 注目試合`;
       document.querySelector('.topic-label').textContent = degraded
-        ? '取得できたリーグから選んだ注目試合 · 一部API取得失敗'
-        : 'API-Footballから選んだ今後の注目試合';
+        ? '取得できたリーグから選んだ注目試合 · 一部データ取得失敗'
+        : '今後の注目試合';
       document.dispatchEvent(new CustomEvent('am4:featured-rendered'));
       return true;
     }
@@ -1420,7 +1420,10 @@
       const versus = document.createElement('span');
       versus.className = 'fixture-versus'; versus.textContent = 'vs';
       teams.append(fixtureTeam(fixture.home, fixture.homeLogo), versus, fixtureTeam(fixture.away, fixture.awayLogo));
-      row.querySelector('.sample-label').textContent = fixture.score && fixture.score !== '-' ? fixture.score : (fixture.note || sourceLabel);
+      const rowLabel = row.querySelector('.sample-label');
+      const rowLabelText = fixture.score && fixture.score !== '-' ? fixture.score : (fixture.note || (sourceLabel === 'SAMPLE' ? sourceLabel : ''));
+      rowLabel.textContent = rowLabelText;
+      rowLabel.hidden = !rowLabelText;
       fixturesNode.append(row);
       });
     }
@@ -1456,7 +1459,7 @@
       profile.firstElementChild.replaceWith(image);
     }
 
-    profile.querySelector('.sample-label').textContent = photo ? 'SAMPLE STATS · API PHOTO' : 'SAMPLE DATA';
+    profile.querySelector('.sample-label').textContent = photo ? 'SAMPLE STATS · PHOTO' : 'SAMPLE DATA';
     profile.querySelector('h3').textContent = player.name;
     profile.querySelector('.p-club').textContent = `${player.club} · ${player.position} · ${player.age}歳`;
     const stats = [['出場', player.appearances], ['出場時間', player.minutes], ['パス成功率', player.passAccuracy]];
@@ -1483,10 +1486,10 @@
       const source = document.querySelector(`[data-player-media-source="${target}"]`);
       const image = createPlayerPhoto(player.name, photoResult.value.photo, () => {
         image.replaceWith(placeholder);
-        if (source) source.textContent = 'SAMPLE FALLBACK';
+        if (source) { source.hidden = false; source.textContent = 'SAMPLE FALLBACK'; }
       });
       placeholder.replaceWith(image);
-      if (source) source.textContent = 'API-FOOTBALL';
+      if (source) source.hidden = true;
       return true;
     }
 
@@ -1507,11 +1510,12 @@
 
     if (fixtureResult.status === 'fulfilled' && fixtureResult.value.fixtures?.length) {
       const relevantFixtures = AM4FootballData.selectRelevantFixtures(fixtureResult.value.fixtures);
-      renderFixtures(relevantFixtures, 'API-FOOTBALL');
-      fixturesSource.textContent = 'API-FOOTBALL';
+      renderFixtures(relevantFixtures, '');
+      fixturesSource.hidden = true;
       fixturesStatus.textContent = `次の試合を表示 · ${updatedAt()}更新`;
       window.AM4LiveContext.fixtures = fixtureResult.value.fixtures;
     } else {
+      fixturesSource.hidden = false;
       fixturesSource.textContent = 'SAMPLE FALLBACK';
       const providerError = fixtureResult.status === 'fulfilled' && fixtureResult.value.errors;
       fixturesStatus.textContent = providerError ? 'API応答エラーのためサンプルを表示しています' : '実データが未公開のためサンプルを表示しています';
@@ -1522,9 +1526,10 @@
     const premierLeague = standingResult.status === 'fulfilled' ? standingResult.value.leagues?.['プレミアリーグ'] : null;
     if (premierLeague?.length) {
       renderStandings(premierLeague.slice(0, 5));
-      standingsSource.textContent = 'API-FOOTBALL';
+      standingsSource.hidden = true;
       standingsStatus.textContent = `2025-26シーズン · ${updatedAt()}更新`;
     } else {
+      standingsSource.hidden = false;
       standingsSource.textContent = 'SAMPLE FALLBACK';
       const providerError = standingResult.status === 'fulfilled' && standingResult.value.errors;
       standingsStatus.textContent = providerError ? 'API応答エラーのためサンプルを表示しています' : '実データが未公開のためサンプルを表示しています';
@@ -1533,7 +1538,7 @@
     }
 
     if (photoResult.status === 'fulfilled' && photoResult.value.photo && AM4FootballData.isMatchingPlayerName(photoResult.value.name, sample.player.name)) {
-      renderPlayer(sample.player, photoResult.value.photo, 'API-Football');
+      renderPlayer(sample.player, photoResult.value.photo, '選手データ');
       window.AM4LiveContext.playerPhotoVerified = true;
     } else if (photoResult.status === 'fulfilled' && photoResult.value.photo) {
       console.warn('Player photo rejected because the returned name did not match.', { expected: sample.player.name, actual: photoResult.value.name });
