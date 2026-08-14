@@ -81,7 +81,7 @@ export default async function handler(req, res) {
 
       // 重複背番号の代表選手数名について、/players?id=...&season=2025 で
       // 所属リーグ(statistics[].league)を確認する
-      const suspects = rawPlayers.filter(p => p.age && p.age <= 22).slice(0, 8);
+      const suspects = rawPlayers.filter(p => p.age && p.age <= 23);
       const details = [];
       for (const s of suspects) {
         const r = await fetch(
