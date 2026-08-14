@@ -27,5 +27,14 @@
     return actualParts.length > 1 && expectedParts.length > 1 && actualParts.at(-1) === expectedParts.at(-1);
   }
 
-  return { createClient, isMatchingPlayerName };
+  function selectRelevantFixtures(fixtures, now = Date.now(), limit = 3) {
+    const valid = (fixtures || []).filter((fixture) => Number.isFinite(Date.parse(fixture.kickoff)));
+    const upcoming = valid
+      .filter((fixture) => Date.parse(fixture.kickoff) >= now)
+      .sort((a, b) => Date.parse(a.kickoff) - Date.parse(b.kickoff));
+    if (upcoming.length) return upcoming.slice(0, limit);
+    return valid.sort((a, b) => Date.parse(b.kickoff) - Date.parse(a.kickoff)).slice(0, limit);
+  }
+
+  return { createClient, isMatchingPlayerName, selectRelevantFixtures };
 });

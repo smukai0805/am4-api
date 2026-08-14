@@ -692,6 +692,7 @@
   .data-panel-head{padding:18px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;align-items:center;}
   .data-panel-head h3{margin:0;font-family:var(--display);font-size:24px;}
   .sample-label{font-family:var(--mono);font-size:10px;color:var(--gold);border:1px solid rgba(217,180,106,.35);border-radius:999px;padding:5px 9px;}
+  .data-status{padding:10px 20px;border-bottom:1px solid var(--line);font-size:11px;color:var(--steel-dim);}
   .fixture-row,.standing-row{display:grid;align-items:center;gap:12px;padding:15px 20px;border-bottom:1px solid var(--line);}
   .fixture-row{grid-template-columns:100px 1fr auto;}
   .standing-row{grid-template-columns:28px 1fr 45px 45px;}
@@ -1208,10 +1209,12 @@
   <div class="data-grid">
     <div class="data-panel reveal">
       <div class="data-panel-head"><h3>注目試合</h3><span class="sample-label" id="fixtures-source">読み込み中</span></div>
+      <div class="data-status" id="fixtures-status" aria-live="polite">APIへ接続しています</div>
       <div id="fixture-list"></div>
     </div>
     <div class="data-panel reveal" id="standings">
       <div class="data-panel-head"><h3>Premier League</h3><span class="sample-label" id="standings-source">読み込み中</span></div>
+      <div class="data-status" id="standings-status" aria-live="polite">APIへ接続しています</div>
       <div id="standing-list"></div>
     </div>
   </div>
@@ -1238,6 +1241,10 @@
     const profile = document.getElementById('player-profile');
     const fixturesSource = document.getElementById('fixtures-source');
     const standingsSource = document.getElementById('standings-source');
+    const fixturesStatus = document.getElementById('fixtures-status');
+    const standingsStatus = document.getElementById('standings-status');
+    const updatedAt = () => new Intl.DateTimeFormat('ja-JP', { hour:'2-digit', minute:'2-digit' }).format(new Date());
+    window.AM4LiveContext = { fixtures: [], playerPhotoVerified: false };
 
     function renderFixtures(items, sourceLabel){
       fixturesNode.replaceChildren();
@@ -1288,33 +1295,45 @@
 
     renderFixtures(sample.fixtures, 'SAMPLE'); renderStandings(sample.standings); renderPlayer(sample.player, null, null);
     const [fixtureResult, standingResult, photoResult] = await Promise.allSettled([
-        client.fixtures('プレミアリーグ', 2025), client.standings(2025), client.playerPhoto('Hato', 'Jorrel Hato')
+        client.fixtures('プレミアリーグ', 2026), client.standings(2025), client.playerPhoto('Hato', 'Jorrel Hato')
     ]);
 
     if (fixtureResult.status === 'fulfilled' && fixtureResult.value.fixtures?.length) {
-      renderFixtures(fixtureResult.value.fixtures.slice(-3).reverse(), 'API-FOOTBALL');
+      const relevantFixtures = AM4FootballData.selectRelevantFixtures(fixtureResult.value.fixtures);
+      renderFixtures(relevantFixtures, 'API-FOOTBALL');
       fixturesSource.textContent = 'API-FOOTBALL';
+      fixturesStatus.textContent = `次の試合を表示 · ${updatedAt()}更新`;
+      window.AM4LiveContext.fixtures = fixtureResult.value.fixtures;
     } else {
       fixturesSource.textContent = 'SAMPLE FALLBACK';
+      const providerError = fixtureResult.status === 'fulfilled' && fixtureResult.value.errors;
+      fixturesStatus.textContent = providerError ? 'API応答エラーのためサンプルを表示しています' : '実データが未公開のためサンプルを表示しています';
       if (fixtureResult.status === 'rejected') console.warn('Fixture API unavailable.', fixtureResult.reason);
+      if (fixtureResult.status === 'rejected') fixturesStatus.textContent = 'APIへ接続できないためサンプルを表示しています';
     }
 
     const premierLeague = standingResult.status === 'fulfilled' ? standingResult.value.leagues?.['プレミアリーグ'] : null;
     if (premierLeague?.length) {
       renderStandings(premierLeague.slice(0, 5));
       standingsSource.textContent = 'API-FOOTBALL';
+      standingsStatus.textContent = `2025-26シーズン · ${updatedAt()}更新`;
     } else {
       standingsSource.textContent = 'SAMPLE FALLBACK';
+      const providerError = standingResult.status === 'fulfilled' && standingResult.value.errors;
+      standingsStatus.textContent = providerError ? 'API応答エラーのためサンプルを表示しています' : '実データが未公開のためサンプルを表示しています';
       if (standingResult.status === 'rejected') console.warn('Standings API unavailable.', standingResult.reason);
+      if (standingResult.status === 'rejected') standingsStatus.textContent = 'APIへ接続できないためサンプルを表示しています';
     }
 
     if (photoResult.status === 'fulfilled' && photoResult.value.photo && AM4FootballData.isMatchingPlayerName(photoResult.value.name, sample.player.name)) {
       renderPlayer(sample.player, photoResult.value.photo, 'API-Football');
+      window.AM4LiveContext.playerPhotoVerified = true;
     } else if (photoResult.status === 'fulfilled' && photoResult.value.photo) {
       console.warn('Player photo rejected because the returned name did not match.', { expected: sample.player.name, actual: photoResult.value.name });
     } else if (photoResult.status === 'rejected') {
       console.warn('Player photo API unavailable.', photoResult.reason);
     }
+    document.dispatchEvent(new CustomEvent('am4:data-ready'));
   })();
 
   // local favourites and the returning-visitor For You area
@@ -1341,6 +1360,20 @@
     const grid = document.getElementById('for-you-grid');
     const countLabel = document.getElementById('favorite-count');
 
+    function liveDetail(item){
+      if (item.type === 'clubs') {
+        const match = AM4FootballData.selectRelevantFixtures(window.AM4LiveContext?.fixtures || [], Date.now(), 20)
+          .find((fixture) => fixture.home === item.label || fixture.away === item.label);
+        if (match) {
+          const opponent = match.home === item.label ? match.away : match.home;
+          const kickoff = new Intl.DateTimeFormat('ja-JP', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }).format(new Date(match.kickoff));
+          return `次戦 ${kickoff} vs ${opponent}`;
+        }
+      }
+      if (item.type === 'players' && window.AM4LiveContext?.playerPhotoVerified) return 'APIプロフィール写真と最新ストーリーを見る';
+      return item.detail;
+    }
+
     function render(){
       const saved = AM4Favorites.read(localStorage);
       const validItems = ['clubs', 'players', 'articles'].flatMap((type) =>
@@ -1364,7 +1397,7 @@
           const kind = favoritePresentation[item.type].kind;
           card.innerHTML = `<small>${kind}</small><strong></strong><span></span>`;
           card.querySelector('strong').textContent = item.label;
-          card.querySelector('span').textContent = item.detail;
+          card.querySelector('span').textContent = liveDetail(item);
           grid.append(card);
       });
     }
@@ -1375,6 +1408,7 @@
       AM4Favorites.toggle(localStorage, button.dataset.favoriteType, button.dataset.favoriteId);
       render();
     });
+    document.addEventListener('am4:data-ready', render);
     render();
   })();
 
