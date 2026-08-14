@@ -11,6 +11,7 @@
     }
     return {
       fixtures: (league, season) => request(`/fixtures?league=${encodeURIComponent(league)}&season=${encodeURIComponent(season)}`),
+      featuredFixtures: (season) => request(`/fixtures?featured=1&season=${encodeURIComponent(season)}`),
       standings: (season) => request(`/standings?season=${encodeURIComponent(season)}`),
       playerPhoto: ({ search, fullName, providerId }) => {
         const providerReference = providerId ? `&playerId=${encodeURIComponent(providerId)}` : "";

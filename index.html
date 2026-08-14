@@ -183,9 +183,10 @@
     background:#04160c; animation:pulse 1.6s ease-in-out infinite;
   }
   @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:0.3;} }
-  .live-crests{ display:flex; align-items:center; flex-shrink:0; }
+  .live-crests{ display:flex; align-items:center; gap:5px; flex-shrink:0; }
   .live-crests .crest{ width:26px; height:26px; border-radius:6px; font-size:8.5px; }
-  .live-crests .crest:last-child{ margin-left:-7px; box-shadow:0 0 0 2px var(--ink), 0 0 0 1px rgba(255,255,255,0.14) inset; }
+  .live-crests .crest:last-child{ margin-left:0; }
+  .live-crests .crest.has-api-logo:last-child{box-shadow:none;border-radius:0;}
   .live-comp{ font-family:var(--mono); font-size:10px; color:var(--floodlight); text-transform:uppercase; }
   .live-title{ font-size:13.5px; font-weight:600; margin-left:4px; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .live-watch{
@@ -226,11 +227,12 @@
     border-color:rgba(122,158,255,0.55);
     background:linear-gradient(160deg, rgba(42,94,255,0.16), rgba(9,14,28,0.9));
   }
-  .strip-crests{ display:flex; align-items:center; flex-shrink:0; }
+  .strip-crests{ display:flex; align-items:center; gap:6px; flex-shrink:0; }
   .strip-crests .crest{
     width:30px; height:30px; border-radius:8px; font-size:9.5px;
   }
-  .strip-crests .crest:last-child{ margin-left:-8px; box-shadow:0 0 0 2px var(--ink-2), 0 0 0 1px rgba(255,255,255,0.14) inset; }
+  .strip-crests .crest:last-child{ margin-left:0; }
+  .strip-crests .crest.has-api-logo:last-child{box-shadow:none;border-radius:0;}
   .strip-text{ min-width:0; }
   .strip-comp{
     display:block;
@@ -296,6 +298,7 @@
     display:block; font-weight:900; font-size:clamp(24px,5vw,38px);
     color:var(--paper); letter-spacing:-0.01em;
   }
+  .poster-clubname.dynamic{max-width:120px;font-size:clamp(18px,4vw,27px);font-weight:900;color:var(--paper);line-height:1.05;}
   .poster-vs{
     font-family:var(--display); font-weight:900; font-size:clamp(20px,4vw,30px);
     color:var(--paper);
@@ -394,6 +397,7 @@
     transition:background .2s ease, transform .2s ease;
   }
   .slide-cta:hover{ background:rgba(122,158,255,0.22); transform:translateY(-2px); }
+  .slide-cta:disabled{cursor:default;opacity:.72;box-shadow:none;transform:none;}
   .carousel-dots{
     display:flex; gap:8px; justify-content:center;
     padding:16px 0 22px;
@@ -596,9 +600,9 @@
     position:absolute; inset:0; border-radius:inherit;
     background:linear-gradient(160deg, rgba(255,255,255,0.35), transparent 55%);
   }
-  .crest.has-api-logo{background:rgba(255,255,255,.045);padding:3px;}
+  .crest.has-api-logo{background:transparent!important;padding:0;box-shadow:none;border-radius:0;}
   .crest.has-api-logo::after{display:none;}
-  .crest-logo{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 4px 8px rgba(0,0,0,.35));}
+  .crest-logo{display:block;width:86%;height:86%;margin:auto;object-fit:contain;object-position:center;filter:drop-shadow(0 5px 7px rgba(0,0,0,.32));}
   .crest.a{ background:linear-gradient(160deg,#ff7a7a,#a01f1f); }
   .crest.b{ background:linear-gradient(160deg,#7fa6ff,#1a3fc4); }
   .crest.c{ background:linear-gradient(160deg,#ffe08a,#b8862f); color:#3a2a05; }
@@ -1297,24 +1301,94 @@
       return image;
     }
 
+    function renderCrest(crest, { name, logo, fallback = initials(name) }){
+      if (!crest) return;
+      if (!logo) {
+        crest.classList.remove('has-api-logo');
+        crest.textContent = fallback;
+        crest.title = 'SAMPLE FALLBACK';
+        return;
+      }
+      const image = document.createElement('img');
+      image.className = 'crest-logo'; image.src = logo; image.alt = `${name}のクラブロゴ`; image.loading = 'lazy';
+      image.addEventListener('error', () => renderCrest(crest, { name, logo:null, fallback }), { once:true });
+      crest.classList.add('has-api-logo'); crest.removeAttribute('title'); crest.replaceChildren(image);
+    }
+
     function enhanceStaticCrests(){
       document.querySelectorAll('.crest').forEach((crest) => {
         const abbreviation = crest.textContent.trim();
         const team = TEAM_MEDIA[abbreviation];
         if (!team) return;
-        const image = document.createElement('img');
-        image.className = 'crest-logo';
-        image.src = `https://media.api-sports.io/football/teams/${team.id}.png`;
-        image.alt = `${team.name}のクラブロゴ`;
-        image.loading = 'lazy';
-        image.addEventListener('error', () => {
-          crest.classList.remove('has-api-logo');
-          crest.textContent = abbreviation;
-          crest.title = 'SAMPLE FALLBACK';
-        }, { once:true });
-        crest.classList.add('has-api-logo');
-        crest.replaceChildren(image);
+        renderCrest(crest, {
+          name:team.name,
+          logo:`https://media.api-sports.io/football/teams/${team.id}.png`,
+          fallback:abbreviation
+        });
       });
+    }
+
+    function competitionLabel(name){
+      return ({
+        'プレミアリーグ':'Premier League',
+        'ラ・リーガ':'La Liga',
+        'チャンピオンズリーグ':'Champions League',
+        'クラブ親善試合':'Club Friendly'
+      })[name] || name;
+    }
+
+    function renderFeaturedFixtures(fixtures, degraded = false){
+      if (!Array.isArray(fixtures) || fixtures.length === 0) return false;
+      const slides = [...document.querySelectorAll('.slide')];
+      const chips = [...document.querySelectorAll('.strip-chip')];
+      fixtures.slice(0, 3).forEach((fixture, index) => {
+        const slide = slides[index];
+        const sides = slide.querySelectorAll('.poster-side');
+        const names = slide.querySelectorAll('.poster-clubname');
+        renderCrest(sides[0]?.querySelector('.crest'), { name:fixture.home, logo:fixture.homeLogo });
+        renderCrest(sides[1]?.querySelector('.crest'), { name:fixture.away, logo:fixture.awayLogo });
+        names[0].classList.add('dynamic'); names[0].textContent = fixture.home;
+        names[1].classList.add('dynamic'); names[1].textContent = fixture.away;
+        const keymen = slide.querySelectorAll('.keyman-block');
+        keymen[0].querySelector('.kavatar-lg').textContent = 'PRE'; keymen[0].querySelector('span').textContent = '予想メンバー';
+        keymen[1].querySelector('.kavatar-lg').textContent = 'SOON'; keymen[1].querySelector('span').textContent = '試合前に公開';
+        slide.querySelector('.slide-comp').textContent = `${competitionLabel(fixture.competition)} · ${fixture.roundLabel || '注目試合'}`;
+        const kickoff = new Date(fixture.kickoff);
+        const kickoffNode = slide.querySelector('.kickoff');
+        const dateLabel = new Intl.DateTimeFormat('ja-JP', { month:'numeric', day:'numeric', weekday:'short' }).format(kickoff);
+        const time = document.createElement('span');
+        time.textContent = `${new Intl.DateTimeFormat('ja-JP', { hour:'2-digit', minute:'2-digit' }).format(kickoff)} キックオフ`;
+        kickoffNode.replaceChildren(document.createTextNode(dateLabel), time);
+        slide.querySelector('.broadcast').replaceChildren(document.createTextNode('API-Football 試合情報'));
+        const cta = slide.querySelector('.slide-cta');
+        cta.textContent = '予想ラインナップは試合前に公開'; cta.disabled = true; cta.setAttribute('aria-expanded', 'false');
+
+        const chip = chips[index];
+        const chipCrests = chip.querySelectorAll('.crest');
+        renderCrest(chipCrests[0], { name:fixture.home, logo:fixture.homeLogo });
+        renderCrest(chipCrests[1], { name:fixture.away, logo:fixture.awayLogo });
+        chip.querySelector('.strip-comp').textContent = `${competitionLabel(fixture.competition)} · ${fixture.roundLabel || '注目試合'}`;
+        chip.querySelector('.strip-vs').textContent = `${fixture.home} vs ${fixture.away}`;
+        chip.setAttribute('aria-label', `${fixture.home}対${fixture.away}を表示`);
+      });
+
+      for (let index = fixtures.length; index < 3; index++) {
+        slides[index].querySelector('.slide-comp').textContent = `SAMPLE · ${slides[index].querySelector('.slide-comp').textContent}`;
+        chips[index].querySelector('.strip-comp').textContent = `SAMPLE · ${chips[index].querySelector('.strip-comp').textContent}`;
+      }
+
+      const first = fixtures[0];
+      const ticker = document.querySelector('.live-ticker');
+      ticker.querySelector('.live-pill').textContent = degraded ? 'API PARTIAL' : 'API-FOOTBALL';
+      const tickerCrests = ticker.querySelectorAll('.crest');
+      renderCrest(tickerCrests[0], { name:first.home, logo:first.homeLogo });
+      renderCrest(tickerCrests[1], { name:first.away, logo:first.awayLogo });
+      ticker.querySelector('.live-comp').textContent = competitionLabel(first.competition);
+      ticker.querySelector('.live-title').textContent = `${first.home} vs ${first.away} · 注目試合`;
+      document.querySelector('.topic-label').textContent = degraded
+        ? '取得できたリーグから選んだ注目試合 · 一部API取得失敗'
+        : 'API-Footballから選んだ今後の注目試合';
+      return true;
     }
 
     function fixtureTeam(name, logo){
@@ -1408,12 +1482,18 @@
 
     enhanceStaticCrests();
     renderFixtures(sample.fixtures, 'SAMPLE'); renderStandings(sample.standings); renderPlayer(sample.player, null, null);
-    const [fixtureResult, standingResult, photoResult, mfuniPhotoResult] = await Promise.allSettled([
+    const [featuredResult, fixtureResult, standingResult, photoResult, mfuniPhotoResult] = await Promise.allSettled([
+        client.featuredFixtures(2026),
         client.fixtures('プレミアリーグ', 2026),
         client.standings(2025),
         client.playerPhoto(FEATURED_PLAYERS.hato),
         client.playerPhoto(FEATURED_PLAYERS.mfuni)
     ]);
+
+    if (featuredResult.status === 'fulfilled') {
+      const featuredErrors = featuredResult.value.errors || {};
+      renderFeaturedFixtures(featuredResult.value.fixtures, Object.keys(featuredErrors).length > 0);
+    }
 
     if (fixtureResult.status === 'fulfilled' && fixtureResult.value.fixtures?.length) {
       const relevantFixtures = AM4FootballData.selectRelevantFixtures(fixtureResult.value.fixtures);
