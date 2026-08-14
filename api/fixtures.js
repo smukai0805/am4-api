@@ -43,6 +43,16 @@ const DEFAULT_SEASON = 2025;
 
 // 終了済み(Match Finished)の試合のみスコア表示の対象にする(延長・PK戦を含む)。
 const FINISHED_STATUSES = ['FT', 'AET', 'PEN'];
+const FEATURED_LEAGUES = [
+  'プレミアリーグ', 'ラ・リーガ', 'セリエA', 'ブンデスリーガ', 'リーグ・アン',
+  'チャンピオンズリーグ', 'クラブ親善試合'
+];
+const FEATURED_FIXTURE_LIMIT = 3;
+const FEATURED_HORIZON_DAYS = 45;
+const SCHEDULED_STATUSES = new Set(['NS', 'TBD']);
+const FEATURED_TEAM_IDS = new Set([
+  33, 34, 40, 42, 47, 49, 50, 529, 530, 541, 157, 165, 168, 489, 496, 505, 85,
+]);
 
 // Champions Leagueの決勝トーナメント各ラウンド(API-Football表記→日本語ラベル)。
 // 2026-07-31追加: リーグフェーズの「第N節」表記と紛らわしいとの指摘を受け、
@@ -97,6 +107,85 @@ function resolveRoundInfo(rawRound) {
   return null;
 }
 
+function simplifyFixture(f, competition, includeProviderRound = false) {
+  const played = FINISHED_STATUSES.includes(f.fixture.status?.short);
+  const roundInfo = resolveRoundInfo(f.league.round);
+  return {
+    id: f.fixture.id,
+    date: (f.fixture.date || '').slice(0, 10),
+    kickoff: f.fixture.date || null,
+    competition,
+    roundKey: roundInfo?.key || null,
+    roundLabel: roundInfo?.label || (includeProviderRound ? f.league.round : null),
+    status: f.fixture.status?.short,
+    homeId: f.teams.home.id,
+    awayId: f.teams.away.id,
+    home: f.teams.home.name,
+    away: f.teams.away.name,
+    homeLogo: f.teams.home.logo || null,
+    awayLogo: f.teams.away.logo || null,
+    homeGoals: f.goals.home,
+    awayGoals: f.goals.away,
+    score: played ? `${f.goals.home}-${f.goals.away}` : '-',
+    venue: f.fixture.venue?.name || null,
+  };
+}
+
+function featuredScore(fixture) {
+  const prominentTeams = Number(FEATURED_TEAM_IDS.has(fixture.homeId)) + Number(FEATURED_TEAM_IDS.has(fixture.awayId));
+  const competitionWeight = fixture.competition === 'チャンピオンズリーグ' ? 5 : fixture.competition === 'クラブ親善試合' ? 3 : 2;
+  return prominentTeams * 10 + competitionWeight;
+}
+
+async function getFeaturedFixtures(season) {
+  const responses = [];
+  const successfulSources = [];
+  const errors = {};
+  const now = new Date();
+  const horizonDate = new Date(now.getTime() + FEATURED_HORIZON_DAYS * 24 * 60 * 60 * 1000);
+  const from = now.toISOString().slice(0, 10);
+  const to = horizonDate.toISOString().slice(0, 10);
+  for (const name of FEATURED_LEAGUES) {
+    try {
+      const data = await apiFootballFetch('/fixtures', { league: LEAGUES[name], season, from, to });
+      if (data.errors && Object.keys(data.errors).length > 0) {
+        console.error(`[featured fixtures] ${name}:`, data.errors);
+        errors[name] = data.errors;
+        continue;
+      }
+      successfulSources.push(name);
+      responses.push(...(data.response || []).map((fixture) => simplifyFixture(fixture, name, true)));
+    } catch (caughtError) {
+      console.error(`[featured fixtures] ${name} unavailable:`, caughtError);
+      errors[name] = { unavailable: true };
+    }
+  }
+
+  const nowMs = now.getTime();
+  const horizon = horizonDate.getTime();
+  const upcoming = responses.filter((fixture) =>
+    Number.isFinite(Date.parse(fixture.kickoff)) &&
+    Date.parse(fixture.kickoff) >= nowMs &&
+    SCHEDULED_STATUSES.has(fixture.status)
+  );
+  const candidates = upcoming.filter((fixture) => Date.parse(fixture.kickoff) <= horizon);
+  const ranked = (candidates.length >= FEATURED_FIXTURE_LIMIT ? candidates : upcoming)
+    .sort((a, b) => featuredScore(b) - featuredScore(a) || Date.parse(a.kickoff) - Date.parse(b.kickoff));
+  const selected = [];
+  const usedTeams = new Set();
+  for (const fixture of ranked) {
+    if (selected.length === FEATURED_FIXTURE_LIMIT) break;
+    if (usedTeams.has(fixture.homeId) || usedTeams.has(fixture.awayId)) continue;
+    selected.push(fixture);
+    usedTeams.add(fixture.homeId); usedTeams.add(fixture.awayId);
+  }
+  for (const fixture of ranked) {
+    if (selected.length === FEATURED_FIXTURE_LIMIT) break;
+    if (!selected.some((item) => item.id === fixture.id)) selected.push(fixture);
+  }
+  return { fixtures: selected, sources: successfulSources, errors };
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   const API_KEY = process.env.API_FOOTBALL_KEY;
@@ -104,11 +193,7 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'API_FOOTBALL_KEY が設定されていません' });
   }
 
-  const { league } = req.query;
-  const leagueId = LEAGUES[league];
-  if (!leagueId) {
-    return res.status(400).json({ error: `league は次のいずれかを指定してください: ${Object.keys(LEAGUES).join(' / ')}` });
-  }
+  const { league, featured } = req.query;
 
   const seasonParam = Number(req.query.season);
   const SEASON = Number.isInteger(seasonParam) ? seasonParam : DEFAULT_SEASON;
@@ -117,6 +202,16 @@ export default async function handler(req, res) {
   }
 
   try {
+    if (featured === '1') {
+      const featuredResult = await getFeaturedFixtures(SEASON);
+      res.setHeader('Cache-Control', 's-maxage=1800, stale-while-revalidate');
+      return res.status(200).json({ season: SEASON, ...featuredResult });
+    }
+
+    const leagueId = LEAGUES[league];
+    if (!leagueId) {
+      return res.status(400).json({ error: `league は次のいずれかを指定してください: ${Object.keys(LEAGUES).join(' / ')}` });
+    }
     const data = await apiFootballFetch('/fixtures', { league: leagueId, season: SEASON });
 
     if (data.errors && Object.keys(data.errors).length > 0) {
@@ -127,30 +222,11 @@ export default async function handler(req, res) {
 
     const roundInfoByKey = new Map();
     const fixtures = (data.response || []).map(f => {
-      const played = FINISHED_STATUSES.includes(f.fixture.status?.short);
       const roundInfo = resolveRoundInfo(f.league.round);
       if (roundInfo && !roundInfoByKey.has(roundInfo.key)) {
         roundInfoByKey.set(roundInfo.key, roundInfo);
       }
-      return {
-        id: f.fixture.id,
-        date: (f.fixture.date || '').slice(0, 10),
-        // 2026-08-01追加: 未開催の試合はキックオフ時刻を表示するため、日付部分だけ
-        // 切り詰めていない完全なISO8601文字列(タイムゾーン情報付き)も返す。
-        // フロント側でDate変換すればユーザーのローカルタイムゾーンに自動変換される。
-        kickoff: f.fixture.date || null,
-        roundKey: roundInfo?.key || null,
-        roundLabel: roundInfo?.label || null,
-        status: f.fixture.status?.short,
-        home: f.teams.home.name,
-        away: f.teams.away.name,
-        homeLogo: f.teams.home.logo || null,
-        awayLogo: f.teams.away.logo || null,
-        homeGoals: f.goals.home,
-        awayGoals: f.goals.away,
-        score: played ? `${f.goals.home}-${f.goals.away}` : '-',
-        venue: f.fixture.venue?.name || null,
-      };
+      return simplifyFixture(f, league);
     });
 
     // 節・段階タブ一覧(並び順つき)・日付一覧(昇順)。フロント側のタブ用。

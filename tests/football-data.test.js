@@ -19,6 +19,16 @@ test("client reports provider failures", async () => {
   await assert.rejects(() => client.standings(2026), /429/);
 });
 
+test("featured fixtures use the server-side curated endpoint", async () => {
+  let requested;
+  const client = createClient(async (url) => {
+    requested = url;
+    return { ok: true, json: async () => ({ fixtures: [] }) };
+  });
+  await client.featuredFixtures(2026);
+  assert.equal(requested, "https://am4-api.vercel.app/api/fixtures?featured=1&season=2026");
+});
+
 test("player photos can use a validated API-Football player reference", async () => {
   let requested;
   const client = createClient(async (url) => {
