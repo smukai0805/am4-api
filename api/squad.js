@@ -99,6 +99,14 @@ async function fetchSeasonStatsMap(teamId, season, apiKey) {
 
 // 統計に出てこない選手について、直近の移籍先がこのクラブと一致するかを確認する
 // (=今季まだ出場記録は無いが、既に加入が確定している新戦力かどうかの判定)。
+//
+// 【注意】実データで確認した結果、/transfers のtransfers配列は日付の新しい順に
+// 並んでいるとは限らない(例: イブラヒマ・コナテの最新移籍(2026-06-30、
+// レアル・マドリード加入)がAPI応答の3番目に入っており、先頭は2021年の
+// リヴァプール加入だった)。そのため先頭要素ではなく、date文字列を比較して
+// 実際に最も新しいレコードを探す。また、in/out双方が同一クラブになっている
+// レコード(下部組織→トップ登録などクラブ内の内部移動と思われるもの、例:
+// マリオ・リバス)は「他クラブからの加入」ではないため対象外とする。
 async function isConfirmedNewSignee(playerId, teamId, apiKey) {
   try {
     const r = await fetch(
@@ -108,8 +116,12 @@ async function isConfirmedNewSignee(playerId, teamId, apiKey) {
     if (!r.ok) return false;
     const d = await r.json();
     const transfers = d.response?.[0]?.transfers || [];
-    // 移籍履歴は新しい順に並んでいる前提で、直近の移籍先がこのクラブなら加入確定とみなす
-    return transfers[0]?.teams?.in?.id === teamId;
+    const latest = transfers.reduce((max, t) => {
+      if (!t?.date) return max;
+      return (!max || new Date(t.date) > new Date(max.date)) ? t : max;
+    }, null);
+    if (!latest) return false;
+    return latest.teams?.in?.id === teamId && latest.teams?.out?.id !== teamId;
   } catch {
     return false;
   }
