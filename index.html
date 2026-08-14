@@ -269,10 +269,14 @@
     text-align:center;
     padding:clamp(28px,5vw,44px) clamp(20px,4vw,32px) clamp(32px,5vw,44px);
     overflow:hidden;
+    background:
+      radial-gradient(circle at 8% 24%, color-mix(in srgb, var(--colA) 28%, transparent), transparent 38%),
+      radial-gradient(circle at 92% 34%, color-mix(in srgb, var(--colB) 28%, transparent), transparent 38%);
   }
   .card-splatter{
     position:absolute; inset:0; z-index:0;
     width:100%; height:100%;
+    filter:saturate(1.18) contrast(1.06);
   }
   .slide.active{ display:flex; animation:fadeSlide .5s ease; }
   .slide > *{ position:relative; z-index:1; }
@@ -1279,6 +1283,24 @@
       NEW:{ id:34, name:'Newcastle United' }, ARS:{ id:42, name:'Arsenal' },
       CHE:{ id:49, name:'Chelsea' }, LEI:{ id:46, name:'Leicester City' }
     };
+    const CLUB_COLORS = {
+      33:'#da291c', 34:'#f4f4f4', 40:'#c8102e', 42:'#ef0107', 47:'#132257',
+      49:'#034694', 50:'#6cabdd', 85:'#004170', 157:'#dc052d', 165:'#fde100',
+      168:'#e32219', 489:'#e21c2a', 496:'#f4f4f4', 505:'#0068a8', 529:'#a50044',
+      530:'#cb3524', 541:'#e7c76b'
+    };
+
+    function stableClubColor(teamId, name){
+      const palette = ['#2a5eff','#e21c2a','#00a9e0','#f0b323','#7c3aed','#00a878','#e64980'];
+      const seed = Number(teamId) || [...String(name || '')].reduce((sum, char) => sum + char.charCodeAt(0), 0);
+      return CLUB_COLORS[teamId] || palette[Math.abs(seed) % palette.length];
+    }
+
+    function applyFixtureColors(host, fixture){
+      if (!host) return;
+      host.style.setProperty('--colA', stableClubColor(fixture.homeId, fixture.home));
+      host.style.setProperty('--colB', stableClubColor(fixture.awayId, fixture.away));
+    }
 
     function initials(name){
       return String(name || '').split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase();
@@ -1343,6 +1365,7 @@
       const chips = [...document.querySelectorAll('.strip-chip')];
       fixtures.slice(0, 3).forEach((fixture, index) => {
         const slide = slides[index];
+        applyFixtureColors(slide, fixture);
         const sides = slide.querySelectorAll('.poster-side');
         const names = slide.querySelectorAll('.poster-clubname');
         renderCrest(sides[0]?.querySelector('.crest'), { name:fixture.home, logo:fixture.homeLogo });
@@ -1364,6 +1387,7 @@
         cta.textContent = '予想ラインナップは試合前に公開'; cta.disabled = true; cta.setAttribute('aria-expanded', 'false');
 
         const chip = chips[index];
+        applyFixtureColors(chip, fixture);
         const chipCrests = chip.querySelectorAll('.crest');
         renderCrest(chipCrests[0], { name:fixture.home, logo:fixture.homeLogo });
         renderCrest(chipCrests[1], { name:fixture.away, logo:fixture.awayLogo });
@@ -1388,6 +1412,7 @@
       document.querySelector('.topic-label').textContent = degraded
         ? '取得できたリーグから選んだ注目試合 · 一部API取得失敗'
         : 'API-Footballから選んだ今後の注目試合';
+      document.dispatchEvent(new CustomEvent('am4:featured-rendered'));
       return true;
     }
 
@@ -1695,7 +1720,7 @@
       carousel.addEventListener('mouseleave', start);
     }
     start();
-  })();  // procedural paint splatter (club-color based)
+  })();  // procedural paint collision (club-color based)
   (function(){
     function rnd(min, max){ return Math.random() * (max - min) + min; }
 
@@ -1717,23 +1742,40 @@
       return d + 'Z';
     }
 
-    // one directional spray: origin corner -> flung across the card, leaving drip trails + scatter
-    function sprayGroup(color, ox, oy, angleDeg, length, opacity){
+    function sprayGroup(color, ox, oy, angleDeg, length, opacity, scale = 1){
       const rad = angleDeg * Math.PI / 180;
       const dx = Math.cos(rad), dy = Math.sin(rad);
       let s = `<g fill="${color}" opacity="${opacity}">`;
 
-      // impact blobs near the origin
-      const impacts = Math.round(rnd(2, 3));
+      const body = Math.round(rnd(7, 10));
+      for (let i = 0; i < body; i++){
+        const t = (i / Math.max(1, body - 1)) * length * 0.72;
+        const spread = rnd(-1, 1) * (12 + i * 2.6) * scale;
+        const cx = ox + dx * t + (-dy) * spread;
+        const cy = oy + dy * t + dx * spread;
+        const radius = Math.max(8, (32 - i * 2.25) * scale);
+        s += `<path d="${blobPath(cx, cy, radius, 12, 0.48)}"/>`;
+      }
+
+      for (let i = 0; i < 7; i++){
+        const offset = rnd(-42, 42) * scale;
+        const startX = ox + (-dy) * offset;
+        const startY = oy + dx * offset;
+        const end = length * rnd(0.55, 1.04);
+        const width = rnd(1.4, 5.5) * scale;
+        s += `<path d="M ${startX.toFixed(1)} ${startY.toFixed(1)} L ${(startX + dx * end).toFixed(1)} ${(startY + dy * end).toFixed(1)}" fill="none" stroke="${color}" stroke-width="${width.toFixed(1)}" stroke-linecap="round" opacity="${rnd(.28,.72).toFixed(2)}"/>`;
+      }
+
+      const impacts = Math.round(rnd(4, 6));
       for (let i = 0; i < impacts; i++){
         const t = rnd(0, 0.18) * length;
         const cx = ox + dx * t + rnd(-8, 8);
         const cy = oy + dy * t + rnd(-8, 8);
-        s += `<path d="${blobPath(cx, cy, rnd(9, 15), 9, 0.5)}"/>`;
+        s += `<path d="${blobPath(cx, cy, rnd(9, 18) * scale, 9, 0.5)}"/>`;
       }
 
       // tapering drip streaks along the flight path
-      const streaks = Math.round(rnd(3, 4));
+      const streaks = Math.round(rnd(5, 7));
       for (let i = 0; i < streaks; i++){
         const streakAngle = rad + rnd(-0.22, 0.22);
         const sdx = Math.cos(streakAngle), sdy = Math.sin(streakAngle);
@@ -1750,20 +1792,20 @@
       }
 
       // scattered fine droplets across a wide band around the flight direction
-      const drops = Math.round(rnd(26, 36));
+      const drops = Math.round(rnd(58, 78));
       for (let i = 0; i < drops; i++){
         const t = rnd(0.05, 1.15);
         const perp = rnd(-1, 1) * (18 + t * 34);
         const px = ox + dx * length * t + (-dy) * perp;
         const py = oy + dy * length * t + (dx) * perp;
-        const r = rnd(0.6, 3.2) * (1 - t * 0.4);
+        const r = rnd(0.6, 3.8) * scale * (1 - t * 0.4);
         s += `<circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="${Math.max(0.5,r).toFixed(1)}"/>`;
       }
 
       return s + '</g>';
     }
 
-    document.querySelectorAll('.card-splatter').forEach(svg => {
+    function paint(svg){
       const host = svg.closest('.slide, .strip-chip');
       if (!host) return;
       const cs = getComputedStyle(host);
@@ -1774,13 +1816,22 @@
 
       let markup = '';
       const diag = Math.hypot(w, h);
-      // colorA flies from the top-left corner toward center-right
-      markup += sprayGroup(colorA, w * 0.02, h * 0.04, 55, diag * 0.55, 0.85);
-      // colorB flies from the bottom-right corner toward center-left
-      markup += sprayGroup(colorB, w * 0.98, h * 0.97, 235, diag * 0.55, 0.85);
+      const compact = h <= 120;
+      const scale = compact ? .42 : 1;
+      markup += sprayGroup(colorA, -w * 0.04, h * 0.18, compact ? 8 : 34, diag * (compact ? .72 : .59), .88, scale);
+      markup += sprayGroup(colorB, w * 1.04, h * 0.2, compact ? 172 : 146, diag * (compact ? .72 : .59), .88, scale);
+      if (!compact){
+        markup += sprayGroup(colorA, -w * .02, h * .78, -20, w * .67, .42, .62);
+        markup += sprayGroup(colorB, w * 1.02, h * .76, 200, w * .67, .42, .62);
+        markup += `<ellipse cx="${w/2}" cy="${h*.26}" rx="${w*.16}" ry="${h*.055}" fill="#fff" opacity=".08"/>`;
+      }
 
       svg.innerHTML = markup;
-    });
+    }
+
+    function paintAll(){ document.querySelectorAll('.card-splatter').forEach(paint); }
+    paintAll();
+    document.addEventListener('am4:featured-rendered', paintAll);
   })();
 </script>
 
