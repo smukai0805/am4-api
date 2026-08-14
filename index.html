@@ -1,0 +1,1555 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>AM4｜選手とクラブの物語に出会う海外サッカーメディア</title>
+<meta name="description" content="欧州5大リーグの若手選手、クラブの物語、週末の注目試合をデータとともに届ける海外サッカーメディア。">
+<meta name="theme-color" content="#060a17">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="ja_JP">
+<meta property="og:site_name" content="AM4">
+<meta property="og:title" content="AM4｜選手とクラブの物語に出会う">
+<meta property="og:description" content="スコアの、その先へ。欧州5大リーグを物語とデータで深く追う。">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;700;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#060a17;
+    --ink-2:#0d1730;
+    --ink-3:#16234a;
+    --line: rgba(201,212,227,0.12);
+    --steel:#c9d4e3;
+    --steel-dim:#8a97ac;
+    --paper:#f4f6f9;
+    --floodlight:#2a5eff;
+    --floodlight-dim: rgba(42,94,255,0.35);
+    --royal:#0e2a8f;
+    --gold:#d9b46a;
+    --magenta:#ff4fd8;
+    --radius:14px;
+    --display: 'Big Shoulders Display', sans-serif;
+    --body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --mono: 'JetBrains Mono', monospace;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:var(--ink);
+    color:var(--paper);
+    font-family:var(--body);
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:inherit; text-decoration:none;}
+  button{font:inherit; color:inherit;}
+  .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
+  ::selection{background:var(--floodlight); color:#fff;}
+  :focus-visible{outline:2px solid var(--floodlight); outline-offset:3px;}
+
+  @media (prefers-reduced-motion: reduce){
+    *{animation-duration:0.001ms !important; animation-iteration-count:1 !important; transition-duration:0.001ms !important;}
+  }
+
+  /* ---------- top bar ---------- */
+  .topbar{
+    position:sticky; top:0; z-index:40;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:18px clamp(20px,5vw,64px);
+    background:rgba(10,16,28,0.72);
+    backdrop-filter:blur(14px);
+    border-bottom:1px solid var(--line);
+  }
+  .wordmark{
+    font-family:var(--display);
+    font-weight:900;
+    font-size:26px;
+    letter-spacing:0.02em;
+    display:flex; align-items:baseline; gap:8px;
+  }
+  .wordmark small{
+    font-family:var(--mono);
+    font-size:10px; font-weight:500;
+    color:var(--steel-dim);
+    letter-spacing:0.18em;
+    text-transform:uppercase;
+  }
+  .lang{
+    font-family:var(--mono); font-size:11px; letter-spacing:0.08em;
+    color:var(--steel-dim);
+    display:flex; gap:14px;
+  }
+
+  /* ---------- hero ---------- */
+  .hero{
+    position:relative;
+    overflow:hidden;
+    padding:clamp(36px,6vw,64px) clamp(20px,5vw,64px) clamp(48px,8vw,88px);
+    border-bottom:1px solid var(--line);
+    background:
+      radial-gradient(ellipse 90% 60% at 50% -10%, var(--royal) 0%, transparent 55%),
+      linear-gradient(180deg, #050813 0%, var(--ink) 60%);
+  }
+  .hero::before{
+    content:"";
+    position:absolute; inset:-20% -10%;
+    background:
+      radial-gradient(ellipse 60% 45% at 20% -5%, var(--floodlight-dim), transparent 60%),
+      radial-gradient(ellipse 50% 40% at 85% 5%, rgba(217,180,106,0.16), transparent 65%);
+    pointer-events:none;
+    animation:sweep 16s ease-in-out infinite alternate;
+    mix-blend-mode:screen;
+  }
+  .beams{
+    position:absolute; inset:0; pointer-events:none;
+    background-image: conic-gradient(from 200deg at 50% -12%,
+      transparent 0deg, rgba(122,158,255,0.16) 4deg, transparent 9deg,
+      transparent 24deg, rgba(122,158,255,0.10) 28deg, transparent 34deg,
+      transparent 46deg, rgba(217,180,106,0.09) 50deg, transparent 55deg,
+      transparent 62deg, rgba(122,158,255,0.13) 66deg, transparent 72deg);
+    animation:rotate-beams 40s linear infinite;
+    mix-blend-mode:screen;
+    opacity:0.8;
+  }
+  @keyframes rotate-beams{
+    0%{ transform:rotate(0deg); }
+    100%{ transform:rotate(360deg); }
+  }
+  .splash{
+    position:absolute; inset:0; pointer-events:none; opacity:1;
+    mix-blend-mode:lighten;
+  }
+  .grain{
+    position:absolute; inset:0; pointer-events:none;
+    opacity:0.05; mix-blend-mode:overlay;
+  }
+  @keyframes sweep{
+    0%{ transform:translateX(-3%) translateY(-1%); }
+    100%{ transform:translateX(3%) translateY(2%); }
+  }
+  .constellation{
+    position:absolute; inset:0; pointer-events:none; opacity:0.7;
+  }
+  .vignette{
+    position:absolute; inset:0; pointer-events:none;
+    box-shadow: inset 0 0 220px 60px rgba(0,0,0,0.65);
+  }
+  .hero-inner{ position:relative; z-index:2; }
+  .kicker-line{
+    display:flex; align-items:center; gap:12px;
+    font-family:var(--body); font-size:14px; color:var(--steel);
+    margin-bottom:clamp(20px,3vw,28px);
+  }
+  .kicker-line .dash{ width:26px; height:1px; background:var(--floodlight); flex-shrink:0; }
+  .kicker-line strong{ color:var(--paper); font-weight:600; }
+  .hero-cta{ display:flex; gap:14px; flex-wrap:wrap; }
+  .btn{
+    font-family:var(--body); font-weight:600; font-size:14px;
+    padding:14px 26px; border-radius:999px;
+    display:inline-flex; align-items:center; gap:8px;
+    transition:transform .25s ease, background .25s ease, border-color .25s ease;
+  }
+  .btn-primary{ background:var(--floodlight); color:#fff; }
+  .btn-primary:hover{ transform:translateY(-2px); background:#3a6bff; }
+  .btn-ghost{ border:1px solid var(--line); color:var(--paper); }
+  .btn-ghost:hover{ border-color:var(--steel); transform:translateY(-2px); }
+
+  /* ---------- topic match carousel ---------- */
+  .topic{
+    position:relative; z-index:2;
+    max-width:1180px;
+    margin:clamp(20px,3vw,28px) auto 0;
+  }
+
+  /* live now ticker */
+  .live-ticker{
+    display:flex; align-items:center; gap:14px;
+    padding:14px 18px; margin-bottom:16px;
+    border-radius:14px;
+    border:1px solid var(--line);
+    background:rgba(255,255,255,0.03);
+  }
+  .live-pill{
+    font-family:var(--mono); font-size:10.5px; font-weight:700;
+    letter-spacing:0.08em;
+    background:#1fbf6a; color:#04160c;
+    padding:5px 10px; border-radius:6px;
+    display:flex; align-items:center; gap:6px;
+    flex-shrink:0;
+  }
+  .live-pill::before{
+    content:""; width:6px; height:6px; border-radius:50%;
+    background:#04160c; animation:pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+  .live-crests{ display:flex; align-items:center; flex-shrink:0; }
+  .live-crests .crest{ width:26px; height:26px; border-radius:6px; font-size:8.5px; }
+  .live-crests .crest:last-child{ margin-left:-7px; box-shadow:0 0 0 2px var(--ink), 0 0 0 1px rgba(255,255,255,0.14) inset; }
+  .live-comp{ font-family:var(--mono); font-size:10px; color:var(--floodlight); text-transform:uppercase; }
+  .live-title{ font-size:13.5px; font-weight:600; margin-left:4px; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .live-watch{
+    font-family:var(--mono); font-size:11.5px; color:var(--steel-dim);
+    border:1px solid var(--line); padding:7px 14px; border-radius:999px;
+    flex-shrink:0; white-space:nowrap;
+  }
+  @media (max-width:520px){ .live-title{ display:none; } }
+  .topic-label{
+    display:flex; align-items:center; gap:10px;
+    font-family:var(--mono); font-size:11.5px; letter-spacing:0.2em;
+    color:var(--gold); text-transform:uppercase; margin-bottom:16px;
+  }
+  .topic-label::before{ content:""; width:22px; height:1px; background:var(--gold); }
+
+  /* overview strip (3 at a glance) */
+  .topic-strip{
+    display:grid; gap:10px;
+    grid-template-columns:repeat(3, 1fr);
+    margin-bottom:12px;
+  }
+  @media (max-width:640px){ .topic-strip{ grid-template-columns:1fr; } }
+  .strip-chip{
+    position:relative; overflow:hidden;
+    display:flex; align-items:center; gap:12px;
+    padding:14px 16px; border-radius:14px;
+    border:1px solid var(--line);
+    background:linear-gradient(160deg, rgba(19,29,58,0.85), rgba(9,14,28,0.9));
+    cursor:pointer;
+    color:inherit; text-align:left;
+    transition:border-color .2s ease, transform .2s ease, background .2s ease;
+  }
+  .strip-chip .card-splatter{ opacity:0.7; }
+  .strip-chip > *{ position:relative; z-index:1; }
+  .strip-chip > .card-splatter{ position:absolute; z-index:0; inset:0; }
+  .strip-chip:hover{ transform:translateY(-2px); }
+  .strip-chip.active{
+    border-color:rgba(122,158,255,0.55);
+    background:linear-gradient(160deg, rgba(42,94,255,0.16), rgba(9,14,28,0.9));
+  }
+  .strip-crests{ display:flex; align-items:center; flex-shrink:0; }
+  .strip-crests .crest{
+    width:30px; height:30px; border-radius:8px; font-size:9.5px;
+  }
+  .strip-crests .crest:last-child{ margin-left:-8px; box-shadow:0 0 0 2px var(--ink-2), 0 0 0 1px rgba(255,255,255,0.14) inset; }
+  .strip-text{ min-width:0; }
+  .strip-comp{
+    display:block;
+    font-family:var(--mono); font-size:9.5px; letter-spacing:0.08em;
+    color:var(--floodlight); text-transform:uppercase; margin-bottom:2px;
+  }
+  .strip-vs{
+    font-size:13px; font-weight:600;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .strip-progress{
+    position:absolute; left:0; bottom:0; height:2px;
+    background:var(--floodlight);
+    width:0%;
+  }
+  .strip-chip{ position:relative; overflow:hidden; }
+  .strip-chip.active .strip-progress{ animation:stripLoad 6s linear forwards; }
+  @keyframes stripLoad{ from{ width:0%; } to{ width:100%; } }
+  .carousel{
+    position:relative;
+    border-radius:20px;
+    border:1px solid var(--line);
+    background:linear-gradient(155deg, rgba(19,29,58,0.9), rgba(9,14,28,0.95));
+    backdrop-filter:blur(10px);
+    box-shadow:0 30px 70px -30px rgba(0,0,0,0.7);
+    overflow:hidden;
+  }
+  .slides{ position:relative; min-height:0; }
+  .slide{
+    position:relative;
+    display:none;
+    flex-direction:column;
+    align-items:center;
+    text-align:center;
+    padding:clamp(28px,5vw,44px) clamp(20px,4vw,32px) clamp(32px,5vw,44px);
+    overflow:hidden;
+  }
+  .card-splatter{
+    position:absolute; inset:0; z-index:0;
+    width:100%; height:100%;
+  }
+  .slide.active{ display:flex; animation:fadeSlide .5s ease; }
+  .slide > *{ position:relative; z-index:1; }
+  .slide > .card-splatter{ position:absolute; z-index:0; inset:0; }
+  @keyframes fadeSlide{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
+
+  .poster-crests{
+    display:flex; align-items:center; justify-content:center; gap:clamp(14px,4vw,40px);
+    margin-bottom:clamp(18px,3vw,28px);
+  }
+  .poster-side{ display:flex; flex-direction:column; align-items:center; gap:14px; }
+  .crest.crest-big{
+    width:clamp(64px,12vw,92px); height:clamp(64px,12vw,92px);
+    border-radius:20px;
+    font-weight:900; font-size:clamp(15px,2.6vw,20px);
+    box-shadow:0 0 0 1px rgba(255,255,255,0.16) inset, 0 20px 40px -14px rgba(0,0,0,0.6);
+  }
+  .poster-clubname{
+    font-family:var(--display); font-weight:700; font-size:clamp(15px,2.6vw,19px);
+    line-height:1.05; color:var(--steel);
+  }
+  .poster-clubname strong{
+    display:block; font-weight:900; font-size:clamp(24px,5vw,38px);
+    color:var(--paper); letter-spacing:-0.01em;
+  }
+  .poster-vs{
+    font-family:var(--display); font-weight:900; font-size:clamp(20px,4vw,30px);
+    color:var(--paper);
+    text-shadow:0 0 24px rgba(122,158,255,0.9), 0 0 4px #fff;
+    flex-shrink:0;
+  }
+
+  .poster-keymen{
+    display:flex; gap:clamp(28px,8vw,90px); margin-bottom:clamp(20px,3vw,28px);
+  }
+  .keyman-block{ display:flex; flex-direction:column; align-items:center; gap:8px; }
+  .kavatar-lg{
+    width:44px; height:44px; border-radius:50%;
+    background:var(--ink-3); border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--display); font-weight:700; font-size:14px; color:var(--steel);
+  }
+  .keyman-block span{ font-size:12.5px; font-weight:600; color:var(--paper); }
+
+  .poster-meta{
+    padding:18px 22px; border-radius:14px;
+    border:1px solid var(--line);
+    background:rgba(6,10,23,0.55);
+    backdrop-filter:blur(6px);
+    margin-bottom:16px;
+    width:100%; max-width:340px;
+  }
+  .poster-meta .slide-comp{ display:block; margin-bottom:6px; }
+  .poster-meta .kickoff{ justify-content:center; margin-bottom:10px; }
+  .poster-meta .broadcast{ }
+
+  .poster-stadium{
+    position:absolute; left:0; right:0; bottom:0; height:130px;
+    z-index:0; pointer-events:none;
+    background:
+      radial-gradient(ellipse 80% 100% at 50% 100%, rgba(122,158,255,0.4), transparent 65%);
+  }
+  .poster-stadium::before{
+    content:"";
+    position:absolute; inset:0;
+    background-image: repeating-linear-gradient(90deg,
+      rgba(255,255,255,0.5) 0 2px, transparent 2px 46px);
+    -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,0.5), transparent 90%);
+    mask-image: linear-gradient(to top, rgba(0,0,0,0.5), transparent 90%);
+    opacity:0.5;
+  }
+  .slide-comp{
+    font-family:var(--mono); font-size:10.5px; letter-spacing:0.14em;
+    color:var(--floodlight); text-transform:uppercase;
+    display:block; margin-bottom:10px;
+  }
+  .matchup{
+    display:flex; align-items:center; gap:16px;
+    flex:1 1 340px; min-width:280px;
+  }
+  .side{ display:flex; flex-direction:column; align-items:center; gap:10px; width:96px; }
+  .side .crest{ width:52px; height:52px; border-radius:13px; font-size:14px; }
+  .side .club-name{ font-size:12.5px; font-weight:600; text-align:center; line-height:1.3; }
+  .keyman{
+    display:flex; align-items:center; gap:8px;
+    font-family:var(--mono); font-size:10.5px; color:var(--steel-dim);
+  }
+  .keyman .kavatar{
+    width:26px; height:26px; border-radius:50%;
+    background:var(--ink-3); border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--display); font-weight:700; font-size:10px; color:var(--steel);
+  }
+  .vs-mark{
+    font-family:var(--display); font-weight:900; font-size:22px;
+    color:var(--steel-dim);
+  }
+  .slide-info{ flex:1 1 220px; min-width:200px; }
+  .kickoff{
+    font-family:var(--mono); font-size:20px; font-weight:500;
+    display:flex; align-items:baseline; gap:8px; margin-bottom:8px;
+  }
+  .kickoff span{ font-size:12px; color:var(--steel-dim); font-family:var(--body); }
+  .broadcast{
+    display:inline-flex; align-items:center; gap:7px;
+    font-family:var(--mono); font-size:10.5px; letter-spacing:0.06em;
+    color:var(--steel-dim); border:1px solid var(--line);
+    padding:5px 12px; border-radius:999px;
+  }
+  .broadcast .rdot{ width:6px; height:6px; border-radius:50%; background:#ff5c5c; }
+  .slide-cta{
+    flex:0 0 auto;
+    font-family:var(--body); font-weight:600; font-size:13.5px;
+    color:#fff;
+    display:inline-flex; align-items:center; gap:8px;
+    padding:13px 22px; border-radius:999px;
+    background:rgba(122,158,255,0.12);
+    box-shadow:inset 0 0 0 1px rgba(122,158,255,0.4);
+    cursor:pointer;
+    border:0;
+    transition:background .2s ease, transform .2s ease;
+  }
+  .slide-cta:hover{ background:rgba(122,158,255,0.22); transform:translateY(-2px); }
+  .carousel-dots{
+    display:flex; gap:8px; justify-content:center;
+    padding:16px 0 22px;
+  }
+  .dot-btn{
+    width:6px; height:6px; border-radius:50%;
+    background:var(--line); cursor:pointer; transition:all .25s ease;
+  }
+  .dot-btn.active{ width:20px; border-radius:4px; background:var(--floodlight); }
+
+  /* prediction reveal panel */
+  .predict-panel{
+    max-height:0; overflow:hidden;
+    transition:max-height .5s ease;
+    border-top:1px solid var(--line);
+  }
+  .predict-panel.open{ max-height:640px; }
+  .predict-inner{
+    padding:clamp(20px,3vw,32px) clamp(22px,4vw,40px) clamp(28px,4vw,40px);
+    display:grid; gap:28px;
+    grid-template-columns:1.2fr 0.8fr;
+  }
+  @media (max-width:700px){ .predict-inner{ grid-template-columns:1fr; } }
+  .predict-title{
+    font-family:var(--mono); font-size:11px; letter-spacing:0.16em;
+    color:var(--gold); text-transform:uppercase; margin-bottom:14px;
+  }
+  .lineup-cols{ display:flex; gap:20px; }
+  .lineup-col{ flex:1; }
+  .lineup-col h4{
+    font-family:var(--body); font-size:12px; font-weight:600;
+    color:var(--steel-dim); margin:0 0 10px;
+  }
+  .lineup-col ul{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px; }
+  .lineup-col li{
+    font-size:13px; display:flex; align-items:center; gap:8px;
+    color:var(--paper);
+  }
+  .pos-tag{
+    font-family:var(--mono); font-size:9.5px; color:var(--floodlight);
+    width:24px; flex-shrink:0;
+  }
+  .vote-box h4{
+    font-family:var(--body); font-size:12px; font-weight:600;
+    color:var(--steel-dim); margin:0 0 14px;
+  }
+  .vote-row{ display:flex; flex-direction:column; gap:10px; }
+  .vote-btn{
+    position:relative;
+    display:flex; justify-content:space-between; align-items:center;
+    padding:12px 16px; border-radius:10px;
+    border:1px solid var(--line);
+    background:rgba(255,255,255,0.02);
+    font-size:13px; cursor:pointer;
+    width:100%; text-align:left;
+    overflow:hidden;
+    transition:border-color .2s ease;
+  }
+  .vote-btn .fill{
+    position:absolute; inset:0; left:0;
+    background:rgba(42,94,255,0.18);
+    width:var(--pct,0%);
+    transition:width .5s ease;
+    z-index:0;
+  }
+  .vote-btn span, .vote-btn strong{ position:relative; z-index:1; }
+  .vote-btn.picked{ border-color:var(--floodlight); }
+  .vote-note{
+    font-family:var(--mono); font-size:10.5px; color:var(--steel-dim);
+    margin-top:12px;
+  }
+
+  /* ---------- tag nav ---------- */
+  .tagnav-wrap{
+    position:sticky; top:65px; z-index:30;
+    background:rgba(6,10,23,0.78);
+    backdrop-filter:blur(16px);
+    border-bottom:1px solid var(--line);
+  }
+  .tagnav{
+    display:flex; gap:6px; overflow-x:auto;
+    padding:14px clamp(20px,5vw,64px);
+    scrollbar-width:none;
+  }
+  .tagnav::-webkit-scrollbar{ display:none; }
+  .tag{
+    position:relative;
+    flex:0 0 auto;
+    font-family:var(--mono); font-size:12.5px; letter-spacing:0.04em;
+    padding:10px 20px; border-radius:10px;
+    color:var(--steel-dim);
+    white-space:nowrap;
+    transition:all .2s ease;
+  }
+  .tag::after{
+    content:"";
+    position:absolute; left:20px; right:20px; bottom:4px;
+    height:2px; border-radius:2px;
+    background:var(--floodlight);
+    transform:scaleX(0); transform-origin:left;
+    transition:transform .25s ease;
+  }
+  .tag:hover{ color:var(--paper); background:rgba(255,255,255,0.04); }
+  .tag.active{
+    color:#fff;
+    background:linear-gradient(180deg, rgba(42,94,255,0.16), rgba(42,94,255,0.04));
+    box-shadow:inset 0 0 0 1px rgba(122,158,255,0.35);
+  }
+  .tag.active::after{ transform:scaleX(1); }
+
+  /* ---------- sections ---------- */
+  section.block{
+    position:relative;
+    padding:clamp(56px,8vw,96px) clamp(20px,5vw,64px);
+    border-bottom:1px solid var(--line);
+    scroll-margin-top:130px;
+    background:
+      radial-gradient(ellipse 70% 100% at 8% 0%, rgba(42,94,255,0.055), transparent 55%),
+      var(--ink);
+  }
+  .block-head{
+    display:flex; align-items:flex-end; justify-content:space-between;
+    margin-bottom:36px; gap:20px; flex-wrap:wrap;
+    padding-bottom:22px;
+    border-bottom:1px solid var(--line);
+  }
+  .block-title{
+    font-family:var(--display); font-weight:900;
+    font-size:clamp(30px,4.5vw,46px);
+    line-height:1;
+  }
+  .block-title small{
+    display:flex; align-items:center; gap:10px;
+    font-family:var(--mono); font-weight:500; font-size:12px;
+    letter-spacing:0.2em; color:var(--floodlight);
+    text-transform:uppercase; margin-bottom:12px;
+  }
+  .block-title small::before{
+    content:""; width:22px; height:1px; background:var(--floodlight);
+  }
+  .see-all{
+    font-family:var(--mono); font-size:12.5px; color:var(--steel-dim);
+    border-bottom:1px solid transparent;
+    transition:color .2s ease, border-color .2s ease;
+  }
+  .see-all:hover{ color:var(--paper); border-color:var(--steel); }
+
+  /* transfer cards */
+  .transfer-grid{
+    display:grid; gap:16px;
+    grid-template-columns:repeat(auto-fit, minmax(280px,1fr));
+  }
+  .t-card{
+    position:relative;
+    background:linear-gradient(165deg, var(--ink-2) 0%, #0a1226 100%);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:24px;
+    overflow:hidden;
+    transition:border-color .3s ease, transform .3s ease, box-shadow .3s ease;
+    box-shadow:0 1px 0 rgba(255,255,255,0.03) inset, 0 20px 40px -24px rgba(0,0,0,0.6);
+  }
+  .t-card::before{
+    content:"";
+    position:absolute; top:0; left:0; right:0; height:1px;
+    background:linear-gradient(90deg, transparent, rgba(122,158,255,0.5), transparent);
+    opacity:0; transition:opacity .3s ease;
+  }
+  .t-card:hover{
+    border-color:rgba(122,158,255,0.4);
+    transform:translateY(-4px);
+    box-shadow:0 24px 50px -20px rgba(42,94,255,0.25);
+  }
+  .t-card:hover::before{ opacity:1; }
+  .t-meta{
+    display:flex; align-items:center; gap:10px;
+    font-family:var(--mono); font-size:11px; color:var(--steel-dim);
+    margin-bottom:16px;
+  }
+  .t-meta .badge{
+    background:rgba(42,94,255,0.16); color:#9db8ff;
+    padding:4px 10px; border-radius:6px; font-weight:500;
+    letter-spacing:0.04em;
+    box-shadow:inset 0 0 0 1px rgba(122,158,255,0.25);
+  }
+  .club-route{
+    display:flex; align-items:center; gap:14px; margin-bottom:20px;
+  }
+  .crest{
+    width:42px; height:42px; border-radius:11px;
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--display); font-weight:700; font-size:13px;
+    color:#fff;
+    flex-shrink:0;
+    box-shadow:0 0 0 1px rgba(255,255,255,0.14) inset, 0 8px 16px -6px rgba(0,0,0,0.5);
+    position:relative;
+  }
+  .crest::after{
+    content:"";
+    position:absolute; inset:0; border-radius:inherit;
+    background:linear-gradient(160deg, rgba(255,255,255,0.35), transparent 55%);
+  }
+  .crest.a{ background:linear-gradient(160deg,#ff7a7a,#a01f1f); }
+  .crest.b{ background:linear-gradient(160deg,#7fa6ff,#1a3fc4); }
+  .crest.c{ background:linear-gradient(160deg,#ffe08a,#b8862f); color:#3a2a05; }
+  .crest.d{ background:linear-gradient(160deg,#a6f0c6,#1f7a44); }
+  .route-arrow{ color:var(--floodlight); font-size:16px; opacity:0.8; }
+  .t-title{ font-size:16.5px; font-weight:600; line-height:1.5; margin:0; letter-spacing:-0.005em; }
+
+  /* match report feature */
+  .match-feature{
+    display:grid; grid-template-columns:1.1fr 0.9fr; gap:44px;
+    align-items:center;
+  }
+  @media (max-width:760px){ .match-feature{ grid-template-columns:1fr; } }
+  .scoreboard{
+    background:var(--ink-2); border:1px solid var(--line);
+    border-radius:var(--radius); padding:30px;
+  }
+  .sb-row{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 0;
+  }
+  .sb-row + .sb-row{ border-top:1px solid var(--line); }
+  .sb-club{ display:flex; align-items:center; gap:14px; font-weight:600; font-size:15px;}
+  .sb-score{ font-family:var(--mono); font-size:22px; font-weight:500; }
+  .comp-badge{
+    display:inline-flex; align-items:center; gap:8px;
+    font-family:var(--mono); font-size:11px; letter-spacing:0.1em;
+    color:var(--steel-dim); text-transform:uppercase; margin-bottom:18px;
+  }
+  .match-headline{
+    font-family:var(--display); font-weight:900;
+    font-size:clamp(26px,3.5vw,38px); line-height:1.08; margin:0 0 16px;
+  }
+  .match-copy{ color:var(--steel); line-height:1.8; font-size:15px; margin:0 0 22px; }
+  .read-link{
+    font-family:var(--mono); font-size:12.5px;
+    display:inline-flex; align-items:center; gap:8px; color:var(--gold);
+  }
+
+  /* player cards */
+  .player-grid{
+    display:grid; gap:16px;
+    grid-template-columns:repeat(auto-fit, minmax(220px,1fr));
+  }
+  .p-card{
+    position:relative;
+    background:var(--ink-2); border:1px solid var(--line);
+    border-radius:var(--radius); padding:24px 20px;
+    overflow:hidden;
+    transition:transform .25s ease, border-color .25s ease;
+  }
+  .p-card:hover{ transform:translateY(-3px); border-color:var(--steel-dim); }
+  .p-flag{
+    position:absolute; top:16px; left:16px;
+    width:22px; height:15px; border-radius:3px;
+    background:linear-gradient(180deg,#2a5eff 33%,#f4f6f9 33% 66%,#d9b46a 66%);
+    box-shadow:0 0 0 1px rgba(255,255,255,0.15);
+  }
+  .p-avatar{
+    width:64px; height:64px; border-radius:50%;
+    background:linear-gradient(135deg, var(--ink-3), var(--ink));
+    border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--display); font-weight:700; font-size:20px;
+    color:var(--steel);
+    margin:18px 0 16px;
+  }
+  .p-name{ font-size:16px; font-weight:600; margin:0 0 4px; }
+  .p-club{ font-family:var(--mono); font-size:11.5px; color:var(--steel-dim); margin:0 0 14px; }
+  .p-copy{ font-size:13.5px; line-height:1.65; color:var(--steel); margin:0; }
+
+  .favorite-btn{
+    border:1px solid var(--line); background:rgba(255,255,255,0.035);
+    border-radius:999px; padding:9px 13px; margin-top:16px;
+    cursor:pointer; display:inline-flex; align-items:center; gap:7px;
+    font-family:var(--mono); font-size:11px; color:var(--steel);
+  }
+  .favorite-btn::before{content:"☆";font-size:16px;line-height:1;}
+  .favorite-btn[aria-pressed="true"]{border-color:var(--gold);color:var(--gold);background:rgba(217,180,106,.1);}
+  .favorite-btn[aria-pressed="true"]::before{content:"★";}
+
+  .for-you{display:none;background:linear-gradient(135deg,rgba(42,94,255,.12),rgba(255,79,216,.05));}
+  .for-you.visible{display:block;}
+  .for-you-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;}
+  .for-you-card{padding:18px;border:1px solid var(--line);border-radius:var(--radius);background:rgba(255,255,255,.03);}
+  .for-you-card:hover{border-color:var(--steel-dim);}
+  .for-you-card small{display:block;color:var(--floodlight);font-family:var(--mono);font-size:10px;text-transform:uppercase;margin-bottom:8px;}
+  .for-you-card strong{display:block;font-size:15px;margin-bottom:5px;}
+  .for-you-card span{font-size:12px;color:var(--steel-dim);}
+
+  .data-grid{display:grid;grid-template-columns:1.2fr .8fr;gap:18px;}
+  @media(max-width:780px){.data-grid{grid-template-columns:1fr;}}
+  .data-panel{border:1px solid var(--line);border-radius:var(--radius);background:var(--ink-2);overflow:hidden;}
+  .data-panel-head{padding:18px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;align-items:center;}
+  .data-panel-head h3{margin:0;font-family:var(--display);font-size:24px;}
+  .sample-label{font-family:var(--mono);font-size:10px;color:var(--gold);border:1px solid rgba(217,180,106,.35);border-radius:999px;padding:5px 9px;}
+  .fixture-row,.standing-row{display:grid;align-items:center;gap:12px;padding:15px 20px;border-bottom:1px solid var(--line);}
+  .fixture-row{grid-template-columns:100px 1fr auto;}
+  .standing-row{grid-template-columns:28px 1fr 45px 45px;}
+  .fixture-row:last-child,.standing-row:last-child{border-bottom:0;}
+  .fixture-date,.fixture-comp{font-family:var(--mono);font-size:10px;color:var(--steel-dim);}
+  .fixture-teams{font-weight:600;font-size:14px;}
+  .player-profile{display:grid;grid-template-columns:auto 1fr;gap:22px;align-items:center;padding:24px;border:1px solid var(--line);border-radius:var(--radius);background:var(--ink-2);}
+  .player-profile .p-avatar{margin:0;width:88px;height:88px;font-size:26px;}
+  .player-photo{width:88px;height:88px;border-radius:50%;object-fit:cover;border:1px solid var(--line);background:var(--ink-3);}
+  .stat-list{display:flex;flex-wrap:wrap;gap:16px;margin-top:14px;}
+  .stat{min-width:90px;}.stat strong{display:block;font-family:var(--display);font-size:26px;}.stat span{font-family:var(--mono);font-size:10px;color:var(--steel-dim);}
+
+  .reveal{ opacity:0; transform:translateY(18px); transition:opacity .7s ease, transform .7s ease; }
+  .reveal.in{ opacity:1; transform:translateY(0); }
+
+  footer{
+    padding:48px clamp(20px,5vw,64px) 64px;
+    display:flex; justify-content:space-between; align-items:center;
+    flex-wrap:wrap; gap:16px;
+    font-family:var(--mono); font-size:11.5px; color:var(--steel-dim);
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="wordmark">AM4 <small>Soccer&nbsp;Media</small></div>
+  <div class="lang">日本語</div>
+</div>
+
+<section class="block for-you" id="for-you" aria-labelledby="for-you-title">
+  <div class="block-head">
+    <h2 class="block-title" id="for-you-title"><small>Your Football</small>For You</h2>
+    <span class="see-all" id="favorite-count"></span>
+  </div>
+  <div class="for-you-grid" id="for-you-grid"></div>
+</section>
+
+<main>
+<section class="block" id="lead-story" aria-labelledby="lead-story-title">
+  <div class="block-head">
+    <h2 class="block-title" id="lead-story-title"><small>Cover Story</small>今週見るべき若手</h2>
+    <span class="see-all">約8分で読めます</span>
+  </div>
+  <div class="match-feature reveal">
+    <div>
+      <div class="comp-badge">AM4 Selection · Rising</div>
+      <h3 class="match-headline">Jorrel Hato<br>静かな18歳が選んだ次の一歩</h3>
+      <p class="match-copy">数字だけでは見えない決断の背景を、プレースタイルと歩んできた道から読み解く。AM4が今週届ける選手ストーリー。</p>
+      <a class="read-link" href="#players">選手データと物語を読む →</a>
+      <button class="favorite-btn" type="button" data-favorite-type="articles" data-favorite-id="jorrel-hato-next-step" data-favorite-label="Jorrel Hato — 静かな18歳が選んだ次の一歩" data-favorite-detail="選手データと物語を読む" data-favorite-href="#players">記事を保存</button>
+    </div>
+    <div class="scoreboard" aria-label="記事の要点">
+      <div class="sb-row"><span class="sb-club">18歳</span><span class="sb-score">DF</span></div>
+      <div class="sb-row"><span class="sb-club">Chelsea</span><span class="sb-score">Rising</span></div>
+    </div>
+  </div>
+</section>
+
+<header class="hero">
+  <div class="beams"></div>
+  <svg class="splash" width="100%" height="100%" viewBox="0 0 1200 420" preserveAspectRatio="xMidYMid slice">
+    <defs>
+      <radialGradient id="mCore" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#ff36d6" stop-opacity="0.95"/>
+        <stop offset="55%" stop-color="#ff36d6" stop-opacity="0.35"/>
+        <stop offset="100%" stop-color="#ff36d6" stop-opacity="0"/>
+      </radialGradient>
+      <radialGradient id="bCore" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#3f74ff" stop-opacity="0.95"/>
+        <stop offset="55%" stop-color="#3f74ff" stop-opacity="0.4"/>
+        <stop offset="100%" stop-color="#3f74ff" stop-opacity="0"/>
+      </radialGradient>
+      <radialGradient id="gCore" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#ffcf6b" stop-opacity="0.9"/>
+        <stop offset="55%" stop-color="#ffcf6b" stop-opacity="0.3"/>
+        <stop offset="100%" stop-color="#ffcf6b" stop-opacity="0"/>
+      </radialGradient>
+      <filter id="soft"><feGaussianBlur stdDeviation="3"/></filter>
+    </defs>
+
+    <!-- big color bursts, spread across full width -->
+    <ellipse cx="120" cy="90" rx="230" ry="170" fill="url(#bCore)"/>
+    <ellipse cx="430" cy="220" rx="200" ry="150" fill="url(#mCore)"/>
+    <ellipse cx="780" cy="80" rx="220" ry="160" fill="url(#gCore)"/>
+    <ellipse cx="1080" cy="240" rx="230" ry="170" fill="url(#mCore)"/>
+    <ellipse cx="620" cy="360" rx="260" ry="120" fill="url(#bCore)"/>
+
+    <!-- crisp splatter dots/drips on top for texture -->
+    <g filter="url(#soft)">
+      <circle cx="230" cy="60" r="10" fill="#ff36d6" opacity="0.85"/>
+      <circle cx="270" cy="40" r="5" fill="#ff36d6" opacity="0.7"/>
+      <circle cx="300" cy="75" r="7" fill="#ffcf6b" opacity="0.8"/>
+      <path d="M280 55 Q300 90 285 130" stroke="#ff36d6" stroke-width="6" fill="none" stroke-linecap="round" opacity="0.6"/>
+
+      <circle cx="560" cy="150" r="9" fill="#3f74ff" opacity="0.8"/>
+      <circle cx="600" cy="130" r="6" fill="#3f74ff" opacity="0.7"/>
+      <path d="M580 160 Q610 195 595 235" stroke="#3f74ff" stroke-width="6" fill="none" stroke-linecap="round" opacity="0.55"/>
+
+      <circle cx="900" cy="150" r="10" fill="#ffcf6b" opacity="0.85"/>
+      <circle cx="940" cy="175" r="6" fill="#ff36d6" opacity="0.75"/>
+      <path d="M910 165 Q935 200 915 235" stroke="#ffcf6b" stroke-width="6" fill="none" stroke-linecap="round" opacity="0.6"/>
+
+      <circle cx="60" cy="220" r="8" fill="#3f74ff" opacity="0.7"/>
+      <circle cx="1150" cy="80" r="8" fill="#ff36d6" opacity="0.75"/>
+    </g>
+  </svg>
+  <svg class="constellation" width="100%" height="100%" viewBox="0 0 1000 560" preserveAspectRatio="xMidYMid slice">
+    <defs>
+      <radialGradient id="starGlow" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#d9b46a" stop-opacity="0.9"/>
+        <stop offset="100%" stop-color="#d9b46a" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
+    <g stroke="#c9d4e3" stroke-width="0.5" opacity="0.3">
+      <line x1="700" y1="40" x2="800" y2="90"/>
+      <line x1="800" y1="90" x2="880" y2="55"/>
+      <line x1="800" y1="90" x2="770" y2="170"/>
+      <line x1="770" y1="170" x2="850" y2="200"/>
+      <line x1="880" y1="55" x2="940" y2="110"/>
+      <line x1="90" y1="360" x2="170" y2="310"/>
+      <line x1="170" y1="310" x2="240" y2="355"/>
+      <line x1="240" y1="355" x2="230" y2="430"/>
+      <line x1="170" y1="310" x2="130" y2="250"/>
+    </g>
+    <g>
+      <circle cx="700" cy="40" r="14" fill="url(#starGlow)"/>
+      <circle cx="800" cy="90" r="18" fill="url(#starGlow)"/>
+      <circle cx="880" cy="55" r="12" fill="url(#starGlow)"/>
+      <circle cx="770" cy="170" r="10" fill="url(#starGlow)"/>
+      <circle cx="850" cy="200" r="12" fill="url(#starGlow)"/>
+      <circle cx="940" cy="110" r="9" fill="url(#starGlow)"/>
+      <circle cx="90" cy="360" r="10" fill="url(#starGlow)"/>
+      <circle cx="170" cy="310" r="16" fill="url(#starGlow)"/>
+      <circle cx="240" cy="355" r="12" fill="url(#starGlow)"/>
+      <circle cx="230" cy="430" r="9" fill="url(#starGlow)"/>
+      <circle cx="130" cy="250" r="9" fill="url(#starGlow)"/>
+    </g>
+    <g fill="#f4e6c9">
+      <circle cx="700" cy="40" r="2.4"/>
+      <circle cx="800" cy="90" r="3"/>
+      <circle cx="880" cy="55" r="2"/>
+      <circle cx="770" cy="170" r="1.8"/>
+      <circle cx="850" cy="200" r="2"/>
+      <circle cx="940" cy="110" r="1.6"/>
+      <circle cx="90" cy="360" r="1.8"/>
+      <circle cx="170" cy="310" r="2.6"/>
+      <circle cx="240" cy="355" r="2"/>
+      <circle cx="230" cy="430" r="1.6"/>
+      <circle cx="130" cy="250" r="1.6"/>
+    </g>
+  </svg>
+  <svg class="grain" width="100%" height="100%">
+    <filter id="noise"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch"/></filter>
+    <rect width="100%" height="100%" filter="url(#noise)"/>
+  </svg>
+  <div class="vignette"></div>
+  <div class="hero-inner">
+    <h1 class="sr-only">AM4 — 選手とクラブの物語に出会う海外サッカーメディア</h1>
+    <div class="kicker-line"><span class="dash"></span><strong>AM4</strong> — スコアの、その先へ。5大リーグ + チャンピオンズリーグを深く追う。</div>
+  </div>
+
+  <div class="topic">
+    <div class="live-ticker">
+      <span class="live-pill">SAMPLE</span>
+      <div class="live-crests"><div class="crest d" style="width:26px;height:26px;font-size:8.5px;">LIV</div><div class="crest a" style="width:26px;height:26px;font-size:8.5px;">CHE</div></div>
+      <span class="live-comp">PL · 第3節</span>
+      <span class="live-title">Liverpool vs Chelsea · API未接続のデモデータ</span>
+    </div>
+
+    <div class="carousel">
+      <div class="slides">
+        <div class="slide active" data-slide="0" style="--colA:#6cabdd; --colB:#f2d675;">
+          <svg class="card-splatter" viewBox="0 0 400 600" preserveAspectRatio="xMidYMid slice"></svg>
+
+          <div class="poster-crests">
+            <div class="poster-side">
+              <div class="crest crest-big b">MCI</div>
+              <div class="poster-clubname">Manchester<strong>City</strong></div>
+            </div>
+            <div class="poster-vs">VS</div>
+            <div class="poster-side">
+              <div class="crest crest-big a">RMA</div>
+              <div class="poster-clubname">Real<strong>Madrid</strong></div>
+            </div>
+          </div>
+
+          <div class="poster-keymen">
+            <div class="keyman-block"><div class="kavatar-lg">9</div><span>Haaland</span></div>
+            <div class="keyman-block"><div class="kavatar-lg">10</div><span>Mbappé</span></div>
+          </div>
+
+          <div class="poster-meta">
+            <span class="slide-comp">Champions League · 準決勝 第2戦</span>
+            <div class="kickoff">5.18 SAT <span>28:00 キックオフ</span></div>
+            <span class="broadcast"><span class="rdot"></span>DAZN 独占配信</span>
+          </div>
+
+          <button class="slide-cta" type="button" data-target="p0" aria-expanded="false">AM4予想サンプルを見る →</button>
+          <div class="poster-stadium"></div>
+        </div>
+
+        <div class="slide" data-slide="1" style="--colA:#d7dde5; --colB:#ef0107;">
+          <svg class="card-splatter" viewBox="0 0 400 600" preserveAspectRatio="xMidYMid slice"></svg>
+
+          <div class="poster-crests">
+            <div class="poster-side">
+              <div class="crest crest-big c">NEW</div>
+              <div class="poster-clubname">Newcastle<strong>United</strong></div>
+            </div>
+            <div class="poster-vs">VS</div>
+            <div class="poster-side">
+              <div class="crest crest-big b">ARS</div>
+              <div class="poster-clubname">Arsenal</div>
+            </div>
+          </div>
+
+          <div class="poster-keymen">
+            <div class="keyman-block"><div class="kavatar-lg">7</div><span>Guimarães</span></div>
+            <div class="keyman-block"><div class="kavatar-lg">8</div><span>Ødegaard</span></div>
+          </div>
+
+          <div class="poster-meta">
+            <span class="slide-comp">Premier League · 第2節</span>
+            <div class="kickoff">8.29 SAT <span>23:30 キックオフ</span></div>
+            <span class="broadcast"><span class="rdot"></span>U-NEXT 配信</span>
+          </div>
+
+          <button class="slide-cta" type="button" data-target="p1" aria-expanded="false">AM4予想サンプルを見る →</button>
+          <div class="poster-stadium"></div>
+        </div>
+
+        <div class="slide" data-slide="2" style="--colA:#c8102e; --colB:#034694;">
+          <svg class="card-splatter" viewBox="0 0 400 600" preserveAspectRatio="xMidYMid slice"></svg>
+
+          <div class="poster-crests">
+            <div class="poster-side">
+              <div class="crest crest-big d">LIV</div>
+              <div class="poster-clubname">Liverpool</div>
+            </div>
+            <div class="poster-vs">VS</div>
+            <div class="poster-side">
+              <div class="crest crest-big a">CHE</div>
+              <div class="poster-clubname">Chelsea</div>
+            </div>
+          </div>
+
+          <div class="poster-keymen">
+            <div class="keyman-block"><div class="kavatar-lg">11</div><span>Salah</span></div>
+            <div class="keyman-block"><div class="kavatar-lg">7</div><span>Palmer</span></div>
+          </div>
+
+          <div class="poster-meta">
+            <span class="slide-comp">Premier League · 第3節</span>
+            <div class="kickoff">9.5 SAT <span>21:00 キックオフ</span></div>
+            <span class="broadcast"><span class="rdot"></span>DAZN 配信</span>
+          </div>
+
+          <button class="slide-cta" type="button" data-target="p2" aria-expanded="false">AM4予想サンプルを見る →</button>
+          <div class="poster-stadium"></div>
+        </div>
+      </div>
+
+      <div class="predict-panel" id="p0">
+        <div class="predict-inner">
+          <div>
+            <div class="predict-title">AM4予想サンプル · 4-2-3-1想定</div>
+            <div class="lineup-cols">
+              <div class="lineup-col">
+                <h4>Manchester City</h4>
+                <ul>
+                  <li><span class="pos-tag">GK</span>Ederson</li>
+                  <li><span class="pos-tag">DF</span>Gvardiol</li>
+                  <li><span class="pos-tag">MF</span>Rodri</li>
+                  <li><span class="pos-tag">FW</span>Haaland</li>
+                </ul>
+              </div>
+              <div class="lineup-col">
+                <h4>Real Madrid</h4>
+                <ul>
+                  <li><span class="pos-tag">GK</span>Courtois</li>
+                  <li><span class="pos-tag">DF</span>Militão</li>
+                  <li><span class="pos-tag">MF</span>Bellingham</li>
+                  <li><span class="pos-tag">FW</span>Mbappé</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          <div class="vote-box">
+            <h4>結果予想に投票</h4>
+            <div class="vote-row" data-vote-group="p0">
+              <button class="vote-btn" type="button" data-pct="42"><span class="fill" style="--pct:42%"></span><span>Manchester City 勝利</span><strong>42%</strong></button>
+              <button class="vote-btn" type="button" data-pct="21"><span class="fill" style="--pct:21%"></span><span>引き分け</span><strong>21%</strong></button>
+              <button class="vote-btn" type="button" data-pct="37"><span class="fill" style="--pct:37%"></span><span>Real Madrid 勝利</span><strong>37%</strong></button>
+            </div>
+            <div class="vote-note">デモ投票 · 保存・集計されません</div>
+          </div>
+        </div>
+      </div>
+      <div class="predict-panel" id="p1">
+        <div class="predict-inner">
+          <div>
+            <div class="predict-title">AM4予想サンプル · 4-3-3想定</div>
+            <div class="lineup-cols">
+              <div class="lineup-col">
+                <h4>Newcastle</h4>
+                <ul>
+                  <li><span class="pos-tag">GK</span>Pope</li>
+                  <li><span class="pos-tag">DF</span>Botman</li>
+                  <li><span class="pos-tag">MF</span>Guimarães</li>
+                  <li><span class="pos-tag">FW</span>Isak</li>
+                </ul>
+              </div>
+              <div class="lineup-col">
+                <h4>Arsenal</h4>
+                <ul>
+                  <li><span class="pos-tag">GK</span>Raya</li>
+                  <li><span class="pos-tag">DF</span>Saliba</li>
+                  <li><span class="pos-tag">MF</span>Ødegaard</li>
+                  <li><span class="pos-tag">FW</span>Gyökeres</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          <div class="vote-box">
+            <h4>結果予想に投票</h4>
+            <div class="vote-row" data-vote-group="p1">
+              <button class="vote-btn" type="button" data-pct="28"><span class="fill" style="--pct:28%"></span><span>Newcastle 勝利</span><strong>28%</strong></button>
+              <button class="vote-btn" type="button" data-pct="19"><span class="fill" style="--pct:19%"></span><span>引き分け</span><strong>19%</strong></button>
+              <button class="vote-btn" type="button" data-pct="53"><span class="fill" style="--pct:53%"></span><span>Arsenal 勝利</span><strong>53%</strong></button>
+            </div>
+            <div class="vote-note">デモ投票 · 保存・集計されません</div>
+          </div>
+        </div>
+      </div>
+      <div class="predict-panel" id="p2">
+        <div class="predict-inner">
+          <div>
+            <div class="predict-title">AM4予想サンプル · 4-3-3想定</div>
+            <div class="lineup-cols">
+              <div class="lineup-col">
+                <h4>Liverpool</h4>
+                <ul>
+                  <li><span class="pos-tag">GK</span>Alisson</li>
+                  <li><span class="pos-tag">DF</span>Van Dijk</li>
+                  <li><span class="pos-tag">MF</span>Mac Allister</li>
+                  <li><span class="pos-tag">FW</span>Salah</li>
+                </ul>
+              </div>
+              <div class="lineup-col">
+                <h4>Chelsea</h4>
+                <ul>
+                  <li><span class="pos-tag">GK</span>Sánchez</li>
+                  <li><span class="pos-tag">DF</span>Colwill</li>
+                  <li><span class="pos-tag">MF</span>Caicedo</li>
+                  <li><span class="pos-tag">FW</span>Palmer</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          <div class="vote-box">
+            <h4>結果予想に投票</h4>
+            <div class="vote-row" data-vote-group="p2">
+              <button class="vote-btn" type="button" data-pct="46"><span class="fill" style="--pct:46%"></span><span>Liverpool 勝利</span><strong>46%</strong></button>
+              <button class="vote-btn" type="button" data-pct="24"><span class="fill" style="--pct:24%"></span><span>引き分け</span><strong>24%</strong></button>
+              <button class="vote-btn" type="button" data-pct="30"><span class="fill" style="--pct:30%"></span><span>Chelsea 勝利</span><strong>30%</strong></button>
+            </div>
+            <div class="vote-note">デモ投票 · 保存・集計されません</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <div class="topic-label">今週のトピックス試合</div>
+
+    <div class="topic-strip">
+      <button class="strip-chip active" type="button" data-strip="0" aria-label="Manchester City対Real Madridを表示" style="--colA:#6cabdd; --colB:#f2d675;">
+        <svg class="card-splatter" viewBox="0 0 300 100" preserveAspectRatio="xMidYMid slice"></svg>
+        <div class="strip-crests"><div class="crest b" style="width:30px;height:30px;font-size:9.5px;">MCI</div><div class="crest a" style="width:30px;height:30px;font-size:9.5px;">RMA</div></div>
+        <div class="strip-text">
+          <span class="strip-comp">CL · 準決勝2ndレグ</span>
+          <span class="strip-vs">Man City vs Real Madrid</span>
+        </div>
+        <div class="strip-progress"></div>
+      </button>
+      <button class="strip-chip" type="button" data-strip="1" aria-label="Newcastle対Arsenalを表示" style="--colA:#d7dde5; --colB:#ef0107;">
+        <svg class="card-splatter" viewBox="0 0 300 100" preserveAspectRatio="xMidYMid slice"></svg>
+        <div class="strip-crests"><div class="crest c" style="width:30px;height:30px;font-size:9.5px;">NEW</div><div class="crest b" style="width:30px;height:30px;font-size:9.5px;">ARS</div></div>
+        <div class="strip-text">
+          <span class="strip-comp">PL · 第2節</span>
+          <span class="strip-vs">Newcastle vs Arsenal</span>
+        </div>
+        <div class="strip-progress"></div>
+      </button>
+      <button class="strip-chip" type="button" data-strip="2" aria-label="Liverpool対Chelseaを表示" style="--colA:#c8102e; --colB:#034694;">
+        <svg class="card-splatter" viewBox="0 0 300 100" preserveAspectRatio="xMidYMid slice"></svg>
+        <div class="strip-crests"><div class="crest d" style="width:30px;height:30px;font-size:9.5px;">LIV</div><div class="crest a" style="width:30px;height:30px;font-size:9.5px;">CHE</div></div>
+        <div class="strip-text">
+          <span class="strip-comp">PL · 第3節</span>
+          <span class="strip-vs">Liverpool vs Chelsea</span>
+        </div>
+        <div class="strip-progress"></div>
+      </button>
+    </div>
+  </div>
+</header>
+
+<div class="tagnav-wrap">
+  <nav class="tagnav">
+    <a class="tag active" href="#transfer">移籍速報</a>
+    <a class="tag" href="#matches">試合解説</a>
+    <a class="tag" href="#players">選手紹介</a>
+    <a class="tag" href="#fixtures">試合日程</a>
+    <a class="tag" href="#standings">順位表</a>
+  </nav>
+</div>
+
+<section class="block" id="transfer">
+  <div class="block-head">
+    <h2 class="block-title"><small>Transfer Wire</small>移籍速報</h2>
+    <a class="see-all" href="#">すべて見る →</a>
+  </div>
+  <div class="transfer-grid">
+    <div class="t-card reveal">
+      <div class="t-meta"><span class="badge">Romano</span>08.03 08:17</div>
+      <div class="club-route">
+        <div class="crest a">NEW</div>
+        <span class="route-arrow">→</span>
+        <div class="crest b">ARS</div>
+      </div>
+      <p class="t-title">Guimarães、Arsenal と Newcastle が交渉活発化</p>
+    </div>
+    <div class="t-card reveal">
+      <div class="t-meta"><span class="badge">Romano</span>08.03 08:17</div>
+      <div class="club-route">
+        <div class="crest c">CHE</div>
+        <span class="route-arrow">→</span>
+        <div class="crest a">MUN</div>
+      </div>
+      <p class="t-title">Hall、Man Utd 移籍を内部承認と Romano</p>
+    </div>
+    <div class="t-card reveal">
+      <div class="t-meta"><span class="badge">Romano</span>08.03 08:17</div>
+      <div class="club-route">
+        <div class="crest d">LEI</div>
+        <span class="route-arrow">→</span>
+        <div class="crest b">RMA</div>
+      </div>
+      <p class="t-title">Diomande、Real Madrid 移籍で合意と Romano</p>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="matches">
+  <div class="block-head">
+    <h2 class="block-title"><small>Match Report</small>試合解説</h2>
+    <a class="see-all" href="#">すべて見る →</a>
+  </div>
+  <div class="match-feature reveal">
+    <div>
+      <div class="comp-badge">Premier League · 第32節</div>
+      <h3 class="match-headline">Mainooの劇的弾で<br>Old Traffordが歓喜</h3>
+      <p class="match-copy">終盤に生まれた一撃が、拮抗した90分を決着させた——スタッツが物語る、勝敗の分岐点を読み解く。</p>
+      <a class="read-link" href="#matches">全文を読む · 約2,200字 →</a>
+      <button class="favorite-btn" type="button" data-favorite-type="articles" data-favorite-id="mainoo-old-trafford" data-favorite-label="Mainooの劇的弾" data-favorite-detail="試合解説をもう一度読む" data-favorite-href="#matches">記事を保存</button>
+    </div>
+    <div class="scoreboard">
+      <div class="sb-row">
+        <div class="sb-club"><div class="crest a" style="width:28px;height:28px;font-size:10px;">MUN</div>Manchester United</div>
+        <div class="sb-score">3</div>
+      </div>
+      <div class="sb-row">
+        <div class="sb-club"><div class="crest b" style="width:28px;height:28px;font-size:10px;">LIV</div>Liverpool</div>
+        <div class="sb-score">2</div>
+      </div>
+      <button class="favorite-btn" type="button" data-favorite-type="clubs" data-favorite-id="manchester-united" data-favorite-label="Manchester United" data-favorite-detail="次戦と関連記事を見る" data-favorite-href="#matches">クラブを保存</button>
+      <button class="favorite-btn" type="button" data-favorite-type="clubs" data-favorite-id="liverpool" data-favorite-label="Liverpool" data-favorite-detail="次戦と関連記事を見る" data-favorite-href="#matches">クラブを保存</button>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="players">
+  <div class="block-head">
+    <h2 class="block-title"><small>Rising</small>選手紹介</h2>
+    <a class="see-all" href="#">すべて見る →</a>
+  </div>
+  <div class="player-grid">
+    <div class="p-card reveal">
+      <div class="p-flag"></div>
+      <div class="p-avatar">JH</div>
+      <p class="p-name">J. Hato</p>
+      <p class="p-club">Chelsea</p>
+      <p class="p-copy">ロッテルダム生まれの若きディフェンダー、新天地でのプレシーズンに見せた確かな一歩。</p>
+      <button class="favorite-btn" type="button" data-favorite-type="players" data-favorite-id="j-hato" data-favorite-label="J. Hato" data-favorite-detail="プロフィールと最新ストーリーを見る" data-favorite-href="#players">選手を保存</button>
+    </div>
+    <div class="p-card reveal">
+      <div class="p-flag"></div>
+      <div class="p-avatar">SM</div>
+      <p class="p-name">S. Mfuni</p>
+      <p class="p-club">Manchester City</p>
+      <p class="p-copy">ウィガン出身の18歳DF、シティのアカデミーから国際親善試合のピッチへ。</p>
+      <button class="favorite-btn" type="button" data-favorite-type="players" data-favorite-id="s-mfuni" data-favorite-label="S. Mfuni" data-favorite-detail="プロフィールと最新ストーリーを見る" data-favorite-href="#players">選手を保存</button>
+    </div>
+  </div>
+  <div class="player-profile reveal" id="player-profile" style="margin-top:18px"></div>
+</section>
+
+<section class="block" id="fixtures">
+  <div class="block-head">
+    <h2 class="block-title"><small>Match Centre</small>試合日程と順位</h2>
+    <span class="see-all">API接続境界を実装済み</span>
+  </div>
+  <div class="data-grid">
+    <div class="data-panel reveal">
+      <div class="data-panel-head"><h3>注目試合</h3><span class="sample-label" id="fixtures-source">読み込み中</span></div>
+      <div id="fixture-list"></div>
+    </div>
+    <div class="data-panel reveal" id="standings">
+      <div class="data-panel-head"><h3>Premier League</h3><span class="sample-label" id="standings-source">読み込み中</span></div>
+      <div id="standing-list"></div>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div>© AM4 — Soccer Media</div>
+  <div>first implementation slice / v0.3</div>
+</footer>
+
+<script src="favorites.js"></script>
+<script src="football-data.js"></script>
+<script src="sample-football-data.js"></script>
+<script>
+  // Existing AM4 Vercel API, with an explicit sample fallback.
+  (async function(){
+    const sample = AM4SampleFootballData;
+    const isLocalPreview = ['127.0.0.1', 'localhost', ''].includes(window.location.hostname);
+    const apiBase = isLocalPreview ? 'https://am4-api.vercel.app/api' : '/api';
+    const client = AM4FootballData.createClient(fetch, apiBase);
+    const fixturesNode = document.getElementById('fixture-list');
+    const standingsNode = document.getElementById('standing-list');
+    const profile = document.getElementById('player-profile');
+    const fixturesSource = document.getElementById('fixtures-source');
+    const standingsSource = document.getElementById('standings-source');
+
+    function renderFixtures(items, sourceLabel){
+      fixturesNode.replaceChildren();
+      items.forEach((fixture) => {
+      const row = document.createElement('div');
+      row.className = 'fixture-row';
+      row.innerHTML = '<div><div class="fixture-date"></div><div class="fixture-comp"></div></div><div class="fixture-teams"></div><span class="sample-label"></span>';
+      row.querySelector('.fixture-date').textContent = fixture.kickoff ? new Intl.DateTimeFormat('ja-JP', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }).format(new Date(fixture.kickoff)) : fixture.date;
+      row.querySelector('.fixture-comp').textContent = fixture.competition || 'Premier League';
+      row.querySelector('.fixture-teams').textContent = `${fixture.home} vs ${fixture.away}`;
+      row.querySelector('.sample-label').textContent = fixture.score && fixture.score !== '-' ? fixture.score : (fixture.note || sourceLabel);
+      fixturesNode.append(row);
+      });
+    }
+
+    function renderStandings(items){
+      standingsNode.replaceChildren();
+      items.forEach((club) => {
+      const row = document.createElement('div');
+      row.className = 'standing-row';
+      row.innerHTML = '<strong></strong><span></span><span class="fixture-comp">試合</span><span class="fixture-comp">勝点</span>';
+      row.children[0].textContent = club.rank || club.position;
+      row.children[1].textContent = club.club;
+      row.children[2].textContent = club.played;
+      row.children[3].textContent = club.points;
+      standingsNode.append(row);
+      });
+    }
+
+    function renderPlayer(player, photo, photoSource){
+    profile.innerHTML = '<div class="p-avatar">JH</div><div><span class="sample-label"></span><h3 class="match-headline" style="margin-top:12px"></h3><p class="p-club"></p><div class="stat-list"></div><p class="fixture-comp"></p></div>';
+    if (photo) {
+      const image = document.createElement('img'); image.className = 'player-photo'; image.src = photo; image.alt = `${player.name}のプロフィール写真`;
+      profile.firstElementChild.replaceWith(image);
+    }
+    profile.querySelector('.sample-label').textContent = photo ? 'SAMPLE STATS · API PHOTO' : 'SAMPLE DATA';
+    profile.querySelector('h3').textContent = player.name;
+    profile.querySelector('.p-club').textContent = `${player.club} · ${player.position} · ${player.age}歳`;
+    const stats = [['出場', player.appearances], ['出場時間', player.minutes], ['パス成功率', player.passAccuracy]];
+    const statList = profile.querySelector('.stat-list');
+    stats.forEach(([label, value]) => {
+      const stat = document.createElement('div'); stat.className = 'stat';
+      stat.innerHTML = '<strong></strong><span></span>';
+      stat.children[0].textContent = value; stat.children[1].textContent = label; statList.append(stat);
+    });
+    profile.querySelector('.fixture-comp:last-child').textContent = photo ? `成績はサンプルです。写真のみ${photoSource}から取得しています。` : player.note;
+    }
+
+    renderFixtures(sample.fixtures, 'SAMPLE'); renderStandings(sample.standings); renderPlayer(sample.player, null, null);
+    const [fixtureResult, standingResult, photoResult] = await Promise.allSettled([
+        client.fixtures('プレミアリーグ', 2025), client.standings(2025), client.playerPhoto('Hato', 'Jorrel Hato')
+    ]);
+
+    if (fixtureResult.status === 'fulfilled' && fixtureResult.value.fixtures?.length) {
+      renderFixtures(fixtureResult.value.fixtures.slice(-3).reverse(), 'API-FOOTBALL');
+      fixturesSource.textContent = 'API-FOOTBALL';
+    } else {
+      fixturesSource.textContent = 'SAMPLE FALLBACK';
+      if (fixtureResult.status === 'rejected') console.warn('Fixture API unavailable.', fixtureResult.reason);
+    }
+
+    const premierLeague = standingResult.status === 'fulfilled' ? standingResult.value.leagues?.['プレミアリーグ'] : null;
+    if (premierLeague?.length) {
+      renderStandings(premierLeague.slice(0, 5));
+      standingsSource.textContent = 'API-FOOTBALL';
+    } else {
+      standingsSource.textContent = 'SAMPLE FALLBACK';
+      if (standingResult.status === 'rejected') console.warn('Standings API unavailable.', standingResult.reason);
+    }
+
+    if (photoResult.status === 'fulfilled' && photoResult.value.photo && AM4FootballData.isMatchingPlayerName(photoResult.value.name, sample.player.name)) {
+      renderPlayer(sample.player, photoResult.value.photo, 'API-Football');
+    } else if (photoResult.status === 'fulfilled' && photoResult.value.photo) {
+      console.warn('Player photo rejected because the returned name did not match.', { expected: sample.player.name, actual: photoResult.value.name });
+    } else if (photoResult.status === 'rejected') {
+      console.warn('Player photo API unavailable.', photoResult.reason);
+    }
+  })();
+
+  // local favourites and the returning-visitor For You area
+  (function(){
+    const catalog = {};
+    const favoritePresentation = {
+      clubs: { noun: 'クラブ', kind: 'Favourite club' },
+      players: { noun: '選手', kind: 'Favourite player' },
+      articles: { noun: '記事', kind: 'Saved story' },
+    };
+    document.querySelectorAll('[data-favorite-type]').forEach((button) => {
+      const type = button.dataset.favoriteType;
+      const id = button.dataset.favoriteId;
+      catalog[`${type}:${id}`] = {
+        type,
+        id,
+        label: button.dataset.favoriteLabel,
+        detail: button.dataset.favoriteDetail,
+        href: button.dataset.favoriteHref,
+      };
+    });
+
+    const section = document.getElementById('for-you');
+    const grid = document.getElementById('for-you-grid');
+    const countLabel = document.getElementById('favorite-count');
+
+    function render(){
+      const saved = AM4Favorites.read(localStorage);
+      const validItems = ['clubs', 'players', 'articles'].flatMap((type) =>
+        saved[type].map((id) => catalog[`${type}:${id}`]).filter(Boolean)
+      );
+      const count = validItems.length;
+      document.querySelectorAll('[data-favorite-type]').forEach((button) => {
+        const selected = AM4Favorites.has(saved, button.dataset.favoriteType, button.dataset.favoriteId);
+        button.setAttribute('aria-pressed', String(selected));
+        const noun = favoritePresentation[button.dataset.favoriteType].noun;
+        button.textContent = selected ? `${noun}を保存済み` : `${noun}を保存`;
+      });
+
+      section.classList.toggle('visible', count > 0);
+      countLabel.textContent = count ? `${count}件のお気に入り` : '';
+      grid.replaceChildren();
+      validItems.forEach((item) => {
+          const card = document.createElement('a');
+          card.className = 'for-you-card';
+          card.href = item.href;
+          const kind = favoritePresentation[item.type].kind;
+          card.innerHTML = `<small>${kind}</small><strong></strong><span></span>`;
+          card.querySelector('strong').textContent = item.label;
+          card.querySelector('span').textContent = item.detail;
+          grid.append(card);
+      });
+    }
+
+    document.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-favorite-type]');
+      if (!button) return;
+      AM4Favorites.toggle(localStorage, button.dataset.favoriteType, button.dataset.favoriteId);
+      render();
+    });
+    render();
+  })();
+
+  // scroll-reveal
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    document.querySelectorAll('.reveal').forEach(el => el.classList.add('in'));
+  } else {
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          e.target.classList.add('in');
+          io.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.15 });
+    document.querySelectorAll('.reveal').forEach((el, i) => {
+      el.style.transitionDelay = (i % 4) * 70 + 'ms';
+      io.observe(el);
+    });
+  }
+
+  // tag nav active state on click (visual only, demo)
+  document.querySelectorAll('.tag').forEach(tag => {
+    tag.addEventListener('click', () => {
+      document.querySelectorAll('.tag').forEach(t => t.classList.remove('active'));
+      tag.classList.add('active');
+    });
+  });
+
+  // topic carousel (strip-driven spotlight)
+  (function(){
+    const slides = document.querySelectorAll('.slide');
+    const chips = document.querySelectorAll('.strip-chip');
+    const panels = document.querySelectorAll('.predict-panel');
+    let current = 0;
+    let timer;
+
+    function closeAllPanels(){
+      panels.forEach(p => p.classList.remove('open'));
+      document.querySelectorAll('.slide-cta').forEach(button => button.setAttribute('aria-expanded', 'false'));
+    }
+
+    function goTo(i){
+      current = (i + slides.length) % slides.length;
+      slides.forEach((s, idx) => s.classList.toggle('active', idx === current));
+      chips.forEach((c, idx) => c.classList.toggle('active', idx === current));
+      closeAllPanels();
+    }
+
+    function start(){
+      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (reduced) return;
+      timer = setInterval(() => goTo(current + 1), 6000);
+    }
+    function stop(){ clearInterval(timer); }
+
+    chips.forEach(c => c.addEventListener('click', () => { goTo(parseInt(c.dataset.strip)); stop(); start(); }));
+
+    document.querySelectorAll('.slide-cta').forEach(cta => {
+      cta.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const target = document.getElementById(cta.dataset.target);
+        const isOpen = target.classList.contains('open');
+        closeAllPanels();
+        if (!isOpen) {
+          target.classList.add('open');
+          cta.setAttribute('aria-expanded', 'true');
+        }
+        stop(); start();
+      });
+    });
+
+    document.querySelectorAll('.vote-row').forEach(row => {
+      row.addEventListener('click', (e) => {
+        const btn = e.target.closest('.vote-btn');
+        if (!btn) return;
+        row.querySelectorAll('.vote-btn').forEach(b => b.classList.remove('picked'));
+        btn.classList.add('picked');
+      });
+    });
+
+    const carousel = document.querySelector('.carousel');
+    if (carousel){
+      carousel.addEventListener('mouseenter', stop);
+      carousel.addEventListener('mouseleave', start);
+    }
+    start();
+  })();  // procedural paint splatter (club-color based)
+  (function(){
+    function rnd(min, max){ return Math.random() * (max - min) + min; }
+
+    function blobPath(cx, cy, r, points, jitter){
+      const step = (Math.PI * 2) / points;
+      const pts = [];
+      for (let i = 0; i < points; i++){
+        const a = i * step + rnd(-0.15, 0.15);
+        const rad = r * (1 + rnd(-jitter, jitter));
+        pts.push([cx + Math.cos(a) * rad, cy + Math.sin(a) * rad]);
+      }
+      let d = `M ${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)} `;
+      for (let i = 1; i <= points; i++){
+        const p0 = pts[i - 1];
+        const p1 = pts[i % points];
+        const mx = (p0[0] + p1[0]) / 2, my = (p0[1] + p1[1]) / 2;
+        d += `Q ${p0[0].toFixed(1)},${p0[1].toFixed(1)} ${mx.toFixed(1)},${my.toFixed(1)} `;
+      }
+      return d + 'Z';
+    }
+
+    // one directional spray: origin corner -> flung across the card, leaving drip trails + scatter
+    function sprayGroup(color, ox, oy, angleDeg, length, opacity){
+      const rad = angleDeg * Math.PI / 180;
+      const dx = Math.cos(rad), dy = Math.sin(rad);
+      let s = `<g fill="${color}" opacity="${opacity}">`;
+
+      // impact blobs near the origin
+      const impacts = Math.round(rnd(2, 3));
+      for (let i = 0; i < impacts; i++){
+        const t = rnd(0, 0.18) * length;
+        const cx = ox + dx * t + rnd(-8, 8);
+        const cy = oy + dy * t + rnd(-8, 8);
+        s += `<path d="${blobPath(cx, cy, rnd(9, 15), 9, 0.5)}"/>`;
+      }
+
+      // tapering drip streaks along the flight path
+      const streaks = Math.round(rnd(3, 4));
+      for (let i = 0; i < streaks; i++){
+        const streakAngle = rad + rnd(-0.22, 0.22);
+        const sdx = Math.cos(streakAngle), sdy = Math.sin(streakAngle);
+        const streakLen = length * rnd(0.55, 1.05);
+        const segs = 16;
+        for (let j = 0; j < segs; j++){
+          const t = j / segs;
+          const wobble = Math.sin(t * 6 + i) * (1 - t) * 5;
+          const px = ox + sdx * streakLen * t + rnd(-2, 2) + (-sdy) * wobble * 0.4;
+          const py = oy + sdy * streakLen * t + rnd(-2, 2) + (sdx) * wobble * 0.4;
+          const r = Math.max(0.6, 4.2 * (1 - t) + rnd(-0.4, 0.4));
+          s += `<circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="${r.toFixed(1)}"/>`;
+        }
+      }
+
+      // scattered fine droplets across a wide band around the flight direction
+      const drops = Math.round(rnd(26, 36));
+      for (let i = 0; i < drops; i++){
+        const t = rnd(0.05, 1.15);
+        const perp = rnd(-1, 1) * (18 + t * 34);
+        const px = ox + dx * length * t + (-dy) * perp;
+        const py = oy + dy * length * t + (dx) * perp;
+        const r = rnd(0.6, 3.2) * (1 - t * 0.4);
+        s += `<circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="${Math.max(0.5,r).toFixed(1)}"/>`;
+      }
+
+      return s + '</g>';
+    }
+
+    document.querySelectorAll('.card-splatter').forEach(svg => {
+      const host = svg.closest('.slide, .strip-chip');
+      if (!host) return;
+      const cs = getComputedStyle(host);
+      const colorA = cs.getPropertyValue('--colA').trim() || '#2a5eff';
+      const colorB = cs.getPropertyValue('--colB').trim() || '#d9b46a';
+      const vb = svg.getAttribute('viewBox').split(' ').map(Number);
+      const w = vb[2], h = vb[3];
+
+      let markup = '';
+      const diag = Math.hypot(w, h);
+      // colorA flies from the top-left corner toward center-right
+      markup += sprayGroup(colorA, w * 0.02, h * 0.04, 55, diag * 0.55, 0.85);
+      // colorB flies from the bottom-right corner toward center-left
+      markup += sprayGroup(colorB, w * 0.98, h * 0.97, 235, diag * 0.55, 0.85);
+
+      svg.innerHTML = markup;
+    });
+  })();
+</script>
+
+</body>
+</html>
