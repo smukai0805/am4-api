@@ -128,7 +128,7 @@ export default async function handler(req, res) {
         const transfers = (d.response?.[0]?.transfers || []).slice(0, 3);
         transferChecks.push({
           id: p.id, name: p.name, age: p.age,
-          recentTransfers: transfers.map(t => ({ date: t.date, teamIn: t.teams?.in?.name, teamOut: t.teams?.out?.name })),
+          recentTransfers: transfers.map(t => ({ date: t.date, teamInId: t.teams?.in?.id, teamIn: t.teams?.in?.name, teamOut: t.teams?.out?.name })),
         });
       }
 
