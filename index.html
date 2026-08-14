@@ -45,6 +45,7 @@
     font-family:var(--body);
     -webkit-font-smoothing:antialiased;
   }
+  main{display:flex;flex-direction:column;}
   a{color:inherit; text-decoration:none;}
   button{font:inherit; color:inherit;}
   .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
@@ -94,6 +95,7 @@
     background:
       radial-gradient(ellipse 90% 60% at 50% -10%, var(--royal) 0%, transparent 55%),
       linear-gradient(180deg, #050813 0%, var(--ink) 60%);
+    order:-10;
   }
   .hero::before{
     content:"";
@@ -700,10 +702,25 @@
   .data-grid{display:grid;grid-template-columns:1.2fr .8fr;gap:18px;}
   @media(max-width:780px){.data-grid{grid-template-columns:1fr;}}
   .data-panel{border:1px solid var(--line);border-radius:var(--radius);background:var(--ink-2);overflow:hidden;}
+  .match-centre-panel{grid-column:1/-1;}
   .data-panel-head{padding:18px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;align-items:center;}
   .data-panel-head h3{margin:0;font-family:var(--display);font-size:24px;}
   .sample-label{font-family:var(--mono);font-size:10px;color:var(--gold);border:1px solid rgba(217,180,106,.35);border-radius:999px;padding:5px 9px;}
   .data-status{padding:10px 20px;border-bottom:1px solid var(--line);font-size:11px;color:var(--steel-dim);}
+  .fixture-controls{padding:16px 20px;border-bottom:1px solid var(--line);display:grid;gap:14px;}
+  .league-tabs,.fixture-mode-tabs,.fixture-filter-tabs{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:2px;}
+  .league-tabs::-webkit-scrollbar,.fixture-filter-tabs::-webkit-scrollbar{display:none;}
+  .league-tab,.fixture-mode-tab,.fixture-filter-tab{
+    flex:0 0 auto;border:1px solid var(--line);border-radius:999px;background:rgba(255,255,255,.025);
+    color:var(--steel-dim);padding:9px 14px;cursor:pointer;font-size:12px;font-weight:600;white-space:nowrap;
+  }
+  .league-tab[aria-pressed="true"],.fixture-mode-tab[aria-pressed="true"],.fixture-filter-tab[aria-pressed="true"]{
+    color:#fff;background:var(--floodlight);border-color:var(--floodlight);box-shadow:0 8px 22px rgba(42,94,255,.28);
+  }
+  .fixture-mode-tabs{overflow:visible;}
+  .fixture-mode-tab{padding:7px 13px;}
+  .fixture-filter-tab{display:grid;gap:2px;text-align:center;min-width:62px;border-radius:12px;padding:8px 10px;}
+  .fixture-filter-tab small{font-family:var(--mono);font-size:9px;opacity:.72;}
   .fixture-row,.standing-row{display:grid;align-items:center;gap:12px;padding:15px 20px;border-bottom:1px solid var(--line);}
   .fixture-row{grid-template-columns:100px 1fr auto;}
   .standing-row{grid-template-columns:28px 1fr 45px 45px;}
@@ -727,6 +744,9 @@
     .fixture-versus{display:none;}
     .team-logo{width:24px;height:24px;}
     .standing-row{grid-template-columns:24px minmax(0,1fr) 34px 34px;padding:13px 12px;gap:7px;}
+    .fixture-controls{padding:14px 12px;}
+    .league-tabs{display:grid;grid-template-columns:repeat(2,minmax(130px,1fr));overflow:visible;}
+    .league-tab{text-align:center;overflow:hidden;text-overflow:ellipsis;}
   }
   .stat-list{display:flex;flex-wrap:wrap;gap:16px;margin-top:14px;}
   .stat{min-width:90px;}.stat strong{display:block;font-family:var(--display);font-size:26px;}.stat span{font-family:var(--mono);font-size:10px;color:var(--steel-dim);}
@@ -1220,11 +1240,26 @@
 <section class="block" id="fixtures">
   <div class="block-head">
     <h2 class="block-title"><small>Match Centre</small>試合日程と順位</h2>
-    <span class="see-all">API接続境界を実装済み</span>
+    <span class="see-all">5大リーグ＋Champions League</span>
   </div>
   <div class="data-grid">
-    <div class="data-panel reveal">
-      <div class="data-panel-head"><h3>注目試合</h3><span class="sample-label" id="fixtures-source">読み込み中</span></div>
+    <div class="data-panel match-centre-panel reveal">
+      <div class="data-panel-head"><h3>試合情報</h3><span class="sample-label" id="fixtures-source">読み込み中</span></div>
+      <div class="fixture-controls">
+        <div class="league-tabs" id="fixture-leagues" aria-label="大会を選択">
+          <button class="league-tab" type="button" data-league="プレミアリーグ" aria-pressed="true">Premier League</button>
+          <button class="league-tab" type="button" data-league="ラ・リーガ" aria-pressed="false">La Liga</button>
+          <button class="league-tab" type="button" data-league="セリエA" aria-pressed="false">Serie A</button>
+          <button class="league-tab" type="button" data-league="ブンデスリーガ" aria-pressed="false">Bundesliga</button>
+          <button class="league-tab" type="button" data-league="リーグ・アン" aria-pressed="false">Ligue 1</button>
+          <button class="league-tab" type="button" data-league="チャンピオンズリーグ" aria-pressed="false">Champions League</button>
+        </div>
+        <div class="fixture-mode-tabs" aria-label="表示方法を選択">
+          <button class="fixture-mode-tab" type="button" data-fixture-mode="date" aria-pressed="true">日付順</button>
+          <button class="fixture-mode-tab" type="button" data-fixture-mode="round" aria-pressed="false">節別</button>
+        </div>
+        <div class="fixture-filter-tabs" id="fixture-filters" aria-label="日付または節を選択"></div>
+      </div>
       <div class="data-status" id="fixtures-status" aria-live="polite">最新情報を読み込んでいます</div>
       <div id="fixture-list"></div>
     </div>
@@ -1259,6 +1294,12 @@
     const standingsSource = document.getElementById('standings-source');
     const fixturesStatus = document.getElementById('fixtures-status');
     const standingsStatus = document.getElementById('standings-status');
+    const fixtureFilters = document.getElementById('fixture-filters');
+    const fixtureCache = new Map();
+    let activeFixtureLeague = 'プレミアリーグ';
+    let fixtureMode = 'date';
+    let activeFixtureData = null;
+    let activeFixtureFilter = null;
     const updatedAt = () => new Intl.DateTimeFormat('ja-JP', { hour:'2-digit', minute:'2-digit' }).format(new Date());
     window.AM4LiveContext = { fixtures: [], playerPhotoVerified: false };
     const FEATURED_PLAYERS = {
@@ -1431,6 +1472,119 @@
       });
     }
 
+    function nearestUpcomingDate(dates){
+      const today = tokyoDateKey(new Date());
+      return dates.find((date) => date >= today) || dates.at(-1) || null;
+    }
+
+    function tokyoDateKey(value){
+      const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone:'Asia/Tokyo', year:'numeric', month:'2-digit', day:'2-digit'
+      }).formatToParts(value).reduce((result, part) => ({ ...result, [part.type]:part.value }), {});
+      return `${parts.year}-${parts.month}-${parts.day}`;
+    }
+
+    function filterOptions(data){
+      if (fixtureMode === 'round') {
+        const rounds = data.rounds || [];
+        const selectedIndex = Math.max(0, rounds.findIndex((round) => round.key === activeFixtureFilter));
+        const start = Math.max(0, Math.min(selectedIndex - 2, rounds.length - 6));
+        return rounds.slice(start, start + 6).map((round) => ({ value:round.key, label:round.label, small:'節別' }));
+      }
+      const dates = [...new Set((data.fixtures || []).filter((fixture) => fixture.kickoff).map((fixture) => tokyoDateKey(new Date(fixture.kickoff))))].sort();
+      const nearest = nearestUpcomingDate(dates);
+      const start = Math.max(0, dates.indexOf(nearest));
+      return dates.slice(start, start + 6).map((date) => {
+        const value = new Date(`${date}T12:00:00Z`);
+        return {
+          value:date,
+          label:new Intl.DateTimeFormat('ja-JP', { month:'numeric', day:'numeric' }).format(value),
+          small:new Intl.DateTimeFormat('ja-JP', { weekday:'short' }).format(value)
+        };
+      });
+    }
+
+    function defaultFixtureFilter(data){
+      if (fixtureMode === 'date') {
+        const dates = [...new Set((data.fixtures || []).filter((fixture) => fixture.kickoff).map((fixture) => tokyoDateKey(new Date(fixture.kickoff))))].sort();
+        return nearestUpcomingDate(dates);
+      }
+      const now = Date.now();
+      const nextFixture = (data.fixtures || [])
+        .filter((fixture) => fixture.roundKey && Date.parse(fixture.kickoff) >= now)
+        .sort((a, b) => Date.parse(a.kickoff) - Date.parse(b.kickoff))[0];
+      return nextFixture?.roundKey || data.rounds?.[0]?.key || null;
+    }
+
+    function renderFixtureView(){
+      if (!activeFixtureData) return;
+      if (!activeFixtureFilter) activeFixtureFilter = defaultFixtureFilter(activeFixtureData);
+      const options = filterOptions(activeFixtureData);
+      fixtureFilters.replaceChildren(...options.map((option) => {
+        const button = document.createElement('button');
+        button.className = 'fixture-filter-tab'; button.type = 'button';
+        button.dataset.fixtureFilter = option.value;
+        button.setAttribute('aria-pressed', String(option.value === activeFixtureFilter));
+        button.innerHTML = `<small></small><span></span>`;
+        button.querySelector('small').textContent = option.small;
+        button.querySelector('span').textContent = option.label;
+        return button;
+      }));
+      const fixtures = (activeFixtureData.fixtures || []).filter((fixture) =>
+        fixtureMode === 'date' ? tokyoDateKey(new Date(fixture.kickoff)) === activeFixtureFilter : fixture.roundKey === activeFixtureFilter
+      );
+      renderFixtures(fixtures, '');
+      fixturesStatus.textContent = fixtures.length
+        ? `${activeFixtureLeague} · ${fixtureMode === 'date' ? '日付順' : '節別'} · ${fixtures.length}試合 · ${updatedAt()}更新`
+        : `${activeFixtureLeague} · 該当する試合はありません`;
+    }
+
+    function useFixtureData(league, data){
+      activeFixtureLeague = league;
+      activeFixtureData = data;
+      activeFixtureFilter = defaultFixtureFilter(data);
+      document.querySelectorAll('.league-tab').forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.league === league)));
+      fixturesSource.hidden = true;
+      renderFixtureView();
+    }
+
+    async function loadFixtureLeague(league){
+      activeFixtureLeague = league;
+      activeFixtureData = null;
+      activeFixtureFilter = null;
+      document.querySelectorAll('.league-tab').forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.league === league)));
+      fixtureFilters.replaceChildren();
+      fixturesNode.replaceChildren();
+      fixturesStatus.textContent = `${league}の試合を読み込んでいます`;
+      try {
+        const data = fixtureCache.get(league) || await client.fixtures(league, 2026);
+        if (data.errors && Object.keys(data.errors).length) throw new Error('provider returned errors');
+        if (!Array.isArray(data.fixtures)) throw new Error('invalid fixture response');
+        fixtureCache.set(league, data);
+        if (activeFixtureLeague === league) useFixtureData(league, data);
+      } catch (error) {
+        if (activeFixtureLeague === league) {
+          fixturesStatus.textContent = `${league}の試合を取得できませんでした。時間をおいて再度お試しください`;
+          fixturesNode.replaceChildren();
+        }
+        console.warn('Fixture league unavailable.', error);
+      }
+    }
+
+    document.querySelectorAll('.league-tab').forEach((button) => button.addEventListener('click', () => loadFixtureLeague(button.dataset.league)));
+    document.querySelectorAll('.fixture-mode-tab').forEach((button) => button.addEventListener('click', () => {
+      fixtureMode = button.dataset.fixtureMode;
+      document.querySelectorAll('.fixture-mode-tab').forEach((item) => item.setAttribute('aria-pressed', String(item === button)));
+      activeFixtureFilter = activeFixtureData ? defaultFixtureFilter(activeFixtureData) : null;
+      renderFixtureView();
+    }));
+    fixtureFilters.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-fixture-filter]');
+      if (!button) return;
+      activeFixtureFilter = button.dataset.fixtureFilter;
+      renderFixtureView();
+    });
+
     function renderStandings(items){
       standingsNode.replaceChildren();
       items.forEach((club) => {
@@ -1512,10 +1666,8 @@
     ]);
 
     if (fixtureResult.status === 'fulfilled' && fixtureResult.value.fixtures?.length) {
-      const relevantFixtures = AM4FootballData.selectRelevantFixtures(fixtureResult.value.fixtures);
-      renderFixtures(relevantFixtures, '');
-      fixturesSource.hidden = true;
-      fixturesStatus.textContent = `次の試合を表示 · ${updatedAt()}更新`;
+      fixtureCache.set('プレミアリーグ', fixtureResult.value);
+      useFixtureData('プレミアリーグ', fixtureResult.value);
       window.AM4LiveContext.fixtures = fixtureResult.value.fixtures;
     } else {
       fixturesSource.hidden = false;

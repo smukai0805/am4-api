@@ -48,7 +48,6 @@ const FEATURED_LEAGUES = [
   'チャンピオンズリーグ', 'クラブ親善試合'
 ];
 const FEATURED_FIXTURE_LIMIT = 3;
-const FEATURED_HORIZON_DAYS = 45;
 const SCHEDULED_STATUSES = new Set(['NS', 'TBD']);
 const FEATURED_TEAM_IDS = new Set([
   33, 34, 40, 42, 47, 49, 50, 529, 530, 541, 157, 165, 168, 489, 496, 505, 85,
@@ -76,8 +75,8 @@ const KNOCKOUT_STAGE_ORDER = {
 
 // API-Footballのleague.round(例: "Regular Season - 24"、Champions Leagueの
 // リーグフェーズなら"League Stage - 3"、決勝トーナメントなら"Round of 16"等)から、
-// 節別タブ用のキー・表示ラベル・並び順を求める。該当しない場合(予選ラウンド・
-// プレーオフ等)はnullを返し、節別タブには出さない(日付順タブでは引き続き閲覧できる)。
+// 節別タブ用のキー・表示ラベル・並び順を求める。国内リーグ、本戦、決勝
+// トーナメントに加え、シーズン序盤のCL予選とプレーオフも選択できるようにする。
 //
 // 【2026-07-31、Champions League対応で修正】当初は文字列中の最初の数字を
 // そのまま拾うだけだったが、Champions Leagueの予選ラウンド("1st Qualifying Round"
@@ -89,6 +88,17 @@ const KNOCKOUT_STAGE_ORDER = {
 // 固定リスト(KNOCKOUT_STAGE_LABELS)と突き合わせて判定する。
 function resolveRoundInfo(rawRound) {
   if (!rawRound) return null;
+  const qualifyingMatch = String(rawRound).match(/^(1st|2nd|3rd) Qualifying Round$/i);
+  if (qualifyingMatch) {
+    const number = { '1st': 1, '2nd': 2, '3rd': 3 }[qualifyingMatch[1].toLowerCase()];
+    return { key: `qualifying-${number}`, label: `予選${number}回戦`, order: -20 + number };
+  }
+  if (/^Play-?offs?$/i.test(String(rawRound))) {
+    return { key: 'qualifying-playoff', label: 'プレーオフ', order: -10 };
+  }
+  if (/^Preliminary Round$/i.test(String(rawRound))) {
+    return { key: 'preliminary', label: '予備予選', order: -30 };
+  }
   const seasonMatch = String(rawRound).match(/^Regular Season\s*-\s*(\d+)$/i);
   if (seasonMatch) {
     const n = Number(seasonMatch[1]);
@@ -132,9 +142,7 @@ function simplifyFixture(f, competition, includeProviderRound = false) {
 }
 
 function featuredScore(fixture) {
-  const prominentTeams = Number(FEATURED_TEAM_IDS.has(fixture.homeId)) + Number(FEATURED_TEAM_IDS.has(fixture.awayId));
-  const competitionWeight = fixture.competition === 'チャンピオンズリーグ' ? 5 : fixture.competition === 'クラブ親善試合' ? 3 : 2;
-  return prominentTeams * 10 + competitionWeight;
+  return Number(FEATURED_TEAM_IDS.has(fixture.homeId)) + Number(FEATURED_TEAM_IDS.has(fixture.awayId));
 }
 
 export function selectFeaturedFixtures(fixtures) {
@@ -142,20 +150,11 @@ export function selectFeaturedFixtures(fixtures) {
     .sort((a, b) => featuredScore(b) - featuredScore(a) || Date.parse(a.kickoff) - Date.parse(b.kickoff));
   const selected = [];
   const usedTeams = new Set();
-  const usedCompetitions = new Set();
-
-  // 最初は大会もクラブも重複させず、トップを見ただけで複数リーグが伝わる構成にする。
+  // ピック対象クラブ同士の対戦を最優先にし、次に片方がピック対象の試合、
+  // その中ではキックオフが近い順に選ぶ。リーグを均等に見せるための分散はしない。
   for (const fixture of ranked) {
     if (selected.length === FEATURED_FIXTURE_LIMIT) break;
-    if (usedCompetitions.has(fixture.competition) || usedTeams.has(fixture.homeId) || usedTeams.has(fixture.awayId)) continue;
-    selected.push(fixture);
-    usedCompetitions.add(fixture.competition);
-    usedTeams.add(fixture.homeId); usedTeams.add(fixture.awayId);
-  }
-  // 大会数が足りない時は、クラブ重複だけ避けて残り枠を埋める。
-  for (const fixture of ranked) {
-    if (selected.length === FEATURED_FIXTURE_LIMIT) break;
-    if (selected.some((item) => item.id === fixture.id) || usedTeams.has(fixture.homeId) || usedTeams.has(fixture.awayId)) continue;
+    if (usedTeams.has(fixture.homeId) || usedTeams.has(fixture.awayId)) continue;
     selected.push(fixture);
     usedTeams.add(fixture.homeId); usedTeams.add(fixture.awayId);
   }
@@ -171,9 +170,16 @@ async function getFeaturedFixtures(season) {
   const successfulSources = [];
   const errors = {};
   const now = new Date();
-  const horizonDate = new Date(now.getTime() + FEATURED_HORIZON_DAYS * 24 * 60 * 60 * 1000);
-  const from = now.toISOString().slice(0, 10);
-  const to = horizonDate.toISOString().slice(0, 10);
+  // 読者の表示基準（日本時間）で今月末までに限定し、9月表示のカードを混ぜない。
+  const tokyoParts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Tokyo', year: 'numeric', month: '2-digit', day: '2-digit'
+  }).formatToParts(now).reduce((parts, part) => ({ ...parts, [part.type]: part.value }), {});
+  const year = Number(tokyoParts.year);
+  const month = Number(tokyoParts.month);
+  const from = `${tokyoParts.year}-${tokyoParts.month}-${tokyoParts.day}`;
+  const monthEndDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const to = `${tokyoParts.year}-${tokyoParts.month}-${String(monthEndDay).padStart(2, '0')}`;
+  const nextMonthStart = Date.UTC(year, month, 1) - (9 * 60 * 60 * 1000);
   // 全大会を同時に処理へ載せる。実際の外部送信はapiFootballFetch()の共通
   // スロットルが1.1秒間隔に整列するためレート制限を守りつつ、各レスポンス待ちを
   // 直列に積み上げずに済む。大会ごとの失敗はallSettledで独立して扱う。
@@ -198,14 +204,13 @@ async function getFeaturedFixtures(season) {
   });
 
   const nowMs = now.getTime();
-  const horizon = horizonDate.getTime();
   const upcoming = responses.filter((fixture) =>
     Number.isFinite(Date.parse(fixture.kickoff)) &&
     Date.parse(fixture.kickoff) >= nowMs &&
     SCHEDULED_STATUSES.has(fixture.status)
   );
-  const candidates = upcoming.filter((fixture) => Date.parse(fixture.kickoff) <= horizon);
-  const selected = selectFeaturedFixtures(candidates.length >= FEATURED_FIXTURE_LIMIT ? candidates : upcoming);
+  const candidates = upcoming.filter((fixture) => Date.parse(fixture.kickoff) < nextMonthStart);
+  const selected = selectFeaturedFixtures(candidates);
   return { fixtures: selected, sources: successfulSources, errors };
 }
 
