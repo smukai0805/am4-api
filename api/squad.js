@@ -114,6 +114,24 @@ export default async function handler(req, res) {
         });
       }
 
+      // 移籍市場ノイズ疑いの選手(バッチ統計に出てこない選手)について、
+      // /transfers で直近の移籍先を確認する。
+      const batchIds = new Set(batchPages.flatMap(p => p.players.map(pl => pl.id)));
+      const notInBatch = rawPlayers.filter(p => !batchIds.has(p.id));
+      const transferChecks = [];
+      for (const p of notInBatch) {
+        const r = await fetch(
+          `https://v3.football.api-sports.io/transfers?player=${p.id}`,
+          { headers: { 'x-apisports-key': API_KEY } }
+        );
+        const d = await r.json();
+        const transfers = (d.response?.[0]?.transfers || []).slice(0, 3);
+        transferChecks.push({
+          id: p.id, name: p.name, age: p.age,
+          recentTransfers: transfers.map(t => ({ date: t.date, teamIn: t.teams?.in?.name, teamOut: t.teams?.out?.name })),
+        });
+      }
+
       return res.status(200).json({
         diag: true,
         rawPlayerCount: rawPlayers.length,
@@ -121,6 +139,7 @@ export default async function handler(req, res) {
         teamsSearch: (teamsData.response || []).map(t => ({ id: t.team?.id, name: t.team?.name })),
         youngSuspectDetails: details,
         batchPages,
+        transferChecks,
       });
     } catch (err) {
       return res.status(500).json({ diag: true, error: err.message });
