@@ -44,8 +44,7 @@ const DEFAULT_SEASON = 2025;
 // 終了済み(Match Finished)の試合のみスコア表示の対象にする(延長・PK戦を含む)。
 const FINISHED_STATUSES = ['FT', 'AET', 'PEN'];
 const FEATURED_LEAGUES = [
-  'プレミアリーグ', 'ラ・リーガ', 'セリエA', 'ブンデスリーガ', 'リーグ・アン',
-  'チャンピオンズリーグ', 'クラブ親善試合'
+  'プレミアリーグ', 'クラブ親善試合'
 ];
 const FEATURED_FIXTURE_LIMIT = 3;
 const FEATURED_HORIZON_DAYS = 45;
