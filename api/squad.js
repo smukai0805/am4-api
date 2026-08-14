@@ -173,6 +173,27 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'club(日本語クラブ名)または team/teamId(API-FootballチームID)のいずれかのパラメータが必要です' });
   }
 
+  // 【一時診断用 2026-08-14 その2】ククレジャ/デ・フライ/ベルナルド・シルバが
+  // 除外されるべきかどうか、現時点の最新/transfersを再確認する。確認後に削除予定。
+  if (req.query.diag2 === '1') {
+    try {
+      const ids = [47380, 226, 636]; // Cucurella, Dumfries, Bernardo Silva
+      const out = [];
+      for (const id of ids) {
+        const r = await fetch(
+          `https://v3.football.api-sports.io/transfers?player=${id}`,
+          { headers: { 'x-apisports-key': API_KEY } }
+        );
+        const d = await r.json();
+        const transfers = d.response?.[0]?.transfers || [];
+        out.push({ id, playerName: d.response?.[0]?.player?.name, transfers });
+      }
+      return res.status(200).json({ diag2: true, out });
+    } catch (err) {
+      return res.status(500).json({ diag2: true, error: err.message });
+    }
+  }
+
   // club(日本語クラブ名)が指定されていればlib/team-ids.jsで解決し、無ければ
   // team/teamId(数値のAPI-FootballチームID)をそのまま使う。
   let teamId = club ? TEAM_IDS[club] : Number(team ?? teamIdParam);
