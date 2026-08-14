@@ -596,6 +596,9 @@
     position:absolute; inset:0; border-radius:inherit;
     background:linear-gradient(160deg, rgba(255,255,255,0.35), transparent 55%);
   }
+  .crest.has-api-logo{background:rgba(255,255,255,.045);padding:3px;}
+  .crest.has-api-logo::after{display:none;}
+  .crest-logo{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 4px 8px rgba(0,0,0,.35));}
   .crest.a{ background:linear-gradient(160deg,#ff7a7a,#a01f1f); }
   .crest.b{ background:linear-gradient(160deg,#7fa6ff,#1a3fc4); }
   .crest.c{ background:linear-gradient(160deg,#ffe08a,#b8862f); color:#3a2a05; }
@@ -698,10 +701,25 @@
   .standing-row{grid-template-columns:28px 1fr 45px 45px;}
   .fixture-row:last-child,.standing-row:last-child{border-bottom:0;}
   .fixture-date,.fixture-comp{font-family:var(--mono);font-size:10px;color:var(--steel-dim);}
-  .fixture-teams{font-weight:600;font-size:14px;}
+  .fixture-teams{display:flex;align-items:center;gap:10px;font-weight:600;font-size:14px;}
+  .fixture-team{display:flex;align-items:center;gap:7px;min-width:0;}
+  .team-logo{width:28px;height:28px;object-fit:contain;flex:0 0 auto;filter:drop-shadow(0 4px 8px rgba(0,0,0,.3));}
+  .team-logo--small{width:22px;height:22px;}
+  .team-logo-fallback{width:28px;height:28px;border:1px solid var(--line);border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;background:var(--ink-3);font-family:var(--mono);font-size:9px;color:var(--steel);}
+  .standing-club{display:flex;align-items:center;gap:8px;min-width:0;}
+  .standing-club span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .player-profile{display:grid;grid-template-columns:auto 1fr;gap:22px;align-items:center;padding:24px;border:1px solid var(--line);border-radius:var(--radius);background:var(--ink-2);}
   .player-profile .p-avatar{margin:0;width:88px;height:88px;font-size:26px;}
   .player-photo{width:88px;height:88px;border-radius:50%;object-fit:cover;border:1px solid var(--line);background:var(--ink-3);}
+  .p-card .player-photo{width:64px;height:64px;margin:18px 0 16px;}
+  .player-media-source{display:inline-flex;margin:-8px 0 10px;font-family:var(--mono);font-size:9px;color:var(--gold);letter-spacing:.04em;}
+  @media(max-width:560px){
+    .fixture-row{grid-template-columns:76px 1fr auto;padding:14px 12px;gap:8px;}
+    .fixture-teams{align-items:flex-start;flex-direction:column;gap:5px;}
+    .fixture-versus{display:none;}
+    .team-logo{width:24px;height:24px;}
+    .standing-row{grid-template-columns:24px minmax(0,1fr) 34px 34px;padding:13px 12px;gap:7px;}
+  }
   .stat-list{display:flex;flex-wrap:wrap;gap:16px;margin-top:14px;}
   .stat{min-width:90px;}.stat strong{display:block;font-family:var(--display);font-size:26px;}.stat span{font-family:var(--mono);font-size:10px;color:var(--steel-dim);}
 
@@ -1183,7 +1201,8 @@
   <div class="player-grid">
     <div class="p-card reveal">
       <div class="p-flag"></div>
-      <div class="p-avatar">JH</div>
+      <div class="p-avatar" data-player-photo="jorrel-hato">JH</div>
+      <span class="player-media-source" data-player-media-source="jorrel-hato">SAMPLE FALLBACK</span>
       <p class="p-name">J. Hato</p>
       <p class="p-club">Chelsea</p>
       <p class="p-copy">ロッテルダム生まれの若きディフェンダー、新天地でのプレシーズンに見せた確かな一歩。</p>
@@ -1191,7 +1210,8 @@
     </div>
     <div class="p-card reveal">
       <div class="p-flag"></div>
-      <div class="p-avatar">SM</div>
+      <div class="p-avatar" data-player-photo="stephen-mfuni">SM</div>
+      <span class="player-media-source" data-player-media-source="stephen-mfuni">SAMPLE FALLBACK</span>
       <p class="p-name">S. Mfuni</p>
       <p class="p-club">Manchester City</p>
       <p class="p-copy">ウィガン出身の18歳DF、シティのアカデミーから国際親善試合のピッチへ。</p>
@@ -1245,6 +1265,64 @@
     const standingsStatus = document.getElementById('standings-status');
     const updatedAt = () => new Intl.DateTimeFormat('ja-JP', { hour:'2-digit', minute:'2-digit' }).format(new Date());
     window.AM4LiveContext = { fixtures: [], playerPhotoVerified: false };
+    const FEATURED_PLAYERS = {
+      hato: { search:'Hato', fullName:'Jorrel Hato', providerId:341642 },
+      mfuni: { search:'Mfuni', fullName:'Stephen Mfuni' }
+    };
+    const TEAM_MEDIA = {
+      MUN:{ id:33, name:'Manchester United' }, LIV:{ id:40, name:'Liverpool' },
+      MCI:{ id:50, name:'Manchester City' }, RMA:{ id:541, name:'Real Madrid' },
+      NEW:{ id:34, name:'Newcastle United' }, ARS:{ id:42, name:'Arsenal' },
+      CHE:{ id:49, name:'Chelsea' }, LEI:{ id:46, name:'Leicester City' }
+    };
+
+    function initials(name){
+      return String(name || '').split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase();
+    }
+
+    function teamLogo(name, logo, small = false){
+      if (!logo) {
+        const fallback = document.createElement('span');
+        fallback.className = 'team-logo-fallback';
+        fallback.textContent = initials(name);
+        fallback.setAttribute('aria-hidden', 'true');
+        return fallback;
+      }
+      const image = document.createElement('img');
+      image.className = `team-logo${small ? ' team-logo--small' : ''}`;
+      image.src = logo;
+      image.alt = `${name}のクラブロゴ`;
+      image.loading = 'lazy';
+      image.addEventListener('error', () => image.replaceWith(teamLogo(name, null, small)), { once:true });
+      return image;
+    }
+
+    function enhanceStaticCrests(){
+      document.querySelectorAll('.crest').forEach((crest) => {
+        const abbreviation = crest.textContent.trim();
+        const team = TEAM_MEDIA[abbreviation];
+        if (!team) return;
+        const image = document.createElement('img');
+        image.className = 'crest-logo';
+        image.src = `https://media.api-sports.io/football/teams/${team.id}.png`;
+        image.alt = `${team.name}のクラブロゴ`;
+        image.loading = 'lazy';
+        image.addEventListener('error', () => {
+          crest.classList.remove('has-api-logo');
+          crest.textContent = abbreviation;
+          crest.title = 'SAMPLE FALLBACK';
+        }, { once:true });
+        crest.classList.add('has-api-logo');
+        crest.replaceChildren(image);
+      });
+    }
+
+    function fixtureTeam(name, logo){
+      const team = document.createElement('span');
+      team.className = 'fixture-team';
+      team.append(teamLogo(name, logo), document.createTextNode(name));
+      return team;
+    }
 
     function renderFixtures(items, sourceLabel){
       fixturesNode.replaceChildren();
@@ -1254,7 +1332,10 @@
       row.innerHTML = '<div><div class="fixture-date"></div><div class="fixture-comp"></div></div><div class="fixture-teams"></div><span class="sample-label"></span>';
       row.querySelector('.fixture-date').textContent = fixture.kickoff ? new Intl.DateTimeFormat('ja-JP', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }).format(new Date(fixture.kickoff)) : fixture.date;
       row.querySelector('.fixture-comp').textContent = fixture.competition || 'Premier League';
-      row.querySelector('.fixture-teams').textContent = `${fixture.home} vs ${fixture.away}`;
+      const teams = row.querySelector('.fixture-teams');
+      const versus = document.createElement('span');
+      versus.className = 'fixture-versus'; versus.textContent = 'vs';
+      teams.append(fixtureTeam(fixture.home, fixture.homeLogo), versus, fixtureTeam(fixture.away, fixture.awayLogo));
       row.querySelector('.sample-label').textContent = fixture.score && fixture.score !== '-' ? fixture.score : (fixture.note || sourceLabel);
       fixturesNode.append(row);
       });
@@ -1267,7 +1348,12 @@
       row.className = 'standing-row';
       row.innerHTML = '<strong></strong><span></span><span class="fixture-comp">試合</span><span class="fixture-comp">勝点</span>';
       row.children[0].textContent = club.rank || club.position;
-      row.children[1].textContent = club.club;
+      const clubCell = document.createElement('span');
+      clubCell.className = 'standing-club';
+      clubCell.append(teamLogo(club.club, club.logo, true));
+      const clubName = document.createElement('span'); clubName.textContent = club.club;
+      clubCell.append(clubName);
+      row.children[1].replaceWith(clubCell);
       row.children[2].textContent = club.played;
       row.children[3].textContent = club.points;
       standingsNode.append(row);
@@ -1277,9 +1363,15 @@
     function renderPlayer(player, photo, photoSource){
     profile.innerHTML = '<div class="p-avatar">JH</div><div><span class="sample-label"></span><h3 class="match-headline" style="margin-top:12px"></h3><p class="p-club"></p><div class="stat-list"></div><p class="fixture-comp"></p></div>';
     if (photo) {
-      const image = document.createElement('img'); image.className = 'player-photo'; image.src = photo; image.alt = `${player.name}のプロフィール写真`;
+      const placeholder = profile.firstElementChild;
+      const image = createPlayerPhoto(player.name, photo, () => {
+        image.replaceWith(placeholder);
+        profile.querySelector('.sample-label').textContent = 'SAMPLE DATA';
+        profile.querySelector('.fixture-comp:last-child').textContent = player.note;
+      });
       profile.firstElementChild.replaceWith(image);
     }
+
     profile.querySelector('.sample-label').textContent = photo ? 'SAMPLE STATS · API PHOTO' : 'SAMPLE DATA';
     profile.querySelector('h3').textContent = player.name;
     profile.querySelector('.p-club').textContent = `${player.club} · ${player.position} · ${player.age}歳`;
@@ -1293,9 +1385,34 @@
     profile.querySelector('.fixture-comp:last-child').textContent = photo ? `成績はサンプルです。写真のみ${photoSource}から取得しています。` : player.note;
     }
 
+    function createPlayerPhoto(name, photo, onError){
+      const image = document.createElement('img');
+      image.className = 'player-photo'; image.src = photo; image.alt = `${name}のプロフィール写真`; image.loading = 'lazy';
+      image.addEventListener('error', onError, { once:true });
+      return image;
+    }
+
+    function renderPlayerCardPhoto(target, player, photoResult){
+      if (photoResult.status !== 'fulfilled' || !photoResult.value.photo || !AM4FootballData.isMatchingPlayerName(photoResult.value.name, player.name)) return false;
+      const placeholder = document.querySelector(`[data-player-photo="${target}"]`);
+      if (!placeholder) return false;
+      const source = document.querySelector(`[data-player-media-source="${target}"]`);
+      const image = createPlayerPhoto(player.name, photoResult.value.photo, () => {
+        image.replaceWith(placeholder);
+        if (source) source.textContent = 'SAMPLE FALLBACK';
+      });
+      placeholder.replaceWith(image);
+      if (source) source.textContent = 'API-FOOTBALL';
+      return true;
+    }
+
+    enhanceStaticCrests();
     renderFixtures(sample.fixtures, 'SAMPLE'); renderStandings(sample.standings); renderPlayer(sample.player, null, null);
-    const [fixtureResult, standingResult, photoResult] = await Promise.allSettled([
-        client.fixtures('プレミアリーグ', 2026), client.standings(2025), client.playerPhoto('Hato', 'Jorrel Hato')
+    const [fixtureResult, standingResult, photoResult, mfuniPhotoResult] = await Promise.allSettled([
+        client.fixtures('プレミアリーグ', 2026),
+        client.standings(2025),
+        client.playerPhoto(FEATURED_PLAYERS.hato),
+        client.playerPhoto(FEATURED_PLAYERS.mfuni)
     ]);
 
     if (fixtureResult.status === 'fulfilled' && fixtureResult.value.fixtures?.length) {
@@ -1333,6 +1450,8 @@
     } else if (photoResult.status === 'rejected') {
       console.warn('Player photo API unavailable.', photoResult.reason);
     }
+    renderPlayerCardPhoto('jorrel-hato', { name:'Jorrel Hato' }, photoResult);
+    renderPlayerCardPhoto('stephen-mfuni', { name:'Stephen Mfuni' }, mfuniPhotoResult);
     document.dispatchEvent(new CustomEvent('am4:data-ready'));
   })();
 

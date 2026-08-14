@@ -12,7 +12,10 @@
     return {
       fixtures: (league, season) => request(`/fixtures?league=${encodeURIComponent(league)}&season=${encodeURIComponent(season)}`),
       standings: (season) => request(`/standings?season=${encodeURIComponent(season)}`),
-      playerPhoto: (search, fullName) => request(`/player-photo?search=${encodeURIComponent(search)}&fullName=${encodeURIComponent(fullName)}`),
+      playerPhoto: ({ search, fullName, providerId }) => {
+        const providerReference = providerId ? `&playerId=${encodeURIComponent(providerId)}` : "";
+        return request(`/player-photo?search=${encodeURIComponent(search)}&fullName=${encodeURIComponent(fullName)}${providerReference}`);
+      },
       playerStats: (search, team, fullName) => request(`/player-stats?search=${encodeURIComponent(search)}&team=${encodeURIComponent(team)}&fullName=${encodeURIComponent(fullName)}`),
     };
   }

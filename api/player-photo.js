@@ -22,7 +22,7 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
 
   const API_KEY = process.env.API_FOOTBALL_KEY;
-  const { search, fullName } = req.query;
+  const { search, fullName, playerId } = req.query;
 
   if (!API_KEY) {
     return res.status(500).json({ error: 'API_FOOTBALL_KEY が設定されていません' });
@@ -32,7 +32,22 @@ export default async function handler(req, res) {
   }
 
   try {
-    const profile = await resolvePlayerProfile(API_KEY, { search, fullName });
+    let profile;
+    if (playerId) {
+      const providerId = Number(playerId);
+      if (!Number.isInteger(providerId) || providerId <= 0) {
+        return res.status(400).json({ error: 'playerId は正の整数で指定してください' });
+      }
+      const response = await fetch(
+        `https://v3.football.api-sports.io/players/profiles?player=${providerId}`,
+        { headers: { 'x-apisports-key': API_KEY } }
+      );
+      if (!response.ok) throw new Error(`取得に失敗: ${response.status}`);
+      const data = await response.json();
+      profile = data.response?.[0]?.player || null;
+    } else {
+      profile = await resolvePlayerProfile(API_KEY, { search, fullName });
+    }
 
     // 写真は選手ごとに滅多に変わらないため、長め(1日)にキャッシュしてAPI-Football側の
     // 呼び出し回数を抑える。
