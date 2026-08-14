@@ -81,9 +81,27 @@ export default async function handler(req, res) {
 
       // 重複背番号の代表選手数名について、/players?id=...&season=2025 で
       // 所属リーグ(statistics[].league)を確認する
-      const suspects = rawPlayers;
+      // バッチ版: /players?team=&season= で1シーズン最大2ページ程度にまとめて
+      // 取得できるか(選手ごとに個別リクエストしなくて済むか)を検証する。
+      const batchPages = [];
+      for (let page = 1; page <= 3; page++) {
+        const r = await fetch(
+          `https://v3.football.api-sports.io/players?team=${teamId}&season=2025&page=${page}`,
+          { headers: { 'x-apisports-key': API_KEY } }
+        );
+        const d = await r.json();
+        batchPages.push({
+          page, resultsInPage: d.response?.length, paging: d.paging, results: d.results,
+          players: (d.response || []).map(item => ({
+            id: item.player?.id, name: item.player?.name,
+            leagues: (item.statistics || []).map(st => ({ leagueId: st.league?.id, teamId: st.team?.id, appearences: st.games?.appearences })),
+          })),
+        });
+        if (!d.paging || d.paging.current >= d.paging.total) break;
+      }
+
       const details = [];
-      for (const s of suspects) {
+      for (const s of rawPlayers) {
         const r = await fetch(
           `https://v3.football.api-sports.io/players?id=${s.id}&season=2025`,
           { headers: { 'x-apisports-key': API_KEY } }
@@ -102,6 +120,7 @@ export default async function handler(req, res) {
         rawPlayers: rawPlayers.map(p => ({ id: p.id, name: p.name, number: p.number, position: p.position, age: p.age })),
         teamsSearch: (teamsData.response || []).map(t => ({ id: t.team?.id, name: t.team?.name })),
         youngSuspectDetails: details,
+        batchPages,
       });
     } catch (err) {
       return res.status(500).json({ diag: true, error: err.message });
