@@ -1851,7 +1851,7 @@
 
     enhanceStaticCrests();
     renderFixtures(sample.fixtures, 'SAMPLE'); renderStandings(sample.standings); renderPlayer(sample.player, null, null);
-    const [featuredResult] = await Promise.allSettled([client.featuredFixtures(2026)]);
+    const [featuredResult] = await Promise.allSettled([client.featuredFixtures()]);
     if (featuredResult.status === 'fulfilled') {
       const featuredErrors = featuredResult.value.errors || {};
       const rendered = renderFeaturedFixtures(featuredResult.value.fixtures, Object.keys(featuredErrors).length > 0);

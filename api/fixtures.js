@@ -18,13 +18,13 @@
 
 import { apiFootballFetch } from '../lib/api-football-client.js';
 
-const LEAGUES = {
-  'プレミアリーグ': 39,
-  'ラ・リーガ': 140,
-  'セリエA': 135,
-  'ブンデスリーガ': 78,
-  'リーグ・アン': 61,
-  'チャンピオンズリーグ': 2,
+const COMPETITIONS = {
+  'プレミアリーグ': { providerId: 39, featured: true, editorialBonus: 6 },
+  'ラ・リーガ': { providerId: 140, featured: true, editorialBonus: 6 },
+  'セリエA': { providerId: 135, featured: true, editorialBonus: 6 },
+  'ブンデスリーガ': { providerId: 78, featured: true, editorialBonus: 6 },
+  'リーグ・アン': { providerId: 61, featured: true, editorialBonus: 6 },
+  'チャンピオンズリーグ': { providerId: 2, featured: true, editorialBonus: 16 },
   // 2026-08-12追加(EL BLANCO連携作業時): クラブの「次節試合カード」的な用途では、
   // 国内リーグ・CL戦だけでなくプレシーズンの親善試合も対象に含めたいという要望があった。
   // API-Footballの/leagues?search=Friendliesで実際に検索したところ、"Friendlies"
@@ -32,25 +32,76 @@ const LEAGUES = {
   // (id:667、クラブの親善試合)の3つが存在することを確認した。クラブの試合カード用途に
   // 合うのはid:667のみ(実データでレアル・マドリードのプレシーズンツアー戦を確認済み、
   // id:10は国代表戦のため0件だった)。
-  'クラブ親善試合': 667
+  'クラブ親善試合': { providerId: 667, featured: true, editorialBonus: 0 }
 };
+const LEAGUES = Object.fromEntries(
+  Object.entries(COMPETITIONS).map(([name, competition]) => [name, competition.providerId])
+);
 
-// api/standings.js・api/top-scorers.jsと同じ範囲・既定値(2026-07-31のPro
-// プラン切り替えの根拠はstandings.jsのコメント参照)。
+// api/standings.js・api/top-scorers.jsと同じ対応範囲。注目試合の既定シーズンは
+// 固定せず、日本時間の現在日が属する欧州シーズンを使う。
 const MIN_SEASON = 2022;
 const MAX_SEASON = 2026;
-const DEFAULT_SEASON = 2025;
+
+function tokyoDateParts(date) {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Tokyo', year: 'numeric', month: '2-digit', day: '2-digit'
+  }).formatToParts(date).reduce((parts, part) => ({ ...parts, [part.type]: part.value }), {});
+}
+
+export function resolveDefaultSeason(now = new Date()) {
+  const parts = tokyoDateParts(now);
+  const year = Number(parts.year);
+  return Number(parts.month) >= 7 ? year : year - 1;
+}
 
 // 終了済み(Match Finished)の試合のみスコア表示の対象にする(延長・PK戦を含む)。
 const FINISHED_STATUSES = ['FT', 'AET', 'PEN'];
-const FEATURED_LEAGUES = [
-  'プレミアリーグ', 'ラ・リーガ', 'セリエA', 'ブンデスリーガ', 'リーグ・アン',
-  'チャンピオンズリーグ', 'クラブ親善試合'
-];
+const FEATURED_LEAGUES = Object.entries(COMPETITIONS)
+  .filter(([, competition]) => competition.featured)
+  .map(([name]) => name);
 const FEATURED_FIXTURE_LIMIT = 3;
 const SCHEDULED_STATUSES = new Set(['NS', 'TBD']);
-const FEATURED_TEAM_IDS = new Set([
-  33, 34, 40, 42, 47, 49, 50, 529, 530, 541, 157, 165, 168, 489, 496, 505, 85,
+const CLUB_IDS = {
+  manchesterUnited: 33,
+  newcastleUnited: 34,
+  liverpool: 40,
+  arsenal: 42,
+  everton: 45,
+  tottenham: 47,
+  chelsea: 49,
+  manchesterCity: 50,
+  marseille: 81,
+  parisSaintGermain: 85,
+  bayernMunich: 157,
+  borussiaDortmund: 165,
+  bayerLeverkusen: 168,
+  acMilan: 489,
+  juventus: 496,
+  interMilan: 505,
+  barcelona: 529,
+  atleticoMadrid: 530,
+  realMadrid: 541,
+};
+const FEATURED_CLUBS = [
+  'manchesterUnited', 'newcastleUnited', 'liverpool', 'arsenal', 'tottenham', 'chelsea',
+  'manchesterCity', 'marseille', 'parisSaintGermain', 'bayernMunich', 'borussiaDortmund',
+  'bayerLeverkusen', 'acMilan', 'juventus', 'interMilan', 'barcelona',
+  'atleticoMadrid', 'realMadrid',
+];
+const FEATURED_TEAM_IDS = new Set(FEATURED_CLUBS.map((club) => CLUB_IDS[club]));
+const FEATURED_RIVALRIES = new Set([
+  teamPairKey(CLUB_IDS.manchesterUnited, CLUB_IDS.manchesterCity),
+  teamPairKey(CLUB_IDS.manchesterUnited, CLUB_IDS.liverpool),
+  teamPairKey(CLUB_IDS.liverpool, CLUB_IDS.everton),
+  teamPairKey(CLUB_IDS.arsenal, CLUB_IDS.tottenham),
+  teamPairKey(CLUB_IDS.arsenal, CLUB_IDS.chelsea),
+  teamPairKey(CLUB_IDS.barcelona, CLUB_IDS.realMadrid),
+  teamPairKey(CLUB_IDS.atleticoMadrid, CLUB_IDS.realMadrid),
+  teamPairKey(CLUB_IDS.acMilan, CLUB_IDS.interMilan),
+  teamPairKey(CLUB_IDS.juventus, CLUB_IDS.interMilan),
+  teamPairKey(CLUB_IDS.bayernMunich, CLUB_IDS.borussiaDortmund),
+  teamPairKey(CLUB_IDS.marseille, CLUB_IDS.parisSaintGermain),
 ]);
 
 // Champions Leagueの決勝トーナメント各ラウンド(API-Football表記→日本語ラベル)。
@@ -141,28 +192,33 @@ function simplifyFixture(f, competition, includeProviderRound = false) {
   };
 }
 
+function teamPairKey(homeId, awayId) {
+  return [homeId, awayId].sort((a, b) => a - b).join(':');
+}
+
+function japanViewingBonus(kickoff) {
+  if (!Number.isFinite(Date.parse(kickoff))) return 0;
+  const hour = Number(new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Tokyo', hour: '2-digit', hourCycle: 'h23'
+  }).format(new Date(kickoff)));
+  if (hour >= 19 && hour <= 23) return 12;
+  if (hour <= 1) return 8;
+  if (hour === 2) return 3;
+  return 0;
+}
+
 function featuredScore(fixture) {
-  return Number(FEATURED_TEAM_IDS.has(fixture.homeId)) + Number(FEATURED_TEAM_IDS.has(fixture.awayId));
+  const pickedClubs = Number(FEATURED_TEAM_IDS.has(fixture.homeId)) + Number(FEATURED_TEAM_IDS.has(fixture.awayId));
+  const derbyBonus = FEATURED_RIVALRIES.has(teamPairKey(fixture.homeId, fixture.awayId)) ? 30 : 0;
+  const competitionBonus = COMPETITIONS[fixture.competition]?.editorialBonus || 0;
+  return pickedClubs * 100 + derbyBonus + competitionBonus + japanViewingBonus(fixture.kickoff);
 }
 
 export function selectFeaturedFixtures(fixtures) {
   const ranked = [...fixtures]
     .sort((a, b) => featuredScore(b) - featuredScore(a) || Date.parse(a.kickoff) - Date.parse(b.kickoff));
-  const selected = [];
-  const usedTeams = new Set();
-  // ピック対象クラブ同士の対戦を最優先にし、次に片方がピック対象の試合、
-  // その中ではキックオフが近い順に選ぶ。リーグを均等に見せるための分散はしない。
-  for (const fixture of ranked) {
-    if (selected.length === FEATURED_FIXTURE_LIMIT) break;
-    if (usedTeams.has(fixture.homeId) || usedTeams.has(fixture.awayId)) continue;
-    selected.push(fixture);
-    usedTeams.add(fixture.homeId); usedTeams.add(fixture.awayId);
-  }
-  for (const fixture of ranked) {
-    if (selected.length === FEATURED_FIXTURE_LIMIT) break;
-    if (!selected.some((item) => item.id === fixture.id)) selected.push(fixture);
-  }
-  return selected;
+  // AM4注目度をそのまま反映し、同点時だけキックオフが近い試合を先にする。
+  return ranked.slice(0, FEATURED_FIXTURE_LIMIT);
 }
 
 async function getFeaturedFixtures(season) {
@@ -171,9 +227,7 @@ async function getFeaturedFixtures(season) {
   const errors = {};
   const now = new Date();
   // 読者の表示基準（日本時間）で今月末までに限定し、9月表示のカードを混ぜない。
-  const tokyoParts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Tokyo', year: 'numeric', month: '2-digit', day: '2-digit'
-  }).formatToParts(now).reduce((parts, part) => ({ ...parts, [part.type]: part.value }), {});
+  const tokyoParts = tokyoDateParts(now);
   const year = Number(tokyoParts.year);
   const month = Number(tokyoParts.month);
   const from = `${tokyoParts.year}-${tokyoParts.month}-${tokyoParts.day}`;
@@ -224,7 +278,7 @@ export default async function handler(req, res) {
   const { league, featured } = req.query;
 
   const seasonParam = Number(req.query.season);
-  const SEASON = Number.isInteger(seasonParam) ? seasonParam : DEFAULT_SEASON;
+  const SEASON = Number.isInteger(seasonParam) ? seasonParam : resolveDefaultSeason();
   if (SEASON < MIN_SEASON || SEASON > MAX_SEASON) {
     return res.status(400).json({ error: `season は ${MIN_SEASON}〜${MAX_SEASON} の範囲で指定してください` });
   }
