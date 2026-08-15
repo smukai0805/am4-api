@@ -10,7 +10,7 @@
       return response.json();
     }
     return {
-      fixtures: (league, season) => request(`/fixtures?league=${encodeURIComponent(league)}&season=${encodeURIComponent(season)}`),
+      fixtures: (league, season) => request(`/fixtures?league=${encodeURIComponent(league)}${season == null ? "" : `&season=${encodeURIComponent(season)}`}`),
       featuredFixtures: () => request('/fixtures?featured=1'),
       standings: (season) => request(`/standings?season=${encodeURIComponent(season)}`),
       playerPhoto: ({ search, fullName, providerId }) => {
@@ -40,5 +40,31 @@
     return valid.sort((a, b) => Date.parse(b.kickoff) - Date.parse(a.kickoff)).slice(0, limit);
   }
 
-  return { createClient, isMatchingPlayerName, selectRelevantFixtures };
+  function classifyFixtureStatus(status) {
+    const value = String(status || "").toUpperCase();
+    if (["1H", "HT", "2H", "ET", "BT", "P", "SUSP", "INT", "LIVE"].includes(value)) return "live";
+    if (["NS", "TBD"].includes(value)) return "upcoming";
+    if (["FT", "AET", "PEN"].includes(value)) return "finished";
+    return "other";
+  }
+
+  function filterFixtures(fixtures, { status = "all", favoriteClubIds = [], favoriteClubNames = [] } = {}) {
+    const ids = new Set(favoriteClubIds.map((id) => String(id).replace(/^team-/, "")));
+    const names = new Set(favoriteClubNames.map(normalizeName));
+    return (fixtures || []).filter((fixture) => {
+      if (status !== "all" && classifyFixtureStatus(fixture.status) !== status) return false;
+      if (!ids.size && !names.size) return true;
+      return ids.has(String(fixture.homeId)) || ids.has(String(fixture.awayId)) ||
+        names.has(normalizeName(fixture.home)) || names.has(normalizeName(fixture.away));
+    });
+  }
+
+  function tokyoDateKey(value) {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit",
+    }).formatToParts(new Date(value)).reduce((result, part) => ({ ...result, [part.type]: part.value }), {});
+    return `${parts.year}-${parts.month}-${parts.day}`;
+  }
+
+  return { createClient, isMatchingPlayerName, selectRelevantFixtures, classifyFixtureStatus, filterFixtures, tokyoDateKey };
 });

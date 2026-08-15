@@ -22,6 +22,12 @@ test("toggling a favourite persists it and toggling again removes it", () => {
   assert.deepEqual(favorites.toggle(storage, "players", "j-hato").players, []);
 });
 
+test("provider club references remain stable when saved locally", () => {
+  const storage = memoryStorage();
+  favorites.toggle(storage, "clubs", "team-40");
+  assert.deepEqual(favorites.read(storage).clubs, ["team-40"]);
+});
+
 test("normalisation removes duplicates and unsupported values", () => {
   assert.deepEqual(
     favorites.normalize({ clubs: ["arsenal", "arsenal", null], players: "bad" }),
@@ -35,4 +41,3 @@ test("count includes all supported favourite types", () => {
     3,
   );
 });
-

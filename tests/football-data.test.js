@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { createClient, isMatchingPlayerName, selectRelevantFixtures } = require("../football-data.js");
+const { createClient, isMatchingPlayerName, selectRelevantFixtures, classifyFixtureStatus, filterFixtures, tokyoDateKey } = require("../football-data.js");
 
 test("client calls the server-side proxy without exposing an API key", async () => {
   let requested;
@@ -27,6 +27,16 @@ test("featured fixtures use the server-side curated endpoint", async () => {
   });
   await client.featuredFixtures();
   assert.equal(requested, "https://am4-api.vercel.app/api/fixtures?featured=1");
+});
+
+test("league fixtures can let the server choose the current football season", async () => {
+  let requested;
+  const client = createClient(async (url) => {
+    requested = url;
+    return { ok: true, json: async () => ({ fixtures: [] }) };
+  });
+  await client.fixtures("プレミアリーグ");
+  assert.equal(requested, "https://am4-api.vercel.app/api/fixtures?league=%E3%83%97%E3%83%AC%E3%83%9F%E3%82%A2%E3%83%AA%E3%83%BC%E3%82%B0");
 });
 
 test("player photos can use a validated API-Football player reference", async () => {
@@ -66,4 +76,27 @@ test("relevant fixtures fall back to the most recent results", () => {
     selectRelevantFixtures(fixtures, Date.parse("2026-08-15T00:00:00Z")).map((item) => item.id),
     [2, 1],
   );
+});
+
+test("fixture statuses are grouped into live, upcoming, and finished views", () => {
+  assert.equal(classifyFixtureStatus("1H"), "live");
+  assert.equal(classifyFixtureStatus("NS"), "upcoming");
+  assert.equal(classifyFixtureStatus("FT"), "finished");
+  assert.equal(classifyFixtureStatus("CANC"), "other");
+});
+
+test("fixtures can be limited to upcoming matches involving saved clubs", () => {
+  const fixtures = [
+    { id: 1, status: "NS", homeId: 33, awayId: 40, home: "Manchester United", away: "Liverpool" },
+    { id: 2, status: "1H", homeId: 50, awayId: 42, home: "Manchester City", away: "Arsenal" },
+    { id: 3, status: "NS", homeId: 47, awayId: 49, home: "Tottenham", away: "Chelsea" },
+  ];
+  assert.deepEqual(
+    filterFixtures(fixtures, { status: "upcoming", favoriteClubIds: ["team-40"] }).map((item) => item.id),
+    [1],
+  );
+});
+
+test("fixture date keys follow Japan time across the UTC date boundary", () => {
+  assert.equal(tokyoDateKey("2026-08-14T16:30:00Z"), "2026-08-15");
 });
