@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#050817">
+  <title>AM4 Homepage Directions — Prototype</title>
+  <!-- PROTOTYPE — Three structurally different mobile homepage directions, switchable with ?variant=A|B|C. -->
+  <style>
+    :root{--ink:#050817;--panel:#0d1731;--line:#243252;--blue:#1458ff;--white:#f7f8fc;--muted:#9aa7c3;--gold:#d9b46f;--home:#ffffff;--away:#e5202d;--safe:calc(16px + env(safe-area-inset-bottom))}
+    *{box-sizing:border-box} html{background:var(--ink);color:var(--white);font-family:-apple-system,BlinkMacSystemFont,"Noto Sans JP","Segoe UI",sans-serif;scroll-behavior:smooth} body{margin:0;min-width:320px;background:var(--ink)} button,a{font:inherit} a{color:inherit;text-decoration:none} button{color:inherit}.shell{min-height:100svh;overflow:hidden}.mast{height:68px;padding:0 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #ffffff17;background:#071023e8;backdrop-filter:blur(18px);position:relative;z-index:10}.brand{display:flex;align-items:center;gap:12px}.brand img{width:94px;height:auto}.brand span{font:10px/1 ui-monospace,SFMono-Regular,monospace;letter-spacing:.24em;color:#a9b3ca;text-transform:uppercase}.mast-meta{font:11px/1 ui-monospace,SFMono-Regular,monospace;letter-spacing:.12em;color:#a9b3ca}.variant{display:none}.variant.active{display:block}.kicker{font:700 10px/1 ui-monospace,SFMono-Regular,monospace;letter-spacing:.22em;text-transform:uppercase;color:#69a0ff}.display{font-family:Impact,"Arial Narrow",sans-serif;font-weight:900;letter-spacing:.015em;text-transform:uppercase}.brush{font-family:Impact,"Arial Narrow",sans-serif;font-style:italic;font-weight:900;letter-spacing:-.025em;text-transform:uppercase}.muted{color:var(--muted)}.cta{border:1px solid #ffffff2c;background:linear-gradient(100deg,#0758d8,#7430ae);min-height:52px;padding:0 22px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;gap:12px;font-weight:800;box-shadow:0 14px 36px #1458ff32}.logo{object-fit:contain;filter:drop-shadow(0 10px 15px #0009)}
+
+    /* A — matchday poster: emotion first, utility follows. */
+    .a-stage{min-height:700px;position:relative;isolation:isolate;display:flex;flex-direction:column;padding:22px 20px 28px;background:radial-gradient(circle at 50% 36%,#172457 0,#081027 38%,#03050d 75%)}
+    .a-stage:before,.a-stage:after{content:"";position:absolute;z-index:-1;width:76%;height:58%;top:8%;filter:saturate(1.25);opacity:.93}
+    .a-stage:before{left:-32%;background:radial-gradient(circle at 75% 35%,var(--home) 0 7%,transparent 8%),radial-gradient(circle at 72% 43%,var(--home) 0 2%,transparent 3%),radial-gradient(circle at 86% 52%,var(--home) 0 4%,transparent 5%),linear-gradient(115deg,transparent 32%,var(--home) 33% 47%,transparent 48%);clip-path:polygon(0 16%,100% 0,79% 38%,100% 56%,65% 63%,86% 100%,0 87%)}
+    .a-stage:after{right:-32%;background:radial-gradient(circle at 25% 31%,var(--away) 0 7%,transparent 8%),radial-gradient(circle at 29% 49%,var(--away) 0 3%,transparent 4%),radial-gradient(circle at 17% 60%,var(--away) 0 4%,transparent 5%),linear-gradient(65deg,transparent 32%,var(--away) 33% 47%,transparent 48%);clip-path:polygon(0 0,100% 17%,100% 88%,12% 100%,34% 61%,0 55%,22% 37%)}
+    .a-topline{display:flex;align-items:center;justify-content:space-between}.live-pill{display:inline-flex;gap:8px;align-items:center;border:1px solid #ffffff2b;border-radius:999px;padding:8px 12px;background:#0307128a;font:700 10px/1 ui-monospace,SFMono-Regular,monospace;letter-spacing:.15em}.live-pill i{width:7px;height:7px;border-radius:50%;background:#ff3857;box-shadow:0 0 14px #ff3857}.a-match{margin:auto 0 0;display:grid;grid-template-columns:1fr 54px 1fr;align-items:start;text-align:center}.a-club{position:relative;display:flex;flex-direction:column;align-items:center;min-width:0}.a-club .logo{width:118px;height:118px}.a-vs{align-self:center;font:italic 800 34px/1 Impact,sans-serif;text-shadow:0 0 18px #5e80ff}.club-name{font-size:37px;line-height:.82;margin-top:14px;text-wrap:balance;text-shadow:2px 3px 0 #02040c,0 0 22px #000}.club-sub{margin-top:13px;color:#dce3f5;font-size:10px;letter-spacing:.08em}.a-ticket{margin-top:32px;border:1px solid #7387bd4d;border-radius:22px;padding:20px 18px;background:#050b1bd9;box-shadow:0 22px 70px #0009;text-align:center}.a-ticket .competition{color:#6792ff;font:700 10px/1 ui-monospace,SFMono-Regular,monospace;letter-spacing:.2em;text-transform:uppercase}.a-ticket .time{font:40px/1.1 Impact,"Arial Narrow",sans-serif;letter-spacing:.06em;margin:13px 0 6px}.a-ticket .reason{font-size:12px;color:#b9c3d9}.a-ticket .cta{width:100%;margin-top:18px}.a-next{background:#081126;padding:22px 0 26px}.section-head{padding:0 20px 14px;display:flex;align-items:end;justify-content:space-between}.section-head h2{margin:5px 0 0;font-size:25px}.section-head a{font-size:11px;color:#91a1c3}.fixture-rail{display:flex;gap:10px;overflow:auto;padding:0 20px 4px;scrollbar-width:none}.mini-match{min-width:260px;border:1px solid var(--line);border-radius:17px;background:#0d1832;padding:15px;display:grid;grid-template-columns:1fr auto;gap:10px}.mini-match strong{font-size:13px}.mini-match small{display:block;margin-top:7px;color:var(--muted)}.mini-logos{display:flex;align-items:center}.mini-logos img{width:31px;height:31px;object-fit:contain;margin-left:-5px}.a-editorial{padding:44px 20px 130px;background:linear-gradient(#071024,#040712)}.story-card{border-top:1px solid #ffffff2a;padding-top:21px}.story-card h2{font-size:34px;line-height:1.15;margin:15px 0 12px;letter-spacing:-.04em}.story-card p{font-size:14px;line-height:1.9;color:#aeb9d0}.story-link{display:inline-flex;margin-top:13px;color:var(--gold);font-weight:700;font-size:13px}
+
+    /* B — night desk: speed and personal utility first. */
+    .v-b{background:#060b16;min-height:100svh;padding-bottom:120px}.b-greeting{padding:24px 18px 17px}.b-greeting h1{font-size:29px;line-height:1.1;margin:8px 0}.b-countdown{margin:0 14px;border-radius:26px;background:linear-gradient(145deg,#153c94,#0b1836 56%,#33194e);border:1px solid #4576dd66;padding:22px;box-shadow:0 22px 55px #0007}.b-countdown-head{display:flex;justify-content:space-between;align-items:center}.b-countdown-head span:last-child{color:#aebbd6;font-size:11px}.count{font:62px/.95 Impact,"Arial Narrow",sans-serif;letter-spacing:.04em;margin:22px 0 17px}.count small{display:block;font:700 10px/1.2 ui-monospace,SFMono-Regular,monospace;letter-spacing:.18em;color:#83a9ff;margin-bottom:8px}.b-fixture{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;border-top:1px solid #ffffff25;padding-top:17px;text-align:center}.b-fixture img{width:54px;height:54px;object-fit:contain}.b-fixture strong{display:block;font-size:12px;margin-top:7px}.b-vs{color:#8ca2cf;font:20px Impact,sans-serif}.b-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px}.b-actions button{min-height:48px;border-radius:14px;border:1px solid #2b3b5e;background:#101b31;font-weight:750}.b-actions button:first-child{background:var(--blue);border-color:var(--blue)}.b-block{padding:27px 14px 0}.b-block h2{font-size:19px;margin:0 0 13px}.timeline{border-left:1px solid #2c3b5d;margin-left:8px}.timeline-row{display:grid;grid-template-columns:44px 1fr;gap:12px;margin:0 0 10px;padding-left:13px;position:relative}.timeline-row:before{content:"";width:7px;height:7px;border-radius:50%;background:#5d86e8;position:absolute;left:-4px;top:18px}.timeline-row>time{font:700 11px/1 ui-monospace,SFMono-Regular,monospace;color:#9eb0d5;padding-top:16px}.timeline-card{border:1px solid #1e2c49;background:#0b1427;border-radius:14px;padding:13px;display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center}.timeline-card img{width:30px;height:30px;object-fit:contain}.timeline-card strong{font-size:12px}.timeline-card small{display:block;color:#7788a9;margin-top:3px}.digest{display:grid;gap:1px;border:1px solid #1e2c49;border-radius:17px;overflow:hidden}.digest article{padding:16px;background:#0c1527}.digest small{color:#5c8eff;font:700 9px/1 ui-monospace,SFMono-Regular,monospace;letter-spacing:.15em}.digest h3{font-size:15px;line-height:1.5;margin:7px 0 0}
+
+    /* C — editorial cover: a magazine that happens to know kickoff times. */
+    .v-c{min-height:100svh;background:#e9e6df;color:#0b1120;padding-bottom:120px}.v-c .mast{background:#e9e6dff0;border-color:#1113}.v-c .brand span,.v-c .mast-meta{color:#394053}.c-issue{padding:16px 20px 12px;display:flex;justify-content:space-between;border-bottom:1px solid #111}.c-issue strong{font:900 11px/1 ui-monospace,SFMono-Regular,monospace;letter-spacing:.19em}.c-cover{margin:14px;background:#071020;color:#fff;border-radius:2px;min-height:535px;position:relative;overflow:hidden;padding:21px;display:flex;flex-direction:column;isolation:isolate;box-shadow:8px 10px 0 #1458ff}.c-cover:before{content:"";position:absolute;inset:20% -35% -30%;z-index:-1;background:conic-gradient(from 120deg,var(--home),transparent 24%,var(--away) 45%,transparent 70%,var(--home));filter:blur(4px);opacity:.74;transform:rotate(-10deg)}.c-cover .cover-title{font:italic 900 58px/.83 Impact,"Arial Narrow",sans-serif;text-transform:uppercase;letter-spacing:-.025em;max-width:320px;margin:12px 0}.c-cover .cover-deck{max-width:250px;color:#d3daea;font-size:12px;line-height:1.6}.c-clubs{display:flex;align-items:end;justify-content:space-between;margin-top:auto}.c-clubs img{width:92px;height:92px;object-fit:contain}.c-scoreline{text-align:center}.c-scoreline strong{font:36px/1 Impact,sans-serif;display:block}.c-scoreline small{font:700 9px/1.4 ui-monospace,SFMono-Regular,monospace;letter-spacing:.1em}.c-index{padding:36px 20px 10px}.c-index-head{display:flex;justify-content:space-between;align-items:end;border-bottom:2px solid #0b1120;padding-bottom:10px}.c-index-head h2{font:36px/.9 Impact,sans-serif;text-transform:uppercase;margin:0}.c-index-head span{font:700 10px/1 ui-monospace,SFMono-Regular,monospace}.c-story{display:grid;grid-template-columns:36px 1fr;gap:15px;padding:19px 0;border-bottom:1px solid #a4a5a4}.c-story>strong{font:30px/1 Impact,sans-serif;color:#1458ff}.c-story small{font:800 9px/1 ui-monospace,SFMono-Regular,monospace;letter-spacing:.14em}.c-story h3{font-size:18px;line-height:1.35;margin:6px 0}.c-story p{font-size:12px;line-height:1.7;color:#4c5361;margin:0}
+
+    .prototype-bar{position:fixed;z-index:100;left:50%;bottom:var(--safe);transform:translateX(-50%);display:grid;grid-template-columns:48px minmax(190px,1fr) 48px;align-items:center;border:1px solid #ffffff31;border-radius:999px;background:#02040df2;color:#fff;box-shadow:0 14px 45px #000b;backdrop-filter:blur(18px);padding:5px;width:min(330px,calc(100% - 28px))}.prototype-bar button{height:42px;width:42px;border-radius:50%;border:0;background:#182341;cursor:pointer;font-size:20px}.prototype-label{text-align:center}.prototype-label small{display:block;color:#648fff;font:700 8px/1 ui-monospace,SFMono-Regular,monospace;letter-spacing:.14em}.prototype-label strong{display:block;font-size:12px;margin-top:4px}@media(min-width:760px){body{display:flex;justify-content:center;background:#01030a}.shell{width:430px;box-shadow:0 0 70px #000;border-inline:1px solid #1e2941}}
+  </style>
+</head>
+<body>
+<main class="shell">
+  <section class="variant v-a" data-variant="A" aria-label="A — Matchday Poster">
+    <header class="mast"><a class="brand" href="#"><img src="/am4-logo.png" alt="AM4"><span>Soccer Media</span></a><span class="mast-meta">JP · LIVE</span></header>
+    <div class="a-stage">
+      <div class="a-topline"><span class="live-pill"><i></i> MATCHDAY PICK</span><span class="kicker">SAT · 22:00</span></div>
+      <div class="a-match">
+        <div class="a-club"><img class="logo js-home-logo" src="https://media.api-sports.io/football/teams/49.png" alt=""><strong class="club-name brush js-home">Chelsea</strong><span class="club-sub">HOME</span></div>
+        <div class="a-vs">VS</div>
+        <div class="a-club"><img class="logo js-away-logo" src="https://media.api-sports.io/football/teams/548.png" alt=""><strong class="club-name brush js-away">Real Sociedad</strong><span class="club-sub">AWAY</span></div>
+      </div>
+      <div class="a-ticket"><div class="competition js-comp">CLUB FRIENDLY</div><div class="time js-time">TODAY 22:00</div><div class="reason">注目クラブ同士。プレシーズンの現在地が見える一戦。</div><a class="cta" href="#">試合情報を見る <span>→</span></a></div>
+    </div>
+    <section class="a-next"><div class="section-head"><div><span class="kicker">UP NEXT</span><h2>次に見る試合</h2></div><a href="#">すべて見る →</a></div><div class="fixture-rail" id="a-rail"></div></section>
+    <section class="a-editorial"><article class="story-card"><span class="kicker">COVER STORY · 08 MIN</span><h2>移籍市場を動かす、静かな18歳の決断。</h2><p>数字だけでは見えない背景を、プレースタイルと歩んできた道から読む。AM4が今週届ける選手ストーリー。</p><a class="story-link" href="#">物語を読む&nbsp; →</a></article></section>
+  </section>
+
+  <section class="variant v-b" data-variant="B" aria-label="B — Night Desk">
+    <header class="mast"><a class="brand" href="#"><img src="/am4-logo.png" alt="AM4"><span>Night Desk</span></a><span class="mast-meta">日本時間</span></header>
+    <div class="b-greeting"><span class="kicker">YOUR AM4</span><h1>今夜、見るべきもの。</h1><span class="muted">お気に入りクラブと注目カードをまとめました。</span></div>
+    <section class="b-countdown"><div class="b-countdown-head"><span class="live-pill"><i></i> NEXT MATCH</span><span class="js-comp">Club Friendly</span></div><div class="count"><small>KICKOFFまで</small>05:42:18</div><div class="b-fixture"><div><img class="js-home-logo" src="https://media.api-sports.io/football/teams/49.png" alt=""><strong class="js-home">Chelsea</strong></div><span class="b-vs">VS</span><div><img class="js-away-logo" src="https://media.api-sports.io/football/teams/548.png" alt=""><strong class="js-away">Real Sociedad</strong></div></div></section>
+    <div class="b-actions"><button>試合情報</button><button>クラブを保存</button></div>
+    <section class="b-block"><h2>今夜のタイムライン</h2><div class="timeline" id="b-timeline"></div></section>
+    <section class="b-block"><h2>3分で追いつく</h2><div class="digest"><article><small>TRANSFER</small><h3>移籍市場、今日動いた3つの交渉</h3></article><article><small>TACTICS</small><h3>プレシーズンで見えた新布陣の狙い</h3></article><article><small>RISING</small><h3>次に覚えておきたい18歳の名前</h3></article></div></section>
+  </section>
+
+  <section class="variant v-c" data-variant="C" aria-label="C — Editorial Cover">
+    <header class="mast"><a class="brand" href="#"><img src="/am4-logo.png" alt="AM4"><span>Soccer Media</span></a><span class="mast-meta">ISSUE 004</span></header>
+    <div class="c-issue"><strong>SOME MOMENTS MATTER MORE.</strong><span>15 AUG 2026</span></div>
+    <article class="c-cover"><span class="kicker">THE MATCH OF THE NIGHT</span><h1 class="cover-title">Own<br>The<br>Night.</h1><p class="cover-deck">新しいシーズンの輪郭が、今夜の90分から見え始める。</p><div class="c-clubs"><img class="js-home-logo" src="https://media.api-sports.io/football/teams/49.png" alt=""><div class="c-scoreline"><strong class="js-time">22:00</strong><small class="js-home">CHELSEA</small><br><small>VS</small><br><small class="js-away">REAL SOCIEDAD</small></div><img class="js-away-logo" src="https://media.api-sports.io/football/teams/548.png" alt=""></div></article>
+    <section class="c-index"><div class="c-index-head"><h2>Inside</h2><span>READ / WATCH / FOLLOW</span></div><article class="c-story"><strong>01</strong><div><small>MATCHDAY</small><h3>今夜の注目試合、見るべき3つの理由</h3><p>新戦力、システム、監督の狙い。キックオフ前に要点を整理する。</p></div></article><article class="c-story"><strong>02</strong><div><small>TRANSFER</small><h3>移籍市場を動かすクラブの次の一手</h3><p>速報のその先にある、補強戦略とチーム作りを読む。</p></div></article><article class="c-story"><strong>03</strong><div><small>RISING</small><h3>静かな18歳が選んだ次の一歩</h3><p>データとストーリーから、次の主役を紹介する。</p></div></article></section>
+  </section>
+</main>
+
+<nav class="prototype-bar" aria-label="プロトタイプ切替"><button id="prev" type="button" aria-label="前の案">←</button><div class="prototype-label"><small id="state">PROTOTYPE · LOADING</small><strong id="variant-label">A — Matchday Poster</strong></div><button id="next" type="button" aria-label="次の案">→</button></nav>
+
+<script>
+  const variants = [
+    { key:'A', name:'Matchday Poster' },
+    { key:'B', name:'Night Desk' },
+    { key:'C', name:'Editorial Cover' }
+  ];
+  const fallback = [
+    { home:'Chelsea', away:'Real Sociedad', homeLogo:'https://media.api-sports.io/football/teams/49.png', awayLogo:'https://media.api-sports.io/football/teams/548.png', competition:'Club Friendly', kickoff:'2026-08-15T22:00:00+09:00' },
+    { home:'Newcastle', away:'Bayer Leverkusen', homeLogo:'https://media.api-sports.io/football/teams/34.png', awayLogo:'https://media.api-sports.io/football/teams/168.png', competition:'Club Friendly', kickoff:'2026-08-15T23:00:00+09:00' },
+    { home:'Manchester United', away:'AC Milan', homeLogo:'https://media.api-sports.io/football/teams/33.png', awayLogo:'https://media.api-sports.io/football/teams/489.png', competition:'Club Friendly', kickoff:'2026-08-16T01:30:00+09:00' }
+  ];
+  let fixtureData = fallback;
+  const keyFromUrl = () => (new URLSearchParams(location.search).get('variant') || 'A').toUpperCase();
+  function showVariant(key, updateUrl=false){
+    const selected = variants.find(item => item.key === key) || variants[0];
+    document.querySelectorAll('[data-variant]').forEach(section => section.classList.toggle('active', section.dataset.variant === selected.key));
+    document.getElementById('variant-label').textContent = `${selected.key} — ${selected.name}`;
+    document.getElementById('state').textContent = `PROTOTYPE · ${fixtureData === fallback ? 'FALLBACK DATA' : 'LIVE DATA'}`;
+    document.documentElement.dataset.variant = selected.key;
+    if(updateUrl){ const url = new URL(location.href); url.searchParams.set('variant', selected.key); history.replaceState({},'',url); }
+    scrollTo({top:0,behavior:'instant'});
+  }
+  function cycle(direction){ const current = variants.findIndex(item => item.key === keyFromUrl()); const next = variants[(current + direction + variants.length) % variants.length]; showVariant(next.key,true); }
+  document.getElementById('prev').addEventListener('click',()=>cycle(-1));
+  document.getElementById('next').addEventListener('click',()=>cycle(1));
+  addEventListener('keydown', event => { if(/INPUT|TEXTAREA/.test(event.target.tagName) || event.target.isContentEditable) return; if(event.key === 'ArrowLeft') cycle(-1); if(event.key === 'ArrowRight') cycle(1); });
+
+  const time = kickoff => new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',hour:'2-digit',minute:'2-digit'}).format(new Date(kickoff));
+  function paint(fixtures){
+    const lead = fixtures[0] || fallback[0];
+    document.querySelectorAll('.js-home').forEach(node => node.textContent = lead.home);
+    document.querySelectorAll('.js-away').forEach(node => node.textContent = lead.away);
+    document.querySelectorAll('.js-home-logo').forEach(node => { node.src=lead.homeLogo; node.alt=`${lead.home} クラブロゴ`; });
+    document.querySelectorAll('.js-away-logo').forEach(node => { node.src=lead.awayLogo; node.alt=`${lead.away} クラブロゴ`; });
+    document.querySelectorAll('.js-comp').forEach(node => node.textContent = lead.competition || 'Featured Match');
+    document.querySelectorAll('.js-time').forEach(node => node.textContent = `TODAY ${time(lead.kickoff)}`);
+    document.getElementById('a-rail').replaceChildren(...fixtures.slice(1,4).map(match => {
+      const card=document.createElement('article'); card.className='mini-match';
+      const copy=document.createElement('div'); const title=document.createElement('strong'); title.textContent=`${match.home} vs ${match.away}`; const meta=document.createElement('small'); meta.textContent=`${time(match.kickoff)} · ${match.competition}`; copy.append(title,meta);
+      const logos=document.createElement('div'); logos.className='mini-logos'; [match.homeLogo,match.awayLogo].forEach((src,index)=>{const img=document.createElement('img'); img.src=src; img.alt=index?match.away:match.home; logos.append(img);}); card.append(copy,logos); return card;
+    }));
+    document.getElementById('b-timeline').replaceChildren(...fixtures.slice(0,4).map(match => {
+      const row=document.createElement('article'); row.className='timeline-row'; const clock=document.createElement('time'); clock.textContent=time(match.kickoff); const card=document.createElement('div'); card.className='timeline-card'; const logo=document.createElement('img'); logo.src=match.homeLogo; logo.alt=''; const copy=document.createElement('div'); const title=document.createElement('strong'); title.textContent=`${match.home} vs ${match.away}`; const meta=document.createElement('small'); meta.textContent=match.competition; copy.append(title,meta); const away=document.createElement('img'); away.src=match.awayLogo; away.alt=''; card.append(logo,copy,away); row.append(clock,card); return row;
+    }));
+    showVariant(keyFromUrl());
+  }
+  paint(fallback);
+  fetch('/api/fixtures?featured=1&season=2026').then(response => response.ok ? response.json() : Promise.reject()).then(data => {
+    if(Array.isArray(data.fixtures) && data.fixtures.length){ fixtureData=data.fixtures; paint(fixtureData); }
+  }).catch(()=>{});
+</script>
+</body>
+</html>
