@@ -95,7 +95,6 @@
     background:
       radial-gradient(ellipse 90% 60% at 50% -10%, var(--royal) 0%, transparent 55%),
       linear-gradient(180deg, #050813 0%, var(--ink) 60%);
-    order:-10;
   }
   .hero::before{
     content:"";
@@ -751,6 +750,83 @@
   .stat-list{display:flex;flex-wrap:wrap;gap:16px;margin-top:14px;}
   .stat{min-width:90px;}.stat strong{display:block;font-family:var(--display);font-size:26px;}.stat span{font-family:var(--mono);font-size:10px;color:var(--steel-dim);}
 
+  /* ---------- adopted prototype direction: A + B + C ---------- */
+  .night-schedule{
+    padding:30px clamp(20px,5vw,64px) 36px;
+    background:linear-gradient(180deg,#081126,#060a17);
+    border-bottom:1px solid var(--line);
+  }
+  .night-schedule-inner{max-width:1180px;margin:0 auto;}
+  .night-schedule-head{display:flex;align-items:end;justify-content:space-between;gap:18px;margin-bottom:18px;}
+  .night-schedule-head small{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.2em;color:#6f98ff;text-transform:uppercase;margin-bottom:7px;}
+  .night-schedule-head h2{font-size:clamp(24px,4vw,34px);margin:0;letter-spacing:-.03em;}
+  .night-schedule-head a{font-family:var(--mono);font-size:11px;color:var(--steel-dim);white-space:nowrap;}
+  .night-schedule-head>div:last-child{display:flex;align-items:center;gap:10px;}
+  .night-timeline{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;}
+  .night-timeline>.data-status{grid-column:1/-1;border:1px solid rgba(122,158,255,.18);border-radius:16px;background:#0c162c;}
+  .night-match{position:relative;display:grid;grid-template-columns:64px 1fr;gap:12px;align-items:center;padding:14px;border:1px solid rgba(122,158,255,.18);border-radius:16px;background:#0c162c;min-width:0;overflow:hidden;}
+  .night-match::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--floodlight);opacity:.75;}
+  .night-match time{font-family:var(--mono);font-size:11px;line-height:1.65;white-space:pre-line;color:#9fb1d5;text-align:center;}
+  .night-match-body{display:grid;grid-template-columns:32px minmax(0,1fr) 32px;gap:9px;align-items:center;min-width:0;}
+  .night-match-body .crest{width:32px;height:32px;font-size:9px;}
+  .night-match-copy{min-width:0;text-align:center;}
+  .night-match-copy strong{display:block;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .night-match-copy small{display:block;margin-top:4px;font-family:var(--mono);font-size:9px;color:var(--steel-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  section.block.editorial-section{
+    background:#e9e6df;
+    color:#0b1120;
+    border-color:#bab8b1;
+  }
+  .editorial-issue{display:flex;align-items:center;justify-content:space-between;gap:18px;padding-bottom:14px;margin-bottom:28px;border-bottom:1px solid #0b1120;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;}
+  .editorial-issue span:last-child{color:#1458ff;}
+  .editorial-section .block-head{border-color:#a8a7a3;}
+  .editorial-section .block-title small{color:#1458ff;}
+  .editorial-section .block-title small::before{background:#1458ff;}
+  .editorial-section .see-all{color:#4b5361;}
+  .editorial-section .match-feature{
+    position:relative;
+    isolation:isolate;
+    color:#fff;
+    background:#071020;
+    padding:clamp(28px,5vw,54px);
+    border-radius:2px;
+    box-shadow:10px 10px 0 #1458ff;
+    overflow:hidden;
+  }
+  .editorial-section .match-feature::before{content:"";position:absolute;z-index:-1;inset:18% -20% -35%;background:conic-gradient(from 120deg,rgba(20,88,255,.9),transparent 25%,rgba(214,37,57,.72) 48%,transparent 70%,rgba(20,88,255,.78));filter:blur(8px);opacity:.55;transform:rotate(-8deg);}
+  .editorial-section .match-feature > *{position:relative;z-index:1;}
+  .editorial-section .comp-badge{color:#9db8ff;}
+  .editorial-section .match-headline{font-size:clamp(34px,6vw,62px);letter-spacing:-.025em;text-transform:none;}
+  .editorial-section .match-copy{color:#d3daea;}
+  .editorial-section .scoreboard{background:rgba(5,10,23,.72);border-color:rgba(255,255,255,.2);}
+  .editorial-section .sb-row + .sb-row{border-color:rgba(255,255,255,.14);}
+  .editorial-section .favorite-btn{border-color:rgba(255,255,255,.24);color:#fff;}
+
+  @media(max-width:640px){
+    .hero{padding:22px 14px 34px;}
+    .hero .kicker-line{font-size:11px;line-height:1.5;margin:0 6px 16px;}
+    .hero .live-ticker{margin-inline:6px;padding:10px 12px;}
+    .hero .live-pill{background:#08101f;color:#fff;border:1px solid rgba(255,255,255,.22);border-radius:999px;}
+    .hero .live-pill::before{background:#ff3857;box-shadow:0 0 12px #ff3857;}
+    .hero .slide{min-height:590px;justify-content:center;padding:34px 18px 38px;}
+    .hero .poster-crests{margin-top:auto;}
+    .hero .poster-meta{margin-top:auto;background:rgba(5,11,27,.88);border-radius:20px;padding:20px 14px;}
+    .hero .poster-meta .kickoff{font-family:var(--display);font-size:32px;font-weight:900;letter-spacing:.04em;}
+    .hero .slide-cta{width:100%;justify-content:center;background:linear-gradient(100deg,#0758d8,#7430ae);box-shadow:none;padding:15px 18px;}
+    .hero .topic-label{margin:22px 6px 14px;}
+    .hero .topic-strip{display:flex;grid-template-columns:none;overflow-x:auto;margin-inline:-14px;padding:0 20px 4px;scrollbar-width:none;}
+    .hero .strip-chip{min-width:270px;}
+    .night-schedule{padding:26px 20px 32px;}
+    .night-schedule-head>div:last-child{flex-direction:column;align-items:flex-end;gap:7px;}
+    .night-timeline{display:flex;overflow-x:auto;gap:10px;padding-bottom:4px;scrollbar-width:none;}
+    .night-match{min-width:285px;}
+    .editorial-issue{margin-bottom:22px;}
+    section.block.editorial-section{padding:42px 20px 54px;}
+    .editorial-section .block-head{margin-bottom:24px;}
+    .editorial-section .match-feature{padding:30px 22px 34px;box-shadow:7px 8px 0 #1458ff;gap:28px;}
+    .editorial-section .match-headline{font-size:38px;}
+  }
+
   .reveal{ opacity:0; transform:translateY(18px); transition:opacity .7s ease, transform .7s ease; }
   .reveal.in{ opacity:1; transform:translateY(0); }
 
@@ -781,26 +857,6 @@
 </section>
 
 <main>
-<section class="block" id="lead-story" aria-labelledby="lead-story-title">
-  <div class="block-head">
-    <h2 class="block-title" id="lead-story-title"><small>Cover Story</small>今週見るべき若手</h2>
-    <span class="see-all">約8分で読めます</span>
-  </div>
-  <div class="match-feature reveal">
-    <div>
-      <div class="comp-badge">AM4 Selection · Rising</div>
-      <h3 class="match-headline">Jorrel Hato<br>静かな18歳が選んだ次の一歩</h3>
-      <p class="match-copy">数字だけでは見えない決断の背景を、プレースタイルと歩んできた道から読み解く。AM4が今週届ける選手ストーリー。</p>
-      <a class="read-link" href="#players">選手データと物語を読む →</a>
-      <button class="favorite-btn" type="button" data-favorite-type="articles" data-favorite-id="jorrel-hato-next-step" data-favorite-label="Jorrel Hato — 静かな18歳が選んだ次の一歩" data-favorite-detail="選手データと物語を読む" data-favorite-href="#players">記事を保存</button>
-    </div>
-    <div class="scoreboard" aria-label="記事の要点">
-      <div class="sb-row"><span class="sb-club">18歳</span><span class="sb-score">DF</span></div>
-      <div class="sb-row"><span class="sb-club">Chelsea</span><span class="sb-score">Rising</span></div>
-    </div>
-  </div>
-</section>
-
 <header class="hero">
   <div class="beams"></div>
   <svg class="splash" width="100%" height="100%" viewBox="0 0 1200 420" preserveAspectRatio="xMidYMid slice">
@@ -1135,6 +1191,16 @@
   </div>
 </header>
 
+<section class="night-schedule" aria-labelledby="night-schedule-title">
+  <div class="night-schedule-inner">
+    <div class="night-schedule-head">
+      <div><small>Your AM4 · Up Next</small><h2 id="night-schedule-title">直近のタイムスケジュール</h2></div>
+      <div><span class="sample-label" id="night-schedule-source">読み込み中</span><a href="#fixtures">全試合を見る →</a></div>
+    </div>
+    <div class="night-timeline" id="night-timeline" aria-live="polite"><div class="data-status">注目試合を読み込んでいます</div></div>
+  </div>
+</section>
+
 <div class="tagnav-wrap">
   <nav class="tagnav">
     <a class="tag active" href="#transfer">移籍速報</a>
@@ -1144,6 +1210,27 @@
     <a class="tag" href="#standings">順位表</a>
   </nav>
 </div>
+
+<section class="block editorial-section" id="lead-story" aria-labelledby="lead-story-title">
+  <div class="editorial-issue"><span>Some Moments Matter More.</span><span>Issue 001 · Cover Story</span></div>
+  <div class="block-head">
+    <h2 class="block-title" id="lead-story-title"><small>Cover Story</small>今週見るべき若手</h2>
+    <span class="see-all">約8分で読めます</span>
+  </div>
+  <div class="match-feature reveal">
+    <div>
+      <div class="comp-badge">AM4 Selection · Rising</div>
+      <h3 class="match-headline">Jorrel Hato<br>静かな18歳が選んだ次の一歩</h3>
+      <p class="match-copy">数字だけでは見えない決断の背景を、プレースタイルと歩んできた道から読み解く。AM4が今週届ける選手ストーリー。</p>
+      <a class="read-link" href="#players">選手データと物語を読む →</a>
+      <button class="favorite-btn" type="button" data-favorite-type="articles" data-favorite-id="jorrel-hato-next-step" data-favorite-label="Jorrel Hato — 静かな18歳が選んだ次の一歩" data-favorite-detail="選手データと物語を読む" data-favorite-href="#players">記事を保存</button>
+    </div>
+    <div class="scoreboard" aria-label="記事の要点">
+      <div class="sb-row"><span class="sb-club">18歳</span><span class="sb-score">DF</span></div>
+      <div class="sb-row"><span class="sb-club">Chelsea</span><span class="sb-score">Rising</span></div>
+    </div>
+  </div>
+</section>
 
 <section class="block" id="transfer">
   <div class="block-head">
@@ -1181,7 +1268,8 @@
   </div>
 </section>
 
-<section class="block" id="matches">
+<section class="block editorial-section" id="matches">
+  <div class="editorial-issue"><span>Read / Watch / Follow</span><span>Issue 002 · Match Report</span></div>
   <div class="block-head">
     <h2 class="block-title"><small>Match Report</small>試合解説</h2>
     <a class="see-all" href="#">すべて見る →</a>
@@ -1306,6 +1394,11 @@
       hato: { search:'Hato', fullName:'Jorrel Hato', providerId:341642 },
       mfuni: { search:'Mfuni', fullName:'Stephen Mfuni' }
     };
+    const NIGHT_SCHEDULE_FALLBACK = [
+      { home:'Manchester United', away:'Arsenal', homeLogo:'https://media.api-sports.io/football/teams/33.png', awayLogo:'https://media.api-sports.io/football/teams/42.png', competition:'プレミアリーグ', kickoff:'2026-08-17T20:30:00+09:00' },
+      { home:'Chelsea', away:'Real Sociedad', homeLogo:'https://media.api-sports.io/football/teams/49.png', awayLogo:'https://media.api-sports.io/football/teams/548.png', competition:'クラブ親善試合', kickoff:'2026-08-17T22:00:00+09:00' },
+      { home:'Newcastle', away:'Bayer Leverkusen', homeLogo:'https://media.api-sports.io/football/teams/34.png', awayLogo:'https://media.api-sports.io/football/teams/168.png', competition:'クラブ親善試合', kickoff:'2026-08-17T23:00:00+09:00' }
+    ];
     const TEAM_MEDIA = {
       MUN:{ id:33, name:'Manchester United' }, LIV:{ id:40, name:'Liverpool' },
       MCI:{ id:50, name:'Manchester City' }, RMA:{ id:541, name:'Real Madrid' },
@@ -1391,6 +1484,61 @@
       })[name] || name;
     }
 
+    function renderNightTimeline(fixtures, source = 'LIVE'){
+      const timeline = document.getElementById('night-timeline');
+      if (!timeline || !Array.isArray(fixtures) || fixtures.length === 0) return;
+      const heading = document.getElementById('night-schedule-title');
+      const sourceLabel = document.getElementById('night-schedule-source');
+      const sorted = fixtures
+        .filter((fixture) => fixture.kickoff && Number.isFinite(Date.parse(fixture.kickoff)))
+        .sort((a, b) => Date.parse(a.kickoff) - Date.parse(b.kickoff));
+      if (!sorted.length) return;
+      const today = tokyoDateKey(new Date());
+      const selectedDate = sorted.some((fixture) => tokyoDateKey(new Date(fixture.kickoff)) === today)
+        ? today
+        : tokyoDateKey(new Date(sorted[0].kickoff));
+      const selected = sorted.filter((fixture) => tokyoDateKey(new Date(fixture.kickoff)) === selectedDate).slice(0, 3);
+      const scheduleDate = new Intl.DateTimeFormat('ja-JP', {
+        timeZone:'Asia/Tokyo', month:'numeric', day:'numeric', weekday:'short'
+      }).format(new Date(selected[0].kickoff));
+      heading.textContent = source === 'SAMPLE FALLBACK'
+        ? 'サンプル・タイムスケジュール'
+        : selectedDate === today ? '今夜のタイムスケジュール' : `${scheduleDate}のタイムスケジュール`;
+      sourceLabel.hidden = false;
+      sourceLabel.textContent = source === 'SAMPLE FALLBACK' ? source : '注目試合';
+      timeline.replaceChildren(...selected.map((fixture) => {
+        const row = document.createElement('article');
+        row.className = 'night-match';
+        const kickoff = document.createElement('time');
+        kickoff.dateTime = fixture.kickoff;
+        const dateLabel = new Intl.DateTimeFormat('ja-JP', {
+          timeZone:'Asia/Tokyo', month:'numeric', day:'numeric'
+        }).format(new Date(fixture.kickoff));
+        const timeLabel = new Intl.DateTimeFormat('ja-JP', {
+          timeZone:'Asia/Tokyo', hour:'2-digit', minute:'2-digit'
+        }).format(new Date(fixture.kickoff));
+        kickoff.textContent = `${dateLabel}\n${timeLabel}`;
+        const body = document.createElement('div');
+        body.className = 'night-match-body';
+        const homeCrest = document.createElement('div');
+        homeCrest.className = 'crest';
+        renderCrest(homeCrest, { name:fixture.home, logo:fixture.homeLogo });
+        const copy = document.createElement('div');
+        copy.className = 'night-match-copy';
+        const title = document.createElement('strong');
+        title.textContent = `${fixture.home} vs ${fixture.away}`;
+        const competition = document.createElement('small');
+        competition.textContent = competitionLabel(fixture.competition);
+        copy.append(title, competition);
+        const awayCrest = document.createElement('div');
+        awayCrest.className = 'crest';
+        renderCrest(awayCrest, { name:fixture.away, logo:fixture.awayLogo });
+        body.append(homeCrest, copy, awayCrest);
+        row.append(kickoff, body);
+        return row;
+      }));
+    }
+
     function renderFeaturedFixtures(fixtures, degraded = false){
       if (!Array.isArray(fixtures) || fixtures.length === 0) return false;
       const slides = [...document.querySelectorAll('.slide')];
@@ -1413,7 +1561,7 @@
         kickoffNode.replaceChildren(document.createTextNode(dateLabel), time);
         slide.querySelector('.broadcast').replaceChildren(document.createTextNode('試合情報'));
         const cta = slide.querySelector('.slide-cta');
-        cta.textContent = '予想ラインナップは試合前に公開'; cta.disabled = true; cta.setAttribute('aria-expanded', 'false');
+        cta.textContent = '試合情報を見る →'; cta.disabled = false; cta.dataset.action = 'fixtures'; cta.setAttribute('aria-expanded', 'false');
 
         const chip = chips[index];
         applyFixtureColors(chip, fixture);
@@ -1438,6 +1586,7 @@
       renderCrest(tickerCrests[1], { name:first.away, logo:first.awayLogo });
       ticker.querySelector('.live-comp').textContent = competitionLabel(first.competition);
       ticker.querySelector('.live-title').textContent = `${first.home} vs ${first.away} · 注目試合`;
+      renderNightTimeline(fixtures);
       document.querySelector('.topic-label').textContent = degraded
         ? '取得できたリーグから選んだ注目試合 · 一部データ取得失敗'
         : '今後の注目試合';
@@ -1655,7 +1804,11 @@
     const [featuredResult] = await Promise.allSettled([client.featuredFixtures(2026)]);
     if (featuredResult.status === 'fulfilled') {
       const featuredErrors = featuredResult.value.errors || {};
-      renderFeaturedFixtures(featuredResult.value.fixtures, Object.keys(featuredErrors).length > 0);
+      const rendered = renderFeaturedFixtures(featuredResult.value.fixtures, Object.keys(featuredErrors).length > 0);
+      if (!rendered) renderNightTimeline(NIGHT_SCHEDULE_FALLBACK, 'SAMPLE FALLBACK');
+    } else {
+      renderNightTimeline(NIGHT_SCHEDULE_FALLBACK, 'SAMPLE FALLBACK');
+      console.warn('Featured fixture API unavailable.', featuredResult.reason);
     }
 
     const [fixtureResult, standingResult, photoResult, mfuniPhotoResult] = await Promise.allSettled([
@@ -1839,6 +1992,11 @@
     document.querySelectorAll('.slide-cta').forEach(cta => {
       cta.addEventListener('click', (e) => {
         e.stopPropagation();
+        if (cta.dataset.action === 'fixtures') {
+          document.getElementById('fixtures')?.scrollIntoView({ behavior:'smooth', block:'start' });
+          stop(); start();
+          return;
+        }
         const target = document.getElementById(cta.dataset.target);
         const isOpen = target.classList.contains('open');
         closeAllPanels();
