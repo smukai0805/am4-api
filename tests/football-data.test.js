@@ -115,6 +115,14 @@ test("fixtures can be limited to upcoming matches involving saved clubs", () => 
   );
 });
 
+test("daily fixtures can be limited to major competitions and AM4 focus clubs", () => {
+  const fixtures = [
+    { id: 1, status: "NS", am4Focus: true },
+    { id: 2, status: "NS", am4Focus: false },
+  ];
+  assert.deepEqual(filterFixtures(fixtures, { focusOnly: true }).map((item) => item.id), [1]);
+});
+
 test("fixture date keys follow Japan time across the UTC date boundary", () => {
   assert.equal(tokyoDateKey("2026-08-14T16:30:00Z"), "2026-08-15");
 });

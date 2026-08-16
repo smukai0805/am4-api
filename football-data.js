@@ -49,10 +49,11 @@
     return "other";
   }
 
-  function filterFixtures(fixtures, { status = "all", favoriteClubIds = [], favoriteClubNames = [] } = {}) {
+  function filterFixtures(fixtures, { status = "all", favoriteClubIds = [], favoriteClubNames = [], focusOnly = false } = {}) {
     const ids = new Set(favoriteClubIds.map((id) => String(id).replace(/^team-/, "")));
     const names = new Set(favoriteClubNames.map(normalizeName));
     return (fixtures || []).filter((fixture) => {
+      if (focusOnly && !fixture.am4Focus) return false;
       if (status !== "all" && classifyFixtureStatus(fixture.status) !== status) return false;
       if (!ids.size && !names.size) return true;
       return ids.has(String(fixture.homeId)) || ids.has(String(fixture.awayId)) ||

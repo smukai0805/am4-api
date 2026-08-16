@@ -93,6 +93,11 @@ const FEATURED_CLUBS = [
   'atleticoMadrid', 'realMadrid',
 ];
 const FEATURED_TEAM_IDS = new Set(FEATURED_CLUBS.map((club) => CLUB_IDS[club]));
+const DAILY_FOCUS_PROVIDER_IDS = new Set(
+  Object.entries(COMPETITIONS)
+    .filter(([name]) => name !== 'クラブ親善試合')
+    .map(([, competition]) => competition.providerId)
+);
 const FEATURED_RIVALRIES = new Set([
   teamPairKey(CLUB_IDS.manchesterUnited, CLUB_IDS.manchesterCity),
   teamPairKey(CLUB_IDS.manchesterUnited, CLUB_IDS.liverpool),
@@ -245,11 +250,18 @@ export function selectHomepageFixtures(fixtures, requestedTokyoDate) {
 
 export function selectDailyFixtures(providerFixtures) {
   return (providerFixtures || [])
-    .map((fixture) => simplifyFixture(
-      fixture,
-      COMPETITION_NAMES_BY_PROVIDER_ID.get(Number(fixture.league?.id)) || fixture.league?.name || 'その他の大会',
-      true,
-    ))
+    .map((fixture) => {
+      const simplified = simplifyFixture(
+        fixture,
+        COMPETITION_NAMES_BY_PROVIDER_ID.get(Number(fixture.league?.id)) || fixture.league?.name || 'その他の大会',
+        true,
+      );
+      return {
+        ...simplified,
+        am4Focus: DAILY_FOCUS_PROVIDER_IDS.has(Number(fixture.league?.id)) ||
+          FEATURED_TEAM_IDS.has(simplified.homeId) || FEATURED_TEAM_IDS.has(simplified.awayId),
+      };
+    })
     .sort((a, b) => Date.parse(a.kickoff) - Date.parse(b.kickoff));
 }
 
@@ -322,10 +334,11 @@ export default async function handler(req, res) {
         return res.status(200).json({ date, errors: data.errors, fixtures: [], competitions: [] });
       }
       const fixtures = selectDailyFixtures(data.response || []);
+      const focusFixtures = fixtures.filter((fixture) => fixture.am4Focus);
       const competitions = [...new Set(fixtures.map((fixture) => fixture.competition))];
-      const featuredFixtures = selectFeaturedFixtures(fixtures);
+      const featuredFixtures = selectFeaturedFixtures(focusFixtures.length ? focusFixtures : fixtures);
       res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=300');
-      return res.status(200).json({ date, fixtures, featuredFixtures, competitions });
+      return res.status(200).json({ date, fixtures, focusFixtures, featuredFixtures, competitions });
     } catch (err) {
       console.error(`[daily fixtures] ${date} unavailable:`, err);
       return res.status(500).json({ error: '指定日の試合取得に失敗しました', detail: err.message });

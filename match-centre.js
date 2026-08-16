@@ -19,6 +19,7 @@
     let fixtureMode = "date";
     let fixtureStatus = "all";
     let fixtureScope = "all";
+    let fixtureCoverage = "focus";
     let activeFixtureData = null;
     let activeFixtureFilter = null;
     let selectedDailyDate = AM4FootballData.tokyoDateKey(new Date());
@@ -158,6 +159,7 @@
         status: fixtureStatus,
         favoriteClubIds: fixtureScope === "favorites" ? saved.favoriteClubIds : [],
         favoriteClubNames: fixtureScope === "favorites" ? saved.favoriteClubNames : [],
+        focusOnly: fixtureMode === "date" && fixtureCoverage === "focus" && fixtureScope !== "favorites",
       });
       const competitionFiltered = fixtureMode === "date" && activeFixtureLeague !== ALL_COMPETITIONS
         ? statusFiltered.filter((fixture) => fixture.competition === activeFixtureLeague)
@@ -228,11 +230,12 @@
       renderFixtures(fixtures);
       const statusLabel = { upcoming: "今後", live: "ライブ", finished: "終了", all: "全試合" }[fixtureStatus];
       const scopeLabel = fixtureScope === "favorites" ? "お気に入り" : "全クラブ";
+      const coverageLabel = fixtureCoverage === "focus" ? "主要＋注目クラブ" : "世界の全試合";
       const competitionLabel = activeFixtureLeague === ALL_COMPETITIONS ? "全大会" : activeFixtureLeague;
       const dateLabel = new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", month: "long", day: "numeric", weekday: "short" }).format(new Date(`${selectedDailyDate}T12:00:00Z`));
       fixturesStatus.textContent = fixtures.length
         ? fixtureMode === "date"
-          ? `${dateLabel} · ${competitionLabel} · ${statusLabel} · ${scopeLabel} · ${fixtures.length}試合 · JST時間順 · ${updatedAt()}更新`
+          ? `${dateLabel} · ${coverageLabel} · ${competitionLabel} · ${statusLabel} · ${scopeLabel} · ${fixtures.length}試合 · JST時間順 · ${updatedAt()}更新`
           : `${activeFixtureLeague} · ${activeFixtureFilter || "節未選択"} · ${statusLabel} · ${fixtures.length}試合`
         : fixtureScope === "favorites" && !savedClubFilters().hasFavorites
           ? "試合詳細からクラブを保存すると、該当試合だけを表示できます"
@@ -356,6 +359,12 @@
     document.querySelectorAll(".fixture-scope-tab").forEach((button) => button.addEventListener("click", () => {
       fixtureScope = button.dataset.fixtureScope;
       document.querySelectorAll(".fixture-scope-tab").forEach((item) => item.setAttribute("aria-pressed", String(item === button)));
+      if (activeFixtureData) renderFixtureView();
+    }));
+
+    document.querySelectorAll(".fixture-coverage-tab").forEach((button) => button.addEventListener("click", () => {
+      fixtureCoverage = button.dataset.fixtureCoverage;
+      document.querySelectorAll(".fixture-coverage-tab").forEach((item) => item.setAttribute("aria-pressed", String(item === button)));
       if (activeFixtureData) renderFixtureView();
     }));
 

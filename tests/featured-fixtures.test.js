@@ -135,4 +135,5 @@ test('daily fixtures combine every provider competition and club friendlies in k
 
   assert.deepEqual(selected.map((item) => item.id), [1, 2, 3]);
   assert.deepEqual(selected.map((item) => item.competition), ['クラブ親善試合', 'Other League', 'ラ・リーガ']);
+  assert.deepEqual(selected.map((item) => item.am4Focus), [true, false, true]);
 });
