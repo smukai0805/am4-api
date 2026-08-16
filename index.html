@@ -688,6 +688,10 @@
   .for-you-card span{font-size:12px;color:var(--steel-dim);}
 
   .data-grid{display:grid;grid-template-columns:1.2fr .8fr;gap:18px;}
+  .quick-fixtures{padding-top:34px;padding-bottom:40px;background:linear-gradient(180deg,#060a17,#081126);}
+  .quick-fixtures .match-centre-panel{box-shadow:0 28px 70px rgba(0,0,0,.3);}
+  .quick-fixtures .data-panel-head h3{font-size:clamp(22px,3vw,34px);}
+  #standings-section .data-grid{grid-template-columns:1fr;}
   @media(max-width:780px){.data-grid{grid-template-columns:1fr;}}
   .data-panel{border:1px solid var(--line);border-radius:var(--radius);background:var(--ink-2);overflow:hidden;}
   .match-centre-panel{grid-column:1/-1;}
@@ -753,6 +757,8 @@
     .fixture-primary-filters{align-items:flex-start;flex-direction:column;}
     .fixture-status-tabs{width:100%;}
     .league-tabs{display:grid;grid-template-columns:repeat(2,minmax(130px,1fr));overflow:visible;}
+    .quick-fixtures .league-tabs{display:flex;overflow-x:auto;scroll-snap-type:x proximity;}
+    .quick-fixtures .league-tab{scroll-snap-align:start;}
     .league-tab{text-align:center;overflow:hidden;text-overflow:ellipsis;}
     .match-dialog-teams{gap:8px;}
     .match-dialog-team .team-logo,.match-dialog-team .team-logo-fallback{width:52px;height:52px;}
@@ -1209,6 +1215,47 @@
   </div>
 </section>
 
+<section class="block quick-fixtures" id="fixtures" aria-labelledby="today-fixtures-title">
+  <div class="block-head">
+    <h2 class="block-title" id="today-fixtures-title"><small>Matchday · Today</small>今日の試合</h2>
+    <span class="see-all">全リーグ＋クラブ親善試合</span>
+  </div>
+  <div class="data-panel match-centre-panel reveal">
+    <div class="data-panel-head"><h3>全大会を時間順に表示</h3><span class="sample-label" id="fixtures-source">読み込み中</span></div>
+    <div class="fixture-controls">
+      <div class="fixture-mode-tabs" aria-label="表示方法を選択">
+        <button class="fixture-mode-tab" type="button" data-fixture-mode="date" aria-pressed="true">日別・全大会</button>
+        <button class="fixture-mode-tab" type="button" data-fixture-mode="round" aria-pressed="false">節別・大会ごと</button>
+      </div>
+      <div class="fixture-filter-tabs" id="fixture-filters" aria-label="日付または節を選択"></div>
+      <div class="league-tabs" id="fixture-leagues" aria-label="大会を選択">
+        <button class="league-tab" type="button" data-league="すべて" aria-pressed="true">すべて</button>
+        <button class="league-tab" type="button" data-league="プレミアリーグ" aria-pressed="false">Premier League</button>
+        <button class="league-tab" type="button" data-league="ラ・リーガ" aria-pressed="false">La Liga</button>
+        <button class="league-tab" type="button" data-league="セリエA" aria-pressed="false">Serie A</button>
+        <button class="league-tab" type="button" data-league="ブンデスリーガ" aria-pressed="false">Bundesliga</button>
+        <button class="league-tab" type="button" data-league="リーグ・アン" aria-pressed="false">Ligue 1</button>
+        <button class="league-tab" type="button" data-league="チャンピオンズリーグ" aria-pressed="false">Champions League</button>
+        <button class="league-tab" type="button" data-league="クラブ親善試合" aria-pressed="false">Club Friendlies</button>
+      </div>
+      <div class="fixture-primary-filters">
+        <div class="fixture-status-tabs" aria-label="試合状況を選択">
+          <button class="fixture-status-tab" type="button" data-fixture-status="all" aria-pressed="true">すべて</button>
+          <button class="fixture-status-tab" type="button" data-fixture-status="live" aria-pressed="false">ライブ</button>
+          <button class="fixture-status-tab" type="button" data-fixture-status="upcoming" aria-pressed="false">今後</button>
+          <button class="fixture-status-tab" type="button" data-fixture-status="finished" aria-pressed="false">終了</button>
+        </div>
+        <div class="fixture-scope-tabs" aria-label="クラブの範囲を選択">
+          <button class="fixture-scope-tab" type="button" data-fixture-scope="all" aria-pressed="true">全クラブ</button>
+          <button class="fixture-scope-tab" type="button" data-fixture-scope="favorites" aria-pressed="false">★ お気に入り</button>
+        </div>
+      </div>
+    </div>
+    <div class="data-status" id="fixtures-status" aria-live="polite">今日の全大会を読み込んでいます</div>
+    <div id="fixture-list"></div>
+  </div>
+</section>
+
 <div class="tagnav-wrap">
   <nav class="tagnav">
     <a class="tag active" href="#transfer">移籍速報</a>
@@ -1333,44 +1380,12 @@
   <div class="player-profile reveal" id="player-profile" style="margin-top:18px"></div>
 </section>
 
-<section class="block" id="fixtures">
+<section class="block" id="standings-section">
   <div class="block-head">
-    <h2 class="block-title"><small>Match Centre</small>試合日程と順位</h2>
-    <span class="see-all">5大リーグ＋Champions League</span>
+    <h2 class="block-title"><small>Standings</small>順位表</h2>
+    <span class="see-all">リーグの現在地</span>
   </div>
-  <div class="data-grid">
-    <div class="data-panel match-centre-panel reveal">
-      <div class="data-panel-head"><h3>試合情報</h3><span class="sample-label" id="fixtures-source">読み込み中</span></div>
-      <div class="fixture-controls">
-        <div class="league-tabs" id="fixture-leagues" aria-label="大会を選択">
-          <button class="league-tab" type="button" data-league="プレミアリーグ" aria-pressed="true">Premier League</button>
-          <button class="league-tab" type="button" data-league="ラ・リーガ" aria-pressed="false">La Liga</button>
-          <button class="league-tab" type="button" data-league="セリエA" aria-pressed="false">Serie A</button>
-          <button class="league-tab" type="button" data-league="ブンデスリーガ" aria-pressed="false">Bundesliga</button>
-          <button class="league-tab" type="button" data-league="リーグ・アン" aria-pressed="false">Ligue 1</button>
-          <button class="league-tab" type="button" data-league="チャンピオンズリーグ" aria-pressed="false">Champions League</button>
-        </div>
-        <div class="fixture-primary-filters">
-          <div class="fixture-status-tabs" aria-label="試合状況を選択">
-            <button class="fixture-status-tab" type="button" data-fixture-status="upcoming" aria-pressed="true">今後</button>
-            <button class="fixture-status-tab" type="button" data-fixture-status="live" aria-pressed="false">ライブ</button>
-            <button class="fixture-status-tab" type="button" data-fixture-status="finished" aria-pressed="false">終了</button>
-            <button class="fixture-status-tab" type="button" data-fixture-status="all" aria-pressed="false">すべて</button>
-          </div>
-          <div class="fixture-scope-tabs" aria-label="クラブの範囲を選択">
-            <button class="fixture-scope-tab" type="button" data-fixture-scope="all" aria-pressed="true">全クラブ</button>
-            <button class="fixture-scope-tab" type="button" data-fixture-scope="favorites" aria-pressed="false">★ お気に入り</button>
-          </div>
-        </div>
-        <div class="fixture-mode-tabs" aria-label="表示方法を選択">
-          <button class="fixture-mode-tab" type="button" data-fixture-mode="date" aria-pressed="true">日付順</button>
-          <button class="fixture-mode-tab" type="button" data-fixture-mode="round" aria-pressed="false">節別</button>
-        </div>
-        <div class="fixture-filter-tabs" id="fixture-filters" aria-label="日付または節を選択"></div>
-      </div>
-      <div class="data-status" id="fixtures-status" aria-live="polite">最新情報を読み込んでいます</div>
-      <div id="fixture-list"></div>
-    </div>
+  <div class="data-grid standings-grid">
     <div class="data-panel reveal" id="standings">
       <div class="data-panel-head"><h3>Premier League</h3><span class="sample-label" id="standings-source">読み込み中</span></div>
       <div class="data-status" id="standings-status" aria-live="polite">最新情報を読み込んでいます</div>
@@ -1391,9 +1406,9 @@
 
 <script src="favorites.js"></script>
 <script src="site-config.js"></script>
-<script src="football-data.js"></script>
+<script src="football-data.js?v=20260816"></script>
 <script src="sample-football-data.js"></script>
-<script src="match-centre.js"></script>
+<script src="match-centre.js?v=20260816"></script>
 <script>
   // Existing AM4 Vercel API, with an explicit sample fallback.
   (async function(){
@@ -1574,7 +1589,7 @@
       }));
     }
 
-    function renderFeaturedFixtures(fixtures, degraded = false){
+    function renderFeaturedFixtures(fixtures, degraded = false, context = 'upcoming'){
       if (!Array.isArray(fixtures) || fixtures.length === 0) return false;
       const slides = [...document.querySelectorAll('.slide')];
       const chips = [...document.querySelectorAll('.strip-chip')];
@@ -1620,11 +1635,11 @@
       renderCrest(tickerCrests[0], { name:first.home, logo:first.homeLogo });
       renderCrest(tickerCrests[1], { name:first.away, logo:first.awayLogo });
       ticker.querySelector('.live-comp').textContent = competitionLabel(first.competition);
-      ticker.querySelector('.live-title').textContent = `${first.home} vs ${first.away} · 注目試合`;
+      ticker.querySelector('.live-title').textContent = `${first.home} vs ${first.away} · ${context === 'today' ? '今日の注目' : '注目試合'}`;
       renderNightTimeline(fixtures);
       document.querySelector('.topic-label').textContent = degraded
         ? '取得できたリーグから選んだ注目試合 · 一部データ取得失敗'
-        : '今後の注目試合';
+        : context === 'today' ? '今日の注目試合' : '今後の注目試合';
       document.dispatchEvent(new CustomEvent('am4:featured-rendered'));
       return true;
     }
@@ -1695,40 +1710,49 @@
     }
 
     enhanceStaticCrests();
-    matchCentre.renderFixtures(sample.fixtures, 'SAMPLE'); renderStandings(sample.standings); renderPlayer(sample.player, null, null);
-    const [featuredResult] = await Promise.allSettled([client.featuredFixtures()]);
-    if (featuredResult.status === 'fulfilled') {
-      const featuredErrors = featuredResult.value.errors || {};
-      const rendered = renderFeaturedFixtures(featuredResult.value.fixtures, Object.keys(featuredErrors).length > 0);
-      if (!rendered) renderNightTimeline(NIGHT_SCHEDULE_FALLBACK, 'SAMPLE FALLBACK');
-    } else {
-      renderNightTimeline(NIGHT_SCHEDULE_FALLBACK, 'SAMPLE FALLBACK');
-      console.warn('Featured fixture API unavailable.', featuredResult.reason);
-    }
-
-    const [fixtureResult, standingResult, photoResult, mfuniPhotoResult] = await Promise.allSettled([
-        client.fixtures('プレミアリーグ'),
-        client.standings(2025),
+    renderStandings(sample.standings); renderPlayer(sample.player, null, null);
+    const todayKey = AM4FootballData.tokyoDateKey(new Date());
+    const todayParts = todayKey.split('-').map(Number);
+    const currentSeason = todayParts[1] >= 7 ? todayParts[0] : todayParts[0] - 1;
+    const [dailyResult, standingResult, photoResult, mfuniPhotoResult] = await Promise.allSettled([
+        client.dailyFixtures(todayKey),
+        client.standings(currentSeason),
         client.playerPhoto(FEATURED_PLAYERS.hato),
         client.playerPhoto(FEATURED_PLAYERS.mfuni)
     ]);
 
-    if (fixtureResult.status === 'fulfilled' && fixtureResult.value.fixtures?.length) {
-      matchCentre.useFixtureData('プレミアリーグ', fixtureResult.value);
-      window.AM4LiveContext.fixtures = fixtureResult.value.fixtures;
+    const dailyDataIsValid = dailyResult.status === 'fulfilled' &&
+      Array.isArray(dailyResult.value.fixtures) &&
+      !(dailyResult.value.errors && Object.keys(dailyResult.value.errors).length);
+    if (dailyDataIsValid) {
+      matchCentre.useDailyData(todayKey, dailyResult.value);
+      window.AM4LiveContext.fixtures = dailyResult.value.fixtures;
+      if (dailyResult.value.fixtures.length) {
+        renderFeaturedFixtures(dailyResult.value.featuredFixtures || dailyResult.value.fixtures.slice(0, 3), false, 'today');
+        renderNightTimeline(dailyResult.value.fixtures);
+      }
     } else {
-      const providerError = fixtureResult.status === 'fulfilled' && fixtureResult.value.errors;
-      let fallbackMessage = providerError ? 'API応答エラーのためサンプルを表示しています' : '実データが未公開のためサンプルを表示しています';
-      if (fixtureResult.status === 'rejected') console.warn('Fixture API unavailable.', fixtureResult.reason);
-      if (fixtureResult.status === 'rejected') fallbackMessage = 'APIへ接続できないためサンプルを表示しています';
-      matchCentre.showFallback(fallbackMessage);
+      matchCentre.showDailyUnavailable(todayKey);
+      if (dailyResult.status === 'rejected') console.warn('Daily fixture API unavailable.', dailyResult.reason);
+    }
+
+    if (!dailyDataIsValid || !dailyResult.value.fixtures.length) {
+      const featuredResult = await Promise.allSettled([client.featuredFixtures()]);
+      if (featuredResult[0].status === 'fulfilled') {
+        const featuredErrors = featuredResult[0].value.errors || {};
+        const rendered = renderFeaturedFixtures(featuredResult[0].value.fixtures, Object.keys(featuredErrors).length > 0);
+        if (!rendered) renderNightTimeline(NIGHT_SCHEDULE_FALLBACK, 'SAMPLE FALLBACK');
+      } else {
+        renderNightTimeline(NIGHT_SCHEDULE_FALLBACK, 'SAMPLE FALLBACK');
+        console.warn('Featured fixture API unavailable.', featuredResult[0].reason);
+      }
     }
 
     const premierLeague = standingResult.status === 'fulfilled' ? standingResult.value.leagues?.['プレミアリーグ'] : null;
     if (premierLeague?.length) {
       renderStandings(premierLeague.slice(0, 5));
       standingsSource.hidden = true;
-      standingsStatus.textContent = `2025-26シーズン · ${updatedAt()}更新`;
+      standingsStatus.textContent = `${currentSeason}-${String(currentSeason + 1).slice(-2)}シーズン · ${updatedAt()}更新`;
     } else {
       standingsSource.hidden = false;
       standingsSource.textContent = 'SAMPLE FALLBACK';

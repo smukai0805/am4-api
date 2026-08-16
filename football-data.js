@@ -11,6 +11,7 @@
     }
     return {
       fixtures: (league, season) => request(`/fixtures?league=${encodeURIComponent(league)}${season == null ? "" : `&season=${encodeURIComponent(season)}`}`),
+      dailyFixtures: (date) => request(`/fixtures?date=${encodeURIComponent(date)}`),
       featuredFixtures: () => request('/fixtures?featured=1'),
       standings: (season) => request(`/standings?season=${encodeURIComponent(season)}`),
       playerPhoto: ({ search, fullName, providerId }) => {
@@ -66,5 +67,19 @@
     return `${parts.year}-${parts.month}-${parts.day}`;
   }
 
-  return { createClient, isMatchingPlayerName, selectRelevantFixtures, classifyFixtureStatus, filterFixtures, tokyoDateKey };
+  function sortDailyFixtures(fixtures) {
+    return [...(fixtures || [])]
+      .filter((fixture) => Number.isFinite(Date.parse(fixture.kickoff)))
+      .sort((a, b) => Date.parse(a.kickoff) - Date.parse(b.kickoff));
+  }
+
+  return {
+    createClient,
+    isMatchingPlayerName,
+    selectRelevantFixtures,
+    classifyFixtureStatus,
+    filterFixtures,
+    sortDailyFixtures,
+    tokyoDateKey,
+  };
 });

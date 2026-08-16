@@ -1,6 +1,14 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { createClient, isMatchingPlayerName, selectRelevantFixtures, classifyFixtureStatus, filterFixtures, tokyoDateKey } = require("../football-data.js");
+const {
+  createClient,
+  isMatchingPlayerName,
+  selectRelevantFixtures,
+  classifyFixtureStatus,
+  filterFixtures,
+  sortDailyFixtures,
+  tokyoDateKey,
+} = require("../football-data.js");
 
 test("client calls the server-side proxy without exposing an API key", async () => {
   let requested;
@@ -37,6 +45,16 @@ test("league fixtures can let the server choose the current football season", as
   });
   await client.fixtures("プレミアリーグ");
   assert.equal(requested, "https://am4-api.vercel.app/api/fixtures?league=%E3%83%97%E3%83%AC%E3%83%9F%E3%82%A2%E3%83%AA%E3%83%BC%E3%82%B0");
+});
+
+test("daily fixtures use one cross-competition request for the selected Tokyo date", async () => {
+  let requested;
+  const client = createClient(async (url) => {
+    requested = url;
+    return { ok: true, json: async () => ({ fixtures: [] }) };
+  });
+  await client.dailyFixtures("2026-08-16");
+  assert.equal(requested, "https://am4-api.vercel.app/api/fixtures?date=2026-08-16");
 });
 
 test("player photos can use a validated API-Football player reference", async () => {
@@ -99,4 +117,13 @@ test("fixtures can be limited to upcoming matches involving saved clubs", () => 
 
 test("fixture date keys follow Japan time across the UTC date boundary", () => {
   assert.equal(tokyoDateKey("2026-08-14T16:30:00Z"), "2026-08-15");
+});
+
+test("daily fixtures are shown in chronological order across competitions", () => {
+  const fixtures = [
+    { id: 3, kickoff: "2026-08-16T23:30:00+09:00", competition: "ラ・リーガ" },
+    { id: 1, kickoff: "2026-08-16T19:30:00+09:00", competition: "クラブ親善試合" },
+    { id: 2, kickoff: "2026-08-16T23:00:00+09:00", competition: "クラブ親善試合" },
+  ];
+  assert.deepEqual(sortDailyFixtures(fixtures).map((item) => item.id), [1, 2, 3]);
 });

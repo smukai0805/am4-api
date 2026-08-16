@@ -37,6 +37,9 @@ const COMPETITIONS = {
 const LEAGUES = Object.fromEntries(
   Object.entries(COMPETITIONS).map(([name, competition]) => [name, competition.providerId])
 );
+const COMPETITION_NAMES_BY_PROVIDER_ID = new Map(
+  Object.entries(COMPETITIONS).map(([name, competition]) => [competition.providerId, name])
+);
 
 // api/standings.js・api/top-scorers.jsと同じ対応範囲。注目試合の既定シーズンは
 // 固定せず、日本時間の現在日が属する欧州シーズンを使う。
@@ -221,6 +224,35 @@ export function selectFeaturedFixtures(fixtures) {
   return ranked.slice(0, FEATURED_FIXTURE_LIMIT);
 }
 
+function tokyoDateKey(value) {
+  const parts = tokyoDateParts(new Date(value));
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
+export function selectHomepageFixtures(fixtures, requestedTokyoDate) {
+  const valid = (fixtures || []).filter((fixture) => Number.isFinite(Date.parse(fixture.kickoff)));
+  const sameDay = valid.filter((fixture) => tokyoDateKey(fixture.kickoff) === requestedTokyoDate);
+  if (sameDay.length) return selectFeaturedFixtures(sameDay);
+
+  const nextDate = valid
+    .map((fixture) => tokyoDateKey(fixture.kickoff))
+    .filter((date) => date > requestedTokyoDate)
+    .sort()[0];
+  return nextDate
+    ? selectFeaturedFixtures(valid.filter((fixture) => tokyoDateKey(fixture.kickoff) === nextDate))
+    : [];
+}
+
+export function selectDailyFixtures(providerFixtures) {
+  return (providerFixtures || [])
+    .map((fixture) => simplifyFixture(
+      fixture,
+      COMPETITION_NAMES_BY_PROVIDER_ID.get(Number(fixture.league?.id)) || fixture.league?.name || 'その他の大会',
+      true,
+    ))
+    .sort((a, b) => Date.parse(a.kickoff) - Date.parse(b.kickoff));
+}
+
 async function getFeaturedFixtures(season) {
   const responses = [];
   const successfulSources = [];
@@ -264,7 +296,7 @@ async function getFeaturedFixtures(season) {
     SCHEDULED_STATUSES.has(fixture.status)
   );
   const candidates = upcoming.filter((fixture) => Date.parse(fixture.kickoff) < nextMonthStart);
-  const selected = selectFeaturedFixtures(candidates);
+  const selected = selectHomepageFixtures(candidates, from);
   return { fixtures: selected, sources: successfulSources, errors };
 }
 
@@ -275,7 +307,30 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'API_FOOTBALL_KEY が設定されていません' });
   }
 
-  const { league, featured } = req.query;
+  const { league, featured, date } = req.query;
+
+  if (date && !/^\d{4}-\d{2}-\d{2}$/.test(String(date))) {
+    return res.status(400).json({ error: 'date は YYYY-MM-DD 形式で指定してください' });
+  }
+
+  if (date) {
+    try {
+      const data = await apiFootballFetch('/fixtures', { date, timezone: 'Asia/Tokyo' }, { timeoutMs: 10000 });
+      if (data.errors && Object.keys(data.errors).length > 0) {
+        console.error(`[daily fixtures] ${date}:`, data.errors);
+        res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=300');
+        return res.status(200).json({ date, errors: data.errors, fixtures: [], competitions: [] });
+      }
+      const fixtures = selectDailyFixtures(data.response || []);
+      const competitions = [...new Set(fixtures.map((fixture) => fixture.competition))];
+      const featuredFixtures = selectFeaturedFixtures(fixtures);
+      res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=300');
+      return res.status(200).json({ date, fixtures, featuredFixtures, competitions });
+    } catch (err) {
+      console.error(`[daily fixtures] ${date} unavailable:`, err);
+      return res.status(500).json({ error: '指定日の試合取得に失敗しました', detail: err.message });
+    }
+  }
 
   const seasonParam = Number(req.query.season);
   const SEASON = Number.isInteger(seasonParam) ? seasonParam : resolveDefaultSeason();

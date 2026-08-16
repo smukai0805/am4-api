@@ -1,6 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveDefaultSeason, selectFeaturedFixtures } from '../api/fixtures.js';
+import {
+  resolveDefaultSeason,
+  selectDailyFixtures,
+  selectFeaturedFixtures,
+  selectHomepageFixtures,
+} from '../api/fixtures.js';
 
 function fixture(id, competition, homeId, awayId, kickoff) {
   return { id, competition, homeId, awayId, kickoff };
@@ -92,4 +97,42 @@ test('featured fixtures recognise Le Classique as the Ligue 1 headline rivalry',
   ]);
 
   assert.equal(selected[0].id, 2);
+});
+
+test('homepage shows matches on the requested Tokyo date before higher-rated later fixtures', () => {
+  const selected = selectHomepageFixtures([
+    fixture(1, 'クラブ親善試合', 40, 9001, '2026-08-16T10:30:00Z'),
+    fixture(2, 'クラブ親善試合', 42, 50, '2026-08-16T14:00:00Z'),
+    fixture(3, 'プレミアリーグ', 33, 40, '2026-08-22T11:30:00Z'),
+  ], '2026-08-16');
+
+  assert.deepEqual(selected.map((item) => item.id), [2, 1]);
+});
+
+test('daily fixtures combine every provider competition and club friendlies in kickoff order', () => {
+  const providerFixtures = [
+    {
+      fixture: { id: 3, date: '2026-08-16T23:30:00+09:00', status: { short: 'NS' }, venue: { name: 'Stadium C' } },
+      league: { id: 140, round: 'Regular Season - 1' },
+      teams: { home: { id: 30, name: 'Basel', logo: 'basel.png' }, away: { id: 529, name: 'Barcelona', logo: 'barcelona.png' } },
+      goals: { home: null, away: null },
+    },
+    {
+      fixture: { id: 1, date: '2026-08-16T19:30:00+09:00', status: { short: 'NS' }, venue: { name: 'Stadium A' } },
+      league: { id: 667, round: 'Club Friendlies 1' },
+      teams: { home: { id: 40, name: 'Liverpool', logo: 'liverpool.png' }, away: { id: 9001, name: 'Como', logo: 'como.png' } },
+      goals: { home: null, away: null },
+    },
+    {
+      fixture: { id: 2, date: '2026-08-16T21:00:00+09:00', status: { short: 'NS' }, venue: { name: 'Stadium B' } },
+      league: { id: 999, name: 'Other League', round: 'Regular Season - 1' },
+      teams: { home: { id: 10, name: 'Outside Scope A', logo: null }, away: { id: 11, name: 'Outside Scope B', logo: null } },
+      goals: { home: null, away: null },
+    },
+  ];
+
+  const selected = selectDailyFixtures(providerFixtures);
+
+  assert.deepEqual(selected.map((item) => item.id), [1, 2, 3]);
+  assert.deepEqual(selected.map((item) => item.competition), ['クラブ親善試合', 'Other League', 'ラ・リーガ']);
 });
