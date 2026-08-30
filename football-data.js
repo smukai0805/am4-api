@@ -12,6 +12,7 @@
     return {
       fixtures: (league, season) => request(`/fixtures?league=${encodeURIComponent(league)}${season == null ? "" : `&season=${encodeURIComponent(season)}`}`),
       dailyFixtures: (date) => request(`/fixtures?date=${encodeURIComponent(date)}`),
+      fixtureEvents: (fixtureId) => request(`/fixtures?events=${encodeURIComponent(fixtureId)}`),
       featuredFixtures: () => request('/fixtures?featured=1'),
       standings: (season) => request(`/standings?season=${encodeURIComponent(season)}`),
       playerPhoto: ({ search, fullName, providerId }) => {
@@ -49,6 +50,21 @@
     return "other";
   }
 
+  function fixtureScoreLabel(fixture) {
+    if (fixture?.homeGoals != null && fixture?.awayGoals != null) return `${fixture.homeGoals}-${fixture.awayGoals}`;
+    if (fixture?.score && fixture.score !== "-") return String(fixture.score);
+    return "";
+  }
+
+  function fixtureResultPresentation(fixture, spoilersRevealed = false) {
+    const group = classifyFixtureStatus(fixture?.status);
+    const score = fixtureScoreLabel(fixture);
+    if (group === "finished" && !spoilersRevealed) return { hidden: true, label: "結果を見る" };
+    if (group === "live") return { hidden: false, label: `LIVE${score ? ` · ${score}` : ""}` };
+    if (group === "finished") return { hidden: false, label: score || "試合終了" };
+    return { hidden: false, label: "" };
+  }
+
   function filterFixtures(fixtures, { status = "all", favoriteClubIds = [], favoriteClubNames = [], focusOnly = false } = {}) {
     const ids = new Set(favoriteClubIds.map((id) => String(id).replace(/^team-/, "")));
     const names = new Set(favoriteClubNames.map(normalizeName));
@@ -74,12 +90,23 @@
       .sort((a, b) => Date.parse(a.kickoff) - Date.parse(b.kickoff));
   }
 
+  function sortFixturesForViewing(fixtures) {
+    const groupOrder = { live: 0, upcoming: 1, finished: 2, other: 3 };
+    return sortDailyFixtures(fixtures).sort((a, b) => {
+      const aOrder = groupOrder[classifyFixtureStatus(a.status)] ?? groupOrder.other;
+      const bOrder = groupOrder[classifyFixtureStatus(b.status)] ?? groupOrder.other;
+      return aOrder - bOrder || Date.parse(a.kickoff) - Date.parse(b.kickoff);
+    });
+  }
+
   return {
     createClient,
     isMatchingPlayerName,
     selectRelevantFixtures,
     classifyFixtureStatus,
+    fixtureResultPresentation,
     filterFixtures,
+    sortFixturesForViewing,
     sortDailyFixtures,
     tokyoDateKey,
   };

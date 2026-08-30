@@ -265,6 +265,31 @@ export function selectDailyFixtures(providerFixtures) {
     .sort((a, b) => Date.parse(a.kickoff) - Date.parse(b.kickoff));
 }
 
+function minuteLabel(time = {}) {
+  const elapsed = Number(time.elapsed);
+  if (!Number.isFinite(elapsed)) return "—";
+  const extra = Number(time.extra);
+  return `${elapsed}${Number.isFinite(extra) && extra > 0 ? `+${extra}` : ""}'`;
+}
+
+export function selectGoalEvents(events) {
+  return (events || [])
+    .filter((event) => event?.type === 'Goal')
+    .map((event) => ({
+      minute: minuteLabel(event.time),
+      teamId: event.team?.id ?? null,
+      team: event.team?.name || 'チーム情報なし',
+      scorer: event.player?.name || '得点者情報なし',
+      assist: event.assist?.name || null,
+      detail: event.detail || 'Goal',
+      ownGoal: event.detail === 'Own Goal',
+      sortMinute: Number(event.time?.elapsed) || 0,
+      sortExtra: Number(event.time?.extra) || 0,
+    }))
+    .sort((a, b) => a.sortMinute - b.sortMinute || a.sortExtra - b.sortExtra)
+    .map(({ sortMinute, sortExtra, ...goal }) => goal);
+}
+
 async function getFeaturedFixtures(season) {
   const responses = [];
   const successfulSources = [];
@@ -319,7 +344,27 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'API_FOOTBALL_KEY が設定されていません' });
   }
 
-  const { league, featured, date } = req.query;
+  const { league, featured, date, events } = req.query;
+
+  if (events != null) {
+    const fixtureId = Number(events);
+    if (!Number.isInteger(fixtureId) || fixtureId <= 0) {
+      return res.status(400).json({ error: 'events は有効な試合IDで指定してください' });
+    }
+    try {
+      const data = await apiFootballFetch('/fixtures/events', { fixture: fixtureId }, { timeoutMs: 10000 });
+      if (data.errors && Object.keys(data.errors).length > 0) {
+        res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=300');
+        return res.status(200).json({ fixtureId, errors: data.errors, goals: [] });
+      }
+      const goals = selectGoalEvents(data.response || []);
+      res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=86400');
+      return res.status(200).json({ fixtureId, goals });
+    } catch (error) {
+      console.error(`[fixture events] ${fixtureId} unavailable:`, error);
+      return res.status(500).json({ error: '得点情報の取得に失敗しました', detail: error.message });
+    }
+  }
 
   if (date && !/^\d{4}-\d{2}-\d{2}$/.test(String(date))) {
     return res.status(400).json({ error: 'date は YYYY-MM-DD 形式で指定してください' });

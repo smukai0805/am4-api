@@ -6,6 +6,8 @@ const {
   selectRelevantFixtures,
   classifyFixtureStatus,
   filterFixtures,
+  fixtureResultPresentation,
+  sortFixturesForViewing,
   sortDailyFixtures,
   tokyoDateKey,
 } = require("../football-data.js");
@@ -57,6 +59,17 @@ test("daily fixtures use one cross-competition request for the selected Tokyo da
   assert.equal(requested, "https://am4-api.vercel.app/api/fixtures?date=2026-08-16");
 });
 
+test("goal events are loaded lazily through the server-side fixture proxy", async () => {
+  let requested;
+  const client = createClient(async (url, options) => {
+    requested = { url, options };
+    return { ok: true, json: async () => ({ goals: [] }) };
+  });
+  await client.fixtureEvents(123456);
+  assert.equal(requested.url, "https://am4-api.vercel.app/api/fixtures?events=123456");
+  assert.equal(JSON.stringify(requested).includes("apiKey"), false);
+});
+
 test("player photos can use a validated API-Football player reference", async () => {
   let requested;
   const client = createClient(async (url) => {
@@ -103,6 +116,17 @@ test("fixture statuses are grouped into live, upcoming, and finished views", () 
   assert.equal(classifyFixtureStatus("CANC"), "other");
 });
 
+test("finished scores stay hidden until the visitor chooses to reveal results", () => {
+  const fixture = { status: "FT", homeGoals: 3, awayGoals: 1 };
+  assert.deepEqual(fixtureResultPresentation(fixture, false), { hidden: true, label: "結果を見る" });
+  assert.deepEqual(fixtureResultPresentation(fixture, true), { hidden: false, label: "3-1" });
+});
+
+test("live scores remain visible while spoiler protection hides completed results", () => {
+  const fixture = { status: "2H", homeGoals: 2, awayGoals: 2 };
+  assert.deepEqual(fixtureResultPresentation(fixture, false), { hidden: false, label: "LIVE · 2-2" });
+});
+
 test("fixtures can be limited to upcoming matches involving saved clubs", () => {
   const fixtures = [
     { id: 1, status: "NS", homeId: 33, awayId: 40, home: "Manchester United", away: "Liverpool" },
@@ -134,4 +158,14 @@ test("daily fixtures are shown in chronological order across competitions", () =
     { id: 2, kickoff: "2026-08-16T23:00:00+09:00", competition: "クラブ親善試合" },
   ];
   assert.deepEqual(sortDailyFixtures(fixtures).map((item) => item.id), [1, 2, 3]);
+});
+
+test("today view puts live and upcoming matches before completed matches", () => {
+  const fixtures = [
+    { id: 1, status: "FT", kickoff: "2026-08-30T00:30:00+09:00" },
+    { id: 2, status: "NS", kickoff: "2026-08-30T22:00:00+09:00" },
+    { id: 3, status: "2H", kickoff: "2026-08-30T19:00:00+09:00" },
+    { id: 4, status: "NS", kickoff: "2026-08-30T20:00:00+09:00" },
+  ];
+  assert.deepEqual(sortFixturesForViewing(fixtures).map((item) => item.id), [3, 4, 2, 1]);
 });
