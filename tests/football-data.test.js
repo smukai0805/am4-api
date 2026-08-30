@@ -7,6 +7,7 @@ const {
   classifyFixtureStatus,
   filterFixtures,
   fixtureResultPresentation,
+  fixturePrestigePresentation,
   sortFixturesForViewing,
   sortDailyFixtures,
   tokyoDateKey,
@@ -168,4 +169,63 @@ test("today view puts live and upcoming matches before completed matches", () =>
     { id: 4, status: "NS", kickoff: "2026-08-30T20:00:00+09:00" },
   ];
   assert.deepEqual(sortFixturesForViewing(fixtures).map((item) => item.id), [3, 4, 2, 1]);
+});
+
+test("fixtures between two selected elite clubs are presented as a big match", () => {
+  assert.deepEqual(
+    fixturePrestigePresentation({ homeId: 42, awayId: 40 }),
+    {
+      level: "marquee",
+      label: "BIG MATCH",
+      homeElite: true,
+      awayElite: true,
+      homeColor: "#ef0107",
+      awayColor: "#c8102e",
+    },
+  );
+});
+
+test("fixtures with one selected elite club get a top-club highlight", () => {
+  assert.deepEqual(
+    fixturePrestigePresentation({ homeId: 529, awayId: 9999 }),
+    {
+      level: "elite",
+      label: "TOP CLUB",
+      homeElite: true,
+      awayElite: false,
+      homeColor: "#a50044",
+      awayColor: "#465878",
+    },
+  );
+});
+
+test("ordinary fixtures remain visually quiet", () => {
+  assert.deepEqual(
+    fixturePrestigePresentation({ homeId: 9998, awayId: 9999 }),
+    {
+      level: "standard",
+      label: "",
+      homeElite: false,
+      awayElite: false,
+      homeColor: "#465878",
+      awayColor: "#465878",
+    },
+  );
+});
+
+test("prestige only breaks ties at the same kickoff time", () => {
+  const fixtures = [
+    { id: 1, status: "NS", kickoff: "2026-08-30T20:00:00+09:00", homeId: 9998, awayId: 9999 },
+    { id: 2, status: "NS", kickoff: "2026-08-30T21:00:00+09:00", homeId: 42, awayId: 40 },
+    { id: 3, status: "NS", kickoff: "2026-08-30T20:00:00+09:00", homeId: 529, awayId: 9999 },
+  ];
+  assert.deepEqual(sortFixturesForViewing(fixtures).map((item) => item.id), [3, 1, 2]);
+});
+
+test("fallback fixtures without a provider kickoff remain visible", () => {
+  const fixtures = [
+    { id: 1, status: "NS", kickoff: "2026-08-30T20:00:00+09:00", homeId: 9998, awayId: 9999 },
+    { id: 2, status: "NS", date: "8月31日 20:30", homeId: 33, awayId: 42 },
+  ];
+  assert.deepEqual(sortFixturesForViewing(fixtures).map((item) => item.id), [1, 2]);
 });

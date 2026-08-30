@@ -853,12 +853,48 @@
   .matchday-list-head{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 20px 12px;color:#677896;font:9px var(--mono);letter-spacing:.08em;text-transform:uppercase;}
   .matchday-list-head>div{display:flex;align-items:center;gap:9px;}
   .matchday-list-head strong{color:#aebbd2;font-weight:500;}
+  .prestige-key{padding:4px 7px;border:1px solid rgba(220,190,109,.24);border-radius:999px;color:#d7bd77;font-style:normal;letter-spacing:.08em;background:rgba(214,181,91,.045);}
   .matchday-board>.data-status{padding:0 20px 14px;border:0;color:#61718e;font-size:10px;}
   .matchday-board #fixture-list{padding:0 10px 12px;}
-  .matchday-board .fixture-row{grid-template-columns:94px minmax(0,1fr) 92px;gap:14px;margin:0 0 7px;padding:14px 12px;border:1px solid rgba(121,151,218,.12);border-radius:16px;background:rgba(255,255,255,.018);transition:background .2s,border-color .2s,transform .2s;}
+  .matchday-board .fixture-row{position:relative;isolation:isolate;overflow:hidden;grid-template-columns:94px minmax(0,1fr) 92px;gap:14px;margin:0 0 7px;padding:14px 12px;border:1px solid rgba(121,151,218,.12);border-radius:16px;background:rgba(255,255,255,.018);transition:background .2s,border-color .2s,box-shadow .2s,transform .2s;}
   .matchday-board .fixture-row:hover{background:rgba(42,94,255,.07);border-color:rgba(75,120,230,.3);transform:translateY(-1px);}
+  .matchday-board .fixture-row>*{position:relative;z-index:1;}
+  .matchday-board .fixture-row--elite{
+    border-color:color-mix(in srgb,var(--home-club-color) 34%,#7d91bd);
+    background:
+      radial-gradient(circle at -5% 50%,color-mix(in srgb,var(--home-club-color) 30%,transparent),transparent 42%),
+      radial-gradient(circle at 105% 50%,color-mix(in srgb,var(--away-club-color) 24%,transparent),transparent 42%),
+      linear-gradient(105deg,rgba(19,31,59,.95),rgba(9,17,35,.97));
+    box-shadow:inset 0 1px rgba(255,255,255,.06),0 8px 24px rgba(0,0,0,.22),0 0 22px color-mix(in srgb,var(--home-club-color) 12%,transparent);
+  }
+  .matchday-board .fixture-row--elite:hover{border-color:color-mix(in srgb,var(--home-club-color) 62%,#d8e2ff);box-shadow:inset 0 1px rgba(255,255,255,.1),0 10px 32px rgba(0,0,0,.3),0 0 30px color-mix(in srgb,var(--home-club-color) 24%,transparent);}
+  .matchday-board .fixture-row--marquee{
+    border-color:#c8a853;
+    background:
+      radial-gradient(circle at -4% 52%,color-mix(in srgb,var(--home-club-color) 42%,transparent),transparent 45%),
+      radial-gradient(circle at 104% 48%,color-mix(in srgb,var(--away-club-color) 40%,transparent),transparent 45%),
+      linear-gradient(108deg,#17162a 0%,#0b1226 48%,#19172a 100%);
+    box-shadow:inset 0 1px rgba(255,248,216,.16),inset 0 0 24px rgba(212,178,84,.05),0 10px 32px rgba(0,0,0,.34),0 0 22px rgba(211,177,80,.16);
+  }
+  .matchday-board .fixture-row--marquee::before{
+    content:"";position:absolute;z-index:0;top:-120%;bottom:-120%;left:-35%;width:26%;pointer-events:none;transform:rotate(18deg);
+    background:linear-gradient(90deg,transparent,rgba(255,244,199,.17),rgba(255,255,255,.3),transparent);
+    animation:prestige-shine 6.5s ease-in-out infinite;
+  }
+  .matchday-board .fixture-row--marquee::after{
+    content:"";position:absolute;z-index:0;inset:0;pointer-events:none;border-radius:inherit;
+    background:linear-gradient(90deg,rgba(235,197,94,.1),transparent 28%,transparent 72%,rgba(235,197,94,.1));
+  }
+  @keyframes prestige-shine{0%,35%{left:-35%;opacity:0}45%{opacity:1}65%,100%{left:115%;opacity:0}}
   .matchday-board .fixture-date{color:#eaf0ff;font:700 15px var(--mono);letter-spacing:-.04em;}
   .matchday-board .fixture-comp{margin-top:4px;color:#5e718f;font-size:8px;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .fixture-prestige-badge{display:inline-flex;align-items:center;margin-top:7px;padding:3px 6px;border:1px solid rgba(111,154,255,.42);border-radius:999px;color:#91b0ff;background:rgba(29,79,202,.12);font:700 7px var(--mono);letter-spacing:.12em;white-space:nowrap;}
+  .fixture-row--marquee .fixture-prestige-badge{border-color:rgba(233,204,119,.56);color:#ffe29a;background:linear-gradient(110deg,rgba(125,89,17,.28),rgba(248,221,143,.08));box-shadow:0 0 16px rgba(226,192,94,.16);}
+  .fixture-row--marquee .fixture-date{color:#ffeab0;text-shadow:0 0 18px rgba(235,201,105,.16);}
+  .fixture-row--elite .fixture-team-name{color:#f6f8ff;font-weight:750;}
+  .fixture-row--marquee .fixture-team-name{color:#fff;font-weight:800;text-shadow:0 1px 14px rgba(255,255,255,.12);}
+  .fixture-row--elite .team-logo,.fixture-row--marquee .team-logo{transform:scale(1.08);filter:drop-shadow(0 4px 7px rgba(0,0,0,.5)) drop-shadow(0 0 7px rgba(255,255,255,.12));}
+  .fixture-row--marquee .fixture-versus{color:#f3d986;border:1px solid rgba(225,192,97,.34);background:#0b1020;box-shadow:0 0 18px rgba(222,188,90,.13);}
   .matchday-board .fixture-teams{display:grid;grid-template-columns:minmax(0,1fr) 26px minmax(0,1fr);align-items:center;gap:10px;font-size:13px;}
   .matchday-board .fixture-team{gap:9px;overflow:hidden;}
   .matchday-board .fixture-team:first-child{justify-content:flex-end;text-align:right;}
@@ -907,6 +943,7 @@
     .fixture-more-panel .league-tabs{display:flex;flex-wrap:nowrap;overflow-x:auto;}
     .matchday-list-head{padding:15px 13px 10px;}
     .matchday-list-head>span{display:none;}
+    .prestige-key{display:none;}
     .matchday-board>.data-status{padding:0 13px 12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
     .matchday-board #fixture-list{padding:0 7px 8px;}
     .matchday-board .fixture-row{grid-template-columns:55px minmax(0,1fr) 62px;gap:7px;padding:13px 8px;border-radius:14px;}
@@ -917,6 +954,7 @@
     .matchday-board .fixture-versus{width:16px;height:16px;font-size:6px;}
     .matchday-board .team-logo,.matchday-board .team-logo-fallback{width:25px;height:25px;}
     .matchday-board .sample-label{min-width:58px;padding:5px 6px;font-size:8px;}
+    .fixture-prestige-badge{margin-top:5px;padding:2px 4px;font-size:6px;letter-spacing:.08em;}
     .editorial-issue{margin-bottom:22px;}
     section.block.editorial-section{padding:42px 20px 54px;}
     .editorial-section .block-head{margin-bottom:24px;}
@@ -926,6 +964,10 @@
 
   .reveal{ opacity:0; transform:translateY(18px); transition:opacity .7s ease, transform .7s ease; }
   .reveal.in{ opacity:1; transform:translateY(0); }
+
+  @media(prefers-reduced-motion:reduce){
+    .matchday-board .fixture-row--marquee::before{animation:none;display:none;}
+  }
 
   footer{
     padding:48px clamp(20px,5vw,64px) 64px;
@@ -952,7 +994,7 @@
       <div>
         <span class="matchday-eyebrow"><i></i> AM4 MATCH CENTRE</span>
         <h1 id="today-fixtures-title">今日、何を見る？</h1>
-        <p>主要大会と注目クラブを日本時間で。世界の全試合にも、すぐ切り替えられる。</p>
+        <p>世界の試合を日本時間で。Big 6と欧州のトップクラブ15のカードは、光でひと目で分かる。</p>
       </div>
       <span class="sample-label" id="fixtures-source">読み込み中</span>
     </div>
@@ -973,7 +1015,7 @@
 
       <div class="matchday-quicktools">
         <div class="fixture-coverage-tabs" aria-label="表示する大会の範囲を選択">
-          <button class="fixture-coverage-tab" type="button" data-fixture-coverage="focus" aria-pressed="true">主要＋注目</button>
+          <button class="fixture-coverage-tab" type="button" data-fixture-coverage="focus" aria-pressed="true">AM4セレクト</button>
           <button class="fixture-coverage-tab" type="button" data-fixture-coverage="all" aria-pressed="false">世界の全試合</button>
         </div>
         <details class="fixture-more-filters">
@@ -1006,7 +1048,7 @@
       </div>
 
       <div class="matchday-list-head">
-        <div><i></i><span>JST</span><strong>試合中・このあとを優先</strong></div>
+        <div><i></i><span>JST</span><strong>試合中・このあとを優先</strong><em class="prestige-key">✦ 強豪カード</em></div>
         <span>結果は初期状態で非表示</span>
       </div>
       <div class="data-status" id="fixtures-status" aria-live="polite">今日の全大会を読み込んでいます</div>
@@ -1507,9 +1549,9 @@
 
 <script src="favorites.js"></script>
 <script src="site-config.js"></script>
-<script src="football-data.js?v=20260830"></script>
+<script src="football-data.js?v=20260830-elite"></script>
 <script src="sample-football-data.js"></script>
-<script src="match-centre.js?v=20260830"></script>
+<script src="match-centre.js?v=20260830-elite"></script>
 <script>
   // Existing AM4 Vercel API, with an explicit sample fallback.
   (async function(){
