@@ -124,7 +124,6 @@
 
   function sortFixturesForViewing(fixtures) {
     const groupOrder = { live: 0, upcoming: 1, finished: 2, other: 3 };
-    const prestigeOrder = { marquee: 0, elite: 1, standard: 2 };
     return [...(fixtures || [])].sort((a, b) => {
       const aOrder = groupOrder[classifyFixtureStatus(a.status)] ?? groupOrder.other;
       const bOrder = groupOrder[classifyFixtureStatus(b.status)] ?? groupOrder.other;
@@ -133,7 +132,7 @@
       const bKickoff = Date.parse(b.kickoff);
       if (Number.isFinite(aKickoff) && Number.isFinite(bKickoff) && aKickoff !== bKickoff) return aKickoff - bKickoff;
       if (Number.isFinite(aKickoff) !== Number.isFinite(bKickoff)) return Number.isFinite(aKickoff) ? -1 : 1;
-      return prestigeOrder[fixturePrestigePresentation(a).level] - prestigeOrder[fixturePrestigePresentation(b).level];
+      return 0;
     });
   }
 

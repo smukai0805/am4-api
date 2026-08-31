@@ -189,26 +189,17 @@
         const row = document.createElement("button");
         row.type = "button";
         row.className = "fixture-row";
-        const prestige = AM4FootballData.fixturePrestigePresentation(fixture);
-        if (prestige.level !== "standard") {
-          row.classList.add(`fixture-row--${prestige.level}`);
-          row.style.setProperty("--home-club-color", prestige.homeColor);
-          row.style.setProperty("--away-club-color", prestige.awayColor);
-        }
         const statusGroup = AM4FootballData.classifyFixtureStatus(fixture.status);
         const resultPresentation = AM4FootballData.fixtureResultPresentation(
           fixture,
           spoilersRevealed || revealedFixtureIds.has(fixtureKey(fixture)),
         );
         row.setAttribute("aria-label", `${fixture.home}対${fixture.away}の${resultPresentation.hidden ? "結果を見る" : "詳細を見る"}`);
-        row.innerHTML = '<div class="fixture-meta"><div class="fixture-date"></div><div class="fixture-comp"></div><span class="fixture-prestige-badge"></span></div><div class="fixture-teams"></div><span class="sample-label"></span>';
+        row.innerHTML = '<div class="fixture-meta"><div class="fixture-date"></div><div class="fixture-comp"></div></div><div class="fixture-teams"></div><span class="sample-label"></span>';
         row.querySelector(".fixture-date").textContent = fixture.kickoff
           ? `${new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", hour: "2-digit", minute: "2-digit" }).format(new Date(fixture.kickoff))} JST`
           : fixture.date;
         row.querySelector(".fixture-comp").textContent = fixture.competition || fixture.roundLabel || "大会情報確認中";
-        const prestigeBadge = row.querySelector(".fixture-prestige-badge");
-        prestigeBadge.textContent = prestige.label;
-        prestigeBadge.hidden = !prestige.label;
         const teams = row.querySelector(".fixture-teams");
         const versus = document.createElement("span");
         versus.className = "fixture-versus";

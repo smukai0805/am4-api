@@ -1048,7 +1048,7 @@
       </div>
 
       <div class="matchday-list-head">
-        <div><i></i><span>JST</span><strong>試合中・このあとを優先</strong><em class="prestige-key">✦ 強豪カード</em></div>
+        <div><i></i><span>JST</span><strong>試合中・このあとを優先</strong></div>
         <span>結果は初期状態で非表示</span>
       </div>
       <div class="data-status" id="fixtures-status" aria-live="polite">今日の全大会を読み込んでいます</div>
@@ -1057,7 +1057,7 @@
   </div>
 </section>
 
-<header class="hero">
+<header class="hero" hidden>
   <div class="beams"></div>
   <svg class="splash" width="100%" height="100%" viewBox="0 0 1200 420" preserveAspectRatio="xMidYMid slice">
     <defs>
@@ -1815,23 +1815,9 @@
     if (dailyDataIsValid) {
       matchCentre.useDailyData(todayKey, dailyResult.value);
       window.AM4LiveContext.fixtures = dailyResult.value.fixtures;
-      if (dailyResult.value.fixtures.length) {
-        const focusFixtures = dailyResult.value.focusFixtures?.length ? dailyResult.value.focusFixtures : dailyResult.value.fixtures;
-        renderFeaturedFixtures(dailyResult.value.featuredFixtures || focusFixtures.slice(0, 3), false, 'today');
-      }
     } else {
       matchCentre.showDailyUnavailable(todayKey);
       if (dailyResult.status === 'rejected') console.warn('Daily fixture API unavailable.', dailyResult.reason);
-    }
-
-    if (!dailyDataIsValid || !dailyResult.value.fixtures.length) {
-      const featuredResult = await Promise.allSettled([client.featuredFixtures()]);
-      if (featuredResult[0].status === 'fulfilled') {
-        const featuredErrors = featuredResult[0].value.errors || {};
-        const rendered = renderFeaturedFixtures(featuredResult[0].value.fixtures, Object.keys(featuredErrors).length > 0);
-      } else {
-        console.warn('Featured fixture API unavailable.', featuredResult[0].reason);
-      }
     }
 
     const [standingResult, photoResult, mfuniPhotoResult] = await supportingDataPromise;
@@ -1970,6 +1956,7 @@
 
   // topic carousel (strip-driven spotlight)
   (function(){
+    if (document.querySelector('.hero')?.hidden) return;
     const slides = document.querySelectorAll('.slide');
     const chips = document.querySelectorAll('.strip-chip');
     const panels = document.querySelectorAll('.predict-panel');

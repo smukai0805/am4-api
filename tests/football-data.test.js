@@ -213,13 +213,13 @@ test("ordinary fixtures remain visually quiet", () => {
   );
 });
 
-test("prestige only breaks ties at the same kickoff time", () => {
+test("same-time fixtures keep their neutral source order", () => {
   const fixtures = [
     { id: 1, status: "NS", kickoff: "2026-08-30T20:00:00+09:00", homeId: 9998, awayId: 9999 },
     { id: 2, status: "NS", kickoff: "2026-08-30T21:00:00+09:00", homeId: 42, awayId: 40 },
     { id: 3, status: "NS", kickoff: "2026-08-30T20:00:00+09:00", homeId: 529, awayId: 9999 },
   ];
-  assert.deepEqual(sortFixturesForViewing(fixtures).map((item) => item.id), [3, 1, 2]);
+  assert.deepEqual(sortFixturesForViewing(fixtures).map((item) => item.id), [1, 3, 2]);
 });
 
 test("fallback fixtures without a provider kickoff remain visible", () => {
