@@ -5,6 +5,15 @@
 })(typeof window !== "undefined" ? window : globalThis, function () {
   const ALL_COMPETITIONS = "すべて";
   const DEFAULT_LEAGUE = "プレミアリーグ";
+  const COMPETITION_LOGOS = new Map([
+    ["プレミアリーグ", 39], ["Premier League", 39],
+    ["ラ・リーガ", 140], ["La Liga", 140],
+    ["セリエA", 135], ["Serie A", 135],
+    ["ブンデスリーガ", 78], ["Bundesliga", 78],
+    ["リーグ・アン", 61], ["Ligue 1", 61],
+    ["チャンピオンズリーグ", 2], ["UEFA Champions League", 2],
+    ["クラブ親善試合", 667], ["Club Friendlies", 667],
+  ]);
 
   function create({ client, teamLogo, updatedAt, fallbackFixtures = [] }) {
     const fixturesNode = document.getElementById("fixture-list");
@@ -61,6 +70,19 @@
       const score = fixtureScoreLabel(fixture);
       const [home = "", away = ""] = score.split(/[-–]/).map((value) => value.trim());
       return { home, away };
+    }
+
+    function competitionLogo(competition) {
+      const leagueId = COMPETITION_LOGOS.get(competition);
+      if (!leagueId) return null;
+      const logo = document.createElement("img");
+      logo.className = "fixture-league-logo";
+      logo.src = `https://media.api-sports.io/football/leagues/${leagueId}.png`;
+      logo.alt = "";
+      logo.width = 28;
+      logo.height = 28;
+      logo.decoding = "async";
+      return logo;
     }
 
     function detailFact(label, value) {
@@ -206,7 +228,11 @@
         group.className = "fixture-league-group";
         const heading = document.createElement("h3");
         heading.className = "fixture-league-heading";
-        heading.textContent = competition;
+        const logo = competitionLogo(competition);
+        const title = document.createElement("span");
+        title.textContent = competition;
+        if (logo) heading.append(logo, title);
+        else heading.append(title);
         const list = document.createElement("div");
         list.className = "fixture-league-list";
         fixtures.forEach((fixture) => {

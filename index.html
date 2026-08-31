@@ -906,7 +906,8 @@
   .matchday-board .sample-label[data-result-hidden="true"]{color:#b9c8e4;border-style:dashed;}
   .matchday-board .sample-label[data-live="true"]{color:#ff6c82;border-color:rgba(255,75,105,.4);box-shadow:0 0 22px rgba(255,64,96,.09);}
   .fixture-league-group{margin:0 0 14px;border:1px solid rgba(121,151,218,.16);border-radius:16px;overflow:hidden;background:rgba(255,255,255,.018);}
-  .fixture-league-heading{margin:0;padding:13px 15px;border-bottom:1px solid rgba(121,151,218,.14);color:#eef3ff;font:700 13px var(--body);}
+  .fixture-league-heading{display:flex;align-items:center;gap:10px;margin:0;padding:13px 15px;border-bottom:1px solid rgba(121,151,218,.14);color:#eef3ff;font:700 13px var(--body);}
+  .fixture-league-logo{width:28px;height:28px;object-fit:contain;flex:0 0 auto;filter:drop-shadow(0 2px 5px rgba(0,0,0,.28));}
   .fixture-league-list{padding:0 14px;}
   .matchday-board .fixture-league-group .fixture-row{display:grid;grid-template-columns:68px minmax(0,1fr) 76px;align-items:center;gap:10px;width:100%;margin:0;padding:13px 0;border:0;border-bottom:1px solid rgba(121,151,218,.12);border-radius:0;background:transparent;box-shadow:none;transform:none;text-align:left;}
   .matchday-board .fixture-league-group .fixture-row:last-child{border-bottom:0;}
@@ -968,7 +969,8 @@
     .matchday-board .team-logo,.matchday-board .team-logo-fallback{width:25px;height:25px;}
     .matchday-board .sample-label{min-width:58px;padding:5px 6px;font-size:8px;}
     .fixture-league-group{margin-bottom:10px;border-radius:14px;}
-    .fixture-league-heading{padding:11px 12px;font-size:12px;}
+    .fixture-league-heading{gap:8px;padding:11px 12px;font-size:12px;}
+    .fixture-league-logo{width:25px;height:25px;}
     .fixture-league-list{padding:0 11px;}
     .matchday-board .fixture-league-group .fixture-row{grid-template-columns:48px minmax(0,1fr) 58px;gap:7px;padding:11px 0;}
     .matchday-board .fixture-league-group .fixture-teams{gap:6px;font-size:12px;}
