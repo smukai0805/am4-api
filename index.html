@@ -921,6 +921,7 @@
   .matchday-board .fixture-league-group .fixture-team:first-child,.matchday-board .fixture-league-group .fixture-team:last-child{justify-content:stretch;text-align:left;}
   .matchday-board .fixture-league-group .team-logo,.matchday-board .fixture-league-group .team-logo-fallback{width:24px;height:24px;}
   .fixture-team-score{min-width:18px;text-align:right;color:#f4f7ff;font:700 16px var(--mono);}
+  .fixture-scoreboard{display:none;}
   .matchday-board .fixture-league-group .sample-label{justify-self:end;min-width:64px;padding:5px 6px;font-size:8px;}
   .match-dialog-score.is-hidden{font-size:14px;color:#8da0c2;border:1px dashed rgba(140,165,220,.35);border-radius:999px;padding:9px 13px;}
   .goal-timeline{display:grid;gap:8px;margin-top:22px;padding-top:18px;border-top:1px solid var(--line);}
@@ -1042,6 +1043,69 @@
     .cockpit-test .matchday-intro::after{right:0;top:-30px;font-size:8px;}
     .cockpit-test .matchday-board{border-radius:22px;}
     .cockpit-test .fixture-league-group{border-radius:16px;}
+  }
+
+  /* Cockpit revision: dark editorial base, with the match result as the only reveal moment. */
+  .cockpit-test body{background:#060a17;color:var(--paper);}
+  .cockpit-test .topbar{background:rgba(6,10,23,.78);border-color:var(--line);}
+  .cockpit-test .wordmark small,.cockpit-test .lang{color:var(--steel-dim);}
+  .cockpit-test .matchday-home{min-height:auto;padding-top:clamp(42px,7vw,82px);background:radial-gradient(circle at 50% -12%,rgba(39,92,235,.23),transparent 40%),radial-gradient(circle at 92% 15%,rgba(97,44,218,.13),transparent 30%),linear-gradient(180deg,#050914 0%,#091226 74%,#06101f 100%);}
+  .cockpit-test .matchday-home::before{inset:0;width:auto;height:auto;left:0;top:0;opacity:.24;filter:none;background-image:linear-gradient(rgba(126,157,227,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(126,157,227,.08) 1px,transparent 1px);background-size:54px 54px;}
+  .cockpit-test .matchday-shell{max-width:1040px;}
+  .cockpit-test .matchday-intro{display:flex;max-width:none;margin:0 0 28px;text-align:left;}
+  .cockpit-test .matchday-intro > div{display:block;}
+  .cockpit-test .matchday-eyebrow{color:#7ea2ff;}
+  .cockpit-test .matchday-eyebrow i{background:#2c72ff;box-shadow:0 0 18px #2c72ff;}
+  .cockpit-test .matchday-intro h1{margin:0;color:#f5f7ff;font:900 clamp(46px,7vw,78px)/.94 var(--display);letter-spacing:-.045em;}
+  .cockpit-test .matchday-intro p,.cockpit-test .matchday-intro p::first-line{max-width:600px;margin:14px 0 0;color:#96a6c5;font-size:13px;line-height:1.7;}
+  .cockpit-test .matchday-intro::after{right:0;top:4px;border-color:rgba(126,162,255,.25);color:#9ab6ff;background:rgba(10,20,42,.7);}
+  .cockpit-test .matchday-intro > .sample-label{position:static;align-self:flex-start;margin-top:4px;border-color:rgba(133,159,216,.2);color:#8fa3c8;background:#081020;}
+  .cockpit-test .matchday-board{border-color:rgba(121,151,218,.2);border-radius:28px;background:rgba(8,15,32,.84);box-shadow:0 34px 100px rgba(0,0,0,.38),inset 0 1px rgba(255,255,255,.035);}
+  .cockpit-test .matchday-toolbar,.cockpit-test .fixture-filter-tabs,.cockpit-test .matchday-quicktools,.cockpit-test .matchday-list-head{border-color:rgba(121,151,218,.14);}
+  .cockpit-test .fixture-mode-tabs,.cockpit-test .fixture-coverage-tabs{padding:4px;border-color:rgba(123,150,211,.16);background:#050a16;}
+  .cockpit-test .fixture-mode-tab,.cockpit-test .fixture-coverage-tab{color:#8fa3c8;background:transparent;}
+  .cockpit-test .fixture-mode-tab[aria-pressed="true"],.cockpit-test .fixture-coverage-tab[aria-pressed="true"]{color:#fff;background:#174fd2;box-shadow:0 8px 22px rgba(23,79,210,.3);}
+  .cockpit-test .spoiler-toggle{border-color:rgba(130,159,224,.22);color:#c1cee6;background:rgba(255,255,255,.035);}
+  .cockpit-test .spoiler-toggle svg{stroke:currentColor;}
+  .cockpit-test .fixture-filter-tabs button,.cockpit-test .fixture-more-filters summary,.cockpit-test .matchday-list-head{color:#677896;}
+  .cockpit-test .fixture-filter-tabs button[aria-pressed="true"]{color:#fff;background:linear-gradient(180deg,transparent,rgba(42,94,255,.08));box-shadow:inset 0 -2px #3474ff;}
+  .cockpit-test .matchday-list-head strong{color:#aebbd2;}
+  .cockpit-test .matchday-list-head i{background:#2c72ff;box-shadow:0 0 18px #2c72ff;}
+  .cockpit-test .matchday-board>.data-status{color:#61718e;}
+  .cockpit-test .fixture-league-group{border:0;border-radius:0;background:transparent;box-shadow:none;overflow:visible;}
+  .cockpit-test .fixture-league-heading{padding:17px 4px 10px;color:#eef3ff;border:0;background:transparent;}
+  .cockpit-test .fixture-league-logo{filter:drop-shadow(0 2px 5px rgba(0,0,0,.28));}
+  .cockpit-test .fixture-league-list{padding:0;}
+  .cockpit-test .matchday-board .fixture-league-group .fixture-row{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);grid-template-areas:"home score away" "meta label label";align-items:center;gap:5px 14px;min-height:84px;margin:0 0 10px;padding:13px 15px;border:1px solid transparent;border-radius:17px;background:linear-gradient(105deg,rgba(7,19,34,.96),rgba(5,9,19,.98)) padding-box,linear-gradient(100deg,color-mix(in srgb,var(--home-team-color) 80%,#8395b8),rgba(138,158,207,.35) 48%,color-mix(in srgb,var(--away-team-color) 80%,#8395b8)) border-box;box-shadow:inset 0 1px rgba(255,255,255,.045),0 8px 22px rgba(0,0,0,.16);}
+  .cockpit-test .matchday-board .fixture-league-group .fixture-row:hover{border-color:transparent;background:linear-gradient(105deg,rgba(9,27,49,.98),rgba(5,9,19,.99)) padding-box,linear-gradient(100deg,var(--home-team-color),rgba(190,207,255,.75) 48%,var(--away-team-color)) border-box;transform:translateY(-1px);}
+  .cockpit-test .matchday-board .fixture-league-group .fixture-meta{grid-area:meta;align-self:end;padding:0;color:#7788a5;}
+  .cockpit-test .matchday-board .fixture-league-group .fixture-meta .fixture-date{color:#8d9db9;font-size:9px;}
+  .cockpit-test .matchday-board .fixture-league-group .fixture-teams{display:contents;}
+  .cockpit-test .matchday-board .fixture-league-group .fixture-team{display:flex;align-items:center;gap:9px;min-width:0;}
+  .cockpit-test .matchday-board .fixture-league-group .fixture-team:first-child{grid-area:home;justify-content:flex-start;text-align:left;}
+  .cockpit-test .matchday-board .fixture-league-group .fixture-team:last-child{grid-area:away;justify-content:flex-end;flex-direction:row-reverse;text-align:right;}
+  .cockpit-test .matchday-board .fixture-league-group .fixture-team-name{color:#f3f6ff;font-weight:750;}
+  .cockpit-test .matchday-board .fixture-league-group .team-logo,.cockpit-test .matchday-board .fixture-league-group .team-logo-fallback{width:30px;height:30px;filter:drop-shadow(0 3px 6px rgba(0,0,0,.5));}
+  .cockpit-test .fixture-team-score{display:none;}
+  .cockpit-test .fixture-scoreboard{grid-area:score;display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:78px;color:#fff;font:900 27px/.92 var(--body);letter-spacing:-.06em;transition:filter .26s ease,opacity .26s ease;}
+  .cockpit-test .fixture-scoreboard small{margin-top:5px;color:#9eabc4;font:700 8px var(--mono);letter-spacing:.08em;}
+  .cockpit-test .fixture-scoreboard[data-result-hidden="true"]{filter:blur(6px);opacity:.72;}
+  .cockpit-test .matchday-board .fixture-league-group .sample-label{grid-area:label;justify-self:end;min-width:auto;padding:0;border:0;color:#8190ab;background:transparent;font-size:7px;letter-spacing:.08em;}
+  .cockpit-test .matchday-board .fixture-league-group .sample-label[data-result-hidden="true"]{color:#aebbd3;border:0;}
+  .cockpit-test .matchday-board .fixture-league-group .sample-label[data-live="true"]{color:#ff6c82;border:0;background:transparent;box-shadow:none;}
+  .cockpit-test footer{color:var(--steel-dim);}
+  @media(max-width:640px){
+    .cockpit-test .matchday-home{padding-top:48px;}
+    .cockpit-test .matchday-intro{margin-bottom:24px;}
+    .cockpit-test .matchday-intro > div{display:block;}
+    .cockpit-test .matchday-intro h1{font-size:52px;}
+    .cockpit-test .matchday-intro p{font-size:13px;}
+    .cockpit-test .matchday-intro::after{right:0;top:-24px;}
+    .cockpit-test .matchday-board{border-radius:22px;}
+    .cockpit-test .matchday-board .fixture-league-group .fixture-row{grid-template-columns:minmax(0,1fr) 65px minmax(0,1fr);gap:4px 8px;min-height:80px;padding:11px 10px;border-radius:15px;}
+    .cockpit-test .matchday-board .fixture-league-group .fixture-team{gap:6px;font-size:11px;}
+    .cockpit-test .matchday-board .fixture-league-group .team-logo,.cockpit-test .matchday-board .fixture-league-group .team-logo-fallback{width:26px;height:26px;}
+    .cockpit-test .fixture-scoreboard{min-width:65px;font-size:24px;}
   }
 
   @media(prefers-reduced-motion:reduce){

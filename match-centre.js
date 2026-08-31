@@ -14,6 +14,13 @@
     ["チャンピオンズリーグ", 2], ["UEFA Champions League", 2],
     ["クラブ親善試合", 667], ["Club Friendlies", 667],
   ]);
+  const TEAM_ACCENTS = new Map([
+    ["Real Madrid", "#d6ad45"], ["Malaga", "#1a76ba"], ["Deportivo La Coruna", "#5c5db1"], ["Valencia", "#f58220"],
+    ["Celta Vigo", "#6fc7ef"], ["Athletic Club", "#e61d35"], ["Rennes", "#e51c2a"], ["Le Mans", "#d23b36"],
+    ["Monaco", "#d9222a"], ["Marseille", "#00a8e6"], ["Manchester United", "#da291c"], ["Ipswich", "#2d5ba8"],
+    ["FC Augsburg", "#bb2635"], ["FC Schalke 04", "#005ca9"], ["Napoli", "#1497d4"], ["Como", "#2777bb"],
+    ["Cagliari", "#bd2637"], ["Inter", "#1b5fa7"], ["Lazio", "#79c7e9"], ["Genoa", "#be2638"],
+  ]);
 
   function create({ client, teamLogo, updatedAt, fallbackFixtures = [] }) {
     const fixturesNode = document.getElementById("fixture-list");
@@ -70,6 +77,10 @@
       const score = fixtureScoreLabel(fixture);
       const [home = "", away = ""] = score.split(/[-–]/).map((value) => value.trim());
       return { home, away };
+    }
+
+    function teamAccent(name) {
+      return TEAM_ACCENTS.get(name) || "#4a6eaf";
     }
 
     function competitionLogo(competition) {
@@ -245,7 +256,9 @@
             spoilersRevealed || revealedFixtureIds.has(fixtureKey(fixture)),
           );
           row.setAttribute("aria-label", `${fixture.home}対${fixture.away}の${resultPresentation.hidden ? "結果を見る" : "詳細を見る"}`);
-          row.innerHTML = '<div class="fixture-meta"><div class="fixture-date"></div></div><div class="fixture-teams"></div><span class="sample-label"></span>';
+          row.style.setProperty("--home-team-color", teamAccent(fixture.home));
+          row.style.setProperty("--away-team-color", teamAccent(fixture.away));
+          row.innerHTML = '<div class="fixture-meta"><div class="fixture-date"></div></div><div class="fixture-teams"></div><strong class="fixture-scoreboard"><span class="fixture-scoreboard-value"></span><small></small></strong><span class="sample-label"></span>';
           row.querySelector(".fixture-date").textContent = fixture.kickoff
             ? `${new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", hour: "2-digit", minute: "2-digit" }).format(new Date(fixture.kickoff))} JST`
             : fixture.date;
@@ -255,6 +268,13 @@
             fixtureTeam(fixture.home, fixture.homeLogo, scores.home),
             fixtureTeam(fixture.away, fixture.awayLogo, scores.away),
           );
+          const scoreboard = row.querySelector(".fixture-scoreboard");
+          const fullScores = fixtureTeamScores(fixture);
+          const scoreText = fullScores.home && fullScores.away ? `${fullScores.home} – ${fullScores.away}` : "VS";
+          scoreboard.querySelector(".fixture-scoreboard-value").textContent = scoreText;
+          scoreboard.querySelector("small").textContent = statusGroup === "live" ? "LIVE" : statusGroup === "finished" ? "FULL-TIME" : "KICKOFF";
+          scoreboard.hidden = statusGroup === "upcoming";
+          scoreboard.dataset.resultHidden = String(resultPresentation.hidden);
           const rowLabel = row.querySelector(".sample-label");
           const rowLabelText = resultPresentation.hidden
             ? "結果を見る"
