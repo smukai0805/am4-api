@@ -449,6 +449,7 @@
           renderFixtures(items, sourceLabel);
           const firstNewHeading = document
             .getElementById("fixture-league-" + visibleGroupLimit)
+            ?.closest(".fixture-league-group")
             ?.querySelector(".fixture-league-heading");
           firstNewHeading?.focus();
         });
