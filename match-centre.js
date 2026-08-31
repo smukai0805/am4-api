@@ -5,6 +5,7 @@
 })(typeof window !== "undefined" ? window : globalThis, function () {
   const ALL_COMPETITIONS = "すべて";
   const DEFAULT_LEAGUE = "プレミアリーグ";
+  const LEAGUE_PREVIEW_LIMIT = 4;
   const COMPETITION_LOGOS = new Map([
     ["プレミアリーグ", 39], ["Premier League", 39],
     ["ラ・リーガ", 140], ["La Liga", 140],
@@ -13,6 +14,27 @@
     ["リーグ・アン", 61], ["Ligue 1", 61],
     ["チャンピオンズリーグ", 2], ["UEFA Champions League", 2],
     ["クラブ親善試合", 667], ["Club Friendlies", 667],
+  ]);
+  const COMPETITION_COUNTRIES = new Map([
+    ["プレミアリーグ", "England"], ["Premier League", "England"],
+    ["ラ・リーガ", "Spain"], ["La Liga", "Spain"],
+    ["セリエA", "Italy"], ["Serie A", "Italy"],
+    ["ブンデスリーガ", "Germany"], ["Bundesliga", "Germany"],
+    ["リーグ・アン", "France"], ["Ligue 1", "France"],
+    ["チャンピオンズリーグ", "Europe"], ["UEFA Champions League", "Europe"],
+  ]);
+  const COUNTRY_LABELS = new Map([
+    ["England", "イングランド"], ["Spain", "スペイン"], ["Italy", "イタリア"],
+    ["Germany", "ドイツ"], ["France", "フランス"], ["Europe", "欧州"],
+    ["World", "国際"], ["International", "国際"], ["Netherlands", "オランダ"],
+    ["Portugal", "ポルトガル"], ["Belgium", "ベルギー"], ["Scotland", "スコットランド"],
+    ["Turkey", "トルコ"], ["Greece", "ギリシャ"], ["Austria", "オーストリア"],
+    ["Switzerland", "スイス"], ["Denmark", "デンマーク"], ["Norway", "ノルウェー"],
+    ["Sweden", "スウェーデン"], ["Poland", "ポーランド"], ["Czech-Republic", "チェコ"],
+    ["Croatia", "クロアチア"], ["Serbia", "セルビア"], ["Romania", "ルーマニア"],
+    ["Ukraine", "ウクライナ"], ["Georgia", "ジョージア"], ["USA", "アメリカ"],
+    ["Brazil", "ブラジル"], ["Argentina", "アルゼンチン"], ["Mexico", "メキシコ"],
+    ["Japan", "日本"], ["South-Korea", "韓国"], ["Australia", "オーストラリア"],
   ]);
   const TEAM_ACCENTS = new Map([
     ["Real Madrid", "#d6ad45"], ["Malaga", "#1a76ba"], ["Deportivo La Coruna", "#5c5db1"], ["Valencia", "#f58220"],
@@ -34,6 +56,7 @@
     const dailyCache = new Map();
     const eventCache = new Map();
     const revealedFixtureIds = new Set();
+    const expandedLeagueGroups = new Set();
     let activeFixtureLeague = ALL_COMPETITIONS;
     let fixtureMode = "date";
     let fixtureStatus = "all";
@@ -78,11 +101,8 @@
       return { home, away };
     }
 
-    function teamAccent(name, id) {
-      if (TEAM_ACCENTS.has(name)) return TEAM_ACCENTS.get(name);
-      const palette = ["#3d70b2", "#a05a68", "#4a8b79", "#8a6daf", "#b48a45", "#3b8e9a", "#8f6571"];
-      const seed = Number(id) || [...String(name || "")].reduce((total, character) => total + character.charCodeAt(0), 0);
-      return palette[Math.abs(seed) % palette.length];
+    function teamAccent(name) {
+      return TEAM_ACCENTS.get(name) || null;
     }
 
     function competitionLogo(fixture) {
@@ -99,6 +119,11 @@
       logo.decoding = "async";
       logo.addEventListener("error", () => logo.remove(), { once: true });
       return logo;
+    }
+
+    function competitionCountryLabel(fixture) {
+      const country = fixture?.competitionCountry || COMPETITION_COUNTRIES.get(fixture?.competition);
+      return COUNTRY_LABELS.get(country) || country || "";
     }
 
     function detailFact(label, value) {
@@ -188,6 +213,17 @@
       return String(fixture.id || `${fixture.home}-${fixture.away}-${fixture.kickoff}`);
     }
 
+    function leagueGroupKey(competition) {
+      return [
+        fixtureMode,
+        selectedDailyDate,
+        activeFixtureFilter || "",
+        fixtureScope,
+        fixtureStatus,
+        competition,
+      ].join("|");
+    }
+
     function eyeIcon() {
       const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
       icon.setAttribute("viewBox", "0 0 24 24");
@@ -247,31 +283,55 @@
         if (!groups.has(competition)) groups.set(competition, []);
         groups.get(competition).push(fixture);
       });
+      let groupIndex = 0;
       groups.forEach((fixtures, competition) => {
         const group = document.createElement("section");
         group.className = "fixture-league-group";
+        const canCompact = fixtureMode === "date"
+          && activeFixtureLeague === ALL_COMPETITIONS
+          && fixtures.length > LEAGUE_PREVIEW_LIMIT;
+        const groupKey = leagueGroupKey(competition);
+        const isExpanded = !canCompact || expandedLeagueGroups.has(groupKey);
         const heading = document.createElement("h3");
         heading.className = "fixture-league-heading";
         const logo = competitionLogo(fixtures[0] || competition);
+        const headingCopy = document.createElement("span");
+        headingCopy.className = "fixture-league-heading-copy";
         const title = document.createElement("span");
+        title.className = "fixture-league-title";
         title.textContent = competition;
+        headingCopy.append(title);
+        const countryName = competitionCountryLabel(fixtures[0]);
+        if (countryName) {
+          const country = document.createElement("small");
+          country.className = "fixture-league-country";
+          country.textContent = countryName;
+          headingCopy.append(country);
+        }
         const count = document.createElement("small");
         count.className = "fixture-league-count";
         count.textContent = `${fixtures.length}試合`;
-        if (logo) heading.append(logo, title, count);
-        else heading.append(title, count);
+        if (logo) heading.append(logo, headingCopy, count);
+        else heading.append(headingCopy, count);
         const list = document.createElement("div");
         list.className = "fixture-league-list";
-        fixtures.forEach((fixture) => {
+        list.id = "fixture-league-" + groupIndex;
+        groupIndex += 1;
+        const concealedRows = [];
+        fixtures.forEach((fixture, fixtureIndex) => {
           const row = document.createElement("article");
           row.className = "fixture-row";
+          row.hidden = canCompact && !isExpanded && fixtureIndex >= LEAGUE_PREVIEW_LIMIT;
+          if (row.hidden) concealedRows.push(row);
           const statusGroup = AM4FootballData.classifyFixtureStatus(fixture.status);
           const resultPresentation = AM4FootballData.fixtureResultPresentation(
             fixture,
             spoilersRevealed || revealedFixtureIds.has(fixtureKey(fixture)),
           );
-          row.style.setProperty("--home-team-color", teamAccent(fixture.home, fixture.homeId));
-          row.style.setProperty("--away-team-color", teamAccent(fixture.away, fixture.awayId));
+          const homeAccent = teamAccent(fixture.home);
+          const awayAccent = teamAccent(fixture.away);
+          if (homeAccent) row.style.setProperty("--home-team-color", homeAccent);
+          if (awayAccent) row.style.setProperty("--away-team-color", awayAccent);
           const meta = document.createElement("div");
           meta.className = "fixture-meta";
           const date = document.createElement("time");
@@ -303,8 +363,7 @@
             const icon = eyeIcon();
             icon.classList.add("fixture-scoreboard-icon");
             scoreboard.append(icon);
-            scoreValue.textContent = "結果を表示";
-            scoreCaption.textContent = "タップして表示";
+            scoreValue.textContent = "結果を見る";
           } else {
             if (statusGroup === "upcoming") {
               scoreValue.textContent = fixture.kickoff
@@ -322,13 +381,14 @@
               scoreCaption.textContent = "STATUS";
             }
           }
-          scoreboard.append(scoreValue, scoreCaption);
+          scoreboard.append(scoreValue);
+          if (scoreCaption.textContent) scoreboard.append(scoreCaption);
           scoreboard.dataset.resultHidden = String(resultPresentation.hidden);
           const details = document.createElement(fixture.id ? "a" : "button");
           if (fixture.id) details.href = `/match.html?id=${encodeURIComponent(fixture.id)}`;
           else details.type = "button";
           details.className = "fixture-detail-action";
-          details.textContent = "試合詳細";
+          details.textContent = "試合詳細 →";
           details.setAttribute("aria-label", `${fixture.home}対${fixture.away}の試合詳細${fixture.id ? "へ移動" : "を開く"}`);
           if (!fixture.id) details.addEventListener("click", () => openMatchDetail(fixture, sourceLabel));
           if (resultPresentation.hidden) {
@@ -341,6 +401,22 @@
           list.append(row);
         });
         group.append(heading, list);
+        if (canCompact && !isExpanded) {
+          const showMore = document.createElement("button");
+          const remaining = fixtures.length - LEAGUE_PREVIEW_LIMIT;
+          showMore.type = "button";
+          showMore.className = "fixture-league-toggle";
+          showMore.textContent = "残り" + remaining + "試合を表示";
+          showMore.setAttribute("aria-controls", list.id);
+          showMore.setAttribute("aria-expanded", "false");
+          showMore.addEventListener("click", () => {
+            expandedLeagueGroups.add(groupKey);
+            concealedRows.forEach((row) => { row.hidden = false; });
+            group.dataset.expanded = "true";
+            showMore.remove();
+          });
+          group.append(showMore);
+        }
         fixturesNode.append(group);
       });
     }
