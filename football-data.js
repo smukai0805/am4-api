@@ -13,6 +13,7 @@
       fixtures: (league, season) => request(`/fixtures?league=${encodeURIComponent(league)}${season == null ? "" : `&season=${encodeURIComponent(season)}`}`),
       dailyFixtures: (date) => request(`/fixtures?date=${encodeURIComponent(date)}`),
       fixtureEvents: (fixtureId) => request(`/fixtures?events=${encodeURIComponent(fixtureId)}`),
+      fixtureDetail: (fixtureId) => request(`/fixtures?detail=${encodeURIComponent(fixtureId)}`),
       featuredFixtures: () => request('/fixtures?featured=1'),
       standings: (season) => request(`/standings?season=${encodeURIComponent(season)}`),
       playerPhoto: ({ search, fullName, providerId }) => {

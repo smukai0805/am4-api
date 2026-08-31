@@ -184,6 +184,8 @@ function simplifyFixture(f, competition, includeProviderRound = false) {
     date: (f.fixture.date || '').slice(0, 10),
     kickoff: f.fixture.date || null,
     competition,
+    competitionLogo: f.league?.logo || null,
+    competitionCountry: f.league?.country || null,
     roundKey: roundInfo?.key || null,
     roundLabel: roundInfo?.label || (includeProviderRound ? f.league.round : null),
     status: f.fixture.status?.short,
@@ -290,6 +292,172 @@ export function selectGoalEvents(events) {
     .map(({ sortMinute, sortExtra, ...goal }) => goal);
 }
 
+function hasProviderErrors(data) {
+  return Boolean(data?.errors && Object.keys(data.errors).length > 0);
+}
+
+function nullableNumber(value) {
+  if (value == null || value === '') return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function normalizeParticipant(participant) {
+  return {
+    id: nullableNumber(participant?.id),
+    name: participant?.name || null,
+    logo: participant?.logo || null,
+  };
+}
+
+function normalizeDetailFixture(source) {
+  const fixture = source?.fixture || {};
+  const league = source?.league || {};
+  const status = fixture.status || {};
+  return {
+    id: nullableNumber(fixture.id),
+    date: (fixture.date || '').slice(0, 10) || null,
+    kickoff: fixture.date || null,
+    timestamp: nullableNumber(fixture.timestamp),
+    competition: COMPETITION_NAMES_BY_PROVIDER_ID.get(nullableNumber(league.id)) || league.name || null,
+    competitionId: nullableNumber(league.id),
+    competitionLogo: league.logo || null,
+    competitionCountry: league.country || null,
+    round: league.round || null,
+    roundLabel: resolveRoundInfo(league.round)?.label || league.round || null,
+    status: status.short || null,
+    statusLong: status.long || null,
+    elapsed: nullableNumber(status.elapsed),
+    home: normalizeParticipant(source?.teams?.home),
+    away: normalizeParticipant(source?.teams?.away),
+    goals: {
+      home: nullableNumber(source?.goals?.home),
+      away: nullableNumber(source?.goals?.away),
+    },
+    score: {
+      halftime: { home: nullableNumber(source?.score?.halftime?.home), away: nullableNumber(source?.score?.halftime?.away) },
+      fulltime: { home: nullableNumber(source?.score?.fulltime?.home), away: nullableNumber(source?.score?.fulltime?.away) },
+      extratime: { home: nullableNumber(source?.score?.extratime?.home), away: nullableNumber(source?.score?.extratime?.away) },
+      penalty: { home: nullableNumber(source?.score?.penalty?.home), away: nullableNumber(source?.score?.penalty?.away) },
+    },
+    venue: {
+      name: fixture.venue?.name || null,
+      city: fixture.venue?.city || null,
+    },
+    referee: fixture.referee || null,
+    timezone: fixture.timezone || null,
+  };
+}
+
+function normalizeDetailEvents(events) {
+  return (Array.isArray(events) ? events : [])
+    .map((event, index) => ({
+      minute: minuteLabel(event?.time),
+      elapsed: nullableNumber(event?.time?.elapsed),
+      extra: nullableNumber(event?.time?.extra),
+      type: event?.type || null,
+      detail: event?.detail || null,
+      comments: event?.comments || null,
+      team: normalizeParticipant(event?.team),
+      player: { id: nullableNumber(event?.player?.id), name: event?.player?.name || null },
+      assist: { id: nullableNumber(event?.assist?.id), name: event?.assist?.name || null },
+      sortIndex: index,
+    }))
+    .sort((a, b) => {
+      const aElapsed = a.elapsed ?? Number.MAX_SAFE_INTEGER;
+      const bElapsed = b.elapsed ?? Number.MAX_SAFE_INTEGER;
+      return aElapsed - bElapsed || (a.extra ?? 0) - (b.extra ?? 0) || a.sortIndex - b.sortIndex;
+    })
+    .map(({ sortIndex, ...event }) => event);
+}
+
+function normalizeLineupPlayer(entry) {
+  const player = entry?.player || {};
+  return {
+    id: nullableNumber(player.id),
+    name: player.name || null,
+    number: nullableNumber(player.number),
+    position: player.pos || null,
+    grid: player.grid || null,
+  };
+}
+
+function orderByFixtureTeam(items, fixture) {
+  const teamIds = [fixture.home.id, fixture.away.id];
+  return items
+    .map((item, index) => ({ item, index, order: teamIds.indexOf(item.team?.id) }))
+    .sort((a, b) => (a.order < 0 ? 99 : a.order) - (b.order < 0 ? 99 : b.order) || a.index - b.index)
+    .map(({ item }) => item);
+}
+
+function normalizeDetailLineups(lineups, fixture) {
+  const normalized = (Array.isArray(lineups) ? lineups : []).map((lineup) => ({
+    team: normalizeParticipant(lineup?.team),
+    formation: lineup?.formation || null,
+    coach: { id: nullableNumber(lineup?.coach?.id), name: lineup?.coach?.name || null },
+    startXI: (Array.isArray(lineup?.startXI) ? lineup.startXI : []).map(normalizeLineupPlayer),
+    substitutes: (Array.isArray(lineup?.substitutes) ? lineup.substitutes : []).map(normalizeLineupPlayer),
+  }));
+  return orderByFixtureTeam(normalized, fixture);
+}
+
+function normalizeDetailStatistics(statistics, fixture) {
+  const normalized = (Array.isArray(statistics) ? statistics : []).map((entry) => ({
+    team: normalizeParticipant(entry?.team),
+    statistics: (Array.isArray(entry?.statistics) ? entry.statistics : []).map((statistic) => ({
+      type: statistic?.type || null,
+      value: statistic?.value ?? null,
+    })),
+  }));
+  return orderByFixtureTeam(normalized, fixture);
+}
+
+function cacheControlForStatus(status) {
+  if (FINISHED_STATUSES.includes(status)) return 's-maxage=300, stale-while-revalidate=86400';
+  if (['1H', 'HT', '2H', 'ET', 'BT', 'P', 'SUSP', 'INT', 'LIVE'].includes(status)) {
+    return 's-maxage=15, stale-while-revalidate=45';
+  }
+  return 's-maxage=60, stale-while-revalidate=300';
+}
+
+// The primary fixture establishes whether the requested match exists. Each optional
+// section is intentionally fetched independently so a provider gap (for example,
+// pre-match lineups) does not hide the rest of the match detail.
+export async function getFixtureDetail(fixtureId, fetchFixture = apiFootballFetch) {
+  // A detail page is an explicit, user-initiated request. Do not keep it alive for
+  // retry backoffs: the shared throttle already spaces requests safely, and the UI
+  // can offer a clear retry when a provider is unavailable.
+  const detailRequestOptions = { timeoutMs: 6000, retries: 0 };
+  const primary = await fetchFixture('/fixtures', { id: fixtureId }, detailRequestOptions);
+  if (hasProviderErrors(primary)) throw new Error('Primary fixture unavailable');
+  const source = Array.isArray(primary?.response) ? primary.response[0] : null;
+  if (!source) return null;
+
+  const sections = await Promise.allSettled([
+    fetchFixture('/fixtures/events', { fixture: fixtureId }, detailRequestOptions),
+    fetchFixture('/fixtures/lineups', { fixture: fixtureId }, detailRequestOptions),
+    fetchFixture('/fixtures/statistics', { fixture: fixtureId }, detailRequestOptions),
+  ]);
+  const usable = (result) => result.status === 'fulfilled' && !hasProviderErrors(result.value);
+  const eventData = usable(sections[0]) ? sections[0].value.response : null;
+  const lineupData = usable(sections[1]) ? sections[1].value.response : null;
+  const statisticsData = usable(sections[2]) ? sections[2].value.response : null;
+  const fixture = normalizeDetailFixture(source);
+
+  return {
+    fixture,
+    events: eventData == null ? null : normalizeDetailEvents(eventData),
+    lineups: lineupData == null ? null : normalizeDetailLineups(lineupData, fixture),
+    statistics: statisticsData == null ? null : normalizeDetailStatistics(statisticsData, fixture),
+    availability: {
+      events: eventData != null,
+      lineups: lineupData != null,
+      statistics: statisticsData != null,
+    },
+    cacheControl: cacheControlForStatus(fixture.status),
+  };
+}
+
 async function getFeaturedFixtures(season) {
   const responses = [];
   const successfulSources = [];
@@ -344,7 +512,26 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'API_FOOTBALL_KEY が設定されていません' });
   }
 
-  const { league, featured, date, events } = req.query;
+  const { league, featured, date, events, detail } = req.query;
+
+  if (detail != null) {
+    const fixtureId = Number(detail);
+    if (!Number.isInteger(fixtureId) || fixtureId <= 0) {
+      return res.status(400).json({ error: 'detail は有効な試合IDで指定してください' });
+    }
+    try {
+      const fixtureDetail = await getFixtureDetail(fixtureId);
+      if (!fixtureDetail) {
+        return res.status(404).json({ error: '指定された試合が見つかりません' });
+      }
+      res.setHeader('Cache-Control', fixtureDetail.cacheControl);
+      const { cacheControl, ...body } = fixtureDetail;
+      return res.status(200).json(body);
+    } catch (error) {
+      console.error(`[fixture detail] ${fixtureId} unavailable:`, error);
+      return res.status(503).json({ error: '試合詳細の取得に失敗しました' });
+    }
+  }
 
   if (events != null) {
     const fixtureId = Number(events);

@@ -70,6 +70,16 @@ test("goal events are loaded lazily through the server-side fixture proxy", asyn
   assert.equal(JSON.stringify(requested).includes("apiKey"), false);
 });
 
+test("fixture detail is loaded through the same-origin server-side proxy", async () => {
+  let requested;
+  const client = createClient(async (url) => {
+    requested = url;
+    return { ok: true, json: async () => ({ fixture: {} }) };
+  });
+  await client.fixtureDetail(123456);
+  assert.equal(requested, "https://am4-api.vercel.app/api/fixtures?detail=123456");
+});
+
 test("player photos can use a validated API-Football player reference", async () => {
   let requested;
   const client = createClient(async (url) => {

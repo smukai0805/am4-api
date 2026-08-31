@@ -85,16 +85,19 @@
       return palette[Math.abs(seed) % palette.length];
     }
 
-    function competitionLogo(competition) {
+    function competitionLogo(fixture) {
+      const competition = typeof fixture === "string" ? fixture : fixture?.competition;
       const leagueId = COMPETITION_LOGOS.get(competition);
-      if (!leagueId) return null;
+      const source = fixture?.competitionLogo || (leagueId ? `https://media.api-sports.io/football/leagues/${leagueId}.png` : null);
+      if (!source) return null;
       const logo = document.createElement("img");
       logo.className = "fixture-league-logo";
-      logo.src = `https://media.api-sports.io/football/leagues/${leagueId}.png`;
+      logo.src = source;
       logo.alt = "";
       logo.width = 28;
       logo.height = 28;
       logo.decoding = "async";
+      logo.addEventListener("error", () => logo.remove(), { once: true });
       return logo;
     }
 
@@ -249,7 +252,7 @@
         group.className = "fixture-league-group";
         const heading = document.createElement("h3");
         heading.className = "fixture-league-heading";
-        const logo = competitionLogo(competition);
+        const logo = competitionLogo(fixtures[0] || competition);
         const title = document.createElement("span");
         title.textContent = competition;
         const count = document.createElement("small");
@@ -321,12 +324,13 @@
           }
           scoreboard.append(scoreValue, scoreCaption);
           scoreboard.dataset.resultHidden = String(resultPresentation.hidden);
-          const details = document.createElement("button");
-          details.type = "button";
+          const details = document.createElement(fixture.id ? "a" : "button");
+          if (fixture.id) details.href = `/match.html?id=${encodeURIComponent(fixture.id)}`;
+          else details.type = "button";
           details.className = "fixture-detail-action";
           details.textContent = "試合詳細";
-          details.setAttribute("aria-label", `${fixture.home}対${fixture.away}の試合詳細を開く`);
-          details.addEventListener("click", () => openMatchDetail(fixture, sourceLabel));
+          details.setAttribute("aria-label", `${fixture.home}対${fixture.away}の試合詳細${fixture.id ? "へ移動" : "を開く"}`);
+          if (!fixture.id) details.addEventListener("click", () => openMatchDetail(fixture, sourceLabel));
           if (resultPresentation.hidden) {
             scoreboard.addEventListener("click", () => {
               revealedFixtureIds.add(fixtureKey(fixture));
