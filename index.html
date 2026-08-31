@@ -999,7 +999,7 @@
       <span class="sample-label" id="fixtures-source">読み込み中</span>
     </div>
 
-    <div class="matchday-board reveal">
+    <div class="matchday-board">
       <div class="matchday-toolbar">
         <div class="fixture-mode-tabs" aria-label="表示方法を選択">
           <button class="fixture-mode-tab" type="button" data-fixture-mode="date" aria-pressed="true">日別</button>
@@ -1796,12 +1796,18 @@
     const todayKey = AM4FootballData.tokyoDateKey(new Date());
     const todayParts = todayKey.split('-').map(Number);
     const currentSeason = todayParts[1] >= 7 ? todayParts[0] : todayParts[0] - 1;
-    const [dailyResult, standingResult, photoResult, mfuniPhotoResult] = await Promise.allSettled([
-        client.dailyFixtures(todayKey),
-        client.standings(currentSeason),
-        client.playerPhoto(FEATURED_PLAYERS.hato),
-        client.playerPhoto(FEATURED_PLAYERS.mfuni)
+    // The matchday board is the homepage priority. Do not keep it on the
+    // static sample while unrelated standings and player-photo requests finish.
+    const dailyResultPromise = client.dailyFixtures(todayKey);
+    const supportingDataPromise = Promise.allSettled([
+      client.standings(currentSeason),
+      client.playerPhoto(FEATURED_PLAYERS.hato),
+      client.playerPhoto(FEATURED_PLAYERS.mfuni)
     ]);
+    const dailyResult = await dailyResultPromise.then(
+      (value) => ({ status: 'fulfilled', value }),
+      (reason) => ({ status: 'rejected', reason })
+    );
 
     const dailyDataIsValid = dailyResult.status === 'fulfilled' &&
       Array.isArray(dailyResult.value.fixtures) &&
@@ -1827,6 +1833,8 @@
         console.warn('Featured fixture API unavailable.', featuredResult[0].reason);
       }
     }
+
+    const [standingResult, photoResult, mfuniPhotoResult] = await supportingDataPromise;
 
     const premierLeague = standingResult.status === 'fulfilled' ? standingResult.value.leagues?.['プレミアリーグ'] : null;
     if (premierLeague?.length) {
