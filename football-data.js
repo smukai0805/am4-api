@@ -65,38 +65,6 @@
     return { hidden: false, label: "" };
   }
 
-  const ELITE_CLUBS = new Map([
-    [33, { name: "Manchester United", color: "#da291c" }],
-    [40, { name: "Liverpool", color: "#c8102e" }],
-    [42, { name: "Arsenal", color: "#ef0107" }],
-    [47, { name: "Tottenham", color: "#132257" }],
-    [49, { name: "Chelsea", color: "#034694" }],
-    [50, { name: "Manchester City", color: "#6cabdd" }],
-    [529, { name: "Barcelona", color: "#a50044" }],
-    [541, { name: "Real Madrid", color: "#febe10" }],
-    [530, { name: "Atletico Madrid", color: "#cb3524" }],
-    [157, { name: "Bayern Munich", color: "#dc052d" }],
-    [165, { name: "Borussia Dortmund", color: "#fde100" }],
-    [505, { name: "Inter", color: "#00529f" }],
-    [496, { name: "Juventus", color: "#000000" }],
-    [489, { name: "AC Milan", color: "#fb090b" }],
-    [85, { name: "Paris Saint Germain", color: "#004170" }],
-  ]);
-
-  function fixturePrestigePresentation(fixture) {
-    const homeClub = ELITE_CLUBS.get(Number(fixture?.homeId));
-    const awayClub = ELITE_CLUBS.get(Number(fixture?.awayId));
-    const level = homeClub && awayClub ? "marquee" : homeClub || awayClub ? "elite" : "standard";
-    return {
-      level,
-      label: level === "marquee" ? "BIG MATCH" : level === "elite" ? "TOP CLUB" : "",
-      homeElite: Boolean(homeClub),
-      awayElite: Boolean(awayClub),
-      homeColor: homeClub?.color || "#465878",
-      awayColor: awayClub?.color || "#465878",
-    };
-  }
-
   function filterFixtures(fixtures, { status = "all", favoriteClubIds = [], favoriteClubNames = [], focusOnly = false } = {}) {
     const ids = new Set(favoriteClubIds.map((id) => String(id).replace(/^team-/, "")));
     const names = new Set(favoriteClubNames.map(normalizeName));
@@ -123,11 +91,7 @@
   }
 
   function sortFixturesForViewing(fixtures) {
-    const groupOrder = { live: 0, upcoming: 1, finished: 2, other: 3 };
     return [...(fixtures || [])].sort((a, b) => {
-      const aOrder = groupOrder[classifyFixtureStatus(a.status)] ?? groupOrder.other;
-      const bOrder = groupOrder[classifyFixtureStatus(b.status)] ?? groupOrder.other;
-      if (aOrder !== bOrder) return aOrder - bOrder;
       const aKickoff = Date.parse(a.kickoff);
       const bKickoff = Date.parse(b.kickoff);
       if (Number.isFinite(aKickoff) && Number.isFinite(bKickoff) && aKickoff !== bKickoff) return aKickoff - bKickoff;
@@ -142,7 +106,6 @@
     selectRelevantFixtures,
     classifyFixtureStatus,
     fixtureResultPresentation,
-    fixturePrestigePresentation,
     filterFixtures,
     sortFixturesForViewing,
     sortDailyFixtures,

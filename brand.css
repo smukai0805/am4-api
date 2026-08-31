@@ -34,9 +34,7 @@ img{max-width:100%;}
 .brand-button{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:12px 18px;border:1px solid var(--floodlight);border-radius:999px;background:var(--floodlight);color:#fff;font-weight:700;cursor:pointer;transition:transform .2s ease,box-shadow .2s ease;}
 .brand-button:hover{transform:translateY(-1px);box-shadow:0 10px 28px rgba(42,94,255,.3);}
 .favorite-btn{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--steel);padding:9px 12px;cursor:pointer;font-size:11px;font-weight:600;}
-.favorite-btn::before{content:"☆";font-size:16px;line-height:1;}
 .favorite-btn[aria-pressed="true"]{border-color:var(--gold);color:var(--gold);background:rgba(217,180,106,.1);}
-.favorite-btn[aria-pressed="true"]::before{content:"★";}
 
 /* Article detail: the same night-stadium shell with a paper editorial centre. */
 .article-page{min-height:100vh;background:radial-gradient(ellipse 80% 35% at 50% -10%,rgba(42,94,255,.22),transparent 65%),var(--ink);}
