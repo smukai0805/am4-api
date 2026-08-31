@@ -29,13 +29,17 @@
     let activeDialogFixtureId = null;
     let selectedDailyDate = AM4FootballData.tokyoDateKey(new Date());
 
-    function fixtureTeam(name, logo) {
+    function fixtureTeam(name, logo, score = "") {
       const team = document.createElement("span");
       team.className = "fixture-team";
       const clubName = document.createElement("span");
       clubName.className = "fixture-team-name";
       clubName.textContent = name;
-      team.append(teamLogo(name, logo), clubName);
+      const teamScore = document.createElement("strong");
+      teamScore.className = "fixture-team-score";
+      teamScore.textContent = score;
+      teamScore.hidden = !score;
+      team.append(teamLogo(name, logo), clubName, teamScore);
       return team;
     }
 
@@ -51,6 +55,12 @@
       if (fixture.homeGoals != null && fixture.awayGoals != null) return `${fixture.homeGoals}${separator}${fixture.awayGoals}`;
       if (fixture.score && fixture.score !== "-") return String(fixture.score).replace("-", separator);
       return "";
+    }
+
+    function fixtureTeamScores(fixture) {
+      const score = fixtureScoreLabel(fixture);
+      const [home = "", away = ""] = score.split(/[-–]/).map((value) => value.trim());
+      return { home, away };
     }
 
     function detailFact(label, value) {
@@ -185,37 +195,60 @@
 
     function renderFixtures(items, sourceLabel = "") {
       fixturesNode.replaceChildren();
+      const groups = new Map();
       AM4FootballData.sortFixturesForViewing(items).forEach((fixture) => {
-        const row = document.createElement("button");
-        row.type = "button";
-        row.className = "fixture-row";
-        const statusGroup = AM4FootballData.classifyFixtureStatus(fixture.status);
-        const resultPresentation = AM4FootballData.fixtureResultPresentation(
-          fixture,
-          spoilersRevealed || revealedFixtureIds.has(fixtureKey(fixture)),
-        );
-        row.setAttribute("aria-label", `${fixture.home}対${fixture.away}の${resultPresentation.hidden ? "結果を見る" : "詳細を見る"}`);
-        row.innerHTML = '<div class="fixture-meta"><div class="fixture-date"></div><div class="fixture-comp"></div></div><div class="fixture-teams"></div><span class="sample-label"></span>';
-        row.querySelector(".fixture-date").textContent = fixture.kickoff
-          ? `${new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", hour: "2-digit", minute: "2-digit" }).format(new Date(fixture.kickoff))} JST`
-          : fixture.date;
-        row.querySelector(".fixture-comp").textContent = fixture.competition || fixture.roundLabel || "大会情報確認中";
-        const teams = row.querySelector(".fixture-teams");
-        const versus = document.createElement("span");
-        versus.className = "fixture-versus";
-        versus.textContent = "vs";
-        teams.append(fixtureTeam(fixture.home, fixture.homeLogo), versus, fixtureTeam(fixture.away, fixture.awayLogo));
-        const rowLabel = row.querySelector(".sample-label");
-        const rowLabelText = resultPresentation.label || fixture.note || (sourceLabel === "SAMPLE" ? sourceLabel : "");
-        rowLabel.textContent = rowLabelText;
-        rowLabel.hidden = !rowLabelText;
-        rowLabel.dataset.resultHidden = String(resultPresentation.hidden);
-        rowLabel.dataset.live = String(statusGroup === "live");
-        row.addEventListener("click", () => {
-          openMatchDetail(fixture, sourceLabel);
-          if (statusGroup === "finished" && resultPresentation.hidden) renderFixtureView();
+        const competition = fixture.competition || fixture.roundLabel || "大会情報確認中";
+        if (!groups.has(competition)) groups.set(competition, []);
+        groups.get(competition).push(fixture);
+      });
+      groups.forEach((fixtures, competition) => {
+        const group = document.createElement("section");
+        group.className = "fixture-league-group";
+        const heading = document.createElement("h3");
+        heading.className = "fixture-league-heading";
+        heading.textContent = competition;
+        const list = document.createElement("div");
+        list.className = "fixture-league-list";
+        fixtures.forEach((fixture) => {
+          const row = document.createElement("button");
+          row.type = "button";
+          row.className = "fixture-row";
+          const statusGroup = AM4FootballData.classifyFixtureStatus(fixture.status);
+          const resultPresentation = AM4FootballData.fixtureResultPresentation(
+            fixture,
+            spoilersRevealed || revealedFixtureIds.has(fixtureKey(fixture)),
+          );
+          row.setAttribute("aria-label", `${fixture.home}対${fixture.away}の${resultPresentation.hidden ? "結果を見る" : "詳細を見る"}`);
+          row.innerHTML = '<div class="fixture-meta"><div class="fixture-date"></div></div><div class="fixture-teams"></div><span class="sample-label"></span>';
+          row.querySelector(".fixture-date").textContent = fixture.kickoff
+            ? `${new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", hour: "2-digit", minute: "2-digit" }).format(new Date(fixture.kickoff))} JST`
+            : fixture.date;
+          const teams = row.querySelector(".fixture-teams");
+          const scores = resultPresentation.hidden ? { home: "", away: "" } : fixtureTeamScores(fixture);
+          teams.append(
+            fixtureTeam(fixture.home, fixture.homeLogo, scores.home),
+            fixtureTeam(fixture.away, fixture.awayLogo, scores.away),
+          );
+          const rowLabel = row.querySelector(".sample-label");
+          const rowLabelText = resultPresentation.hidden
+            ? "結果を見る"
+            : statusGroup === "live"
+              ? "LIVE"
+              : statusGroup === "finished"
+                ? "終了"
+                : fixture.note || (sourceLabel === "SAMPLE" ? sourceLabel : "");
+          rowLabel.textContent = rowLabelText;
+          rowLabel.hidden = !rowLabelText;
+          rowLabel.dataset.resultHidden = String(resultPresentation.hidden);
+          rowLabel.dataset.live = String(statusGroup === "live");
+          row.addEventListener("click", () => {
+            openMatchDetail(fixture, sourceLabel);
+            if (statusGroup === "finished" && resultPresentation.hidden) renderFixtureView();
+          });
+          list.append(row);
         });
-        fixturesNode.append(row);
+        group.append(heading, list);
+        fixturesNode.append(group);
       });
     }
 
