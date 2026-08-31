@@ -6,6 +6,8 @@
   const ALL_COMPETITIONS = "すべて";
   const DEFAULT_LEAGUE = "プレミアリーグ";
   const LEAGUE_PREVIEW_LIMIT = 4;
+  const LEAGUE_GROUP_PREVIEW_LIMIT = 6;
+  const LEAGUE_GROUP_BATCH_SIZE = 6;
   const COMPETITION_LOGOS = new Map([
     ["プレミアリーグ", 39], ["Premier League", 39],
     ["ラ・リーガ", 140], ["La Liga", 140],
@@ -57,6 +59,7 @@
     const eventCache = new Map();
     const revealedFixtureIds = new Set();
     const expandedLeagueGroups = new Set();
+    const expandedLeagueGroupCounts = new Map();
     let activeFixtureLeague = ALL_COMPETITIONS;
     let fixtureMode = "date";
     let fixtureStatus = "all";
@@ -283,8 +286,19 @@
         if (!groups.has(competition)) groups.set(competition, []);
         groups.get(competition).push(fixture);
       });
+      const canPageLeagueGroups = fixtureMode === "date"
+        && activeFixtureLeague === ALL_COMPETITIONS
+        && fixtureScope === "all"
+        && groups.size > LEAGUE_GROUP_PREVIEW_LIMIT;
+      const directoryKey = leagueGroupKey("_directory");
+      const visibleGroupLimit = canPageLeagueGroups
+        ? Math.min(groups.size, expandedLeagueGroupCounts.get(directoryKey) || LEAGUE_GROUP_PREVIEW_LIMIT)
+        : groups.size;
       let groupIndex = 0;
       groups.forEach((fixtures, competition) => {
+        const currentGroupIndex = groupIndex;
+        groupIndex += 1;
+        if (currentGroupIndex >= visibleGroupLimit) return;
         const group = document.createElement("section");
         group.className = "fixture-league-group";
         const canCompact = fixtureMode === "date"
@@ -294,6 +308,7 @@
         const isExpanded = !canCompact || expandedLeagueGroups.has(groupKey);
         const heading = document.createElement("h3");
         heading.className = "fixture-league-heading";
+        heading.tabIndex = -1;
         const logo = competitionLogo(fixtures[0] || competition);
         const headingCopy = document.createElement("span");
         headingCopy.className = "fixture-league-heading-copy";
@@ -315,8 +330,7 @@
         else heading.append(headingCopy, count);
         const list = document.createElement("div");
         list.className = "fixture-league-list";
-        list.id = "fixture-league-" + groupIndex;
-        groupIndex += 1;
+        list.id = "fixture-league-" + currentGroupIndex;
         const concealedRows = [];
         fixtures.forEach((fixture, fixtureIndex) => {
           const row = document.createElement("article");
@@ -419,6 +433,27 @@
         }
         fixturesNode.append(group);
       });
+      if (visibleGroupLimit < groups.size) {
+        const showMoreGroups = document.createElement("button");
+        const remaining = groups.size - visibleGroupLimit;
+        const nextBatch = Math.min(LEAGUE_GROUP_BATCH_SIZE, remaining);
+        showMoreGroups.type = "button";
+        showMoreGroups.className = "fixture-directory-toggle";
+        showMoreGroups.textContent = "さらに" + nextBatch + "リーグを表示 · 残り" + remaining;
+        showMoreGroups.setAttribute("aria-label", "次の" + nextBatch + "リーグを表示");
+        showMoreGroups.setAttribute("aria-controls", "fixture-list");
+        showMoreGroups.setAttribute("aria-expanded", "false");
+        showMoreGroups.addEventListener("click", () => {
+          const nextLimit = Math.min(groups.size, visibleGroupLimit + LEAGUE_GROUP_BATCH_SIZE);
+          expandedLeagueGroupCounts.set(directoryKey, nextLimit);
+          renderFixtures(items, sourceLabel);
+          const firstNewHeading = document
+            .getElementById("fixture-league-" + visibleGroupLimit)
+            ?.querySelector(".fixture-league-heading");
+          firstNewHeading?.focus();
+        });
+        fixturesNode.append(showMoreGroups);
+      }
     }
 
     function savedClubFilters() {
