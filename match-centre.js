@@ -242,8 +242,11 @@
         const logo = competitionLogo(competition);
         const title = document.createElement("span");
         title.textContent = competition;
-        if (logo) heading.append(logo, title);
-        else heading.append(title);
+        const count = document.createElement("small");
+        count.className = "fixture-league-count";
+        count.textContent = `${fixtures.length}試合`;
+        if (logo) heading.append(logo, title, count);
+        else heading.append(title, count);
         const list = document.createElement("div");
         list.className = "fixture-league-list";
         fixtures.forEach((fixture) => {
@@ -258,7 +261,7 @@
           row.setAttribute("aria-label", `${fixture.home}対${fixture.away}の${resultPresentation.hidden ? "結果を見る" : "詳細を見る"}`);
           row.style.setProperty("--home-team-color", teamAccent(fixture.home));
           row.style.setProperty("--away-team-color", teamAccent(fixture.away));
-          row.innerHTML = '<div class="fixture-meta"><div class="fixture-date"></div></div><div class="fixture-teams"></div><strong class="fixture-scoreboard"><span class="fixture-scoreboard-value"></span><small></small></strong><span class="sample-label"></span>';
+          row.innerHTML = '<div class="fixture-meta"><div class="fixture-date"></div></div><div class="fixture-teams"></div><strong class="fixture-scoreboard"><span class="fixture-scoreboard-icon" aria-hidden="true"></span><span class="fixture-scoreboard-value"></span><small></small></strong><span class="sample-label"></span>';
           row.querySelector(".fixture-date").textContent = fixture.kickoff
             ? `${new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", hour: "2-digit", minute: "2-digit" }).format(new Date(fixture.kickoff))} JST`
             : fixture.date;
@@ -271,13 +274,22 @@
           const scoreboard = row.querySelector(".fixture-scoreboard");
           const fullScores = fixtureTeamScores(fixture);
           const scoreText = fullScores.home && fullScores.away ? `${fullScores.home} – ${fullScores.away}` : "VS";
-          scoreboard.querySelector(".fixture-scoreboard-value").textContent = scoreText;
-          scoreboard.querySelector("small").textContent = statusGroup === "live" ? "LIVE" : statusGroup === "finished" ? "FULL-TIME" : "KICKOFF";
-          scoreboard.hidden = statusGroup === "upcoming";
+          const scoreIcon = scoreboard.querySelector(".fixture-scoreboard-icon");
+          const scoreValue = scoreboard.querySelector(".fixture-scoreboard-value");
+          const scoreCaption = scoreboard.querySelector("small");
+          if (resultPresentation.hidden) {
+            scoreIcon.textContent = "🔒";
+            scoreValue.textContent = "結果を非表示";
+            scoreCaption.textContent = "タップして表示";
+          } else {
+            scoreValue.textContent = scoreText;
+            scoreCaption.textContent = statusGroup === "live" ? "LIVE" : statusGroup === "finished" ? "FULL-TIME" : "KICKOFF";
+          }
+          scoreboard.hidden = false;
           scoreboard.dataset.resultHidden = String(resultPresentation.hidden);
           const rowLabel = row.querySelector(".sample-label");
           const rowLabelText = resultPresentation.hidden
-            ? "結果を見る"
+            ? "タップして結果を見る"
             : statusGroup === "live"
               ? "LIVE"
               : statusGroup === "finished"
