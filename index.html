@@ -18,6 +18,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;700;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Permanent+Marker&family=Road+Rage&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/brand.css">
+<script>
+  if (new URLSearchParams(window.location.search).has('cockpit')) document.documentElement.classList.add('cockpit-test');
+</script>
 <style>
   main{display:flex;flex-direction:column;}
 
@@ -987,6 +990,59 @@
 
   .reveal{ opacity:0; transform:translateY(18px); transition:opacity .7s ease, transform .7s ease; }
   .reveal.in{ opacity:1; transform:translateY(0); }
+
+  /* Experimental direction: a calm, precision-first matchday surface. */
+  .cockpit-test body{background:#f5f5f7;color:#1d1d1f;}
+  .cockpit-test .topbar{background:rgba(255,255,255,.78);border-color:rgba(29,29,31,.1);backdrop-filter:blur(24px) saturate(180%);}
+  .cockpit-test .wordmark small,.cockpit-test .lang{color:#6e6e73;}
+  .cockpit-test .matchday-home{position:relative;min-height:100vh;padding-top:clamp(70px,10vw,128px);background:radial-gradient(ellipse 55% 32% at 50% 2%,rgba(45,112,255,.16),transparent 72%),linear-gradient(180deg,#fbfbfd 0%,#f5f5f7 72%,#eef1f7 100%);}
+  .cockpit-test .matchday-home::before{width:620px;height:620px;top:-350px;left:50%;opacity:.7;filter:blur(4px);background:radial-gradient(circle,rgba(88,151,255,.32),rgba(146,199,255,.08) 38%,transparent 68%);}
+  .cockpit-test .matchday-home::after{display:none;}
+  .cockpit-test .matchday-shell{max-width:1060px;}
+  .cockpit-test .matchday-intro{position:relative;display:block;max-width:690px;margin:0 auto 44px;text-align:center;}
+  .cockpit-test .matchday-intro > div{display:grid;justify-items:center;}
+  .cockpit-test .matchday-eyebrow{color:#1473e6;letter-spacing:.16em;}
+  .cockpit-test .matchday-eyebrow i{background:#1473e6;box-shadow:0 0 0 5px rgba(20,115,230,.08);}
+  .cockpit-test .matchday-intro h1{margin:14px 0 14px;color:#1d1d1f;font:700 clamp(46px,7.5vw,88px)/.98 var(--body);letter-spacing:-.065em;}
+  .cockpit-test .matchday-intro p{max-width:530px;margin:0;color:#6e6e73;font-size:17px;line-height:1.65;}
+  .cockpit-test .matchday-intro p::first-line{color:#424245;}
+  .cockpit-test .matchday-intro::after{content:'COCKPIT PREVIEW';position:absolute;right:0;top:0;padding:6px 9px;border:1px solid rgba(20,115,230,.22);border-radius:999px;color:#1473e6;background:rgba(255,255,255,.7);font:600 9px var(--mono);letter-spacing:.09em;}
+  .cockpit-test .matchday-intro > .sample-label{position:absolute;right:0;bottom:-34px;border-color:rgba(29,29,31,.12);color:#6e6e73;background:rgba(255,255,255,.55);}
+  .cockpit-test .matchday-board{border:1px solid rgba(29,29,31,.1);border-radius:30px;background:rgba(255,255,255,.74);box-shadow:0 24px 70px rgba(24,42,82,.12),inset 0 1px rgba(255,255,255,.9);backdrop-filter:blur(24px) saturate(160%);}
+  .cockpit-test .matchday-toolbar{border-color:rgba(29,29,31,.09);}
+  .cockpit-test .fixture-mode-tabs,.cockpit-test .fixture-coverage-tabs{padding:3px;border:1px solid rgba(29,29,31,.1);border-radius:999px;background:#f2f2f5;}
+  .cockpit-test .fixture-mode-tab,.cockpit-test .fixture-coverage-tab{border-radius:999px;color:#6e6e73;}
+  .cockpit-test .fixture-mode-tab[aria-pressed="true"],.cockpit-test .fixture-coverage-tab[aria-pressed="true"]{color:#fff;background:#0071e3;box-shadow:0 3px 10px rgba(0,113,227,.24);}
+  .cockpit-test .spoiler-toggle{border-color:rgba(29,29,31,.12);color:#1d1d1f;background:rgba(255,255,255,.7);}
+  .cockpit-test .spoiler-toggle svg{stroke:#1473e6;}
+  .cockpit-test .fixture-filter-tabs{border-color:rgba(29,29,31,.09);}
+  .cockpit-test .fixture-filter-tabs button{color:#6e6e73;}
+  .cockpit-test .fixture-filter-tabs button[aria-pressed="true"]{color:#1d1d1f;background:rgba(0,113,227,.07);box-shadow:inset 0 -2px #0071e3;}
+  .cockpit-test .matchday-quicktools,.cockpit-test .matchday-list-head{border-color:rgba(29,29,31,.09);}
+  .cockpit-test .fixture-more-filters summary,.cockpit-test .matchday-list-head{color:#6e6e73;}
+  .cockpit-test .matchday-list-head strong{color:#1d1d1f;}
+  .cockpit-test .matchday-list-head i{background:#0071e3;box-shadow:0 0 0 5px rgba(0,113,227,.1);}
+  .cockpit-test .matchday-board>.data-status{color:#86868b;}
+  .cockpit-test .fixture-league-group{border-color:rgba(29,29,31,.1);border-radius:20px;background:rgba(255,255,255,.7);box-shadow:0 1px 2px rgba(0,0,0,.02);}
+  .cockpit-test .fixture-league-heading{color:#1d1d1f;border-color:rgba(29,29,31,.08);}
+  .cockpit-test .fixture-league-logo{filter:drop-shadow(0 2px 4px rgba(0,0,0,.14));}
+  .cockpit-test .matchday-board .fixture-league-group .fixture-row{border-color:rgba(29,29,31,.08);}
+  .cockpit-test .matchday-board .fixture-league-group .fixture-row:hover{background:rgba(0,113,227,.045);}
+  .cockpit-test .matchday-board .fixture-date,.cockpit-test .fixture-team-score{color:#1d1d1f;}
+  .cockpit-test .fixture-team-name{color:#303035;}
+  .cockpit-test .matchday-board .fixture-league-group .sample-label{border-color:rgba(29,29,31,.11);color:#6e6e73;background:#f5f5f7;}
+  .cockpit-test .matchday-board .fixture-league-group .sample-label[data-live="true"]{color:#d70015;border-color:rgba(215,0,21,.25);background:#fff5f5;box-shadow:none;}
+  .cockpit-test footer{color:#6e6e73;}
+  @media(max-width:640px){
+    .cockpit-test .matchday-home{padding-top:66px;}
+    .cockpit-test .matchday-intro{margin-bottom:34px;text-align:left;}
+    .cockpit-test .matchday-intro > div{justify-items:start;}
+    .cockpit-test .matchday-intro h1{font-size:46px;}
+    .cockpit-test .matchday-intro p{font-size:14px;}
+    .cockpit-test .matchday-intro::after{right:0;top:-30px;font-size:8px;}
+    .cockpit-test .matchday-board{border-radius:22px;}
+    .cockpit-test .fixture-league-group{border-radius:16px;}
+  }
 
   @media(prefers-reduced-motion:reduce){
     .matchday-board .fixture-row--marquee::before{animation:none;display:none;}
