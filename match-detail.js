@@ -99,28 +99,64 @@
   function eventLabel(kind) {
     return { goal: "得点", card: "警告", "red-card": "退場", sub: "交代", other: "イベント" }[kind];
   }
-  function eventCopy(event) {
-    const player = text(event.player?.name, "選手情報なし");
-    const assist = event.assist?.name ? ` → ${event.assist.name}` : "";
-    const detail = event.detail ? ` · ${eventDetails[event.detail] || event.detail}` : "";
-    return `${player}${assist}${detail}`;
+  function eventSecondaryCopy(event, kind) {
+    const detail = event.detail ? eventDetails[event.detail] || event.detail : "";
+    if (kind === "goal" && event.assist?.name) return [`アシスト ${event.assist.name}`, detail].filter(Boolean).join(" · ");
+    if (kind === "sub" && event.assist?.name) return [`交代相手 ${event.assist.name}`, detail].filter(Boolean).join(" · ");
+    return detail || (event.player?.name ? "記録済み" : "選手情報なし");
+  }
+
+  function eventPlayer(event) {
+    const player = event.player || {};
+    return { id: player.id, name: text(player.name, "選手情報なし") };
+  }
+
+  function appendEventPhoto(target, player) {
+    const id = Number(player.id);
+    if (!Number.isInteger(id) || id <= 0) return;
+    const image = document.createElement("img");
+    image.className = "match-event-photo";
+    image.src = `https://media.api-sports.io/football/players/${id}.png`;
+    image.alt = "";
+    image.width = 34;
+    image.height = 34;
+    image.loading = "lazy";
+    image.decoding = "async";
+    image.addEventListener("error", () => image.remove(), { once: true });
+    target.prepend(image);
   }
 
   function renderEvents(detail) {
     const el = section("events", "イベント", "得点、カード、交代");
     if (!detail.availability?.events || detail.events == null) { el.append(unavailable("イベントデータ")); return el; }
     if (!detail.events.length) { el.append(node("p", "match-empty", "この試合では記録されたイベントはありません。")); return el; }
+    const teams = node("div", "match-timeline-teams");
+    const home = node("span", "match-timeline-team match-timeline-team--home");
+    const away = node("span", "match-timeline-team match-timeline-team--away");
+    home.append(node("b", "", "ホーム"), node("strong", "", text(detail.fixture?.home?.name, "ホーム")));
+    away.append(node("b", "", "アウェイ"), node("strong", "", text(detail.fixture?.away?.name, "アウェイ")));
+    teams.append(home, node("span", "match-timeline-axis", "時間"), away);
     const timeline = node("ol", "match-timeline");
     detail.events.forEach((event) => {
       const kind = eventKind(event);
-      const item = node("li", `match-event match-event--${kind}`);
+      const homeId = detail.fixture?.home?.id;
+      const awayId = detail.fixture?.away?.id;
+      const side = event.team?.id === homeId ? "home" : event.team?.id === awayId ? "away" : "neutral";
+      const item = node("li", `match-event match-event--${kind} match-event--${side}`);
       const minute = node("time", "match-event-minute", text(event.minute, "—"));
       const body = node("div", "match-event-body");
-      body.append(node("strong", "", eventLabel(kind)), node("span", "", text(event.team?.name, "チーム情報なし")), node("p", "", eventCopy(event)));
-      item.append(minute, body);
+      const player = eventPlayer(event);
+      const playerLine = node("div", "match-event-player");
+      appendEventPhoto(playerLine, player);
+      playerLine.append(node("span", "match-event-player-name", player.name));
+      const secondary = eventSecondaryCopy(event, kind);
+      body.append(node("span", "match-event-type", eventLabel(kind)), playerLine, node("p", "", secondary));
+      item.setAttribute("aria-label", `${text(event.team?.name, "チーム情報なし")}、${side === "home" ? "ホーム" : side === "away" ? "アウェイ" : "所属不明"}、${minute.textContent}、${eventLabel(kind)}、${player.name}、${secondary}`);
+      if (side === "away") item.append(node("div", "match-event-spacer"), minute, body);
+      else item.append(body, minute, node("div", "match-event-spacer"));
       timeline.append(item);
     });
-    el.append(timeline);
+    el.append(teams, timeline);
     return el;
   }
 
