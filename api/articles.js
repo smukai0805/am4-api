@@ -12,6 +12,7 @@
 // GET /api/articles?id=<slug>                              … 個別記事
 // GET /api/articles?trending=1                             … 急上昇選手ランキング(表示用、軽量)
 // GET /api/articles?trendingRefresh=1                       … 急上昇選手ランキングの再計算(Cron用)
+// GET /api/articles?notionSync=1                            … Notion編集コンテンツの同期(Cron用)
 //
 // 【2026-08-04追加】急上昇選手ランキング機能は、Vercel Hobbyプランの関数数上限
 // (12個、この追加時点で既に12/12)により新規api/ファイルを増やせないため、
@@ -20,11 +21,40 @@
 
 import { listArticles, getArticle } from '../lib/article-store.js';
 import { getTrendingPlayersForDisplay, computeAndSaveTrendingPlayers } from '../lib/trending-players.js';
+import { syncNotionContent } from '../lib/notion-content-sync.js';
 
-const VALID_TYPES = ['match_report', 'player_intro', 'transfer_news'];
+const VALID_TYPES = ['match_report', 'match_prediction', 'am4_story', 'player_intro', 'transfer_news'];
+
+export const config = { maxDuration: 120 };
+
+function isAuthorizedCronRequest(req) {
+  const secret = process.env.CRON_SECRET;
+  return Boolean(secret) && req.headers?.authorization === `Bearer ${secret}`;
+}
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
+
+  if (req.query.notionSync === '1') {
+    if (!process.env.CRON_SECRET) {
+      return res.status(503).json({ error: 'Notion同期はCRON_SECRETの設定後に有効になります' });
+    }
+    if (!isAuthorizedCronRequest(req)) return res.status(401).json({ error: 'Unauthorized' });
+    if (!process.env.NOTION_API_KEY) {
+      return res.status(503).json({ error: 'Notion同期の設定が未完了です' });
+    }
+    try {
+      const result = await syncNotionContent();
+      const hasSourceFailure = Object.keys(result.errors || {}).length > 0;
+      // Make a partial source failure visible to Vercel Cron monitoring rather
+      // than silently reporting a successful editorial refresh.
+      res.setHeader('Cache-Control', 'no-store');
+      return res.status(hasSourceFailure ? 503 : 200).json({ ok: !hasSourceFailure, ...result });
+    } catch (err) {
+      console.error('notion content sync error:', err);
+      return res.status(500).json({ error: 'Notionコンテンツの同期に失敗しました' });
+    }
+  }
 
   if (req.query.trendingRefresh === '1') {
     try {
@@ -67,9 +97,13 @@ export default async function handler(req, res) {
     const pageParam = Number(req.query.page);
     const page = Number.isInteger(pageParam) && pageParam > 0 ? pageParam : 1;
     const pageSizeParam = Number(req.query.pageSize);
-    const pageSize = Number.isInteger(pageSizeParam) && pageSizeParam > 0 ? Math.min(pageSizeParam, 50) : 10;
+    const pageSize = Number.isInteger(pageSizeParam) && pageSizeParam > 0 ? Math.min(pageSizeParam, 100) : 10;
+    const matchDate = req.query.matchDate ? String(req.query.matchDate) : undefined;
+    if (matchDate && !/^\d{4}-\d{2}-\d{2}$/.test(matchDate)) {
+      return res.status(400).json({ error: 'matchDate は YYYY-MM-DD 形式で指定してください' });
+    }
 
-    const result = await listArticles({ type: typeParam, page, pageSize });
+    const result = await listArticles({ type: typeParam, matchDate, page, pageSize });
     return res.status(200).json(result);
   } catch (err) {
     console.error('articles API error:', err);

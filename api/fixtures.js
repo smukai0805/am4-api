@@ -60,6 +60,7 @@ export function resolveDefaultSeason(now = new Date()) {
 
 // 終了済み(Match Finished)の試合のみスコア表示の対象にする(延長・PK戦を含む)。
 const FINISHED_STATUSES = ['FT', 'AET', 'PEN'];
+const LIVE_STATUSES = new Set(['1H', 'HT', '2H', 'ET', 'BT', 'P', 'SUSP', 'INT', 'LIVE']);
 const FEATURED_LEAGUES = Object.entries(COMPETITIONS)
   .filter(([, competition]) => competition.featured)
   .map(([name]) => name);
@@ -190,6 +191,7 @@ function simplifyFixture(f, competition, includeProviderRound = false) {
     roundKey: roundInfo?.key || null,
     roundLabel: roundInfo?.label || (includeProviderRound ? f.league.round : null),
     status: f.fixture.status?.short,
+    elapsed: nullableNumber(f.fixture.status?.elapsed),
     homeId: f.teams.home.id,
     awayId: f.teams.away.id,
     home: f.teams.home.name,
@@ -413,12 +415,25 @@ function normalizeDetailStatistics(statistics, fixture) {
   return orderByFixtureTeam(normalized, fixture);
 }
 
-function cacheControlForStatus(status) {
+function cacheControlForStatus(status, { liveRefresh = false } = {}) {
+  // This route is requested only by an open match page. Keep the start
+  // boundary short even while the provider still reports NS/TBD; otherwise a
+  // cached pre-kickoff response can delay the first live event by minutes.
+  if (liveRefresh) return 's-maxage=15, stale-while-revalidate=15';
   if (FINISHED_STATUSES.includes(status)) return 's-maxage=300, stale-while-revalidate=86400';
-  if (['1H', 'HT', '2H', 'ET', 'BT', 'P', 'SUSP', 'INT', 'LIVE'].includes(status)) {
+  if (LIVE_STATUSES.has(status)) {
     return 's-maxage=15, stale-while-revalidate=45';
   }
   return 's-maxage=60, stale-while-revalidate=300';
+}
+
+function isNearKickoff(fixture, now = Date.now()) {
+  if (!SCHEDULED_STATUSES.has(fixture?.status)) return false;
+  const kickoffAt = Date.parse(fixture?.kickoff || '');
+  if (!Number.isFinite(kickoffAt)) return false;
+  // The browser rechecks at kickoff. Keep its source response fresh in the
+  // narrow window before/after the whistle, including small provider delays.
+  return kickoffAt >= now - (2 * 60 * 60 * 1000) && kickoffAt <= now + (5 * 60 * 1000);
 }
 
 // The primary fixture establishes whether the requested match exists. Each optional
@@ -456,6 +471,37 @@ export async function getFixtureDetail(fixtureId, fetchFixture = apiFootballFetc
       statistics: statisticsData != null,
     },
     cacheControl: cacheControlForStatus(fixture.status),
+  };
+}
+
+// The live refresh route intentionally omits lineups. They are fetched once when
+// the match page opens, then retained in the browser while mutable score, event,
+// and statistics data update. Optional provider gaps remain independent.
+export async function getFixtureLiveDetail(fixtureId, fetchFixture = apiFootballFetch) {
+  const detailRequestOptions = { timeoutMs: 6000, retries: 0 };
+  const primary = await fetchFixture('/fixtures', { id: fixtureId }, detailRequestOptions);
+  if (hasProviderErrors(primary)) throw new Error('Primary fixture unavailable');
+  const source = Array.isArray(primary?.response) ? primary.response[0] : null;
+  if (!source) return null;
+
+  const fixture = normalizeDetailFixture(source);
+  const sections = await Promise.allSettled([
+    fetchFixture('/fixtures/events', { fixture: fixtureId }, detailRequestOptions),
+    fetchFixture('/fixtures/statistics', { fixture: fixtureId }, detailRequestOptions),
+  ]);
+  const usable = (result) => result.status === 'fulfilled' && !hasProviderErrors(result.value);
+  const eventData = usable(sections[0]) ? sections[0].value.response : null;
+  const statisticsData = usable(sections[1]) ? sections[1].value.response : null;
+
+  return {
+    fixture,
+    events: eventData == null ? null : normalizeDetailEvents(eventData),
+    statistics: statisticsData == null ? null : normalizeDetailStatistics(statisticsData, fixture),
+    availability: {
+      events: eventData != null,
+      statistics: statisticsData != null,
+    },
+    cacheControl: cacheControlForStatus(fixture.status, { liveRefresh: true }),
   };
 }
 
@@ -513,7 +559,26 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'API_FOOTBALL_KEY が設定されていません' });
   }
 
-  const { league, featured, date, events, detail } = req.query;
+  const { league, featured, date, events, detail, liveDetail } = req.query;
+
+  if (liveDetail != null) {
+    const fixtureId = Number(liveDetail);
+    if (!Number.isInteger(fixtureId) || fixtureId <= 0) {
+      return res.status(400).json({ error: 'liveDetail は有効な試合IDで指定してください' });
+    }
+    try {
+      const fixtureDetail = await getFixtureLiveDetail(fixtureId);
+      if (!fixtureDetail) {
+        return res.status(404).json({ error: '指定された試合が見つかりません' });
+      }
+      res.setHeader('Cache-Control', fixtureDetail.cacheControl);
+      const { cacheControl, ...body } = fixtureDetail;
+      return res.status(200).json(body);
+    } catch (error) {
+      console.error(`[live fixture detail] ${fixtureId} unavailable:`, error);
+      return res.status(503).json({ error: '試合中データの取得に失敗しました' });
+    }
+  }
 
   if (detail != null) {
     const fixtureId = Number(detail);
@@ -570,7 +635,10 @@ export default async function handler(req, res) {
       const focusFixtures = fixtures.filter((fixture) => fixture.am4Focus);
       const competitions = [...new Set(fixtures.map((fixture) => fixture.competition))];
       const featuredFixtures = selectFeaturedFixtures(focusFixtures.length ? focusFixtures : fixtures);
-      res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=300');
+      const cacheControl = fixtures.some((fixture) => LIVE_STATUSES.has(fixture.status) || isNearKickoff(fixture))
+        ? 's-maxage=15, stale-while-revalidate=15'
+        : 's-maxage=60, stale-while-revalidate=300';
+      res.setHeader('Cache-Control', cacheControl);
       return res.status(200).json({ date, fixtures, focusFixtures, featuredFixtures, competitions });
     } catch (err) {
       console.error(`[daily fixtures] ${date} unavailable:`, err);

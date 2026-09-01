@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { getFixtureDetail } from '../api/fixtures.js';
+import { getFixtureDetail, getFixtureLiveDetail } from '../api/fixtures.js';
 
 test('fixture detail normalizes provider data and degrades unavailable optional sections', async () => {
   const calls = [];
@@ -48,6 +48,51 @@ test('fixture detail normalizes provider data and degrades unavailable optional 
 test('fixture detail returns null only when the primary fixture is absent', async () => {
   const detail = await getFixtureDetail(123, async () => ({ response: [] }));
   assert.equal(detail, null);
+});
+
+test('live fixture detail refreshes mutable sections without requesting lineups', async () => {
+  const calls = [];
+  const fetchFixture = async (path, params) => {
+    calls.push({ path, params });
+    if (path === '/fixtures') return { response: [{
+      fixture: { id: 789, date: '2026-08-16T14:00:00+00:00', status: { short: '2H', long: 'Second Half', elapsed: 72 } },
+      league: { id: 39, name: 'Premier League' },
+      teams: { home: { id: 10, name: 'Home' }, away: { id: 20, name: 'Away' } },
+      goals: { home: 1, away: 0 }, score: {},
+    }] };
+    if (path === '/fixtures/events') return { response: [{ time: { elapsed: 72 }, type: 'Goal', team: { id: 10, name: 'Home' }, player: { name: 'Scorer' } }] };
+    if (path === '/fixtures/statistics') return { response: [{ team: { id: 10, name: 'Home' }, statistics: [] }, { team: { id: 20, name: 'Away' }, statistics: [] }] };
+    throw new Error(`unexpected request: ${path}`);
+  };
+
+  const detail = await getFixtureLiveDetail(789, fetchFixture);
+
+  assert.deepEqual(calls, [
+    { path: '/fixtures', params: { id: 789 } },
+    { path: '/fixtures/events', params: { fixture: 789 } },
+    { path: '/fixtures/statistics', params: { fixture: 789 } },
+  ]);
+  assert.equal(detail.fixture.elapsed, 72);
+  assert.equal(detail.events[0].player.name, 'Scorer');
+  assert.equal(detail.lineups, undefined);
+  assert.deepEqual(detail.availability, { events: true, statistics: true });
+  assert.equal(detail.cacheControl, 's-maxage=15, stale-while-revalidate=15');
+});
+
+test('live-detail cache remains short while the provider still reports pre-kickoff status', async () => {
+  const fetchFixture = async (path) => {
+    if (path === '/fixtures') return { response: [{
+      fixture: { id: 790, date: '2026-08-16T14:00:00+00:00', status: { short: 'NS' } },
+      league: { id: 39, name: 'Premier League' },
+      teams: { home: { id: 10, name: 'Home' }, away: { id: 20, name: 'Away' } },
+      goals: { home: null, away: null }, score: {},
+    }] };
+    return { response: [] };
+  };
+
+  const detail = await getFixtureLiveDetail(790, fetchFixture);
+  assert.equal(detail.fixture.status, 'NS');
+  assert.equal(detail.cacheControl, 's-maxage=15, stale-while-revalidate=15');
 });
 
 test('fixture detail orders events and team blocks by the fixture home and away sides', async () => {

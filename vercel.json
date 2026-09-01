@@ -9,6 +9,9 @@
     { "path": "/api/transfer-news-watch", "schedule": "10 6 * * *" },
     { "path": "/api/transfer-news-watch", "schedule": "10 12 * * *" },
     { "path": "/api/transfer-news-watch", "schedule": "10 18 * * *" },
-    { "path": "/api/articles?trendingRefresh=1", "schedule": "45 8 * * *" }
+    { "path": "/api/articles?trendingRefresh=1", "schedule": "45 8 * * *" },
+    { "path": "/api/articles?notionSync=1", "schedule": "10 21 * * *" },
+    { "path": "/api/articles?notionSync=1", "schedule": "10 3 * * *" },
+    { "path": "/api/articles?notionSync=1", "schedule": "10 9 * * *" }
   ]
 }

@@ -91,6 +91,7 @@ img{max-width:100%;}
 .match-competition img{width:32px;height:32px;object-fit:contain;}
 .match-competition small{margin-left:auto;color:var(--steel-dim);font:500 9px var(--mono);letter-spacing:.04em;}
 .match-meta{margin:0;padding:14px 18px 0;color:var(--steel-dim);text-align:center;font:500 10px/1.6 var(--mono);}
+.match-live-refresh{width:max-content;max-width:calc(100% - 36px);margin:10px auto -6px;padding:6px 10px;border:1px solid rgba(93,166,255,.42);border-radius:999px;background:rgba(36,92,214,.12);color:#b7d0ff;font:600 9px var(--mono);letter-spacing:.08em;text-align:center;}
 .match-score-grid{display:grid;grid-template-columns:minmax(0,1fr) 88px minmax(0,1fr);align-items:center;gap:8px;padding:24px 14px 20px;text-align:center;}
 .match-team{display:grid;justify-items:center;align-content:start;gap:9px;min-width:0;}
 .match-team h1{min-height:2.4em;margin:0;color:#f6f8ff;font:800 clamp(17px,4.5vw,28px)/1.08 var(--display);letter-spacing:.01em;overflow-wrap:anywhere;}

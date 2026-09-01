@@ -13,6 +13,12 @@
     expected_goals: "xG", goals_prevented: "失点阻止",
   };
   const eventDetails = { "Normal Goal": "通常ゴール", "Own Goal": "オウンゴール", Penalty: "PK", "Yellow Card": "イエローカード", "Red Card": "レッドカード" };
+  const LIVE_REFRESH_MS = 15_000;
+  const KICKOFF_RECHECK_BUFFER_MS = 30_000;
+  let client = null;
+  let currentDetail = null;
+  let liveRefreshTimer = null;
+  let liveRefreshInFlight = false;
 
   function node(tag, className, content) {
     const el = document.createElement(tag);
@@ -234,15 +240,27 @@
     el.append(table); return el;
   }
 
-  function render(detail) {
-    const fixture = detail.fixture;
-    const kickoff = fixture.kickoff ? new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", year: "numeric", month: "long", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(fixture.kickoff)) : "日時未定";
-    document.title = `${text(fixture.home?.name)} vs ${text(fixture.away?.name)}｜AM4`;
+  function kickoffLabel(fixture) {
+    return fixture.kickoff
+      ? new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", year: "numeric", month: "long", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(fixture.kickoff))
+      : "日時未定";
+  }
+
+  function isLiveFixture(fixture) {
+    return AM4FootballData.classifyFixtureStatus(fixture?.status) === "live";
+  }
+
+  function renderBoard(fixture) {
+    const kickoff = kickoffLabel(fixture);
     const board = node("article", "match-board");
     const competition = node("div", "match-competition");
     if (fixture.competitionLogo) { const logo = document.createElement("img"); logo.src = fixture.competitionLogo; logo.alt = ""; logo.width = 32; logo.height = 32; logo.decoding = "async"; logo.addEventListener("error", () => logo.remove(), { once: true }); competition.append(logo); }
     competition.append(node("span", "", text(fixture.competition, "大会情報なし")), node("small", "", text(fixture.competitionCountry, "国・地域情報なし")));
     const meta = node("p", "match-meta", `${kickoff} JST · ${text(fixture.roundLabel || fixture.round, "節情報なし")} · ${statusLabels[fixture.status] || text(fixture.statusLong, "状況確認中")}`);
+    const liveRefresh = isLiveFixture(fixture)
+      ? node("p", "match-live-refresh", `${fixture.elapsed ? `${fixture.elapsed}' · ` : ""}LIVE · 15秒ごとに更新`)
+      : null;
+    if (liveRefresh) liveRefresh.setAttribute("aria-live", "polite");
     const score = node("div", "match-score-grid");
     const home = node("div", "match-team match-team--home");
     home.append(crest(fixture.home), node("h1", "", text(fixture.home?.name)));
@@ -262,24 +280,146 @@
       fact.append(node("dt", "", label), node("dd", "", value));
       facts.append(fact);
     });
-    board.append(competition, meta, score, facts);
+    board.append(competition, meta);
+    if (liveRefresh) board.append(liveRefresh);
+    board.append(score, facts);
+    return board;
+  }
+
+  function renderNavigation() {
     const nav = node("nav", "match-anchor-nav"); nav.setAttribute("aria-label", "試合詳細のセクション"); [["overview", "概要"], ["events", "イベント"], ["lineups", "ラインナップ"], ["statistics", "スタッツ"]].forEach(([id, label]) => { const link = node("a", "", label); link.href = `#${id}`; nav.append(link); });
-    const overview = section("overview", "概要", "試合基本情報"); overview.append(node("p", "match-overview-copy", statusLabels[fixture.status] || fixture.statusLong || "試合状況の詳しい情報はありません。"));
-    page.replaceChildren(backLink(), board, nav, overview, renderEvents(detail), renderLineups(detail), renderStatistics(detail));
+    return nav;
+  }
+
+  function renderOverview(fixture) {
+    const overview = section("overview", "概要", "試合基本情報");
+    overview.append(node("p", "match-overview-copy", statusLabels[fixture.status] || fixture.statusLong || "試合状況の詳しい情報はありません。"));
+    return overview;
+  }
+
+  function replaceSection(id, sectionNode) {
+    const previous = page.querySelector(`#${id}`);
+    if (previous) previous.replaceWith(sectionNode);
+  }
+
+  function render(detail) {
+    const fixture = detail.fixture;
+    document.title = `${text(fixture.home?.name)} vs ${text(fixture.away?.name)}｜AM4`;
+    page.replaceChildren(
+      backLink(),
+      renderBoard(fixture),
+      renderNavigation(),
+      renderOverview(fixture),
+      renderEvents(detail),
+      renderLineups(detail),
+      renderStatistics(detail),
+    );
+    // Only the compact live indicator announces a later refresh. Re-announcing
+    // an entire event timeline every 15 seconds would be disruptive to readers.
+    page.setAttribute("aria-live", "off");
+  }
+
+  function renderLiveUpdate(detail) {
+    const fixture = detail.fixture;
+    const previousScrollY = window.scrollY;
+    document.title = `${text(fixture.home?.name)} vs ${text(fixture.away?.name)}｜AM4`;
+    page.querySelector(".match-board")?.replaceWith(renderBoard(fixture));
+    replaceSection("overview", renderOverview(fixture));
+    replaceSection("events", renderEvents(detail));
+    replaceSection("statistics", renderStatistics(detail));
+    window.scrollTo(0, previousScrollY);
+  }
+
+  function clearLiveRefresh() {
+    if (liveRefreshTimer != null) window.clearTimeout(liveRefreshTimer);
+    liveRefreshTimer = null;
+  }
+
+  function liveRefreshDelay(fixture = currentDetail?.fixture) {
+    if (!fixture) return null;
+    if (isLiveFixture(fixture)) return LIVE_REFRESH_MS;
+    if (AM4FootballData.classifyFixtureStatus(fixture.status) !== "upcoming") return null;
+    const kickoffAt = Date.parse(fixture.kickoff || "");
+    if (!Number.isFinite(kickoffAt)) return null;
+    const untilKickoff = kickoffAt - Date.now();
+    // A page opened before the whistle should wake once just after kickoff, then
+    // switch to the normal 15-second live cadence when the provider says live.
+    return untilKickoff > 0
+      ? Math.max(LIVE_REFRESH_MS, untilKickoff + KICKOFF_RECHECK_BUFFER_MS)
+      : LIVE_REFRESH_MS;
+  }
+
+  function canRefreshLiveDetail() {
+    return document.visibilityState === "visible" && liveRefreshDelay() != null && !liveRefreshInFlight;
+  }
+
+  function scheduleLiveRefresh() {
+    clearLiveRefresh();
+    if (!canRefreshLiveDetail()) return;
+    liveRefreshTimer = window.setTimeout(refreshLiveDetail, liveRefreshDelay());
+  }
+
+  async function refreshLiveDetail() {
+    liveRefreshTimer = null;
+    if (!canRefreshLiveDetail() || !client) return;
+    liveRefreshInFlight = true;
+    try {
+      const fresh = await client.fixtureLiveDetail(fixtureId);
+      if (!fresh?.fixture) return;
+      const availability = { ...currentDetail.availability };
+      const nextDetail = {
+        ...currentDetail,
+        fixture: fresh.fixture,
+        availability,
+      };
+      // Optional live sections may fail independently. Keep the last confirmed
+      // timeline/stat block instead of replacing it with an unavailable state.
+      if (fresh.availability?.events === true) {
+        nextDetail.events = fresh.events;
+        availability.events = true;
+      } else if (currentDetail.events == null) {
+        availability.events = false;
+      }
+      if (fresh.availability?.statistics === true) {
+        nextDetail.statistics = fresh.statistics;
+        availability.statistics = true;
+      } else if (currentDetail.statistics == null) {
+        availability.statistics = false;
+      }
+      currentDetail = nextDetail;
+      renderLiveUpdate(currentDetail);
+    } catch (error) {
+      console.warn("Live fixture detail refresh unavailable.", error);
+    } finally {
+      liveRefreshInFlight = false;
+      scheduleLiveRefresh();
+    }
   }
 
   async function load() {
     if (!/^[1-9]\d*$/.test(fixtureId || "")) { state("試合が指定されていません", "試合一覧から「試合詳細」を選んでください。"); return; }
     state("試合情報を読み込み中", "イベント、ラインナップ、スタッツを準備しています。");
     try {
-      const client = AM4FootballData.createClient(fetch, AM4SiteConfig.resolveApiBase(window.location.hostname));
+      client = AM4FootballData.createClient(fetch, AM4SiteConfig.resolveApiBase(window.location.hostname));
       const detail = await client.fixtureDetail(fixtureId);
       if (!detail || !detail.fixture) { state("試合が見つかりません", "指定された試合は見つかりませんでした。"); return; }
-      render(detail);
+      currentDetail = detail;
+      render(currentDetail);
+      scheduleLiveRefresh();
     } catch (error) {
       console.warn("Fixture detail unavailable.", error);
       state("試合情報を取得できませんでした", "時間をおいて、もう一度お試しください。", true);
     }
   }
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "visible") {
+      clearLiveRefresh();
+    } else if (isLiveFixture(currentDetail?.fixture)) {
+      refreshLiveDetail();
+    } else {
+      scheduleLiveRefresh();
+    }
+  });
+  window.addEventListener("pagehide", clearLiveRefresh, { once: true });
   load();
 })();

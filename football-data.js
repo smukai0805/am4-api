@@ -14,6 +14,10 @@
       dailyFixtures: (date) => request(`/fixtures?date=${encodeURIComponent(date)}`),
       fixtureEvents: (fixtureId) => request(`/fixtures?events=${encodeURIComponent(fixtureId)}`),
       fixtureDetail: (fixtureId) => request(`/fixtures?detail=${encodeURIComponent(fixtureId)}`),
+      // Live pages retain their initial lineup payload and only refresh data that
+      // can change during a match. This keeps the paid provider quota focused on
+      // score, timeline, and team-stat changes.
+      fixtureLiveDetail: (fixtureId) => request(`/fixtures?liveDetail=${encodeURIComponent(fixtureId)}`),
       featuredFixtures: () => request('/fixtures?featured=1'),
       standings: (season) => request(`/standings?season=${encodeURIComponent(season)}`),
       playerPhoto: ({ search, fullName, providerId }) => {

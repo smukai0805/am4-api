@@ -43,7 +43,13 @@
   const apiBase = AM4SiteConfig.resolveApiBase(location.hostname);
 
   function articleTypeLabel(type) {
-    return { player_intro: "Player Story", match_report: "Match Report", transfer_news: "Transfer Wire" }[type] || "AM4 Story";
+    return {
+      player_intro: "Player Story",
+      match_report: "Match Report",
+      match_prediction: "Match Preview",
+      am4_story: "AM4 Stories",
+      transfer_news: "Transfer Wire",
+    }[type] || "AM4 Story";
   }
 
   function appendBody(container, article) {
