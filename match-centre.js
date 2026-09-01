@@ -55,12 +55,65 @@
     ["Japan", "日本"], ["South-Korea", "韓国"], ["Australia", "オーストラリア"],
   ]);
   const TEAM_ACCENTS = new Map([
-    ["Real Madrid", "#d6ad45"], ["Malaga", "#1a76ba"], ["Deportivo La Coruna", "#5c5db1"], ["Valencia", "#f58220"],
-    ["Celta Vigo", "#6fc7ef"], ["Athletic Club", "#e61d35"], ["Rennes", "#e51c2a"], ["Le Mans", "#d23b36"],
-    ["Monaco", "#d9222a"], ["Marseille", "#00a8e6"], ["Manchester United", "#da291c"], ["Ipswich", "#2d5ba8"],
-    ["FC Augsburg", "#bb2635"], ["FC Schalke 04", "#005ca9"], ["Napoli", "#1497d4"], ["Como", "#2777bb"],
-    ["Cagliari", "#bd2637"], ["Inter", "#1b5fa7"], ["Lazio", "#79c7e9"], ["Genoa", "#be2638"],
+    // Premier League
+    ["Arsenal", "#ef0107"], ["Aston Villa", "#95bfe5"], ["Bournemouth", "#da291c"], ["Brentford", "#e30613"],
+    ["Brighton", "#0057b8"], ["Brighton & Hove Albion", "#0057b8"], ["Burnley", "#6c1d45"], ["Chelsea", "#034694"],
+    ["Crystal Palace", "#1b458f"], ["Everton", "#003399"], ["Fulham", "#cc0000"], ["Leeds", "#ffcd00"],
+    ["Liverpool", "#c8102e"], ["Manchester City", "#6cabdd"], ["Manchester United", "#da291c"], ["Newcastle", "#e8edf2"],
+    ["Newcastle United", "#e8edf2"], ["Nottingham Forest", "#dd0000"], ["Sunderland", "#e31b23"], ["Tottenham", "#d9e5f4"],
+    ["Tottenham Hotspur", "#d9e5f4"], ["West Ham", "#7a263a"], ["West Ham United", "#7a263a"], ["Wolves", "#fdb913"],
+    ["Wolverhampton Wanderers", "#fdb913"], ["Ipswich", "#2d5ba8"], ["Leicester", "#003090"], ["Leicester City", "#003090"],
+    ["Southampton", "#d71920"],
+    // La Liga
+    ["Alaves", "#0050a4"], ["Athletic Club", "#e61d35"], ["Atletico Madrid", "#cb3524"], ["Atlético Madrid", "#cb3524"],
+    ["Barcelona", "#a50044"], ["Real Betis", "#0b7a3e"], ["Celta Vigo", "#6fc7ef"], ["Elche", "#117a37"],
+    ["Espanyol", "#007fc8"], ["Getafe", "#0051a5"], ["Girona", "#d50032"], ["Levante", "#005baa"],
+    ["Mallorca", "#e20613"], ["Osasuna", "#c8102e"], ["Rayo Vallecano", "#e30613"], ["Real Madrid", "#d6ad45"],
+    ["Real Oviedo", "#003da5"], ["Real Sociedad", "#0067b1"], ["Sevilla", "#d71920"], ["Valencia", "#f58220"],
+    ["Villarreal", "#ffe667"], ["Malaga", "#1a76ba"], ["Deportivo La Coruna", "#5c5db1"],
+    // Serie A
+    ["Atalanta", "#1e71b8"], ["Bologna", "#b1252a"], ["Cagliari", "#bd2637"], ["Como", "#2777bb"],
+    ["Cremonese", "#d71920"], ["Fiorentina", "#4f2683"], ["Genoa", "#be2638"], ["Inter", "#1b5fa7"],
+    ["Juventus", "#d4af37"], ["Lazio", "#79c7e9"], ["Lecce", "#f6c400"], ["Milan", "#e31b23"],
+    ["AC Milan", "#e31b23"], ["Napoli", "#1497d4"], ["Parma", "#f5d000"], ["Pisa", "#005baa"],
+    ["Roma", "#8e1f2f"], ["AS Roma", "#8e1f2f"], ["Sassuolo", "#008c45"], ["Torino", "#7d1f2a"], ["Udinese", "#171717"], ["Verona", "#1f4e9b"],
+    ["Hellas Verona", "#1f4e9b"], ["Empoli", "#0068b3"], ["Monza", "#e30613"], ["Venezia", "#f58220"],
+    // Bundesliga
+    ["Bayern Munich", "#dc052d"], ["Bayer Leverkusen", "#e32219"], ["Borussia Dortmund", "#fdeb00"],
+    ["Borussia Monchengladbach", "#000000"], ["Borussia Mönchengladbach", "#000000"], ["Eintracht Frankfurt", "#e1000f"],
+    ["FC Augsburg", "#bb2635"], ["FC Cologne", "#ed1c24"], ["FC Köln", "#ed1c24"], ["Freiburg", "#e30613"],
+    ["Hamburger SV", "#005ca9"], ["Heidenheim", "#e30613"], ["Hoffenheim", "#1d4f91"], ["Mainz", "#c3142d"],
+    ["RB Leipzig", "#dd0741"], ["St. Pauli", "#6c3a2d"], ["Union Berlin", "#e30613"], ["VfB Stuttgart", "#e32219"],
+    ["Werder Bremen", "#009a44"], ["Wolfsburg", "#65b32e"], ["FC Schalke 04", "#005ca9"], ["Hertha Berlin", "#005ca9"],
+    // Ligue 1
+    ["Auxerre", "#1c4aa0"], ["Brest", "#e30613"], ["Le Havre", "#6ab2e7"], ["Lens", "#f9d616"],
+    ["Lille", "#d71920"], ["Lorient", "#f58220"], ["Lyon", "#1d4f91"], ["Marseille", "#00a8e6"],
+    ["Metz", "#7d1f2a"], ["Monaco", "#d9222a"], ["Nantes", "#f8e71c"], ["Nice", "#d71920"],
+    ["Paris FC", "#173f8a"], ["Paris Saint Germain", "#004170"], ["Paris Saint-Germain", "#004170"],
+    ["PSG", "#004170"], ["Rennes", "#e51c2a"], ["Strasbourg", "#0066b3"], ["Toulouse", "#5b2c83"],
+    ["Le Mans", "#d23b36"], ["Angers", "#1f1f1f"], ["Reims", "#e30613"], ["Saint Etienne", "#00853f"],
+    ["Saint-Étienne", "#00853f"], ["Montpellier", "#f58220"],
   ]);
+  function normalizeTeamName(value) {
+    return String(value || "")
+      .normalize("NFKD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]/gi, "")
+      .toLowerCase();
+  }
+  const NORMALIZED_TEAM_ACCENTS = new Map(
+    [...TEAM_ACCENTS].map(([name, accent]) => [normalizeTeamName(name), accent]),
+  );
+  // These are deliberately neutral UI accents, not inferred club colours. They keep
+  // unlisted teams distinguishable while the provider name remains the source of truth.
+  function neutralTeamAccent(normalizedName) {
+    if (!normalizedName) return "hsl(216 40% 62%)";
+    const hash = [...normalizedName].reduce((value, character) => ((value * 31) + character.charCodeAt(0)) >>> 0, 7);
+    const hue = hash % 360;
+    const saturation = 38 + ((hash >>> 9) % 19);
+    const lightness = 55 + ((hash >>> 15) % 10);
+    return `hsl(${hue} ${saturation}% ${lightness}%)`;
+  }
 
   function create({ client, teamLogo, updatedAt, fallbackFixtures = [] }) {
     const fixturesNode = document.getElementById("fixture-list");
@@ -122,7 +175,10 @@
     }
 
     function teamAccent(name) {
-      return TEAM_ACCENTS.get(name) || null;
+      const normalizedName = normalizeTeamName(name);
+      const officialAccent = NORMALIZED_TEAM_ACCENTS.get(normalizedName);
+      if (officialAccent) return officialAccent;
+      return neutralTeamAccent(normalizedName);
     }
 
     function competitionLogo(fixture) {
