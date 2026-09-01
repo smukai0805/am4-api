@@ -354,7 +354,8 @@
       const article = report || prediction;
       if (!article) return null;
 
-      const strip = document.createElement("aside");
+      const isResultGated = report && resultPresentation.hidden;
+      const strip = document.createElement(isResultGated ? "aside" : "a");
       strip.className = "fixture-editorial-strip";
       strip.style.setProperty("--home-team-color", teamAccent(fixture.home));
       strip.style.setProperty("--away-team-color", teamAccent(fixture.away));
@@ -363,16 +364,17 @@
       label.textContent = report ? "AM4 試合解説" : "AM4 次節プレビュー";
       const copy = document.createElement("div");
       copy.className = "fixture-editorial-copy";
-      const title = document.createElement(report && resultPresentation.hidden ? "span" : "a");
+      const title = document.createElement("span");
       title.className = "fixture-editorial-title";
 
-      if (report && resultPresentation.hidden) {
+      if (isResultGated) {
         title.textContent = "結果を表示すると、AM4の試合解説を読めます";
         copy.append(title);
         strip.classList.add("fixture-editorial-strip--gated");
       } else {
-        title.href = `/article.html?id=${encodeURIComponent(article.id)}`;
         title.textContent = article.title || (report ? "試合解説を読む" : "次節プレビューを読む");
+        strip.href = `/article.html?id=${encodeURIComponent(article.id)}`;
+        strip.setAttribute("aria-label", `${report ? "AM4 試合解説" : "AM4 次節プレビュー"}: ${title.textContent}`);
         copy.append(title);
         const summary = document.createElement("p");
         const predictionMeta = prediction
@@ -555,7 +557,7 @@
         const concealedNodes = [];
         fixtures.forEach((fixture, fixtureIndex) => {
           const row = document.createElement("article");
-          row.className = "fixture-row";
+          row.className = "fixture-row fixture-row--interactive";
           row.hidden = canCompact && !isExpanded && fixtureIndex >= LEAGUE_PREVIEW_LIMIT;
           const statusGroup = AM4FootballData.classifyFixtureStatus(fixture.status);
           const resultPresentation = AM4FootballData.fixtureResultPresentation(
@@ -581,12 +583,10 @@
             fixtureTeam(fixture.home, fixture.homeLogo, scores.home),
             fixtureTeam(fixture.away, fixture.awayLogo, scores.away),
           );
-          const scoreboard = document.createElement(resultPresentation.hidden ? "button" : "div");
+          const scoreboard = document.createElement("div");
           scoreboard.className = "fixture-scoreboard";
           if (resultPresentation.hidden) {
-            scoreboard.type = "button";
             scoreboard.classList.add("fixture-reveal-action");
-            scoreboard.setAttribute("aria-label", `${fixture.home}対${fixture.away}の結果を見る`);
           }
           const fullScores = fixtureTeamScores(fixture);
           const scoreText = fullScores.home && fullScores.away ? `${fullScores.home} – ${fullScores.away}` : "";
@@ -618,20 +618,34 @@
           scoreboard.append(scoreValue);
           if (scoreCaption.textContent) scoreboard.append(scoreCaption);
           scoreboard.dataset.resultHidden = String(resultPresentation.hidden);
-          const details = document.createElement(fixture.id ? "a" : "button");
-          if (fixture.id) details.href = `/match.html?id=${encodeURIComponent(fixture.id)}`;
-          else details.type = "button";
-          details.className = "fixture-detail-action";
-          details.textContent = "試合詳細 →";
-          details.setAttribute("aria-label", `${fixture.home}対${fixture.away}の試合詳細${fixture.id ? "へ移動" : "を開く"}`);
-          if (!fixture.id) details.addEventListener("click", () => openMatchDetail(fixture, sourceLabel));
-          if (resultPresentation.hidden) {
-            scoreboard.addEventListener("click", () => {
-              revealedFixtureIds.add(fixtureKey(fixture));
-              renderFixtureView();
+          const details = document.createElement("span");
+          details.className = "fixture-card-action";
+          details.setAttribute("aria-hidden", "true");
+          details.textContent = resultPresentation.hidden ? "結果を表示" : fixture.id ? "試合詳細" : "試合情報";
+
+          const cardTarget = document.createElement(resultPresentation.hidden || !fixture.id ? "button" : "a");
+          cardTarget.className = "fixture-card-tap-target";
+          if (resultPresentation.hidden || !fixture.id) cardTarget.type = "button";
+          if (fixture.id && !resultPresentation.hidden) {
+            cardTarget.href = `/match.html?id=${encodeURIComponent(fixture.id)}`;
+          }
+          cardTarget.setAttribute(
+            "aria-label",
+            resultPresentation.hidden
+              ? `${fixture.home}対${fixture.away}の結果を表示`
+              : `${fixture.home}対${fixture.away}の${fixture.id ? "試合詳細へ移動" : "試合情報を開く"}`,
+          );
+          if (resultPresentation.hidden || !fixture.id) {
+            cardTarget.addEventListener("click", () => {
+              if (resultPresentation.hidden) {
+                revealedFixtureIds.add(fixtureKey(fixture));
+                renderFixtureView();
+                return;
+              }
+              openMatchDetail(fixture, sourceLabel);
             });
           }
-          row.append(meta, teams, scoreboard, details);
+          row.append(cardTarget, meta, teams, scoreboard, details);
           list.append(row);
           const relatedEditorial = editorialStrip(fixture, resultPresentation);
           if (relatedEditorial) {

@@ -59,35 +59,31 @@
     border-bottom:1px solid var(--line);
   }
   .tagnav{
-    display:flex; gap:6px; overflow-x:auto;
-    padding:14px clamp(20px,5vw,64px);
+    display:flex; gap:8px; overflow-x:auto;
+    padding:12px clamp(20px,5vw,64px);
     scrollbar-width:none;
   }
   .tagnav::-webkit-scrollbar{ display:none; }
   .tag{
-    position:relative;
     flex:0 0 auto;
-    font-family:var(--mono); font-size:12.5px; letter-spacing:0.04em;
-    padding:10px 20px; border-radius:10px;
+    display:inline-flex; align-items:center; justify-content:center;
+    min-height:38px;
+    border:1px solid rgba(139,163,214,.2); border-radius:999px;
+    background:rgba(255,255,255,.025);
+    font-family:var(--mono); font-size:11px; font-weight:700; letter-spacing:0.06em;
+    padding:8px 15px;
     color:var(--steel-dim);
     white-space:nowrap;
-    transition:all .2s ease;
+    text-decoration:none;
+    transition:background .2s ease,border-color .2s ease,color .2s ease,box-shadow .2s ease;
   }
-  .tag::after{
-    content:"";
-    position:absolute; left:20px; right:20px; bottom:4px;
-    height:2px; border-radius:2px;
-    background:var(--floodlight);
-    transform:scaleX(0); transform-origin:left;
-    transition:transform .25s ease;
-  }
-  .tag:hover{ color:var(--paper); background:rgba(255,255,255,0.04); }
+  .tag:hover,.tag:focus-visible{ color:var(--paper); border-color:rgba(140,170,239,.5); background:rgba(73,111,196,.12); outline:0; }
   .tag.active{
     color:#fff;
-    background:linear-gradient(180deg, rgba(42,94,255,0.16), rgba(42,94,255,0.04));
-    box-shadow:inset 0 0 0 1px rgba(122,158,255,0.35);
+    border-color:rgba(117,156,255,.78);
+    background:linear-gradient(135deg,rgba(47,104,255,.86),rgba(37,75,196,.9));
+    box-shadow:0 7px 18px rgba(22,69,198,.28),inset 0 1px rgba(255,255,255,.2);
   }
-  .tag.active::after{ transform:scaleX(1); }
 
   /* ---------- sections ---------- */
   section.block{
@@ -231,6 +227,12 @@
     font-family:var(--mono); font-size:12.5px;
     display:inline-flex; align-items:center; gap:8px; color:var(--gold);
   }
+  .match-feature--link{cursor:pointer;transition:transform .2s ease,box-shadow .2s ease;}
+  .match-feature--link:hover{transform:translateY(-2px);}
+  .match-feature--link .card-tap-target{position:absolute;z-index:2;inset:0;display:block;border-radius:inherit;}
+  .match-feature--link .card-tap-target:focus-visible{outline:3px solid #86aaff;outline-offset:-4px;}
+  .match-feature--link > :not(.card-tap-target){pointer-events:none;}
+  .match-feature--link .favorite-btn{position:relative;z-index:3;pointer-events:auto;}
 
   /* player cards */
   .player-grid{
@@ -377,7 +379,8 @@
     overflow:hidden;
   }
   .editorial-section .match-feature::before{content:"";position:absolute;z-index:-1;inset:18% -20% -35%;background:conic-gradient(from 120deg,rgba(20,88,255,.9),transparent 25%,rgba(214,37,57,.72) 48%,transparent 70%,rgba(20,88,255,.78));filter:blur(8px);opacity:.55;transform:rotate(-8deg);}
-  .editorial-section .match-feature > *{position:relative;z-index:1;}
+  .editorial-section .match-feature > :not(.card-tap-target){position:relative;z-index:3;}
+  .editorial-section .match-feature > .card-tap-target{position:absolute;z-index:2;}
   .editorial-section .comp-badge{color:#9db8ff;}
   .editorial-section .match-headline{font-size:clamp(34px,6vw,62px);letter-spacing:-.025em;text-transform:none;}
   .editorial-section .match-copy{color:#d3daea;}
@@ -385,12 +388,14 @@
   .editorial-section .sb-row + .sb-row{border-color:rgba(255,255,255,.14);}
   .editorial-section .favorite-btn{border-color:rgba(255,255,255,.24);color:#fff;}
   .am4-story-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:28px;}
-  .am4-story-card{display:grid;align-content:start;gap:9px;min-height:160px;padding:17px;border:1px solid #b7b5ae;background:#f5f2ea;color:#0b1120;box-shadow:4px 4px 0 #c8c5bc;}
-  .am4-story-card small{color:#1458ff;font:700 9px var(--mono);letter-spacing:.09em;text-transform:uppercase;}
-  .am4-story-card a{color:#0b1120;font:800 22px/1.02 var(--display);letter-spacing:-.01em;}
-  .am4-story-card a:hover,.am4-story-card a:focus-visible{color:#1458ff;text-decoration:underline;text-underline-offset:3px;outline:0;}
+  .am4-story-card{display:grid;align-content:start;gap:10px;min-height:160px;padding:17px;border:1px solid #b7b5ae;background:#f5f2ea;color:#0b1120;box-shadow:4px 4px 0 #c8c5bc;text-decoration:none;cursor:pointer;transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease;}
+  .am4-story-card:hover{transform:translate(-2px,-2px);border-color:#1458ff;box-shadow:6px 6px 0 #1458ff;}
+  .am4-story-card:focus-visible{outline:3px solid #1458ff;outline-offset:3px;}
+  .am4-story-card small{display:inline-flex;width:max-content;padding:5px 7px;border:1px solid rgba(20,88,255,.35);border-radius:999px;background:rgba(20,88,255,.06);color:#1458ff;font:700 8px var(--mono);letter-spacing:.09em;text-transform:uppercase;}
+  .am4-story-card h3{margin:0;color:#0b1120;font:800 22px/1.02 var(--display);letter-spacing:-.01em;}
+  .am4-story-card:hover h3{color:#1458ff;}
   .am4-story-card p{display:-webkit-box;overflow:hidden;margin:0;color:#4b5361;font-size:12px;line-height:1.55;-webkit-box-orient:vertical;-webkit-line-clamp:3;}
-  @media(max-width:760px){.am4-story-grid{grid-template-columns:1fr;gap:10px;margin-top:22px;}.am4-story-card{min-height:0;padding:15px;box-shadow:3px 3px 0 #c8c5bc;}.am4-story-card a{font-size:20px;}}
+  @media(max-width:760px){.am4-story-grid{grid-template-columns:1fr;gap:10px;margin-top:22px;}.am4-story-card{min-height:0;padding:15px;box-shadow:3px 3px 0 #c8c5bc;}.am4-story-card h3{font-size:20px;}}
 
   /* ---------- matchday-first homepage ---------- */
   .matchday-home{
@@ -466,6 +471,10 @@
   .fixture-directory-toggle{display:flex;align-items:center;justify-content:center;width:100%;min-height:52px;border:1px solid rgba(126,159,232,.28);border-radius:16px;background:linear-gradient(110deg,rgba(24,58,127,.22),rgba(9,19,41,.78));color:#d9e5ff;cursor:pointer;font:600 11px var(--mono);letter-spacing:.07em;transition:background .18s ease,border-color .18s ease,transform .18s ease;}
   .fixture-directory-toggle:hover,.fixture-directory-toggle:focus-visible{border-color:#5786f5;background:linear-gradient(110deg,rgba(36,88,194,.34),rgba(13,30,67,.88));transform:translateY(-1px);outline:0;}
   .matchday-board .fixture-league-group .fixture-row{display:grid;grid-template-columns:minmax(0,1fr) 108px minmax(0,1fr);grid-template-areas:"home score away" "meta details details";align-items:center;gap:6px 18px;min-height:98px;padding:14px 16px 11px;border:1px solid transparent;border-radius:16px;background:linear-gradient(110deg,#0a1529,#070d1b) padding-box,linear-gradient(100deg,var(--home-team-color,#6588b8),#8fa7d4 50%,var(--away-team-color,#8a73bd)) border-box;box-shadow:inset 0 1px rgba(255,255,255,.05),0 7px 18px rgba(0,0,0,.14);}
+  .matchday-board .fixture-league-group .fixture-row{position:relative;}
+  .fixture-card-tap-target{position:absolute;z-index:2;inset:0;display:block;margin:0;padding:0;border:0;border-radius:inherit;background:transparent;cursor:pointer;}
+  .fixture-card-tap-target:focus-visible{outline:2px solid #8bb1ff;outline-offset:3px;}
+  .matchday-board .fixture-league-group .fixture-row--interactive > :not(.fixture-card-tap-target){position:relative;z-index:3;pointer-events:none;}
   .matchday-board .fixture-league-group .fixture-row:hover{background:linear-gradient(110deg,#0d1c35,#080f20) padding-box,linear-gradient(100deg,var(--home-team-color,#6588b8),#d3e0fb 50%,var(--away-team-color,#8a73bd)) border-box;box-shadow:inset 0 1px rgba(255,255,255,.08),0 10px 24px rgba(0,0,0,.24);}
   @supports (color:color-mix(in srgb,#fff,#000)){
     .matchday-board .fixture-league-group .fixture-row{box-shadow:inset 0 1px rgba(255,255,255,.05),0 7px 18px rgba(0,0,0,.14),0 0 20px color-mix(in srgb,var(--home-team-color,#6588b8) 14%,transparent);}
@@ -483,19 +492,22 @@
   .fixture-team-score{display:none;}
   .fixture-scoreboard{grid-area:score;display:flex;flex-direction:column;align-items:center;justify-content:center;justify-self:stretch;min-width:108px;min-height:52px;padding:0;border:0;border-radius:11px;color:#fff;background:transparent;font:900 28px/.92 var(--body);letter-spacing:-.06em;}
   .fixture-scoreboard small{margin-top:5px;color:#9eabc4;font:700 8px var(--mono);letter-spacing:.08em;}
-  .fixture-reveal-action{cursor:pointer;transition:border-color .18s ease,background .18s ease,transform .18s ease;}
-  .fixture-reveal-action:hover,.fixture-reveal-action:focus-visible{border-color:rgba(185,207,255,.8);background:rgba(88,119,182,.16);transform:translateY(-1px);outline:0;}
+  .fixture-reveal-action{transition:border-color .18s ease,background .18s ease,transform .18s ease;}
+  .fixture-row--interactive:hover .fixture-reveal-action{border-color:rgba(185,207,255,.8);background:rgba(88,119,182,.16);transform:translateY(-1px);}
   .fixture-scoreboard-icon{display:none;width:15px;height:15px;fill:none;stroke:#c2d3f3;stroke-width:1.7;}
   .fixture-scoreboard[data-result-hidden="true"]{flex-direction:row;gap:7px;min-height:44px;padding:0 10px;border:1px dashed rgba(157,181,233,.44);background:rgba(92,119,175,.10);font-family:var(--body);letter-spacing:0;}
   .fixture-scoreboard[data-result-hidden="true"] .fixture-scoreboard-icon{display:block;margin:0;}
   .fixture-scoreboard[data-result-hidden="true"] .fixture-scoreboard-value{font:700 11px/1.2 var(--body);white-space:nowrap;}
-  .fixture-detail-action{grid-area:details;display:inline-flex;align-items:center;justify-content:flex-end;justify-self:end;min-width:88px;min-height:38px;padding:8px 0 8px 14px;border:0;color:#aabce0;background:transparent;cursor:pointer;font:600 9px/1 var(--mono);letter-spacing:.05em;}
-  .fixture-detail-action:hover,.fixture-detail-action:focus-visible{color:#d9e5ff;text-decoration:underline;text-underline-offset:3px;outline:0;}
+  .fixture-card-action{grid-area:details;display:inline-flex;align-items:center;justify-content:flex-end;justify-self:end;min-width:88px;min-height:28px;padding:5px 0 3px 14px;color:#aabce0;font:600 9px/1 var(--mono);letter-spacing:.05em;}
+  .fixture-row--interactive:hover .fixture-card-action{color:#d9e5ff;}
   .fixture-editorial-strip{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:12px;align-items:start;margin:-1px 7px 4px;padding:11px 12px;border:1px solid rgba(112,148,223,.2);border-radius:12px;background:linear-gradient(110deg,rgba(15,31,61,.82),rgba(7,14,29,.92));}
+  a.fixture-editorial-strip{color:inherit;text-decoration:none;cursor:pointer;transition:border-color .18s ease,transform .18s ease;}
+  a.fixture-editorial-strip:hover{border-color:rgba(168,195,255,.68);transform:translateY(-1px);}
+  a.fixture-editorial-strip:focus-visible{outline:2px solid #8bb1ff;outline-offset:2px;}
   .fixture-editorial-label{padding-top:2px;color:#a9c0f7;font:700 8px var(--mono);letter-spacing:.09em;white-space:nowrap;}
   .fixture-editorial-copy{display:grid;gap:4px;min-width:0;}
   .fixture-editorial-title{overflow:hidden;color:#e7efff;font:700 12px/1.35 var(--body);text-overflow:ellipsis;white-space:nowrap;}
-  a.fixture-editorial-title:hover,a.fixture-editorial-title:focus-visible{color:#fff;text-decoration:underline;text-underline-offset:3px;outline:0;}
+  a.fixture-editorial-strip:hover .fixture-editorial-title{color:#fff;}
   .fixture-editorial-copy p{display:-webkit-box;overflow:hidden;margin:0;color:#92a3c0;font-size:10px;line-height:1.45;-webkit-box-orient:vertical;-webkit-line-clamp:2;}
   .fixture-editorial-strip--gated{border-style:dashed;background:rgba(20,34,62,.5);}
   .fixture-editorial-strip--gated .fixture-editorial-title{color:#a9bad8;font-weight:600;white-space:normal;}
@@ -544,7 +556,7 @@
     .matchday-board .fixture-league-group .team-logo,.matchday-board .fixture-league-group .team-logo-fallback{width:26px;height:26px;}
     .fixture-scoreboard{min-width:92px;font-size:24px;}
     .fixture-scoreboard[data-result-hidden="true"]{min-height:40px;padding:0 6px;gap:5px;}
-    .fixture-detail-action{min-width:82px;min-height:36px;font-size:8px;}
+    .fixture-card-action{min-width:82px;min-height:28px;font-size:8px;}
     .fixture-editorial-strip{gap:9px;margin:-1px 5px 3px;padding:9px 10px;}
     .fixture-editorial-label{font-size:7px;}
     .fixture-editorial-title{font-size:11px;}
@@ -652,26 +664,25 @@
 </section>
 
 <div class="tagnav-wrap">
-  <nav class="tagnav">
+  <nav class="tagnav" aria-label="ページ内ナビゲーション">
     <a class="tag" href="#fixtures">試合日程</a>
-    <a class="tag active" href="#transfer">移籍情報</a>
+    <a class="tag" href="#transfer">移籍情報</a>
     <a class="tag" id="column-nav-link" href="#lead-story" hidden>AM4 COLUMN</a>
     <a class="tag" href="#standings">順位表</a>
   </nav>
 </div>
 
 <section class="block editorial-section" id="lead-story" aria-labelledby="lead-story-title" hidden>
-  <div class="editorial-issue"><span id="lead-story-issue">AM4 COLUMN</span><span id="lead-story-edition">Latest</span></div>
+  <div class="editorial-issue"><span id="lead-story-issue">The match is only the beginning.</span><span id="lead-story-edition">Latest</span></div>
   <div class="block-head">
-    <h2 class="block-title" id="lead-story-title"><small id="lead-story-kicker">AM4 COLUMN</small><span id="lead-story-heading">AM4 COLUMN</span></h2>
+    <h2 class="block-title" id="lead-story-title"><span id="lead-story-heading">AM4 COLUMN</span></h2>
     <span class="see-all" id="lead-story-read-time">AM4編集部</span>
   </div>
-  <div class="match-feature reveal">
+  <div class="match-feature match-feature--link reveal">
+    <a class="card-tap-target" id="lead-story-link" href="/article.html" aria-label="AM4 COLUMNを読む"></a>
     <div>
-      <div class="comp-badge" id="lead-story-badge">AM4 COLUMN</div>
       <h3 class="match-headline" id="lead-story-article-title">新しいコラムを<br>準備中です</h3>
       <p class="match-copy" id="lead-story-summary">試合の背景、クラブの歴史、街とカルチャーをAM4の視点で読み解きます。</p>
-      <a class="read-link" id="lead-story-link" href="/article.html">AM4 COLUMNを読む →</a>
       <button class="favorite-btn" id="lead-story-save" type="button" data-favorite-type="articles" data-favorite-id="" data-favorite-label="" data-favorite-detail="" data-favorite-href="/article.html">記事を保存</button>
     </div>
     <div class="scoreboard" aria-label="記事の要点">
@@ -979,11 +990,9 @@
       if (navLink) navLink.hidden = false;
       const relatedClubs = article.story?.relatedClubs || 'AM4';
       setEditorialText('lead-story-issue', 'The match is only the beginning.');
-      setEditorialText('lead-story-edition', 'AM4 COLUMN · Latest');
-      setEditorialText('lead-story-kicker', 'AM4 COLUMN');
+      setEditorialText('lead-story-edition', 'Latest');
       setEditorialText('lead-story-heading', 'AM4 COLUMN');
       setEditorialText('lead-story-read-time', 'AM4編集部');
-      setEditorialText('lead-story-badge', 'AM4 COLUMN');
       setEditorialText('lead-story-article-title', article.title || 'AM4独自の読みもの');
       setEditorialText('lead-story-summary', storySummary(article));
       setEditorialText('lead-story-score-left', 'AM4');
@@ -993,7 +1002,7 @@
       const link = document.getElementById('lead-story-link');
       if (link) {
         link.href = `/article.html?id=${encodeURIComponent(article.id)}`;
-        link.textContent = 'AM4 COLUMNを読む →';
+        link.setAttribute('aria-label', `${article.title || 'AM4 COLUMN'}を読む`);
       }
       syncLeadStorySave(article);
       document.dispatchEvent(new CustomEvent('am4:favorites-catalog-updated'));
@@ -1005,12 +1014,12 @@
       const extraStories = stories.slice(1, 4);
       list.replaceChildren();
       extraStories.forEach((article) => {
-        const card = document.createElement('article');
+        const card = document.createElement('a');
         card.className = 'am4-story-card';
+        card.href = `/article.html?id=${encodeURIComponent(article.id)}`;
         const category = document.createElement('small');
         category.textContent = 'AM4 COLUMN';
-        const title = document.createElement('a');
-        title.href = `/article.html?id=${encodeURIComponent(article.id)}`;
+        const title = document.createElement('h3');
         title.textContent = article.title || 'AM4独自の読みもの';
         const summary = document.createElement('p');
         summary.textContent = storySummary(article);
@@ -1214,13 +1223,55 @@
     });
   }
 
-  // tag nav active state on click (visual only, demo)
-  document.querySelectorAll('.tag').forEach(tag => {
-    tag.addEventListener('click', () => {
-      document.querySelectorAll('.tag').forEach(t => t.classList.remove('active'));
-      tag.classList.add('active');
+  // ページ内ナビ：スクロール位置に合わせて、今いるセクションを明確に示す。
+  (() => {
+    const nav = document.querySelector('.tagnav');
+    if (!nav) return;
+    const entries = Array.from(nav.querySelectorAll('.tag')).map((tab) => ({
+      tab,
+      target: document.getElementById((tab.getAttribute('href') || '').slice(1)),
+    })).filter((entry) => entry.target);
+    let animationFrame = 0;
+
+    function setActiveTab(activeTab) {
+      entries.forEach(({ tab }) => {
+        const isActive = tab === activeTab;
+        tab.classList.toggle('active', isActive);
+        if (isActive) tab.setAttribute('aria-current', 'location');
+        else tab.removeAttribute('aria-current');
+      });
+    }
+
+    function updateActiveTab() {
+      animationFrame = 0;
+      const readingLine = nav.getBoundingClientRect().bottom + 24;
+      const visibleEntries = entries.filter(({ target }) => !target.hidden);
+      if (!visibleEntries.length) return;
+      const current = visibleEntries
+        .filter(({ target }) => target.getBoundingClientRect().top <= readingLine)
+        .sort((a, b) => b.target.getBoundingClientRect().top - a.target.getBoundingClientRect().top)[0]
+        || visibleEntries[0];
+      setActiveTab(current.tab);
+    }
+
+    function scheduleUpdate() {
+      if (!animationFrame) animationFrame = requestAnimationFrame(updateActiveTab);
+    }
+
+    nav.addEventListener('click', (event) => {
+      const tab = event.target.closest('.tag');
+      if (!tab) return;
+      setActiveTab(tab);
+      window.setTimeout(scheduleUpdate, 350);
     });
-  });
+    window.addEventListener('scroll', scheduleUpdate, { passive:true });
+    window.addEventListener('resize', scheduleUpdate);
+    document.addEventListener('am4:data-ready', scheduleUpdate);
+    [document.getElementById('lead-story'), document.getElementById('column-nav-link')]
+      .filter(Boolean)
+      .forEach((node) => new MutationObserver(scheduleUpdate).observe(node, { attributes:true, attributeFilter:['hidden'] }));
+    scheduleUpdate();
+  })();
 
 </script>
 
