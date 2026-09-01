@@ -45,7 +45,6 @@ img{max-width:100%;}
 .article-header{padding:clamp(34px,7vw,72px) clamp(24px,7vw,76px) 34px;border-bottom:1px solid #b6b4ae;}
 .article-kicker{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:28px;color:#1458ff;font:700 10px var(--mono);letter-spacing:.16em;text-transform:uppercase;}
 .article-title{margin:0;font:900 clamp(46px,8vw,86px)/.93 var(--display);letter-spacing:-.035em;}
-.article-deck{max-width:720px;margin:24px 0 0;color:#444b58;font-size:clamp(16px,2vw,19px);line-height:1.9;}
 .article-actions{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-top:28px;}
 .article-actions .favorite-btn{color:#0b1120;border-color:#8c8b87;background:transparent;}
 .article-meta{display:flex;flex-wrap:wrap;gap:16px;margin-top:22px;color:#626a77;font:500 10px var(--mono);}

@@ -17,3 +17,9 @@ test("stored Markdown tables retain headers and rows without HTML", () => {
     { type: "table", headers: ["Club", "Points"], rows: [["AM4", "4"]] },
   ]);
 });
+
+test("Notion ordered list blocks separated by blank lines remain one agenda", () => {
+  assert.deepEqual(parseMarkdownBlocks("1. 起点\n\n2. 転機\n\n3. 現在"), [
+    { type: "list", ordered: true, items: ["起点", "転機", "現在"] },
+  ]);
+});

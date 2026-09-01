@@ -663,7 +663,7 @@
 <section class="block editorial-section" id="lead-story" aria-labelledby="lead-story-title" hidden>
   <div class="editorial-issue"><span id="lead-story-issue">AM4 COLUMN</span><span id="lead-story-edition">Latest</span></div>
   <div class="block-head">
-    <h2 class="block-title" id="lead-story-title"><small id="lead-story-kicker">AM4 COLUMN</small><span id="lead-story-heading">スコアの先にある物語</span></h2>
+    <h2 class="block-title" id="lead-story-title"><small id="lead-story-kicker">AM4 COLUMN</small><span id="lead-story-heading">AM4 COLUMN</span></h2>
     <span class="see-all" id="lead-story-read-time">AM4編集部</span>
   </div>
   <div class="match-feature reveal">
@@ -676,7 +676,7 @@
     </div>
     <div class="scoreboard" aria-label="記事の要点">
       <div class="sb-row"><span class="sb-club" id="lead-story-score-left">AM4</span><span class="sb-score" id="lead-story-score-right">COLUMN</span></div>
-      <div class="sb-row"><span class="sb-club" id="lead-story-score-bottom-left">Editorial</span><span class="sb-score" id="lead-story-score-bottom-right">Latest</span></div>
+      <div class="sb-row"><span class="sb-club" id="lead-story-score-bottom-left">AM4</span><span class="sb-score" id="lead-story-score-bottom-right">COLUMN</span></div>
     </div>
   </div>
   <div class="am4-story-grid" id="am4-story-list" hidden></div>
@@ -964,25 +964,32 @@
       button.textContent = saved ? '記事を保存済み' : '記事を保存';
     }
 
+    function storySummary(article){
+      const summary = String(article.summary || article.deck || '').replace(/\s+/g, ' ').trim();
+      if (!summary || /(?:^|\s)(?:3行要約|アジェンダ)(?:\s|$)/.test(summary)) {
+        return '試合の背景、クラブの歴史、街とカルチャーをAM4の視点で読み解きます。';
+      }
+      return summary;
+    }
+
     function renderLeadStory(article){
       const section = document.getElementById('lead-story');
       const navLink = document.getElementById('column-nav-link');
       if (section) section.hidden = false;
       if (navLink) navLink.hidden = false;
-      const category = article.story?.category || 'AM4 COLUMN';
-      const relatedClubs = article.story?.relatedClubs || 'Editorial';
+      const relatedClubs = article.story?.relatedClubs || 'AM4';
       setEditorialText('lead-story-issue', 'The match is only the beginning.');
       setEditorialText('lead-story-edition', 'AM4 COLUMN · Latest');
       setEditorialText('lead-story-kicker', 'AM4 COLUMN');
-      setEditorialText('lead-story-heading', category);
+      setEditorialText('lead-story-heading', 'AM4 COLUMN');
       setEditorialText('lead-story-read-time', 'AM4編集部');
-      setEditorialText('lead-story-badge', `AM4 COLUMN · ${category}`);
+      setEditorialText('lead-story-badge', 'AM4 COLUMN');
       setEditorialText('lead-story-article-title', article.title || 'AM4独自の読みもの');
-      setEditorialText('lead-story-summary', article.summary || article.deck || 'スコアの先にある、サッカーの物語を読む。');
-      setEditorialText('lead-story-score-left', category);
-      setEditorialText('lead-story-score-right', 'AM4');
+      setEditorialText('lead-story-summary', storySummary(article));
+      setEditorialText('lead-story-score-left', 'AM4');
+      setEditorialText('lead-story-score-right', 'COLUMN');
       setEditorialText('lead-story-score-bottom-left', relatedClubs);
-      setEditorialText('lead-story-score-bottom-right', 'Stories');
+      setEditorialText('lead-story-score-bottom-right', 'AM4');
       const link = document.getElementById('lead-story-link');
       if (link) {
         link.href = `/article.html?id=${encodeURIComponent(article.id)}`;
@@ -1001,12 +1008,12 @@
         const card = document.createElement('article');
         card.className = 'am4-story-card';
         const category = document.createElement('small');
-        category.textContent = article.story?.category || 'AM4 COLUMN';
+        category.textContent = 'AM4 COLUMN';
         const title = document.createElement('a');
         title.href = `/article.html?id=${encodeURIComponent(article.id)}`;
         title.textContent = article.title || 'AM4独自の読みもの';
         const summary = document.createElement('p');
-        summary.textContent = article.summary || article.deck || 'スコアの先にあるサッカーの物語を読む。';
+        summary.textContent = storySummary(article);
         card.append(category, title, summary);
         list.append(card);
       });

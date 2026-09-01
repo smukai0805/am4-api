@@ -56,7 +56,21 @@
         const items = [];
         while (index < lines.length) {
           const match = lines[index].trim().match(/^(?:([-*+])|(\d+)[.)])\s+(.+)$/);
-          if (!match || Boolean(match[2]) !== ordered) break;
+          if (!match || Boolean(match[2]) !== ordered) {
+            // Notion returns adjacent list blocks as separate blocks. Its sync
+            // representation leaves a blank line between them, so keep them in
+            // one semantic list instead of rendering every item as "1.".
+            if (!lines[index].trim()) {
+              let nextIndex = index + 1;
+              while (nextIndex < lines.length && !lines[nextIndex].trim()) nextIndex += 1;
+              const next = lines[nextIndex]?.trim().match(/^(?:([-*+])|(\d+)[.)])\s+(.+)$/);
+              if (next && Boolean(next[2]) === ordered) {
+                index = nextIndex;
+                continue;
+              }
+            }
+            break;
+          }
           items.push(match[3].trim());
           index += 1;
         }

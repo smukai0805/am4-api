@@ -103,16 +103,15 @@
     if (section.children.length > 1) container.append(section);
   }
 
-  function renderArticle(article, isSample) {
+  function renderArticle(article) {
     document.title = `${article.title}｜AM4`;
     const header = document.createElement("header");
     header.className = "article-header";
-    header.innerHTML = '<div class="article-kicker"><span></span><span></span></div><h1 class="article-title"></h1><p class="article-deck"></p><div class="article-meta"></div><div class="article-actions"></div>';
+    header.innerHTML = '<div class="article-kicker"><span></span></div><h1 class="article-title"></h1><div class="article-meta"></div><div class="article-actions"></div>';
     header.querySelector(".article-kicker span:first-child").textContent = articleTypeLabel(article.type);
-    header.querySelector(".article-kicker span:last-child").textContent = isSample ? "AM4 Editorial Demo" : "AM4 Archive";
     header.querySelector(".article-title").textContent = article.title;
-    const deck = header.querySelector(".article-deck");
-    deck.textContent = article.deck || article.summary || "AM4が届ける、スコアの先にある物語。";
+    const brandPill = document.getElementById("article-brand-pill");
+    if (brandPill) brandPill.textContent = articleTypeLabel(article.type);
     const meta = header.querySelector(".article-meta");
     const published = article.publishedAt ? new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", year: "numeric", month: "long", day: "numeric" }).format(new Date(article.publishedAt)) : "公開日未設定";
     meta.textContent = `${published} · ${article.readTime || "AM4編集部"}`;
@@ -151,7 +150,7 @@
       const response = await fetch(`${apiBase}/articles?id=${encodeURIComponent(id)}`, { headers: { Accept: "application/json" } });
       if (response.ok) {
         const data = await response.json();
-        if (data.article) return renderArticle(data.article, false);
+        if (data.article) return renderArticle(data.article);
       }
     } catch (_error) {
       // Article data is published only from the server-side archive.
