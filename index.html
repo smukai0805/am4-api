@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>AM4｜今日の海外サッカー試合日程・結果</title>
+<meta name="description" content="今日の海外サッカー日程を日本時間で一覧表示。欧州5大リーグ、チャンピオンズリーグ、親善試合の結果はネタバレを避けて確認できます。">
+<meta name="theme-color" content="#060a17">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="ja_JP">
+<meta property="og:site_name" content="AM4">
+<meta property="og:title" content="AM4｜今日の海外サッカー試合日程・結果">
+<meta property="og:description" content="今日、何を見る？ 全リーグの試合を日本時間ですぐ確認。">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;700;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/brand.css">
+<style>
+  main{display:flex;flex-direction:column;}
+
+  /* ---------- top bar ---------- */
+  .topbar{
+    position:sticky; top:0; z-index:40;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:18px clamp(20px,5vw,64px);
+    background:rgba(10,16,28,0.72);
+    backdrop-filter:blur(14px);
+    border-bottom:1px solid var(--line);
+  }
+  .wordmark{
+    display:flex; align-items:center; gap:12px;
+  }
+  .wordmark img{
+    display:block;
+    width:clamp(78px,9vw,104px);
+    height:auto;
+  }
+  .wordmark small{
+    font-family:var(--mono);
+    font-size:10px; font-weight:500;
+    color:var(--steel-dim);
+    letter-spacing:0.18em;
+    text-transform:uppercase;
+  }
+  .lang{
+    font-family:var(--mono); font-size:11px; letter-spacing:0.08em;
+    color:var(--steel-dim);
+    display:flex; gap:14px;
+  }
+
+  /* ---------- tag nav ---------- */
+  .tagnav-wrap{
+    position:sticky; top:65px; z-index:30;
+    background:rgba(6,10,23,0.78);
+    backdrop-filter:blur(16px);
+    border-bottom:1px solid var(--line);
+  }
+  .tagnav{
+    display:flex; gap:6px; overflow-x:auto;
+    padding:14px clamp(20px,5vw,64px);
+    scrollbar-width:none;
+  }
+  .tagnav::-webkit-scrollbar{ display:none; }
+  .tag{
+    position:relative;
+    flex:0 0 auto;
+    font-family:var(--mono); font-size:12.5px; letter-spacing:0.04em;
+    padding:10px 20px; border-radius:10px;
+    color:var(--steel-dim);
+    white-space:nowrap;
+    transition:all .2s ease;
+  }
+  .tag::after{
+    content:"";
+    position:absolute; left:20px; right:20px; bottom:4px;
+    height:2px; border-radius:2px;
+    background:var(--floodlight);
+    transform:scaleX(0); transform-origin:left;
+    transition:transform .25s ease;
+  }
+  .tag:hover{ color:var(--paper); background:rgba(255,255,255,0.04); }
+  .tag.active{
+    color:#fff;
+    background:linear-gradient(180deg, rgba(42,94,255,0.16), rgba(42,94,255,0.04));
+    box-shadow:inset 0 0 0 1px rgba(122,158,255,0.35);
+  }
+  .tag.active::after{ transform:scaleX(1); }
+
+  /* ---------- sections ---------- */
+  section.block{
+    position:relative;
+    padding:clamp(56px,8vw,96px) clamp(20px,5vw,64px);
+    border-bottom:1px solid var(--line);
+    scroll-margin-top:130px;
+    background:
+      radial-gradient(ellipse 70% 100% at 8% 0%, rgba(42,94,255,0.055), transparent 55%),
+      var(--ink);
+  }
+  .block-head{
+    display:flex; align-items:flex-end; justify-content:space-between;
+    margin-bottom:36px; gap:20px; flex-wrap:wrap;
+    padding-bottom:22px;
+    border-bottom:1px solid var(--line);
+  }
+  .block-title{
+    font-family:var(--display); font-weight:900;
+    font-size:clamp(30px,4.5vw,46px);
+    line-height:1;
+  }
+  .block-title small{
+    display:flex; align-items:center; gap:10px;
+    font-family:var(--mono); font-weight:500; font-size:12px;
+    letter-spacing:0.2em; color:var(--floodlight);
+    text-transform:uppercase; margin-bottom:12px;
+  }
+  .block-title small::before{
+    content:""; width:22px; height:1px; background:var(--floodlight);
+  }
+  .see-all{
+    font-family:var(--mono); font-size:12.5px; color:var(--steel-dim);
+    border-bottom:1px solid transparent;
+    transition:color .2s ease, border-color .2s ease;
+  }
+  .see-all:hover{ color:var(--paper); border-color:var(--steel); }
+
+  /* transfer cards */
+  .transfer-grid{
+    display:grid; gap:16px;
+    grid-template-columns:repeat(auto-fit, minmax(280px,1fr));
+  }
+  .t-card{
+    position:relative;
+    background:linear-gradient(165deg, var(--ink-2) 0%, #0a1226 100%);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:24px;
+    overflow:hidden;
+    transition:border-color .3s ease, transform .3s ease, box-shadow .3s ease;
+    box-shadow:0 1px 0 rgba(255,255,255,0.03) inset, 0 20px 40px -24px rgba(0,0,0,0.6);
+  }
+  .t-card::before{
+    content:"";
+    position:absolute; top:0; left:0; right:0; height:1px;
+    background:linear-gradient(90deg, transparent, rgba(122,158,255,0.5), transparent);
+    opacity:0; transition:opacity .3s ease;
+  }
+  .t-card:hover{
+    border-color:rgba(122,158,255,0.4);
+    transform:translateY(-4px);
+    box-shadow:0 24px 50px -20px rgba(42,94,255,0.25);
+  }
+  .t-card:hover::before{ opacity:1; }
+  .t-meta{
+    display:flex; align-items:center; gap:10px;
+    font-family:var(--mono); font-size:11px; color:var(--steel-dim);
+    margin-bottom:16px;
+  }
+  .t-meta .badge{
+    background:rgba(42,94,255,0.16); color:#9db8ff;
+    padding:4px 10px; border-radius:6px; font-weight:500;
+    letter-spacing:0.04em;
+    box-shadow:inset 0 0 0 1px rgba(122,158,255,0.25);
+  }
+  .club-route{
+    display:flex; align-items:center; gap:14px; margin-bottom:20px;
+  }
+  .crest{
+    width:42px; height:42px; border-radius:11px;
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--display); font-weight:700; font-size:13px;
+    color:#fff;
+    flex-shrink:0;
+    box-shadow:0 0 0 1px rgba(255,255,255,0.14) inset, 0 8px 16px -6px rgba(0,0,0,0.5);
+    position:relative;
+  }
+  .crest::after{
+    content:"";
+    position:absolute; inset:0; border-radius:inherit;
+    background:linear-gradient(160deg, rgba(255,255,255,0.35), transparent 55%);
+  }
+  .crest.has-api-logo{background:transparent!important;padding:0;box-shadow:none;border-radius:0;}
+  .crest.has-api-logo::after{display:none;}
+  .crest-logo{display:block;width:86%;height:86%;margin:auto;object-fit:contain;object-position:center;filter:drop-shadow(0 5px 7px rgba(0,0,0,.32));}
+  .crest.a{ background:linear-gradient(160deg,#ff7a7a,#a01f1f); }
+  .crest.b{ background:linear-gradient(160deg,#7fa6ff,#1a3fc4); }
+  .crest.c{ background:linear-gradient(160deg,#ffe08a,#b8862f); color:#3a2a05; }
+  .crest.d{ background:linear-gradient(160deg,#a6f0c6,#1f7a44); }
+  .route-arrow{ color:var(--floodlight); font-size:16px; opacity:0.8; }
+  .t-title{ font-size:16.5px; font-weight:600; line-height:1.5; margin:0; letter-spacing:-0.005em; }
+
+  /* match report feature */
+  .match-feature{
+    display:grid; grid-template-columns:1.1fr 0.9fr; gap:44px;
+    align-items:center;
+  }
+  @media (max-width:760px){ .match-feature{ grid-template-columns:1fr; } }
+  .scoreboard{
+    background:var(--ink-2); border:1px solid var(--line);
+    border-radius:var(--radius); padding:30px;
+  }
+  .sb-row{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 0;
+  }
+  .sb-row + .sb-row{ border-top:1px solid var(--line); }
+  .sb-club{ display:flex; align-items:center; gap:14px; font-weight:600; font-size:15px;}
+  .sb-score{ font-family:var(--mono); font-size:22px; font-weight:500; }
+  .comp-badge{
+    display:inline-flex; align-items:center; gap:8px;
+    font-family:var(--mono); font-size:11px; letter-spacing:0.1em;
+    color:var(--steel-dim); text-transform:uppercase; margin-bottom:18px;
+  }
+  .match-headline{
+    font-family:var(--display); font-weight:900;
+    font-size:clamp(26px,3.5vw,38px); line-height:1.08; margin:0 0 16px;
+  }
+  .match-copy{ color:var(--steel); line-height:1.8; font-size:15px; margin:0 0 22px; }
+  .read-link{
+    font-family:var(--mono); font-size:12.5px;
+    display:inline-flex; align-items:center; gap:8px; color:var(--gold);
+  }
+
+  /* player cards */
+  .player-grid{
+    display:grid; gap:16px;
+    grid-template-columns:repeat(auto-fit, minmax(220px,1fr));
+  }
+  .p-card{
+    position:relative;
+    background:var(--ink-2); border:1px solid var(--line);
+    border-radius:var(--radius); padding:24px 20px;
+    overflow:hidden;
+    transition:transform .25s ease, border-color .25s ease;
+  }
+  .p-card:hover{ transform:translateY(-3px); border-color:var(--steel-dim); }
+  .p-flag{
+    position:absolute; top:16px; left:16px;
+    width:22px; height:15px; border-radius:3px;
+    background:linear-gradient(180deg,#2a5eff 33%,#f4f6f9 33% 66%,#d9b46a 66%);
+    box-shadow:0 0 0 1px rgba(255,255,255,0.15);
+  }
+  .p-avatar{
+    width:64px; height:64px; border-radius:50%;
+    background:linear-gradient(135deg, var(--ink-3), var(--ink));
+    border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--display); font-weight:700; font-size:20px;
+    color:var(--steel);
+    margin:18px 0 16px;
+  }
+  .p-name{ font-size:16px; font-weight:600; margin:0 0 4px; }
+  .p-club{ font-family:var(--mono); font-size:11.5px; color:var(--steel-dim); margin:0 0 14px; }
+  .p-copy{ font-size:13.5px; line-height:1.65; color:var(--steel); margin:0; }
+
+  .p-card .favorite-btn,.match-feature .favorite-btn{margin-top:16px;font-family:var(--mono);}
+
+  .for-you{display:none;background:linear-gradient(135deg,rgba(42,94,255,.12),rgba(255,79,216,.05));}
+  .for-you.visible{display:block;}
+  .for-you-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;}
+  .for-you-card{padding:18px;border:1px solid var(--line);border-radius:var(--radius);background:rgba(255,255,255,.03);}
+  .for-you-card:hover{border-color:var(--steel-dim);}
+  .for-you-card small{display:block;color:var(--floodlight);font-family:var(--mono);font-size:10px;text-transform:uppercase;margin-bottom:8px;}
+  .for-you-card strong{display:block;font-size:15px;margin-bottom:5px;}
+  .for-you-card span{font-size:12px;color:var(--steel-dim);}
+
+  .data-grid{display:grid;grid-template-columns:1.2fr .8fr;gap:18px;}
+  .quick-fixtures{padding-top:34px;padding-bottom:40px;background:linear-gradient(180deg,#060a17,#081126);}
+  .quick-fixtures .match-centre-panel{box-shadow:0 28px 70px rgba(0,0,0,.3);}
+  .quick-fixtures .data-panel-head h3{font-size:clamp(22px,3vw,34px);}
+  #standings-section .data-grid{grid-template-columns:1fr;}
+  @media(max-width:780px){.data-grid{grid-template-columns:1fr;}}
+  .data-panel{border:1px solid var(--line);border-radius:var(--radius);background:var(--ink-2);overflow:hidden;}
+  .match-centre-panel{grid-column:1/-1;}
+  .data-panel-head{padding:18px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;align-items:center;}
+  .data-panel-head h3{margin:0;font-family:var(--display);font-size:24px;}
+  .sample-label{font-family:var(--mono);font-size:10px;color:var(--gold);border:1px solid rgba(217,180,106,.35);border-radius:999px;padding:5px 9px;}
+  .data-status{padding:10px 20px;border-bottom:1px solid var(--line);font-size:11px;color:var(--steel-dim);}
+  .fixture-controls{padding:16px 20px;border-bottom:1px solid var(--line);display:grid;gap:14px;}
+  .league-tabs,.fixture-mode-tabs,.fixture-filter-tabs,.fixture-status-tabs,.fixture-scope-tabs{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:2px;}
+  .league-tabs::-webkit-scrollbar,.fixture-filter-tabs::-webkit-scrollbar,.fixture-status-tabs::-webkit-scrollbar{display:none;}
+  .league-tab,.fixture-mode-tab,.fixture-filter-tab,.fixture-status-tab,.fixture-scope-tab{
+    flex:0 0 auto;border:1px solid var(--line);border-radius:999px;background:rgba(255,255,255,.025);
+    color:var(--steel-dim);padding:9px 14px;cursor:pointer;font-size:12px;font-weight:600;white-space:nowrap;
+  }
+  .league-tab[aria-pressed="true"],.fixture-mode-tab[aria-pressed="true"],.fixture-filter-tab[aria-pressed="true"],.fixture-status-tab[aria-pressed="true"],.fixture-scope-tab[aria-pressed="true"]{
+    color:#fff;background:var(--floodlight);border-color:var(--floodlight);box-shadow:0 8px 22px rgba(42,94,255,.28);
+  }
+  .fixture-primary-filters{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+  .fixture-mode-tabs{overflow:visible;}
+  .fixture-mode-tab{padding:7px 13px;}
+  .fixture-filter-tab{display:grid;gap:2px;text-align:center;min-width:62px;border-radius:12px;padding:8px 10px;}
+  .fixture-filter-tab small{font-family:var(--mono);font-size:9px;opacity:.72;}
+  .fixture-row,.standing-row{display:grid;align-items:center;gap:12px;padding:15px 20px;border-bottom:1px solid var(--line);}
+  .fixture-row{grid-template-columns:100px 1fr auto;width:100%;border:0;color:inherit;text-align:left;background:transparent;cursor:default;}
+  .fixture-row:hover{background:rgba(42,94,255,.08);}
+  .standing-row{grid-template-columns:28px 1fr 45px 45px;}
+  .fixture-row:last-child,.standing-row:last-child{border-bottom:0;}
+  .fixture-date,.fixture-comp{font-family:var(--mono);font-size:10px;color:var(--steel-dim);}
+  .fixture-teams{display:flex;align-items:center;gap:10px;font-weight:600;font-size:14px;}
+  .fixture-team{display:flex;align-items:center;gap:7px;min-width:0;}
+  .team-logo{width:28px;height:28px;object-fit:contain;flex:0 0 auto;filter:drop-shadow(0 4px 8px rgba(0,0,0,.3));}
+  .team-logo--small{width:22px;height:22px;}
+  .team-logo-fallback{width:28px;height:28px;border:1px solid var(--line);border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;background:var(--ink-3);font-family:var(--mono);font-size:9px;color:var(--steel);}
+  .standing-club{display:flex;align-items:center;gap:8px;min-width:0;}
+  .standing-club span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .player-profile{display:grid;grid-template-columns:auto 1fr;gap:22px;align-items:center;padding:24px;border:1px solid var(--line);border-radius:var(--radius);background:var(--ink-2);}
+  .player-profile .p-avatar{margin:0;width:88px;height:88px;font-size:26px;}
+  .player-photo{width:88px;height:88px;border-radius:50%;object-fit:cover;border:1px solid var(--line);background:var(--ink-3);}
+  .p-card .player-photo{width:64px;height:64px;margin:18px 0 16px;}
+  .player-media-source{display:inline-flex;margin:-8px 0 10px;font-family:var(--mono);font-size:9px;color:var(--gold);letter-spacing:.04em;}
+  .match-dialog{width:min(92vw,620px);max-height:86vh;padding:0;border:1px solid rgba(201,212,227,.2);border-radius:22px;background:#0a1328;color:var(--paper);box-shadow:0 28px 90px rgba(0,0,0,.65);}
+  .match-dialog::backdrop{background:rgba(2,5,13,.78);backdrop-filter:blur(5px);}
+  .match-dialog-head{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 20px;border-bottom:1px solid var(--line);}
+  .match-dialog-head strong{font:900 26px var(--display);}
+  .match-dialog-close{display:grid;place-items:center;width:38px;height:38px;border:1px solid var(--line);border-radius:50%;background:transparent;cursor:pointer;font-size:20px;}
+  .match-dialog-body{padding:24px 20px 26px;}
+  .match-dialog-meta{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:24px;color:var(--steel-dim);font:10px var(--mono);}
+  .match-dialog-teams{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:14px;text-align:center;}
+  .match-dialog-team{display:grid;justify-items:center;gap:10px;font-weight:700;min-width:0;}
+  .match-dialog-team .team-logo,.match-dialog-team .team-logo-fallback{width:64px;height:64px;}
+  .match-dialog-score{font:900 38px var(--display);}
+  .match-dialog-facts{display:grid;gap:10px;margin-top:26px;padding-top:20px;border-top:1px solid var(--line);}
+  .match-dialog-fact{display:grid;grid-template-columns:90px 1fr;gap:12px;font-size:13px;line-height:1.5;}
+  .match-dialog-fact span:first-child{color:var(--steel-dim);font:10px var(--mono);}
+  .match-dialog-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px;}
+  @media(max-width:560px){
+    .fixture-row{grid-template-columns:76px 1fr auto;padding:14px 12px;gap:8px;}
+    .fixture-teams{align-items:flex-start;flex-direction:column;gap:5px;}
+    .fixture-versus{display:none;}
+    .team-logo{width:24px;height:24px;}
+    .standing-row{grid-template-columns:24px minmax(0,1fr) 34px 34px;padding:13px 12px;gap:7px;}
+    .fixture-controls{padding:14px 12px;}
+    .fixture-primary-filters{align-items:flex-start;flex-direction:column;}
+    .fixture-status-tabs{width:100%;}
+    .league-tabs{display:grid;grid-template-columns:repeat(2,minmax(130px,1fr));overflow:visible;}
+    .quick-fixtures .league-tabs{display:flex;overflow-x:auto;scroll-snap-type:x proximity;}
+    .quick-fixtures .league-tab{scroll-snap-align:start;}
+    .league-tab{text-align:center;overflow:hidden;text-overflow:ellipsis;}
+    .match-dialog-teams{gap:8px;}
+    .match-dialog-team .team-logo,.match-dialog-team .team-logo-fallback{width:52px;height:52px;}
+  }
+  .stat-list{display:flex;flex-wrap:wrap;gap:16px;margin-top:14px;}
+  .stat{min-width:90px;}.stat strong{display:block;font-family:var(--display);font-size:26px;}.stat span{font-family:var(--mono);font-size:10px;color:var(--steel-dim);}
+
+  /* ---------- adopted prototype direction: A + B + C ---------- */
+  section.block.editorial-section{
+    background:#e9e6df;
+    color:#0b1120;
+    border-color:#bab8b1;
+  }
+  .editorial-issue{display:flex;align-items:center;justify-content:space-between;gap:18px;padding-bottom:14px;margin-bottom:28px;border-bottom:1px solid #0b1120;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;}
+  .editorial-issue span:last-child{color:#1458ff;}
+  .editorial-section .block-head{border-color:#a8a7a3;}
+  .editorial-section .block-title small{color:#1458ff;}
+  .editorial-section .block-title small::before{background:#1458ff;}
+  .editorial-section .see-all{color:#4b5361;}
+  .editorial-section .match-feature{
+    position:relative;
+    isolation:isolate;
+    color:#fff;
+    background:#071020;
+    padding:clamp(28px,5vw,54px);
+    border-radius:2px;
+    box-shadow:10px 10px 0 #1458ff;
+    overflow:hidden;
+  }
+  .editorial-section .match-feature::before{content:"";position:absolute;z-index:-1;inset:18% -20% -35%;background:conic-gradient(from 120deg,rgba(20,88,255,.9),transparent 25%,rgba(214,37,57,.72) 48%,transparent 70%,rgba(20,88,255,.78));filter:blur(8px);opacity:.55;transform:rotate(-8deg);}
+  .editorial-section .match-feature > *{position:relative;z-index:1;}
+  .editorial-section .comp-badge{color:#9db8ff;}
+  .editorial-section .match-headline{font-size:clamp(34px,6vw,62px);letter-spacing:-.025em;text-transform:none;}
+  .editorial-section .match-copy{color:#d3daea;}
+  .editorial-section .scoreboard{background:rgba(5,10,23,.72);border-color:rgba(255,255,255,.2);}
+  .editorial-section .sb-row + .sb-row{border-color:rgba(255,255,255,.14);}
+  .editorial-section .favorite-btn{border-color:rgba(255,255,255,.24);color:#fff;}
+
+  /* ---------- matchday-first homepage ---------- */
+  .matchday-home{
+    position:relative;
+    isolation:isolate;
+    padding:clamp(34px,5vw,68px) clamp(20px,5vw,64px) clamp(46px,6vw,78px);
+    overflow:hidden;
+    background:
+      radial-gradient(circle at 8% 0%,rgba(31,88,255,.25),transparent 34%),
+      radial-gradient(circle at 92% 12%,rgba(109,47,255,.16),transparent 30%),
+      linear-gradient(180deg,#070b16 0%,#080f20 74%,#071126 100%);
+  }
+  .matchday-home::before{
+    content:"";position:absolute;z-index:-1;inset:0;opacity:.24;pointer-events:none;
+    background-image:linear-gradient(rgba(126,157,227,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(126,157,227,.08) 1px,transparent 1px);
+    background-size:54px 54px;
+    mask-image:linear-gradient(to bottom,#000,transparent 72%);
+  }
+  .matchday-home::after{
+    content:"";position:absolute;z-index:-1;width:560px;height:560px;right:-300px;top:-320px;border:1px solid rgba(96,132,255,.25);border-radius:50%;box-shadow:0 0 0 72px rgba(48,93,255,.025),0 0 0 144px rgba(48,93,255,.02);
+  }
+  .matchday-shell{max-width:1180px;margin:0 auto;}
+  .matchday-intro{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:28px;}
+  .matchday-eyebrow{display:flex;align-items:center;gap:9px;margin-bottom:10px;font:600 10px var(--mono);letter-spacing:.22em;color:#7ea2ff;}
+  .matchday-eyebrow i,.matchday-list-head i{display:block;width:7px;height:7px;border-radius:50%;background:#2c72ff;box-shadow:0 0 18px #2c72ff;}
+  .matchday-intro h1{margin:0;font:900 clamp(42px,7vw,76px)/.94 var(--display);letter-spacing:-.045em;text-transform:uppercase;}
+  .matchday-intro p{max-width:600px;margin:14px 0 0;color:#96a6c5;font-size:13px;line-height:1.7;}
+  .matchday-intro .sample-label{align-self:flex-start;margin-top:4px;}
+  .matchday-board{overflow:hidden;border:1px solid rgba(121,151,218,.2);border-radius:28px;background:rgba(8,15,32,.84);box-shadow:0 34px 100px rgba(0,0,0,.38),inset 0 1px rgba(255,255,255,.035);backdrop-filter:blur(18px);}
+  .matchday-toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 20px 14px;}
+  .matchday-toolbar .fixture-mode-tabs{padding:4px;background:#050a16;border:1px solid rgba(123,150,211,.16);border-radius:999px;}
+  .matchday-toolbar .fixture-mode-tab{min-width:74px;border:0;padding:9px 16px;background:transparent;box-shadow:none;}
+  .matchday-toolbar .fixture-mode-tab[aria-pressed="true"]{background:#174fd2;box-shadow:0 8px 22px rgba(23,79,210,.3);}
+  .spoiler-toggle{display:flex;align-items:center;gap:9px;min-height:42px;padding:9px 14px;border:1px solid rgba(130,159,224,.22);border-radius:999px;background:rgba(255,255,255,.035);color:#c1cee6;cursor:pointer;font:600 11px var(--body);transition:.22s ease;}
+  .spoiler-toggle svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.6;}
+  .spoiler-toggle:hover{color:#fff;border-color:#5c89f5;background:rgba(42,94,255,.1);}
+  .spoiler-toggle[aria-pressed="true"]{color:#fff;background:#174fd2;border-color:#3474ff;box-shadow:0 8px 26px rgba(23,79,210,.32);}
+  .matchday-dates{display:grid;grid-template-columns:repeat(7,minmax(68px,1fr));gap:0;padding:0 14px;border-block:1px solid rgba(121,151,218,.14);}
+  .matchday-dates .fixture-filter-tab{position:relative;min-width:0;padding:15px 8px 16px;border:0;border-radius:0;background:transparent;box-shadow:none;color:#687894;}
+  .matchday-dates .fixture-filter-tab::after{content:"";position:absolute;left:26%;right:26%;bottom:-1px;height:2px;border-radius:4px;background:transparent;}
+  .matchday-dates .fixture-filter-tab[aria-pressed="true"]{color:#fff;background:linear-gradient(180deg,transparent,rgba(42,94,255,.08));box-shadow:none;}
+  .matchday-dates .fixture-filter-tab[aria-pressed="true"]::after{background:#3474ff;box-shadow:0 0 16px #3474ff;}
+  .matchday-dates .fixture-filter-tab small{font-size:9px;letter-spacing:.08em;text-transform:uppercase;}
+  .matchday-dates .fixture-filter-tab span{font:700 15px var(--body);}
+  .matchday-quicktools{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 20px;border-bottom:1px solid rgba(121,151,218,.14);}
+  .matchday-quicktools .fixture-scope-tabs{padding:0;}
+  .matchday-quicktools .fixture-scope-tab{padding:8px 12px;font-size:11px;}
+  .fixture-more-filters{position:relative;}
+  .fixture-more-filters summary{list-style:none;cursor:pointer;padding:8px 12px;border:1px solid rgba(130,159,224,.2);border-radius:999px;color:#91a2c2;font-size:11px;font-weight:600;}
+  .fixture-more-filters summary::-webkit-details-marker{display:none;}
+  .fixture-more-filters summary::after{content:" +";color:#7fa2fa;}
+  .fixture-more-filters[open] summary::after{content:" −";}
+  .fixture-more-panel{position:absolute;z-index:12;right:0;top:calc(100% + 10px);width:min(760px,calc(100vw - 52px));display:grid;gap:14px;padding:16px;border:1px solid rgba(130,159,224,.22);border-radius:18px;background:#0a142a;box-shadow:0 22px 70px rgba(0,0,0,.5);}
+  .fixture-more-panel .league-tabs{flex-wrap:wrap;overflow:visible;}
+  .matchday-list-head{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 20px 12px;color:#677896;font:9px var(--mono);letter-spacing:.08em;text-transform:uppercase;}
+  .matchday-list-head>div{display:flex;align-items:center;gap:9px;}
+  .matchday-list-head strong{color:#aebbd2;font-weight:500;}
+  .matchday-board>.data-status{padding:0 20px 14px;border:0;color:#61718e;font-size:10px;}
+  .matchday-board #fixture-list{display:grid;gap:16px;padding:0 10px 14px;}
+  .fixture-league-group{overflow:hidden;border:1px solid rgba(121,151,218,.15);border-radius:20px;background:#080f20;box-shadow:inset 0 1px rgba(255,255,255,.035);}
+  .fixture-league-heading{display:flex;align-items:center;gap:10px;margin:0;padding:14px 15px;border-bottom:1px solid rgba(121,151,218,.14);background:linear-gradient(90deg,rgba(42,94,255,.10),transparent 68%);color:#eef3ff;font:700 13px var(--body);}
+  .fixture-league-group--empty{border-color:rgba(121,151,218,.12);background:linear-gradient(105deg,rgba(15,29,57,.72),#080f20 70%);box-shadow:inset 0 1px rgba(255,255,255,.025);}
+  .fixture-league-group--empty .fixture-league-heading{min-height:58px;border-bottom:0;background:transparent;}
+  .fixture-league-heading-copy{display:grid;min-width:0;gap:3px;}
+  .fixture-league-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .fixture-league-country{color:#8191ad;font:500 8px var(--mono);letter-spacing:.08em;text-transform:uppercase;}
+  .fixture-league-heading .fixture-league-count{margin-left:auto;color:#8293b2;font:600 9px var(--mono);letter-spacing:.08em;}
+  .fixture-league-heading .fixture-league-empty-status{padding:5px 8px;border:1px solid rgba(126,157,220,.2);border-radius:999px;background:rgba(91,120,181,.08);color:#bfceeb;font-weight:700;}
+  .fixture-league-logo{width:28px;height:28px;object-fit:contain;flex:0 0 auto;filter:drop-shadow(0 2px 5px rgba(0,0,0,.28));}
+  .fixture-league-list{display:grid;gap:8px;padding:10px;}
+  .fixture-league-toggle{display:flex;align-items:center;justify-content:center;width:calc(100% - 20px);min-height:38px;margin:0 10px 10px;border:1px solid rgba(127,158,224,.22);border-radius:11px;background:rgba(44,80,146,.08);color:#b6c8ee;cursor:pointer;font:600 10px var(--mono);letter-spacing:.04em;transition:background .18s ease,border-color .18s ease,color .18s ease;}
+  .fixture-league-toggle:hover,.fixture-league-toggle:focus-visible{border-color:rgba(122,158,255,.68);background:rgba(42,94,255,.16);color:#fff;outline:0;}
+  .fixture-directory-toggle{display:flex;align-items:center;justify-content:center;width:100%;min-height:52px;border:1px solid rgba(126,159,232,.28);border-radius:16px;background:linear-gradient(110deg,rgba(24,58,127,.22),rgba(9,19,41,.78));color:#d9e5ff;cursor:pointer;font:600 11px var(--mono);letter-spacing:.07em;transition:background .18s ease,border-color .18s ease,transform .18s ease;}
+  .fixture-directory-toggle:hover,.fixture-directory-toggle:focus-visible{border-color:#5786f5;background:linear-gradient(110deg,rgba(36,88,194,.34),rgba(13,30,67,.88));transform:translateY(-1px);outline:0;}
+  .matchday-board .fixture-league-group .fixture-row{display:grid;grid-template-columns:minmax(0,1fr) 108px minmax(0,1fr);grid-template-areas:"home score away" "meta details details";align-items:center;gap:6px 18px;min-height:98px;padding:14px 16px 11px;border:1px solid transparent;border-radius:16px;background:linear-gradient(110deg,#0a1529,#070d1b) padding-box,linear-gradient(100deg,color-mix(in srgb,var(--home-team-color,#435778) 60%,#273b5b),rgba(108,134,184,.32) 50%,color-mix(in srgb,var(--away-team-color,#435778) 60%,#273b5b)) border-box;box-shadow:inset 0 1px rgba(255,255,255,.04),0 7px 18px rgba(0,0,0,.14);}
+  .matchday-board .fixture-league-group .fixture-row:hover{background:linear-gradient(110deg,#0d1c35,#080f20) padding-box,linear-gradient(100deg,var(--home-team-color,#597091),#b7c9f3 50%,var(--away-team-color,#597091)) border-box;box-shadow:inset 0 1px rgba(255,255,255,.07),0 10px 24px rgba(0,0,0,.24);}
+  .matchday-board .fixture-league-group .fixture-meta{grid-area:meta;align-self:end;color:#7788a5;}
+  .matchday-board .fixture-league-group .fixture-meta .fixture-date{color:#8d9db9;font:600 9px var(--mono);letter-spacing:.02em;}
+  .matchday-board .fixture-league-group .fixture-teams{display:contents;}
+  .matchday-board .fixture-league-group .fixture-team{display:flex;align-items:center;gap:9px;min-width:0;overflow:hidden;}
+  .matchday-board .fixture-league-group .fixture-team:first-child{grid-area:home;justify-content:flex-start;text-align:left;}
+  .matchday-board .fixture-league-group .fixture-team:last-child{grid-area:away;justify-content:flex-end;flex-direction:row-reverse;text-align:right;}
+  .fixture-team-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .matchday-board .fixture-league-group .fixture-team-name{color:#f3f6ff;font-weight:750;}
+  .matchday-board .fixture-league-group .team-logo,.matchday-board .fixture-league-group .team-logo-fallback{width:30px;height:30px;filter:drop-shadow(0 3px 6px rgba(0,0,0,.5));}
+  .fixture-team-score{display:none;}
+  .fixture-scoreboard{grid-area:score;display:flex;flex-direction:column;align-items:center;justify-content:center;justify-self:stretch;min-width:108px;min-height:52px;padding:0;border:0;border-radius:11px;color:#fff;background:transparent;font:900 28px/.92 var(--body);letter-spacing:-.06em;}
+  .fixture-scoreboard small{margin-top:5px;color:#9eabc4;font:700 8px var(--mono);letter-spacing:.08em;}
+  .fixture-reveal-action{cursor:pointer;transition:border-color .18s ease,background .18s ease,transform .18s ease;}
+  .fixture-reveal-action:hover,.fixture-reveal-action:focus-visible{border-color:rgba(185,207,255,.8);background:rgba(88,119,182,.16);transform:translateY(-1px);outline:0;}
+  .fixture-scoreboard-icon{display:none;width:15px;height:15px;fill:none;stroke:#c2d3f3;stroke-width:1.7;}
+  .fixture-scoreboard[data-result-hidden="true"]{flex-direction:row;gap:7px;min-height:44px;padding:0 10px;border:1px dashed rgba(157,181,233,.44);background:rgba(92,119,175,.10);font-family:var(--body);letter-spacing:0;}
+  .fixture-scoreboard[data-result-hidden="true"] .fixture-scoreboard-icon{display:block;margin:0;}
+  .fixture-scoreboard[data-result-hidden="true"] .fixture-scoreboard-value{font:700 11px/1.2 var(--body);white-space:nowrap;}
+  .fixture-detail-action{grid-area:details;display:inline-flex;align-items:center;justify-content:flex-end;justify-self:end;min-width:88px;min-height:38px;padding:8px 0 8px 14px;border:0;color:#aabce0;background:transparent;cursor:pointer;font:600 9px/1 var(--mono);letter-spacing:.05em;}
+  .fixture-detail-action:hover,.fixture-detail-action:focus-visible{color:#d9e5ff;text-decoration:underline;text-underline-offset:3px;outline:0;}
+  .match-dialog-score.is-hidden{font-size:14px;color:#8da0c2;border:1px dashed rgba(140,165,220,.35);border-radius:999px;padding:9px 13px;}
+  .goal-timeline{display:grid;gap:8px;margin-top:22px;padding-top:18px;border-top:1px solid var(--line);}
+  .goal-timeline h4{margin:0 0 4px;font:800 18px var(--display);letter-spacing:.02em;}
+  .goal-event{display:grid;grid-template-columns:50px minmax(0,1fr);gap:12px;align-items:center;padding:10px 12px;border:1px solid rgba(128,155,216,.14);border-radius:12px;background:rgba(255,255,255,.025);}
+  .goal-event time{color:#7da1ff;font:600 11px var(--mono);}
+  .goal-event strong{display:block;font-size:13px;}
+  .goal-event small{display:block;margin-top:3px;color:#71819c;font-size:10px;}
+  .goal-empty{color:#71819c;font-size:12px;line-height:1.6;}
+
+  @media(max-width:640px){
+    .matchday-home{padding:30px 14px 46px;}
+    .matchday-intro{align-items:flex-start;margin-bottom:22px;}
+    .matchday-intro h1{font-size:42px;}
+    .matchday-intro p{font-size:12px;margin-top:10px;}
+    .matchday-intro .sample-label{display:none;}
+    .matchday-board{border-radius:22px;}
+    .matchday-toolbar{padding:14px;}
+    .matchday-toolbar .fixture-mode-tab{min-width:62px;padding:8px 12px;}
+    .spoiler-toggle{min-height:40px;padding:8px 11px;}
+    .matchday-dates{display:flex;overflow-x:auto;padding:0 8px;scrollbar-width:none;}
+    .matchday-dates .fixture-filter-tab{min-width:72px;padding:13px 7px 14px;}
+    .matchday-quicktools{padding:12px 14px;}
+    .matchday-quicktools .fixture-scope-tab{padding:7px 10px;font-size:10px;}
+    .fixture-more-panel{right:-2px;width:calc(100vw - 40px);}
+    .fixture-more-panel .league-tabs{display:flex;flex-wrap:nowrap;overflow-x:auto;}
+    .matchday-list-head{padding:15px 13px 10px;}
+    .matchday-list-head>span{display:none;}
+    .matchday-board>.data-status{padding:0 13px 12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .matchday-board #fixture-list{gap:12px;padding:0 7px 10px;}
+    .fixture-league-group{border-radius:16px;}
+    .fixture-league-heading{gap:8px;padding:12px;font-size:12px;}
+    .fixture-league-group--empty .fixture-league-heading{min-height:52px;}
+    .fixture-league-logo{width:25px;height:25px;}
+    .fixture-league-list{padding:8px;}
+    .fixture-league-country{font-size:7px;}
+    .fixture-league-toggle{width:calc(100% - 16px);min-height:36px;margin:0 8px 8px;font-size:9px;}
+    .fixture-directory-toggle{min-height:48px;border-radius:14px;font-size:10px;}
+    .matchday-board .fixture-league-group .fixture-row{grid-template-columns:minmax(0,1fr) 92px minmax(0,1fr);gap:5px 9px;min-height:86px;padding:11px 10px 9px;border-radius:13px;}
+    .matchday-board .fixture-league-group .fixture-team{gap:6px;font-size:11px;}
+    .matchday-board .fixture-league-group .team-logo,.matchday-board .fixture-league-group .team-logo-fallback{width:26px;height:26px;}
+    .fixture-scoreboard{min-width:92px;font-size:24px;}
+    .fixture-scoreboard[data-result-hidden="true"]{min-height:40px;padding:0 6px;gap:5px;}
+    .fixture-detail-action{min-width:82px;min-height:36px;font-size:8px;}
+    .editorial-issue{margin-bottom:22px;}
+    section.block.editorial-section{padding:42px 20px 54px;}
+    .editorial-section .block-head{margin-bottom:24px;}
+    .editorial-section .match-feature{padding:30px 22px 34px;box-shadow:7px 8px 0 #1458ff;gap:28px;}
+    .editorial-section .match-headline{font-size:38px;}
+  }
+
+  .reveal{ opacity:0; transform:translateY(18px); transition:opacity .7s ease, transform .7s ease; }
+  .reveal.in{ opacity:1; transform:translateY(0); }
+
+  footer{
+    padding:48px clamp(20px,5vw,64px) 64px;
+    display:flex; justify-content:space-between; align-items:center;
+    flex-wrap:wrap; gap:16px;
+    font-family:var(--mono); font-size:11.5px; color:var(--steel-dim);
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a class="wordmark" href="/" aria-label="AM4 ホーム">
+    <img src="/am4-logo.png" alt="AM4">
+    <small>Soccer&nbsp;Media</small>
+  </a>
+  <div class="lang">日本語</div>
+</div>
+
+<main>
+<section class="block quick-fixtures matchday-home" id="fixtures" aria-labelledby="today-fixtures-title">
+  <div class="matchday-shell">
+    <div class="matchday-intro">
+      <div>
+        <span class="matchday-eyebrow"><i></i> AM4 MATCH CENTRE</span>
+        <h1 id="today-fixtures-title">今日、何を見る？</h1>
+        <p>世界の試合を日本時間で。リーグごとのスケジュールを、ひと目で追える。</p>
+      </div>
+      <span class="sample-label" id="fixtures-source">読み込み中</span>
+    </div>
+
+    <div class="matchday-board">
+      <div class="matchday-toolbar">
+        <div class="fixture-mode-tabs" aria-label="表示方法を選択">
+          <button class="fixture-mode-tab" type="button" data-fixture-mode="date" aria-pressed="true">日別</button>
+          <button class="fixture-mode-tab" type="button" data-fixture-mode="round" aria-pressed="false">節別</button>
+        </div>
+        <button class="spoiler-toggle" id="spoiler-toggle" type="button" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.5"/></svg>
+          <span>結果を表示</span>
+        </button>
+      </div>
+
+      <div class="fixture-filter-tabs matchday-dates" id="fixture-filters" aria-label="日付または節を選択"></div>
+
+      <div class="matchday-quicktools">
+        <div class="fixture-scope-tabs" aria-label="表示する試合を選択">
+          <button class="fixture-scope-tab" type="button" data-fixture-scope="all" aria-pressed="true">すべて</button>
+          <button class="fixture-scope-tab" type="button" data-fixture-scope="favorites" aria-pressed="false">お気に入り</button>
+        </div>
+        <details class="fixture-more-filters">
+          <summary>絞り込み</summary>
+          <div class="fixture-more-panel">
+            <div class="league-tabs" id="fixture-leagues" aria-label="大会を選択">
+              <button class="league-tab" type="button" data-league="すべて" aria-pressed="true">すべて</button>
+              <button class="league-tab" type="button" data-league="プレミアリーグ" aria-pressed="false">Premier League</button>
+              <button class="league-tab" type="button" data-league="ラ・リーガ" aria-pressed="false">La Liga</button>
+              <button class="league-tab" type="button" data-league="セリエA" aria-pressed="false">Serie A</button>
+              <button class="league-tab" type="button" data-league="ブンデスリーガ" aria-pressed="false">Bundesliga</button>
+              <button class="league-tab" type="button" data-league="リーグ・アン" aria-pressed="false">Ligue 1</button>
+              <button class="league-tab" type="button" data-league="チャンピオンズリーグ" aria-pressed="false">Champions League</button>
+              <button class="league-tab" type="button" data-league="クラブ親善試合" aria-pressed="false">Club Friendlies</button>
+            </div>
+            <div class="fixture-primary-filters">
+              <div class="fixture-status-tabs" aria-label="試合状況を選択">
+                <button class="fixture-status-tab" type="button" data-fixture-status="all" aria-pressed="true">すべて</button>
+                <button class="fixture-status-tab" type="button" data-fixture-status="live" aria-pressed="false">ライブ</button>
+                <button class="fixture-status-tab" type="button" data-fixture-status="upcoming" aria-pressed="false">このあと</button>
+                <button class="fixture-status-tab" type="button" data-fixture-status="finished" aria-pressed="false">終了</button>
+              </div>
+            </div>
+          </div>
+        </details>
+      </div>
+
+      <div class="matchday-list-head">
+        <div><i></i><span>JST</span><strong id="fixture-order-label">大会ごとに時間順</strong></div>
+        <span>結果は初期状態で非表示</span>
+      </div>
+      <div class="data-status" id="fixtures-status" aria-live="polite">今日の全大会を読み込んでいます</div>
+      <div id="fixture-list"></div>
+    </div>
+  </div>
+</section>
+
+<section class="block for-you" id="for-you" aria-labelledby="for-you-title">
+  <div class="block-head">
+    <h2 class="block-title" id="for-you-title"><small>Your Football</small>For You</h2>
+    <span class="see-all" id="favorite-count"></span>
+  </div>
+  <div class="for-you-grid" id="for-you-grid"></div>
+</section>
+
+<div class="tagnav-wrap">
+  <nav class="tagnav">
+    <a class="tag active" href="#transfer">移籍速報</a>
+    <a class="tag" href="#matches">試合解説</a>
+    <a class="tag" href="#players">選手紹介</a>
+    <a class="tag" href="#fixtures">試合日程</a>
+    <a class="tag" href="#standings">順位表</a>
+  </nav>
+</div>
+
+<section class="block editorial-section" id="lead-story" aria-labelledby="lead-story-title">
+  <div class="editorial-issue"><span>Some Moments Matter More.</span><span>Issue 001 · Cover Story</span></div>
+  <div class="block-head">
+    <h2 class="block-title" id="lead-story-title"><small>Cover Story</small>今週見るべき若手</h2>
+    <span class="see-all">約8分で読めます</span>
+  </div>
+  <div class="match-feature reveal">
+    <div>
+      <div class="comp-badge">AM4 Selection · Rising</div>
+      <h3 class="match-headline">Jorrel Hato<br>静かな18歳が選んだ次の一歩</h3>
+      <p class="match-copy">数字だけでは見えない決断の背景を、プレースタイルと歩んできた道から読み解く。AM4が今週届ける選手ストーリー。</p>
+      <a class="read-link" href="/article.html?id=jorrel-hato-next-step">選手データと物語を読む →</a>
+      <button class="favorite-btn" type="button" data-favorite-type="articles" data-favorite-id="jorrel-hato-next-step" data-favorite-label="Jorrel Hato — 静かな18歳が選んだ次の一歩" data-favorite-detail="選手データと物語を読む" data-favorite-href="/article.html?id=jorrel-hato-next-step">記事を保存</button>
+    </div>
+    <div class="scoreboard" aria-label="記事の要点">
+      <div class="sb-row"><span class="sb-club">18歳</span><span class="sb-score">DF</span></div>
+      <div class="sb-row"><span class="sb-club">Chelsea</span><span class="sb-score">Rising</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="transfer">
+  <div class="block-head">
+    <h2 class="block-title"><small>Transfer Wire</small>移籍速報</h2>
+    <span class="see-all">速報一覧は次の更新で追加</span>
+  </div>
+  <div class="transfer-grid">
+    <div class="t-card reveal">
+      <div class="t-meta"><span class="badge">Romano</span>08.03 08:17</div>
+      <div class="club-route">
+        <div class="crest a">NEW</div>
+        <span class="route-arrow">→</span>
+        <div class="crest b">ARS</div>
+      </div>
+      <p class="t-title">Guimarães、Arsenal と Newcastle が交渉活発化</p>
+    </div>
+    <div class="t-card reveal">
+      <div class="t-meta"><span class="badge">Romano</span>08.03 08:17</div>
+      <div class="club-route">
+        <div class="crest c">CHE</div>
+        <span class="route-arrow">→</span>
+        <div class="crest a">MUN</div>
+      </div>
+      <p class="t-title">Hall、Man Utd 移籍を内部承認と Romano</p>
+    </div>
+    <div class="t-card reveal">
+      <div class="t-meta"><span class="badge">Romano</span>08.03 08:17</div>
+      <div class="club-route">
+        <div class="crest d">LEI</div>
+        <span class="route-arrow">→</span>
+        <div class="crest b">RMA</div>
+      </div>
+      <p class="t-title">Diomande、Real Madrid 移籍で合意と Romano</p>
+    </div>
+  </div>
+</section>
+
+<section class="block editorial-section" id="matches">
+  <div class="editorial-issue"><span>Read / Watch / Follow</span><span>Issue 002 · Match Report</span></div>
+  <div class="block-head">
+    <h2 class="block-title"><small>Match Report</small>試合解説</h2>
+    <span class="see-all">AM4編集部</span>
+  </div>
+  <div class="match-feature reveal">
+    <div>
+      <div class="comp-badge">Premier League · 第32節</div>
+      <h3 class="match-headline">Mainooの劇的弾で<br>Old Traffordが歓喜</h3>
+      <p class="match-copy">終盤に生まれた一撃が、拮抗した90分を決着させた——スタッツが物語る、勝敗の分岐点を読み解く。</p>
+      <a class="read-link" href="/article.html?id=mainoo-old-trafford">全文を読む · 約2,200字 →</a>
+      <button class="favorite-btn" type="button" data-favorite-type="articles" data-favorite-id="mainoo-old-trafford" data-favorite-label="Mainooの劇的弾" data-favorite-detail="試合解説をもう一度読む" data-favorite-href="/article.html?id=mainoo-old-trafford">記事を保存</button>
+    </div>
+    <div class="scoreboard">
+      <div class="sb-row">
+        <div class="sb-club"><div class="crest a" style="width:28px;height:28px;font-size:10px;">MUN</div>Manchester United</div>
+        <div class="sb-score">3</div>
+      </div>
+      <div class="sb-row">
+        <div class="sb-club"><div class="crest b" style="width:28px;height:28px;font-size:10px;">LIV</div>Liverpool</div>
+        <div class="sb-score">2</div>
+      </div>
+      <button class="favorite-btn" type="button" data-favorite-type="clubs" data-favorite-id="manchester-united" data-favorite-label="Manchester United" data-favorite-detail="次戦と関連記事を見る" data-favorite-href="#matches">クラブを保存</button>
+      <button class="favorite-btn" type="button" data-favorite-type="clubs" data-favorite-id="liverpool" data-favorite-label="Liverpool" data-favorite-detail="次戦と関連記事を見る" data-favorite-href="#matches">クラブを保存</button>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="players">
+  <div class="block-head">
+    <h2 class="block-title"><small>Rising</small>選手紹介</h2>
+    <span class="see-all">注目の若手</span>
+  </div>
+  <div class="player-grid">
+    <div class="p-card reveal">
+      <div class="p-flag"></div>
+      <div class="p-avatar" data-player-photo="jorrel-hato">JH</div>
+      <span class="player-media-source" data-player-media-source="jorrel-hato">SAMPLE FALLBACK</span>
+      <p class="p-name">J. Hato</p>
+      <p class="p-club">Chelsea</p>
+      <p class="p-copy">ロッテルダム生まれの若きディフェンダー、新天地でのプレシーズンに見せた確かな一歩。</p>
+      <button class="favorite-btn" type="button" data-favorite-type="players" data-favorite-id="j-hato" data-favorite-label="J. Hato" data-favorite-detail="プロフィールと最新ストーリーを見る" data-favorite-href="#players">選手を保存</button>
+    </div>
+    <div class="p-card reveal">
+      <div class="p-flag"></div>
+      <div class="p-avatar" data-player-photo="stephen-mfuni">SM</div>
+      <span class="player-media-source" data-player-media-source="stephen-mfuni">SAMPLE FALLBACK</span>
+      <p class="p-name">S. Mfuni</p>
+      <p class="p-club">Manchester City</p>
+      <p class="p-copy">ウィガン出身の18歳DF、シティのアカデミーから国際親善試合のピッチへ。</p>
+      <button class="favorite-btn" type="button" data-favorite-type="players" data-favorite-id="s-mfuni" data-favorite-label="S. Mfuni" data-favorite-detail="プロフィールと最新ストーリーを見る" data-favorite-href="#players">選手を保存</button>
+    </div>
+  </div>
+  <div class="player-profile reveal" id="player-profile" style="margin-top:18px"></div>
+</section>
+
+<section class="block" id="standings-section">
+  <div class="block-head">
+    <h2 class="block-title"><small>Standings</small>順位表</h2>
+    <span class="see-all">リーグの現在地</span>
+  </div>
+  <div class="data-grid standings-grid">
+    <div class="data-panel reveal" id="standings">
+      <div class="data-panel-head"><h3>Premier League</h3><span class="sample-label" id="standings-source">読み込み中</span></div>
+      <div class="data-status" id="standings-status" aria-live="polite">最新情報を読み込んでいます</div>
+      <div id="standing-list"></div>
+    </div>
+  </div>
+</section>
+<dialog class="match-dialog" id="match-detail-dialog" aria-labelledby="match-detail-title">
+  <div class="match-dialog-head"><strong id="match-detail-title">試合詳細</strong><button class="match-dialog-close" type="button" aria-label="閉じる">×</button></div>
+  <div class="match-dialog-body" id="match-detail-body"></div>
+</dialog>
+</main>
+
+<footer>
+  <div>© AM4 — Soccer Media</div>
+  <div>matchday first / v0.5</div>
+</footer>
+
+<script src="favorites.js"></script>
+<script src="site-config.js"></script>
+<script src="football-data.js?v=20260830-elite"></script>
+<script src="sample-football-data.js"></script>
+<script src="match-centre.js?v=20260830-elite"></script>
+<script>
+  // Existing AM4 Vercel API, with an explicit sample fallback.
+  (async function(){
+    const sample = AM4SampleFootballData;
+    const apiBase = AM4SiteConfig.resolveApiBase(window.location.hostname);
+    const client = AM4FootballData.createClient(fetch, apiBase);
+    const standingsNode = document.getElementById('standing-list');
+    const profile = document.getElementById('player-profile');
+    const standingsSource = document.getElementById('standings-source');
+    const standingsStatus = document.getElementById('standings-status');
+    const updatedAt = () => new Intl.DateTimeFormat('ja-JP', { hour:'2-digit', minute:'2-digit' }).format(new Date());
+    const matchCentre = AM4MatchCentre.create({ client, teamLogo, updatedAt, fallbackFixtures:sample.fixtures });
+    window.AM4LiveContext = { fixtures: [], playerPhotoVerified: false };
+    const FEATURED_PLAYERS = {
+      hato: { search:'Hato', fullName:'Jorrel Hato', providerId:341642 },
+      mfuni: { search:'Mfuni', fullName:'Stephen Mfuni' }
+    };
+    const TEAM_MEDIA = {
+      MUN:{ id:33, name:'Manchester United' }, LIV:{ id:40, name:'Liverpool' },
+      MCI:{ id:50, name:'Manchester City' }, RMA:{ id:541, name:'Real Madrid' },
+      NEW:{ id:34, name:'Newcastle United' }, ARS:{ id:42, name:'Arsenal' },
+      CHE:{ id:49, name:'Chelsea' }, LEI:{ id:46, name:'Leicester City' }
+    };
+    function initials(name){
+      return String(name || '').split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase();
+    }
+
+    function teamLogo(name, logo, small = false){
+      if (!logo) {
+        const fallback = document.createElement('span');
+        fallback.className = 'team-logo-fallback';
+        fallback.textContent = initials(name);
+        fallback.setAttribute('aria-hidden', 'true');
+        return fallback;
+      }
+      const image = document.createElement('img');
+      image.className = `team-logo${small ? ' team-logo--small' : ''}`;
+      image.src = logo;
+      image.alt = `${name}のクラブロゴ`;
+      image.loading = 'lazy';
+      image.addEventListener('error', () => image.replaceWith(teamLogo(name, null, small)), { once:true });
+      return image;
+    }
+
+    function renderCrest(crest, { name, logo, fallback = initials(name) }){
+      if (!crest) return;
+      if (!logo) {
+        crest.classList.remove('has-api-logo');
+        crest.textContent = fallback;
+        crest.title = 'SAMPLE FALLBACK';
+        return;
+      }
+      const image = document.createElement('img');
+      image.className = 'crest-logo'; image.src = logo; image.alt = `${name}のクラブロゴ`; image.loading = 'lazy';
+      image.addEventListener('error', () => renderCrest(crest, { name, logo:null, fallback }), { once:true });
+      crest.classList.add('has-api-logo'); crest.removeAttribute('title'); crest.replaceChildren(image);
+    }
+
+    function enhanceStaticCrests(){
+      document.querySelectorAll('.crest').forEach((crest) => {
+        const abbreviation = crest.textContent.trim();
+        const team = TEAM_MEDIA[abbreviation];
+        if (!team) return;
+        renderCrest(crest, {
+          name:team.name,
+          logo:`https://media.api-sports.io/football/teams/${team.id}.png`,
+          fallback:abbreviation
+        });
+      });
+    }
+
+    function renderStandings(items){
+      standingsNode.replaceChildren();
+      items.forEach((club) => {
+      const row = document.createElement('div');
+      row.className = 'standing-row';
+      row.innerHTML = '<strong></strong><span></span><span class="fixture-comp">試合</span><span class="fixture-comp">勝点</span>';
+      row.children[0].textContent = club.rank || club.position;
+      const clubCell = document.createElement('span');
+      clubCell.className = 'standing-club';
+      clubCell.append(teamLogo(club.club, club.logo, true));
+      const clubName = document.createElement('span'); clubName.textContent = club.club;
+      clubCell.append(clubName);
+      row.children[1].replaceWith(clubCell);
+      row.children[2].textContent = club.played;
+      row.children[3].textContent = club.points;
+      standingsNode.append(row);
+      });
+    }
+
+    function renderPlayer(player, photo, photoSource){
+    profile.innerHTML = '<div class="p-avatar">JH</div><div><span class="sample-label"></span><h3 class="match-headline" style="margin-top:12px"></h3><p class="p-club"></p><div class="stat-list"></div><p class="fixture-comp"></p></div>';
+    if (photo) {
+      const placeholder = profile.firstElementChild;
+      const image = createPlayerPhoto(player.name, photo, () => {
+        image.replaceWith(placeholder);
+        profile.querySelector('.sample-label').textContent = 'SAMPLE DATA';
+        profile.querySelector('.fixture-comp:last-child').textContent = player.note;
+      });
+      profile.firstElementChild.replaceWith(image);
+    }
+
+    profile.querySelector('.sample-label').textContent = photo ? 'SAMPLE STATS · PHOTO' : 'SAMPLE DATA';
+    profile.querySelector('h3').textContent = player.name;
+    profile.querySelector('.p-club').textContent = `${player.club} · ${player.position} · ${player.age}歳`;
+    const stats = [['出場', player.appearances], ['出場時間', player.minutes], ['パス成功率', player.passAccuracy]];
+    const statList = profile.querySelector('.stat-list');
+    stats.forEach(([label, value]) => {
+      const stat = document.createElement('div'); stat.className = 'stat';
+      stat.innerHTML = '<strong></strong><span></span>';
+      stat.children[0].textContent = value; stat.children[1].textContent = label; statList.append(stat);
+    });
+    profile.querySelector('.fixture-comp:last-child').textContent = photo ? `成績はサンプルです。写真のみ${photoSource}から取得しています。` : player.note;
+    }
+
+    function createPlayerPhoto(name, photo, onError){
+      const image = document.createElement('img');
+      image.className = 'player-photo'; image.src = photo; image.alt = `${name}のプロフィール写真`; image.loading = 'lazy';
+      image.addEventListener('error', onError, { once:true });
+      return image;
+    }
+
+    function renderPlayerCardPhoto(target, player, photoResult){
+      if (photoResult.status !== 'fulfilled' || !photoResult.value.photo || !AM4FootballData.isMatchingPlayerName(photoResult.value.name, player.name)) return false;
+      const placeholder = document.querySelector(`[data-player-photo="${target}"]`);
+      if (!placeholder) return false;
+      const source = document.querySelector(`[data-player-media-source="${target}"]`);
+      const image = createPlayerPhoto(player.name, photoResult.value.photo, () => {
+        image.replaceWith(placeholder);
+        if (source) { source.hidden = false; source.textContent = 'SAMPLE FALLBACK'; }
+      });
+      placeholder.replaceWith(image);
+      if (source) source.hidden = true;
+      return true;
+    }
+
+    enhanceStaticCrests();
+    renderStandings(sample.standings); renderPlayer(sample.player, null, null);
+    const todayKey = AM4FootballData.tokyoDateKey(new Date());
+    const todayParts = todayKey.split('-').map(Number);
+    const currentSeason = todayParts[1] >= 7 ? todayParts[0] : todayParts[0] - 1;
+    // The matchday board is the homepage priority. Do not keep it on the
+    // static sample while unrelated standings and player-photo requests finish.
+    const dailyResultPromise = client.dailyFixtures(todayKey);
+    const supportingDataPromise = Promise.allSettled([
+      client.standings(currentSeason),
+      client.playerPhoto(FEATURED_PLAYERS.hato),
+      client.playerPhoto(FEATURED_PLAYERS.mfuni)
+    ]);
+    const dailyResult = await dailyResultPromise.then(
+      (value) => ({ status: 'fulfilled', value }),
+      (reason) => ({ status: 'rejected', reason })
+    );
+
+    const dailyDataIsValid = dailyResult.status === 'fulfilled' &&
+      Array.isArray(dailyResult.value.fixtures) &&
+      !(dailyResult.value.errors && Object.keys(dailyResult.value.errors).length);
+    if (dailyDataIsValid) {
+      matchCentre.useDailyData(todayKey, dailyResult.value);
+      window.AM4LiveContext.fixtures = dailyResult.value.fixtures;
+    } else {
+      matchCentre.showDailyUnavailable(todayKey);
+      if (dailyResult.status === 'rejected') console.warn('Daily fixture API unavailable.', dailyResult.reason);
+    }
+
+    const [standingResult, photoResult, mfuniPhotoResult] = await supportingDataPromise;
+
+    const premierLeague = standingResult.status === 'fulfilled' ? standingResult.value.leagues?.['プレミアリーグ'] : null;
+    if (premierLeague?.length) {
+      renderStandings(premierLeague.slice(0, 5));
+      standingsSource.hidden = true;
+      standingsStatus.textContent = `${currentSeason}-${String(currentSeason + 1).slice(-2)}シーズン · ${updatedAt()}更新`;
+    } else {
+      standingsSource.hidden = false;
+      standingsSource.textContent = 'SAMPLE FALLBACK';
+      const providerError = standingResult.status === 'fulfilled' && standingResult.value.errors;
+      standingsStatus.textContent = providerError ? 'API応答エラーのためサンプルを表示しています' : '実データが未公開のためサンプルを表示しています';
+      if (standingResult.status === 'rejected') console.warn('Standings API unavailable.', standingResult.reason);
+      if (standingResult.status === 'rejected') standingsStatus.textContent = 'APIへ接続できないためサンプルを表示しています';
+    }
+
+    if (photoResult.status === 'fulfilled' && photoResult.value.photo && AM4FootballData.isMatchingPlayerName(photoResult.value.name, sample.player.name)) {
+      renderPlayer(sample.player, photoResult.value.photo, '選手データ');
+      window.AM4LiveContext.playerPhotoVerified = true;
+    } else if (photoResult.status === 'fulfilled' && photoResult.value.photo) {
+      console.warn('Player photo rejected because the returned name did not match.', { expected: sample.player.name, actual: photoResult.value.name });
+    } else if (photoResult.status === 'rejected') {
+      console.warn('Player photo API unavailable.', photoResult.reason);
+    }
+    renderPlayerCardPhoto('jorrel-hato', { name:'Jorrel Hato' }, photoResult);
+    renderPlayerCardPhoto('stephen-mfuni', { name:'Stephen Mfuni' }, mfuniPhotoResult);
+    document.dispatchEvent(new CustomEvent('am4:data-ready'));
+  })();
+
+  // local favourites and the returning-visitor For You area
+  (function(){
+    const catalog = {};
+    const favoritePresentation = {
+      clubs: { noun: 'クラブ', kind: 'Favourite club' },
+      players: { noun: '選手', kind: 'Favourite player' },
+      articles: { noun: '記事', kind: 'Saved story' },
+    };
+    function rememberFavorite(button){
+      const type = button.dataset.favoriteType;
+      const id = button.dataset.favoriteId;
+      catalog[`${type}:${id}`] = {
+        type,
+        id,
+        label: button.dataset.favoriteLabel || id,
+        detail: button.dataset.favoriteDetail || '最新情報を見る',
+        href: button.dataset.favoriteHref || '#fixtures',
+      };
+    }
+    document.querySelectorAll('[data-favorite-type]').forEach(rememberFavorite);
+
+    const section = document.getElementById('for-you');
+    const grid = document.getElementById('for-you-grid');
+    const countLabel = document.getElementById('favorite-count');
+
+    function liveDetail(item){
+      if (item.type === 'clubs') {
+        const match = AM4FootballData.selectRelevantFixtures(window.AM4LiveContext?.fixtures || [], Date.now(), 20)
+          .find((fixture) => fixture.home === item.label || fixture.away === item.label);
+        if (match) {
+          const opponent = match.home === item.label ? match.away : match.home;
+          const kickoff = new Intl.DateTimeFormat('ja-JP', { timeZone:'Asia/Tokyo', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }).format(new Date(match.kickoff));
+          return `次戦 ${kickoff} JST vs ${opponent}`;
+        }
+      }
+      if (item.type === 'players' && window.AM4LiveContext?.playerPhotoVerified) return 'APIプロフィール写真と最新ストーリーを見る';
+      return item.detail;
+    }
+
+    function render(){
+      const saved = AM4Favorites.read(localStorage);
+      const validItems = ['clubs', 'players', 'articles'].flatMap((type) =>
+        saved[type].map((id) => catalog[`${type}:${id}`]).filter(Boolean)
+      );
+      const count = validItems.length;
+      document.querySelectorAll('[data-favorite-type]').forEach((button) => {
+        const selected = AM4Favorites.has(saved, button.dataset.favoriteType, button.dataset.favoriteId);
+        button.setAttribute('aria-pressed', String(selected));
+        const noun = favoritePresentation[button.dataset.favoriteType].noun;
+        button.textContent = selected ? `${noun}を保存済み` : `${noun}を保存`;
+      });
+
+      section.classList.toggle('visible', count > 0);
+      countLabel.textContent = count ? `${count}件のお気に入り` : '';
+      grid.replaceChildren();
+      validItems.forEach((item) => {
+          const card = document.createElement('a');
+          card.className = 'for-you-card';
+          card.href = item.href;
+          const kind = favoritePresentation[item.type].kind;
+          card.innerHTML = `<small>${kind}</small><strong></strong><span></span>`;
+          card.querySelector('strong').textContent = item.label;
+          card.querySelector('span').textContent = liveDetail(item);
+          grid.append(card);
+      });
+    }
+
+    document.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-favorite-type]');
+      if (!button) return;
+      rememberFavorite(button);
+      AM4Favorites.toggle(localStorage, button.dataset.favoriteType, button.dataset.favoriteId);
+      render();
+      document.dispatchEvent(new CustomEvent('am4:favorites-changed'));
+    });
+    document.addEventListener('am4:data-ready', render);
+    render();
+  })();
+
+  // scroll-reveal
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    document.querySelectorAll('.reveal').forEach(el => el.classList.add('in'));
+  } else {
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          e.target.classList.add('in');
+          io.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.15 });
+    document.querySelectorAll('.reveal').forEach((el, i) => {
+      el.style.transitionDelay = (i % 4) * 70 + 'ms';
+      io.observe(el);
+    });
+  }
+
+  // tag nav active state on click (visual only, demo)
+  document.querySelectorAll('.tag').forEach(tag => {
+    tag.addEventListener('click', () => {
+      document.querySelectorAll('.tag').forEach(t => t.classList.remove('active'));
+      tag.classList.add('active');
+    });
+  });
+
+</script>
+
+</body>
+</html>

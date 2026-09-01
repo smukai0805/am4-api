@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>試合詳細｜AM4</title>
+  <meta name="description" content="AM4の試合詳細。イベント、ラインナップ、スタッツを表示します。">
+  <meta name="theme-color" content="#060a17">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;700;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+JP:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/brand.css">
+</head>
+<body class="match-page">
+  <header class="brand-topbar">
+    <a class="brand-wordmark" href="/" aria-label="AM4 ホームへ"><img src="/am4-logo.png" alt="AM4"><small>Soccer Media</small></a>
+    <span class="brand-pill">Match Centre</span>
+  </header>
+  <main class="match-shell" id="match-page" aria-live="polite">
+    <a class="match-back" href="/#fixtures">試合一覧へ戻る</a>
+    <div class="match-page-state"><h1>試合情報を読み込み中</h1><p>試合の詳細を準備しています。</p></div>
+  </main>
+  <footer class="brand-footer"><span>© AM4 — Soccer Media</span><span>Editorial Match OS</span></footer>
+  <script src="/favorites.js"></script>
+  <script src="/site-config.js"></script>
+  <script src="/football-data.js"></script>
+  <script src="/match-detail.js"></script>
+</body>
+</html>
