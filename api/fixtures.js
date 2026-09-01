@@ -184,6 +184,7 @@ function simplifyFixture(f, competition, includeProviderRound = false) {
     date: (f.fixture.date || '').slice(0, 10),
     kickoff: f.fixture.date || null,
     competition,
+    competitionId: nullableNumber(f.league?.id),
     competitionLogo: f.league?.logo || null,
     competitionCountry: f.league?.country || null,
     roundKey: roundInfo?.key || null,

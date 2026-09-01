@@ -8,6 +8,22 @@
   const LEAGUE_PREVIEW_LIMIT = 4;
   const LEAGUE_GROUP_PREVIEW_LIMIT = 6;
   const LEAGUE_GROUP_BATCH_SIZE = 6;
+  // 日別の「すべて」はクラブではなく大会単位で案内する。まず5大リーグを
+  // 固定し、その後は主要国内リーグの編集順を使う。未登録の大会は開始時刻順。
+  const COMPETITION_DISPLAY_ORDER = new Map([
+    [39, 1], [140, 2], [135, 3], [78, 4], [61, 5],
+    [88, 6], [94, 7], [144, 8], [179, 9], [203, 10],
+    [218, 11], [207, 12], [119, 13], [113, 14], [103, 15],
+    [106, 16], [332, 17], [345, 18], [71, 19], [128, 20],
+    [253, 21], [262, 22], [98, 23], [292, 24],
+  ]);
+  const MAJOR_LEAGUE_FALLBACKS = [
+    { rank: 1, country: "England", names: ["プレミアリーグ", "Premier League"] },
+    { rank: 2, country: "Spain", names: ["ラ・リーガ", "La Liga"] },
+    { rank: 3, country: "Italy", names: ["セリエA", "Serie A"] },
+    { rank: 4, country: "Germany", names: ["ブンデスリーガ", "Bundesliga"] },
+    { rank: 5, country: "France", names: ["リーグ・アン", "Ligue 1"] },
+  ];
   const COMPETITION_LOGOS = new Map([
     ["プレミアリーグ", 39], ["Premier League", 39],
     ["ラ・リーガ", 140], ["La Liga", 140],
@@ -50,6 +66,7 @@
     const fixturesNode = document.getElementById("fixture-list");
     const fixturesSource = document.getElementById("fixtures-source");
     const fixturesStatus = document.getElementById("fixtures-status");
+    const fixtureOrderLabel = document.getElementById("fixture-order-label");
     const fixtureFilters = document.getElementById("fixture-filters");
     const spoilerToggle = document.getElementById("spoiler-toggle");
     const matchDialog = document.getElementById("match-detail-dialog");
@@ -110,7 +127,10 @@
 
     function competitionLogo(fixture) {
       const competition = typeof fixture === "string" ? fixture : fixture?.competition;
-      const leagueId = COMPETITION_LOGOS.get(competition);
+      const providerLeagueId = Number(fixture?.competitionId);
+      const leagueId = Number.isInteger(providerLeagueId) && providerLeagueId > 0
+        ? providerLeagueId
+        : COMPETITION_LOGOS.get(competition);
       const source = fixture?.competitionLogo || (leagueId ? `https://media.api-sports.io/football/leagues/${leagueId}.png` : null);
       if (!source) return null;
       const logo = document.createElement("img");
@@ -125,8 +145,29 @@
     }
 
     function competitionCountryLabel(fixture) {
-      const country = fixture?.competitionCountry || COMPETITION_COUNTRIES.get(fixture?.competition);
+      const country = fixture?.competitionCountry || (!fixture?.competitionId && COMPETITION_COUNTRIES.get(fixture?.competition));
       return COUNTRY_LABELS.get(country) || country || "";
+    }
+
+    function competitionGroupKey(fixture) {
+      const providerLeagueId = Number(fixture?.competitionId);
+      if (Number.isInteger(providerLeagueId) && providerLeagueId > 0) return `id:${providerLeagueId}`;
+      const competition = fixture?.competition || fixture?.roundLabel || "大会情報確認中";
+      return `name:${competition}|country:${fixture?.competitionCountry || ""}`;
+    }
+
+    function competitionDisplayRank(fixture) {
+      const providerLeagueId = Number(fixture?.competitionId);
+      if (COMPETITION_DISPLAY_ORDER.has(providerLeagueId)) return COMPETITION_DISPLAY_ORDER.get(providerLeagueId);
+      const fallback = MAJOR_LEAGUE_FALLBACKS.find((entry) =>
+        entry.country === fixture?.competitionCountry && entry.names.includes(fixture?.competition),
+      );
+      return fallback?.rank || Number.MAX_SAFE_INTEGER;
+    }
+
+    function fixtureKickoffTime(fixture) {
+      const value = Date.parse(fixture?.kickoff);
+      return Number.isFinite(value) ? value : Number.MAX_SAFE_INTEGER;
     }
 
     function detailFact(label, value) {
@@ -283,28 +324,38 @@
       const groups = new Map();
       AM4FootballData.sortFixturesForViewing(items).forEach((fixture) => {
         const competition = fixture.competition || fixture.roundLabel || "大会情報確認中";
-        if (!groups.has(competition)) groups.set(competition, []);
-        groups.get(competition).push(fixture);
+        const groupId = competitionGroupKey(fixture);
+        if (!groups.has(groupId)) groups.set(groupId, { groupId, competition, fixtures: [] });
+        groups.get(groupId).fixtures.push(fixture);
       });
-      const canPageLeagueGroups = fixtureMode === "date"
+      const prioritizeMajorLeagues = fixtureMode === "date"
         && activeFixtureLeague === ALL_COMPETITIONS
-        && fixtureScope === "all"
-        && groups.size > LEAGUE_GROUP_PREVIEW_LIMIT;
+        && fixtureScope === "all";
+      const orderedGroups = [...groups.values()].sort((left, right) => {
+        if (prioritizeMajorLeagues) {
+          const rankDifference = competitionDisplayRank(left.fixtures[0]) - competitionDisplayRank(right.fixtures[0]);
+          if (rankDifference) return rankDifference;
+        }
+        const kickoffDifference = fixtureKickoffTime(left.fixtures[0]) - fixtureKickoffTime(right.fixtures[0]);
+        if (kickoffDifference) return kickoffDifference;
+        const leftLabel = `${competitionCountryLabel(left.fixtures[0])} ${left.competition}`;
+        const rightLabel = `${competitionCountryLabel(right.fixtures[0])} ${right.competition}`;
+        return leftLabel.localeCompare(rightLabel, "ja");
+      });
+      const canPageLeagueGroups = prioritizeMajorLeagues
+        && orderedGroups.length > LEAGUE_GROUP_PREVIEW_LIMIT;
       const directoryKey = leagueGroupKey("_directory");
       const visibleGroupLimit = canPageLeagueGroups
-        ? Math.min(groups.size, expandedLeagueGroupCounts.get(directoryKey) || LEAGUE_GROUP_PREVIEW_LIMIT)
-        : groups.size;
-      let groupIndex = 0;
-      groups.forEach((fixtures, competition) => {
-        const currentGroupIndex = groupIndex;
-        groupIndex += 1;
+        ? Math.min(orderedGroups.length, expandedLeagueGroupCounts.get(directoryKey) || LEAGUE_GROUP_PREVIEW_LIMIT)
+        : orderedGroups.length;
+      orderedGroups.forEach(({ groupId, competition, fixtures }, currentGroupIndex) => {
         if (currentGroupIndex >= visibleGroupLimit) return;
         const group = document.createElement("section");
         group.className = "fixture-league-group";
         const canCompact = fixtureMode === "date"
           && activeFixtureLeague === ALL_COMPETITIONS
           && fixtures.length > LEAGUE_PREVIEW_LIMIT;
-        const groupKey = leagueGroupKey(competition);
+        const groupKey = leagueGroupKey(groupId);
         const isExpanded = !canCompact || expandedLeagueGroups.has(groupKey);
         const heading = document.createElement("h3");
         heading.className = "fixture-league-heading";
@@ -433,9 +484,9 @@
         }
         fixturesNode.append(group);
       });
-      if (visibleGroupLimit < groups.size) {
+      if (visibleGroupLimit < orderedGroups.length) {
         const showMoreGroups = document.createElement("button");
-        const remaining = groups.size - visibleGroupLimit;
+        const remaining = orderedGroups.length - visibleGroupLimit;
         const nextBatch = Math.min(LEAGUE_GROUP_BATCH_SIZE, remaining);
         showMoreGroups.type = "button";
         showMoreGroups.className = "fixture-directory-toggle";
@@ -444,7 +495,7 @@
         showMoreGroups.setAttribute("aria-controls", "fixture-list");
         showMoreGroups.setAttribute("aria-expanded", "false");
         showMoreGroups.addEventListener("click", () => {
-          const nextLimit = Math.min(groups.size, visibleGroupLimit + LEAGUE_GROUP_BATCH_SIZE);
+          const nextLimit = Math.min(orderedGroups.length, visibleGroupLimit + LEAGUE_GROUP_BATCH_SIZE);
           expandedLeagueGroupCounts.set(directoryKey, nextLimit);
           renderFixtures(items, sourceLabel);
           const firstNewHeading = document
@@ -550,9 +601,13 @@
       const scopeLabel = fixtureScope === "favorites" ? "お気に入り" : "すべて";
       const competitionLabel = activeFixtureLeague === ALL_COMPETITIONS ? "全大会" : activeFixtureLeague;
       const dateLabel = new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", month: "long", day: "numeric", weekday: "short" }).format(new Date(`${selectedDailyDate}T12:00:00Z`));
+      const displayOrderLabel = fixtureMode === "date" && activeFixtureLeague === ALL_COMPETITIONS && fixtureScope === "all"
+        ? "5大リーグ優先・リーグ内は時間順"
+        : "リーグごとに時間順";
+      if (fixtureOrderLabel) fixtureOrderLabel.textContent = displayOrderLabel;
       fixturesStatus.textContent = fixtures.length
         ? fixtureMode === "date"
-          ? `${dateLabel} · ${competitionLabel} · ${statusLabel} · ${scopeLabel} · ${fixtures.length}試合 · リーグごとに時間順 · ${updatedAt()}更新`
+          ? `${dateLabel} · ${competitionLabel} · ${statusLabel} · ${scopeLabel} · ${fixtures.length}試合 · ${displayOrderLabel} · ${updatedAt()}更新`
           : `${activeFixtureLeague} · ${activeFixtureFilter || "節未選択"} · ${statusLabel} · ${fixtures.length}試合`
         : fixtureScope === "favorites" && !savedClubFilters().hasFavorites
           ? "試合詳細からクラブを保存すると、該当試合だけを表示できます"
