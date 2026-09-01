@@ -190,6 +190,15 @@
   .crest.d{ background:linear-gradient(160deg,#a6f0c6,#1f7a44); }
   .route-arrow{ color:var(--floodlight); font-size:16px; opacity:0.8; }
   .t-title{ font-size:16.5px; font-weight:600; line-height:1.5; margin:0; letter-spacing:-0.005em; }
+  .transfer-updating{
+    display:grid; gap:12px; align-content:center; min-height:184px;
+    padding:30px; border:1px solid var(--line); border-radius:var(--radius);
+    background:linear-gradient(145deg, var(--ink-2), #0a1226);
+    box-shadow:0 1px 0 rgba(255,255,255,.03) inset, 0 20px 40px -24px rgba(0,0,0,.6);
+  }
+  .transfer-updating small{color:#9db8ff;font:700 10px var(--mono);letter-spacing:.12em;text-transform:uppercase;}
+  .transfer-updating h3{margin:0;color:var(--paper);font:800 clamp(24px,3vw,34px)/1.1 var(--display);letter-spacing:-.02em;}
+  .transfer-updating p{max-width:38rem;margin:0;color:var(--steel);font-size:14px;line-height:1.7;}
 
   /* match report feature */
   .match-feature{
@@ -644,31 +653,30 @@
 
 <div class="tagnav-wrap">
   <nav class="tagnav">
-    <a class="tag active" href="#transfer">移籍速報</a>
-    <a class="tag" href="#matches">試合解説</a>
-    <a class="tag" href="#players">選手紹介</a>
     <a class="tag" href="#fixtures">試合日程</a>
+    <a class="tag active" href="#transfer">移籍情報</a>
+    <a class="tag" id="column-nav-link" href="#lead-story" hidden>AM4 COLUMN</a>
     <a class="tag" href="#standings">順位表</a>
   </nav>
 </div>
 
-<section class="block editorial-section" id="lead-story" aria-labelledby="lead-story-title">
-  <div class="editorial-issue"><span id="lead-story-issue">Some Moments Matter More.</span><span id="lead-story-edition">Issue 001 · Cover Story</span></div>
+<section class="block editorial-section" id="lead-story" aria-labelledby="lead-story-title" hidden>
+  <div class="editorial-issue"><span id="lead-story-issue">AM4 COLUMN</span><span id="lead-story-edition">Latest</span></div>
   <div class="block-head">
-    <h2 class="block-title" id="lead-story-title"><small id="lead-story-kicker">Cover Story</small><span id="lead-story-heading">今週見るべき若手</span></h2>
-    <span class="see-all" id="lead-story-read-time">約8分で読めます</span>
+    <h2 class="block-title" id="lead-story-title"><small id="lead-story-kicker">AM4 COLUMN</small><span id="lead-story-heading">スコアの先にある物語</span></h2>
+    <span class="see-all" id="lead-story-read-time">AM4編集部</span>
   </div>
   <div class="match-feature reveal">
     <div>
-      <div class="comp-badge" id="lead-story-badge">AM4 Selection · Rising</div>
-      <h3 class="match-headline" id="lead-story-article-title">Jorrel Hato<br>静かな18歳が選んだ次の一歩</h3>
-      <p class="match-copy" id="lead-story-summary">数字だけでは見えない決断の背景を、プレースタイルと歩んできた道から読み解く。AM4が今週届ける選手ストーリー。</p>
-      <a class="read-link" id="lead-story-link" href="/article.html?id=jorrel-hato-next-step">選手データと物語を読む →</a>
-      <button class="favorite-btn" id="lead-story-save" type="button" data-favorite-type="articles" data-favorite-id="jorrel-hato-next-step" data-favorite-label="Jorrel Hato — 静かな18歳が選んだ次の一歩" data-favorite-detail="選手データと物語を読む" data-favorite-href="/article.html?id=jorrel-hato-next-step">記事を保存</button>
+      <div class="comp-badge" id="lead-story-badge">AM4 COLUMN</div>
+      <h3 class="match-headline" id="lead-story-article-title">新しいコラムを<br>準備中です</h3>
+      <p class="match-copy" id="lead-story-summary">試合の背景、クラブの歴史、街とカルチャーをAM4の視点で読み解きます。</p>
+      <a class="read-link" id="lead-story-link" href="/article.html">AM4 COLUMNを読む →</a>
+      <button class="favorite-btn" id="lead-story-save" type="button" data-favorite-type="articles" data-favorite-id="" data-favorite-label="" data-favorite-detail="" data-favorite-href="/article.html">記事を保存</button>
     </div>
     <div class="scoreboard" aria-label="記事の要点">
-      <div class="sb-row"><span class="sb-club" id="lead-story-score-left">18歳</span><span class="sb-score" id="lead-story-score-right">DF</span></div>
-      <div class="sb-row"><span class="sb-club" id="lead-story-score-bottom-left">Chelsea</span><span class="sb-score" id="lead-story-score-bottom-right">Rising</span></div>
+      <div class="sb-row"><span class="sb-club" id="lead-story-score-left">AM4</span><span class="sb-score" id="lead-story-score-right">COLUMN</span></div>
+      <div class="sb-row"><span class="sb-club" id="lead-story-score-bottom-left">Editorial</span><span class="sb-score" id="lead-story-score-bottom-right">Latest</span></div>
     </div>
   </div>
   <div class="am4-story-grid" id="am4-story-list" hidden></div>
@@ -676,41 +684,17 @@
 
 <section class="block" id="transfer">
   <div class="block-head">
-    <h2 class="block-title"><small>Transfer Wire</small>移籍速報</h2>
-    <span class="see-all">速報一覧は次の更新で追加</span>
+    <h2 class="block-title"><small>Transfer Desk</small>移籍情報</h2>
+    <span class="see-all">更新中</span>
   </div>
-  <div class="transfer-grid">
-    <div class="t-card reveal">
-      <div class="t-meta"><span class="badge">Romano</span>08.03 08:17</div>
-      <div class="club-route">
-        <div class="crest a">NEW</div>
-        <span class="route-arrow">→</span>
-        <div class="crest b">ARS</div>
-      </div>
-      <p class="t-title">Guimarães、Arsenal と Newcastle が交渉活発化</p>
-    </div>
-    <div class="t-card reveal">
-      <div class="t-meta"><span class="badge">Romano</span>08.03 08:17</div>
-      <div class="club-route">
-        <div class="crest c">CHE</div>
-        <span class="route-arrow">→</span>
-        <div class="crest a">MUN</div>
-      </div>
-      <p class="t-title">Hall、Man Utd 移籍を内部承認と Romano</p>
-    </div>
-    <div class="t-card reveal">
-      <div class="t-meta"><span class="badge">Romano</span>08.03 08:17</div>
-      <div class="club-route">
-        <div class="crest d">LEI</div>
-        <span class="route-arrow">→</span>
-        <div class="crest b">RMA</div>
-      </div>
-      <p class="t-title">Diomande、Real Madrid 移籍で合意と Romano</p>
-    </div>
-  </div>
+  <article class="transfer-updating reveal" aria-live="polite">
+    <small>AM4 TRANSFER DESK · UPDATING</small>
+    <h3>最新の移籍情報を確認中です</h3>
+    <p>確認できた情報だけを、AM4の基準で更新します。</p>
+  </article>
 </section>
 
-<section class="block editorial-section" id="matches">
+<section class="block editorial-section" id="matches" hidden>
   <div class="editorial-issue"><span>Read / Watch / Follow</span><span>Issue 002 · Match Report</span></div>
   <div class="block-head">
     <h2 class="block-title"><small>Match Report</small>試合解説</h2>
@@ -739,7 +723,7 @@
   </div>
 </section>
 
-<section class="block" id="players">
+<section class="block" id="players" hidden>
   <div class="block-head">
     <h2 class="block-title"><small>Rising</small>選手紹介</h2>
     <span class="see-all">注目の若手</span>
@@ -972,8 +956,8 @@
       if (!button) return;
       button.dataset.favoriteType = 'articles';
       button.dataset.favoriteId = article.id;
-      button.dataset.favoriteLabel = article.title || 'AM4 Stories';
-      button.dataset.favoriteDetail = 'AM4独自の読みものを読む';
+      button.dataset.favoriteLabel = article.title || 'AM4 COLUMN';
+      button.dataset.favoriteDetail = 'AM4 COLUMNを読む';
       button.dataset.favoriteHref = `/article.html?id=${encodeURIComponent(article.id)}`;
       const saved = AM4Favorites.has(AM4Favorites.read(localStorage), 'articles', article.id);
       button.setAttribute('aria-pressed', String(saved));
@@ -981,14 +965,18 @@
     }
 
     function renderLeadStory(article){
-      const category = article.story?.category || 'AM4 Stories';
+      const section = document.getElementById('lead-story');
+      const navLink = document.getElementById('column-nav-link');
+      if (section) section.hidden = false;
+      if (navLink) navLink.hidden = false;
+      const category = article.story?.category || 'AM4 COLUMN';
       const relatedClubs = article.story?.relatedClubs || 'Editorial';
       setEditorialText('lead-story-issue', 'The match is only the beginning.');
-      setEditorialText('lead-story-edition', 'AM4 Stories · Latest');
-      setEditorialText('lead-story-kicker', 'AM4 Stories');
+      setEditorialText('lead-story-edition', 'AM4 COLUMN · Latest');
+      setEditorialText('lead-story-kicker', 'AM4 COLUMN');
       setEditorialText('lead-story-heading', category);
       setEditorialText('lead-story-read-time', 'AM4編集部');
-      setEditorialText('lead-story-badge', `AM4 Stories · ${category}`);
+      setEditorialText('lead-story-badge', `AM4 COLUMN · ${category}`);
       setEditorialText('lead-story-article-title', article.title || 'AM4独自の読みもの');
       setEditorialText('lead-story-summary', article.summary || article.deck || 'スコアの先にある、サッカーの物語を読む。');
       setEditorialText('lead-story-score-left', category);
@@ -998,7 +986,7 @@
       const link = document.getElementById('lead-story-link');
       if (link) {
         link.href = `/article.html?id=${encodeURIComponent(article.id)}`;
-        link.textContent = 'AM4 Storiesを読む →';
+        link.textContent = 'AM4 COLUMNを読む →';
       }
       syncLeadStorySave(article);
       document.dispatchEvent(new CustomEvent('am4:favorites-catalog-updated'));
@@ -1013,7 +1001,7 @@
         const card = document.createElement('article');
         card.className = 'am4-story-card';
         const category = document.createElement('small');
-        category.textContent = article.story?.category || 'AM4 Stories';
+        category.textContent = article.story?.category || 'AM4 COLUMN';
         const title = document.createElement('a');
         title.href = `/article.html?id=${encodeURIComponent(article.id)}`;
         title.textContent = article.title || 'AM4独自の読みもの';
@@ -1074,7 +1062,7 @@
     }
 
     enhanceStaticCrests();
-    renderStandings(sample.standings); renderPlayer(sample.player, null, null);
+    renderStandings(sample.standings);
     loadStoryContent();
     const todayKey = AM4FootballData.tokyoDateKey(new Date());
     const todayParts = todayKey.split('-').map(Number);
@@ -1082,11 +1070,7 @@
     // The matchday board is the homepage priority. Do not keep it on the
     // static sample while unrelated standings and player-photo requests finish.
     const dailyResultPromise = client.dailyFixtures(todayKey);
-    const supportingDataPromise = Promise.allSettled([
-      client.standings(currentSeason),
-      client.playerPhoto(FEATURED_PLAYERS.hato),
-      client.playerPhoto(FEATURED_PLAYERS.mfuni)
-    ]);
+    const supportingDataPromise = Promise.allSettled([client.standings(currentSeason)]);
     const dailyResult = await dailyResultPromise.then(
       (value) => ({ status: 'fulfilled', value }),
       (reason) => ({ status: 'rejected', reason })
@@ -1102,7 +1086,7 @@
       if (dailyResult.status === 'rejected') console.warn('Daily fixture API unavailable.', dailyResult.reason);
     }
 
-    const [standingResult, photoResult, mfuniPhotoResult] = await supportingDataPromise;
+    const [standingResult] = await supportingDataPromise;
 
     const premierLeague = standingResult.status === 'fulfilled' ? standingResult.value.leagues?.['プレミアリーグ'] : null;
     if (premierLeague?.length) {
@@ -1118,16 +1102,6 @@
       if (standingResult.status === 'rejected') standingsStatus.textContent = 'APIへ接続できないためサンプルを表示しています';
     }
 
-    if (photoResult.status === 'fulfilled' && photoResult.value.photo && AM4FootballData.isMatchingPlayerName(photoResult.value.name, sample.player.name)) {
-      renderPlayer(sample.player, photoResult.value.photo, '選手データ');
-      window.AM4LiveContext.playerPhotoVerified = true;
-    } else if (photoResult.status === 'fulfilled' && photoResult.value.photo) {
-      console.warn('Player photo rejected because the returned name did not match.', { expected: sample.player.name, actual: photoResult.value.name });
-    } else if (photoResult.status === 'rejected') {
-      console.warn('Player photo API unavailable.', photoResult.reason);
-    }
-    renderPlayerCardPhoto('jorrel-hato', { name:'Jorrel Hato' }, photoResult);
-    renderPlayerCardPhoto('stephen-mfuni', { name:'Stephen Mfuni' }, mfuniPhotoResult);
     document.dispatchEvent(new CustomEvent('am4:data-ready'));
   })();
 
@@ -1140,6 +1114,7 @@
       articles: { noun: '記事', kind: 'Saved story' },
     };
     function rememberFavorite(button){
+      if (button.closest('[hidden]')) return;
       const type = button.dataset.favoriteType;
       const id = button.dataset.favoriteId;
       catalog[`${type}:${id}`] = {

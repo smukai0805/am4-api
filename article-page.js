@@ -1,42 +1,4 @@
 (function () {
-  const SAMPLE_ARTICLES = {
-    "jorrel-hato-next-step": {
-      id: "jorrel-hato-next-step",
-      type: "player_intro",
-      title: "Jorrel Hato — 静かな18歳が選んだ次の一歩",
-      subject: "Jorrel Hato",
-      club: "Chelsea",
-      publishedAt: "2026-08-15T00:00:00+09:00",
-      deck: "数字だけでは見えない決断の背景を、プレースタイルと歩んできた道から読み解く。",
-      readTime: "約8分",
-      body: [
-        { type: "heading", text: "静けさの奥にある速さ" },
-        { type: "paragraph", text: "派手な身振りより、次に起きることを先に読む。Hatoの魅力を一言で表すなら、その静かな速さにある。ボールが届く前の立ち位置と、相手の選択肢を一つずつ消していく判断が、プレー全体のリズムをつくる。" },
-        { type: "quote", text: "速く走る前に、速く決める。AM4が注目したのは、その一瞬の準備だ。" },
-        { type: "heading", text: "新しい環境で問われるもの" },
-        { type: "paragraph", text: "新天地では、守備範囲の広さだけでなく、ボール保持時にどこまで試合を前へ動かせるかが問われる。左サイドから中央へ運ぶ選択、逆サイドを使う視野、そして失った直後の戻り。複数の役割をつなぐ力が、次の一歩を決める。" },
-        { type: "paragraph", text: "この記事はAM4の記事体験を確認するための編集デモです。公開前には取材・出典確認・事実確認を行い、正式版へ差し替えます。" }
-      ],
-    },
-    "mainoo-old-trafford": {
-      id: "mainoo-old-trafford",
-      type: "match_report",
-      title: "Mainooの劇的弾で Old Traffordが歓喜",
-      subject: "Manchester United vs Liverpool",
-      publishedAt: "2026-08-15T00:00:00+09:00",
-      deck: "終盤に生まれた一撃が、拮抗した90分を決着させた。勝敗の分岐点を読み解く。",
-      readTime: "約6分",
-      scoreboard: { home: "Manchester United", away: "Liverpool", homeScore: 3, awayScore: 2 },
-      body: [
-        { type: "heading", text: "試合を変えた中央の一歩" },
-        { type: "paragraph", text: "両チームが前へ出る時間と構える時間を繰り返すなか、中央の小さな立ち位置の差が決定的な場面を生んだ。Mainooは受けるために下がるのではなく、相手の視線が外れた瞬間に一列前へ進んだ。" },
-        { type: "quote", text: "決勝点は突然ではない。数分前から積み重なった位置取りの先にあった。" },
-        { type: "heading", text: "スコア以上に残ったもの" },
-        { type: "paragraph", text: "3対2という数字は激しい試合を物語るが、AM4が残したいのは、観客の空気が変わった数秒間だ。奪った直後の縦への判断と、迷わずボックスへ入った動きがスタジアムを一つにした。" },
-        { type: "paragraph", text: "この試合解説はレイアウト確認用の編集デモであり、実際の試合結果ではありません。実データの記事は確認済みの結果と出典を伴って公開します。" }
-      ],
-    },
-  };
 
   const paper = document.getElementById("article-paper");
   const id = new URLSearchParams(location.search).get("id");
@@ -47,9 +9,9 @@
       player_intro: "Player Story",
       match_report: "Match Report",
       match_prediction: "Match Preview",
-      am4_story: "AM4 Stories",
+      am4_story: "AM4 COLUMN",
       transfer_news: "Transfer Wire",
-    }[type] || "AM4 Story";
+    }[type] || "AM4 COLUMN";
   }
 
   function appendBody(container, article) {
@@ -192,9 +154,8 @@
         if (data.article) return renderArticle(data.article, false);
       }
     } catch (_error) {
-      // Known editorial demos remain readable when the archive is unavailable.
+      // Article data is published only from the server-side archive.
     }
-    if (SAMPLE_ARTICLES[id]) return renderArticle(SAMPLE_ARTICLES[id], true);
     renderMissing();
   })();
 })();
