@@ -8,22 +8,22 @@
   const LEAGUE_PREVIEW_LIMIT = 4;
   const LEAGUE_GROUP_PREVIEW_LIMIT = 6;
   const LEAGUE_GROUP_BATCH_SIZE = 6;
+  const MAJOR_LEAGUES = [
+    { providerId: 39, rank: 1, competition: "プレミアリーグ", country: "England", names: ["プレミアリーグ", "Premier League"] },
+    { providerId: 140, rank: 2, competition: "ラ・リーガ", country: "Spain", names: ["ラ・リーガ", "La Liga"] },
+    { providerId: 135, rank: 3, competition: "セリエA", country: "Italy", names: ["セリエA", "Serie A"] },
+    { providerId: 78, rank: 4, competition: "ブンデスリーガ", country: "Germany", names: ["ブンデスリーガ", "Bundesliga"] },
+    { providerId: 61, rank: 5, competition: "リーグ・アン", country: "France", names: ["リーグ・アン", "Ligue 1"] },
+  ];
   // 日別の「すべて」はクラブではなく大会単位で案内する。まず5大リーグを
   // 固定し、その後は主要国内リーグの編集順を使う。未登録の大会は開始時刻順。
   const COMPETITION_DISPLAY_ORDER = new Map([
-    [39, 1], [140, 2], [135, 3], [78, 4], [61, 5],
+    ...MAJOR_LEAGUES.map(({ providerId, rank }) => [providerId, rank]),
     [88, 6], [94, 7], [144, 8], [179, 9], [203, 10],
     [218, 11], [207, 12], [119, 13], [113, 14], [103, 15],
     [106, 16], [332, 17], [345, 18], [71, 19], [128, 20],
     [253, 21], [262, 22], [98, 23], [292, 24],
   ]);
-  const MAJOR_LEAGUE_FALLBACKS = [
-    { rank: 1, country: "England", names: ["プレミアリーグ", "Premier League"] },
-    { rank: 2, country: "Spain", names: ["ラ・リーガ", "La Liga"] },
-    { rank: 3, country: "Italy", names: ["セリエA", "Serie A"] },
-    { rank: 4, country: "Germany", names: ["ブンデスリーガ", "Bundesliga"] },
-    { rank: 5, country: "France", names: ["リーグ・アン", "Ligue 1"] },
-  ];
   const COMPETITION_LOGOS = new Map([
     ["プレミアリーグ", 39], ["Premier League", 39],
     ["ラ・リーガ", 140], ["La Liga", 140],
@@ -159,7 +159,7 @@
     function competitionDisplayRank(fixture) {
       const providerLeagueId = Number(fixture?.competitionId);
       if (COMPETITION_DISPLAY_ORDER.has(providerLeagueId)) return COMPETITION_DISPLAY_ORDER.get(providerLeagueId);
-      const fallback = MAJOR_LEAGUE_FALLBACKS.find((entry) =>
+      const fallback = MAJOR_LEAGUES.find((entry) =>
         entry.country === fixture?.competitionCountry && entry.names.includes(fixture?.competition),
       );
       return fallback?.rank || Number.MAX_SAFE_INTEGER;
@@ -325,21 +325,54 @@
       AM4FootballData.sortFixturesForViewing(items).forEach((fixture) => {
         const competition = fixture.competition || fixture.roundLabel || "大会情報確認中";
         const groupId = competitionGroupKey(fixture);
-        if (!groups.has(groupId)) groups.set(groupId, { groupId, competition, fixtures: [] });
+        if (!groups.has(groupId)) {
+          groups.set(groupId, {
+            groupId,
+            competition,
+            competitionId: fixture.competitionId || null,
+            competitionCountry: fixture.competitionCountry || null,
+            fixtures: [],
+          });
+        }
         groups.get(groupId).fixtures.push(fixture);
       });
       const prioritizeMajorLeagues = fixtureMode === "date"
         && activeFixtureLeague === ALL_COMPETITIONS
         && fixtureScope === "all";
+      const showMajorLeagueEmptyStates = prioritizeMajorLeagues && fixtureStatus === "all";
+      if (showMajorLeagueEmptyStates) {
+        MAJOR_LEAGUES.forEach(({ providerId, competition, country, names }) => {
+          const groupId = `id:${providerId}`;
+          const isAlreadyRepresented = [...groups.values()].some((group) => (
+            group.fixtures.some((fixture) => (
+              Number(fixture.competitionId) === providerId || (
+                names.includes(fixture.competition)
+                && (!fixture.competitionCountry || fixture.competitionCountry === country)
+              )
+            ))
+          ));
+          if (!groups.has(groupId) && !isAlreadyRepresented) {
+            groups.set(groupId, {
+              groupId,
+              competition,
+              competitionId: providerId,
+              competitionCountry: country,
+              fixtures: [],
+            });
+          }
+        });
+      }
       const orderedGroups = [...groups.values()].sort((left, right) => {
+        const leftFixture = left.fixtures[0] || left;
+        const rightFixture = right.fixtures[0] || right;
         if (prioritizeMajorLeagues) {
-          const rankDifference = competitionDisplayRank(left.fixtures[0]) - competitionDisplayRank(right.fixtures[0]);
+          const rankDifference = competitionDisplayRank(leftFixture) - competitionDisplayRank(rightFixture);
           if (rankDifference) return rankDifference;
         }
-        const kickoffDifference = fixtureKickoffTime(left.fixtures[0]) - fixtureKickoffTime(right.fixtures[0]);
+        const kickoffDifference = fixtureKickoffTime(leftFixture) - fixtureKickoffTime(rightFixture);
         if (kickoffDifference) return kickoffDifference;
-        const leftLabel = `${competitionCountryLabel(left.fixtures[0])} ${left.competition}`;
-        const rightLabel = `${competitionCountryLabel(right.fixtures[0])} ${right.competition}`;
+        const leftLabel = `${competitionCountryLabel(leftFixture)} ${left.competition}`;
+        const rightLabel = `${competitionCountryLabel(rightFixture)} ${right.competition}`;
         return leftLabel.localeCompare(rightLabel, "ja");
       });
       const canPageLeagueGroups = prioritizeMajorLeagues
@@ -348,10 +381,13 @@
       const visibleGroupLimit = canPageLeagueGroups
         ? Math.min(orderedGroups.length, expandedLeagueGroupCounts.get(directoryKey) || LEAGUE_GROUP_PREVIEW_LIMIT)
         : orderedGroups.length;
-      orderedGroups.forEach(({ groupId, competition, fixtures }, currentGroupIndex) => {
+      orderedGroups.forEach(({ groupId, competition, competitionId, competitionCountry, fixtures }, currentGroupIndex) => {
         if (currentGroupIndex >= visibleGroupLimit) return;
         const group = document.createElement("section");
         group.className = "fixture-league-group";
+        const groupFixture = fixtures[0] || { competition, competitionId, competitionCountry };
+        const isEmpty = fixtures.length === 0;
+        if (isEmpty) group.classList.add("fixture-league-group--empty");
         const canCompact = fixtureMode === "date"
           && activeFixtureLeague === ALL_COMPETITIONS
           && fixtures.length > LEAGUE_PREVIEW_LIMIT;
@@ -360,14 +396,14 @@
         const heading = document.createElement("h3");
         heading.className = "fixture-league-heading";
         heading.tabIndex = -1;
-        const logo = competitionLogo(fixtures[0] || competition);
+        const logo = competitionLogo(groupFixture);
         const headingCopy = document.createElement("span");
         headingCopy.className = "fixture-league-heading-copy";
         const title = document.createElement("span");
         title.className = "fixture-league-title";
         title.textContent = competition;
         headingCopy.append(title);
-        const countryName = competitionCountryLabel(fixtures[0]);
+        const countryName = competitionCountryLabel(groupFixture);
         if (countryName) {
           const country = document.createElement("small");
           country.className = "fixture-league-country";
@@ -376,9 +412,15 @@
         }
         const count = document.createElement("small");
         count.className = "fixture-league-count";
-        count.textContent = `${fixtures.length}試合`;
+        count.textContent = isEmpty ? "試合なし" : `${fixtures.length}試合`;
+        if (isEmpty) count.classList.add("fixture-league-empty-status");
         if (logo) heading.append(logo, headingCopy, count);
         else heading.append(headingCopy, count);
+        if (isEmpty) {
+          group.append(heading);
+          fixturesNode.append(group);
+          return;
+        }
         const list = document.createElement("div");
         list.className = "fixture-league-list";
         list.id = "fixture-league-" + currentGroupIndex;

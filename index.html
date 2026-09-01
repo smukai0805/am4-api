@@ -436,10 +436,13 @@
   .matchday-board #fixture-list{display:grid;gap:16px;padding:0 10px 14px;}
   .fixture-league-group{overflow:hidden;border:1px solid rgba(121,151,218,.15);border-radius:20px;background:#080f20;box-shadow:inset 0 1px rgba(255,255,255,.035);}
   .fixture-league-heading{display:flex;align-items:center;gap:10px;margin:0;padding:14px 15px;border-bottom:1px solid rgba(121,151,218,.14);background:linear-gradient(90deg,rgba(42,94,255,.10),transparent 68%);color:#eef3ff;font:700 13px var(--body);}
+  .fixture-league-group--empty{border-color:rgba(121,151,218,.12);background:linear-gradient(105deg,rgba(15,29,57,.72),#080f20 70%);box-shadow:inset 0 1px rgba(255,255,255,.025);}
+  .fixture-league-group--empty .fixture-league-heading{min-height:58px;border-bottom:0;background:transparent;}
   .fixture-league-heading-copy{display:grid;min-width:0;gap:3px;}
   .fixture-league-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .fixture-league-country{color:#8191ad;font:500 8px var(--mono);letter-spacing:.08em;text-transform:uppercase;}
   .fixture-league-heading .fixture-league-count{margin-left:auto;color:#8293b2;font:600 9px var(--mono);letter-spacing:.08em;}
+  .fixture-league-heading .fixture-league-empty-status{padding:5px 8px;border:1px solid rgba(126,157,220,.2);border-radius:999px;background:rgba(91,120,181,.08);color:#bfceeb;font-weight:700;}
   .fixture-league-logo{width:28px;height:28px;object-fit:contain;flex:0 0 auto;filter:drop-shadow(0 2px 5px rgba(0,0,0,.28));}
   .fixture-league-list{display:grid;gap:8px;padding:10px;}
   .fixture-league-toggle{display:flex;align-items:center;justify-content:center;width:calc(100% - 20px);min-height:38px;margin:0 10px 10px;border:1px solid rgba(127,158,224,.22);border-radius:11px;background:rgba(44,80,146,.08);color:#b6c8ee;cursor:pointer;font:600 10px var(--mono);letter-spacing:.04em;transition:background .18s ease,border-color .18s ease,color .18s ease;}
@@ -499,6 +502,7 @@
     .matchday-board #fixture-list{gap:12px;padding:0 7px 10px;}
     .fixture-league-group{border-radius:16px;}
     .fixture-league-heading{gap:8px;padding:12px;font-size:12px;}
+    .fixture-league-group--empty .fixture-league-heading{min-height:52px;}
     .fixture-league-logo{width:25px;height:25px;}
     .fixture-league-list{padding:8px;}
     .fixture-league-country{font-size:7px;}
