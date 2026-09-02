@@ -188,7 +188,7 @@
       return neutralTeamAccent(normalizedName);
     }
 
-    function competitionLogo(fixture) {
+    function competitionLogo(fixture, className = "fixture-league-logo") {
       const competition = typeof fixture === "string" ? fixture : fixture?.competition;
       const providerLeagueId = Number(fixture?.competitionId);
       const leagueId = Number.isInteger(providerLeagueId) && providerLeagueId > 0
@@ -197,7 +197,7 @@
       const source = fixture?.competitionLogo || (leagueId ? `https://media.api-sports.io/football/leagues/${leagueId}.png` : null);
       if (!source) return null;
       const logo = document.createElement("img");
-      logo.className = "fixture-league-logo";
+      logo.className = className;
       logo.src = source;
       logo.alt = "";
       logo.width = 28;
@@ -589,9 +589,29 @@
           const scoreValue = document.createElement("span");
           scoreValue.className = "fixture-scoreboard-value";
           const scoreCaption = document.createElement("small");
+          let resultCover = null;
           if (resultPresentation.hidden) {
             scoreboard.setAttribute("aria-hidden", "true");
             scoreValue.textContent = scoreText || "–";
+            resultCover = document.createElement("span");
+            resultCover.className = "fixture-result-cover";
+            const leagueLogo = competitionLogo(fixture, "fixture-result-cover-logo");
+            if (leagueLogo) {
+              resultCover.append(leagueLogo);
+            } else {
+              const fallback = document.createElement("span");
+              fallback.className = "fixture-result-cover-fallback";
+              fallback.textContent = String(fixture.competition || "AM4").slice(0, 2).toUpperCase();
+              resultCover.append(fallback);
+            }
+            const copy = document.createElement("span");
+            copy.className = "fixture-result-cover-copy";
+            const hint = document.createElement("span");
+            hint.textContent = "タップして";
+            const label = document.createElement("strong");
+            label.textContent = "試合結果を表示";
+            copy.append(hint, label);
+            resultCover.append(copy);
           } else {
             if (statusGroup === "upcoming") {
               scoreValue.textContent = fixture.kickoff
@@ -610,6 +630,7 @@
             }
           }
           scoreboard.append(scoreValue);
+          if (resultCover) scoreboard.append(resultCover);
           if (scoreCaption.textContent) scoreboard.append(scoreCaption);
           scoreboard.dataset.resultHidden = String(resultPresentation.hidden);
 
@@ -622,7 +643,7 @@
           cardTarget.setAttribute(
             "aria-label",
             resultPresentation.hidden
-              ? `${fixture.home}対${fixture.away}の結果を表示`
+              ? `${fixture.competition || "大会"}、${fixture.home}対${fixture.away}の試合結果を表示`
               : `${fixture.home}対${fixture.away}${scoreText ? `、${scoreText}` : ""}。${fixture.id ? "試合詳細へ移動" : "試合情報を開く"}`,
           );
           if (resultPresentation.hidden || !fixture.id) {
@@ -643,7 +664,7 @@
                   renderFixtureView();
                 };
                 scoreValue.addEventListener("animationend", (event) => {
-                  if (event.animationName === "fixture-score-sharpen") finishReveal();
+                  if (event.animationName === "fixture-score-reveal") finishReveal();
                 }, { once:true });
                 scoreboard.classList.add("is-score-revealing");
                 window.setTimeout(finishReveal, SCORE_REVEAL_FALLBACK_MS);

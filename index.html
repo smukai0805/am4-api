@@ -493,16 +493,18 @@
   .fixture-scoreboard{position:relative;isolation:isolate;grid-area:score;display:flex;flex-direction:column;align-items:center;justify-content:center;justify-self:stretch;min-width:0;min-height:52px;padding:0;border:0;border-radius:12px;color:#fff;background:transparent;font:900 clamp(28px,3.2vw,44px)/.92 var(--body);letter-spacing:-.06em;}
   .fixture-scoreboard-value,.fixture-scoreboard small{position:relative;z-index:2;}
   .fixture-scoreboard small{margin-top:5px;color:#9eabc4;font:700 8px var(--mono);letter-spacing:.08em;}
-  .fixture-scoreboard[data-result-hidden="true"]{overflow:hidden;min-height:52px;padding:3px 4px 0;background:radial-gradient(ellipse at center,rgba(102,142,224,.17),transparent 68%);}
-  .fixture-scoreboard[data-result-hidden="true"] .fixture-scoreboard-value{filter:blur(8px);opacity:.72;transform:scale(1.06);transition:filter .52s ease,opacity .42s ease,transform .52s cubic-bezier(.22,1,.36,1);user-select:none;}
-  .fixture-scoreboard[data-result-hidden="true"]::before,.fixture-scoreboard[data-result-hidden="true"]::after{position:absolute;z-index:1;content:"";pointer-events:none;inset:-38% -24%;background:radial-gradient(ellipse at 30% 50%,rgba(174,204,255,.6),transparent 36%),radial-gradient(ellipse at 72% 46%,rgba(82,124,215,.46),transparent 40%);filter:blur(15px);opacity:.72;transform:translateX(0) scale(1);}
-  .fixture-scoreboard[data-result-hidden="true"]::after{background:radial-gradient(ellipse at 62% 54%,rgba(232,241,255,.5),transparent 28%),radial-gradient(ellipse at 20% 38%,rgba(70,110,211,.38),transparent 39%);filter:blur(20px);opacity:.54;}
-  .fixture-scoreboard.is-score-revealing .fixture-scoreboard-value{animation:fixture-score-sharpen .54s cubic-bezier(.22,1,.36,1) forwards;}
-  .fixture-scoreboard.is-score-revealing::before{animation:fixture-smoke-left .54s cubic-bezier(.22,1,.36,1) forwards;}
-  .fixture-scoreboard.is-score-revealing::after{animation:fixture-smoke-right .58s cubic-bezier(.22,1,.36,1) forwards;}
-  @keyframes fixture-score-sharpen{0%{filter:blur(8px);opacity:.72;transform:scale(1.06)}100%{filter:blur(0);opacity:1;transform:scale(1)}}
-  @keyframes fixture-smoke-left{0%{opacity:.72;transform:translateX(0) scale(1)}100%{opacity:0;transform:translateX(-36%) scale(1.32)}}
-  @keyframes fixture-smoke-right{0%{opacity:.54;transform:translateX(0) scale(1)}100%{opacity:0;transform:translateX(40%) scale(1.42)}}
+  .fixture-scoreboard[data-result-hidden="true"]{min-height:58px;padding:3px 4px;border:1px solid rgba(157,180,234,.2);background:linear-gradient(145deg,rgba(32,55,102,.56),rgba(9,19,40,.9));box-shadow:inset 0 1px rgba(255,255,255,.07),0 8px 18px rgba(0,0,0,.16);}
+  .fixture-scoreboard[data-result-hidden="true"] .fixture-scoreboard-value{position:absolute;z-index:1;opacity:0;transform:scale(.84) translateY(4px);user-select:none;}
+  .fixture-result-cover{position:relative;z-index:2;display:grid;justify-items:center;gap:2px;min-width:88px;color:#dce7ff;text-align:center;font:600 8px/1.05 var(--mono);letter-spacing:.04em;}
+  .fixture-result-cover-logo,.fixture-result-cover-fallback{width:26px;height:26px;object-fit:contain;filter:drop-shadow(0 3px 7px rgba(0,0,0,.38));}
+  .fixture-result-cover-fallback{display:grid;place-items:center;border:1px solid rgba(180,201,243,.35);border-radius:50%;background:rgba(56,86,148,.28);color:#eaf0ff;font:800 8px var(--mono);}
+  .fixture-result-cover-copy{display:grid;gap:2px;justify-items:center;white-space:nowrap;}
+  .fixture-result-cover-copy span{color:#9eb3dc;font-size:7px;letter-spacing:.08em;}
+  .fixture-result-cover-copy strong{color:#eff4ff;font:700 8px var(--mono);letter-spacing:.04em;}
+  .fixture-scoreboard.is-score-revealing .fixture-result-cover{animation:fixture-result-cover-out .18s ease-out forwards;}
+  .fixture-scoreboard.is-score-revealing .fixture-scoreboard-value{animation:fixture-score-reveal .32s .11s cubic-bezier(.22,1,.36,1) forwards;}
+  @keyframes fixture-result-cover-out{to{opacity:0;transform:scale(.84) translateY(-3px)}}
+  @keyframes fixture-score-reveal{from{opacity:0;transform:scale(.84) translateY(4px)}to{opacity:1;transform:scale(1) translateY(0)}}
   .fixture-editorial-strip{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:12px;align-items:start;margin:-1px 7px 4px;padding:11px 12px;border:1px solid rgba(112,148,223,.2);border-radius:12px;background:linear-gradient(110deg,rgba(15,31,61,.82),rgba(7,14,29,.92));}
   a.fixture-editorial-strip{color:inherit;text-decoration:none;cursor:pointer;transition:border-color .18s ease,transform .18s ease;}
   a.fixture-editorial-strip:hover{border-color:rgba(168,195,255,.68);transform:translateY(-1px);}
@@ -554,12 +556,13 @@
     .fixture-league-country{font-size:7px;}
     .fixture-league-toggle{width:calc(100% - 16px);min-height:36px;margin:0 8px 8px;font-size:9px;}
     .fixture-directory-toggle{min-height:48px;border-radius:14px;font-size:10px;}
-    .matchday-board .fixture-league-group .fixture-row{grid-template-columns:minmax(0,1fr) 84px minmax(0,1fr);gap:5px 8px;min-height:110px;padding:12px 10px 10px;border-radius:13px;}
+    .matchday-board .fixture-league-group .fixture-row{grid-template-columns:minmax(0,1fr) 96px minmax(0,1fr);gap:5px 8px;min-height:114px;padding:12px 10px 10px;border-radius:13px;}
     .matchday-board .fixture-league-group .fixture-team{gap:6px;font-size:11px;}
     .matchday-board .fixture-league-group .fixture-team-name{display:-webkit-box;overflow:hidden;text-overflow:clip;line-height:1.18;-webkit-box-orient:vertical;-webkit-line-clamp:2;}
     .matchday-board .fixture-league-group .team-logo,.matchday-board .fixture-league-group .team-logo-fallback{width:26px;height:26px;}
     .fixture-scoreboard{min-width:0;min-height:50px;font-size:26px;}
-    .fixture-scoreboard[data-result-hidden="true"]{min-height:50px;padding:3px 0 0;}
+    .fixture-scoreboard[data-result-hidden="true"]{min-height:58px;padding:3px 4px;}
+    .fixture-result-cover{min-width:84px;}
     .fixture-editorial-strip{gap:9px;margin:-1px 5px 3px;padding:9px 10px;}
     .fixture-editorial-label{font-size:7px;}
     .fixture-editorial-title{font-size:11px;}
@@ -571,7 +574,7 @@
     .editorial-section .match-headline{font-size:38px;}
   }
   @media(max-width:375px){
-    .matchday-board .fixture-league-group .fixture-row{grid-template-columns:minmax(0,1fr) 72px minmax(0,1fr);column-gap:5px;padding-inline:8px;}
+    .matchday-board .fixture-league-group .fixture-row{grid-template-columns:minmax(0,1fr) 84px minmax(0,1fr);column-gap:5px;padding-inline:8px;}
     .matchday-board .fixture-league-group .fixture-team{gap:4px;font-size:10px;}
     .matchday-board .fixture-league-group .team-logo,.matchday-board .fixture-league-group .team-logo-fallback{width:22px;height:22px;}
     .fixture-scoreboard{font-size:22px;}
@@ -579,7 +582,7 @@
 
   .reveal{ opacity:0; transform:translateY(18px); transition:opacity .7s ease, transform .7s ease; }
   .reveal.in{ opacity:1; transform:translateY(0); }
-  @media (prefers-reduced-motion:reduce){.fixture-scoreboard,.fixture-scoreboard *,.fixture-scoreboard::before,.fixture-scoreboard::after{animation:none!important;transition:none!important;}}
+  @media (prefers-reduced-motion:reduce){.fixture-scoreboard,.fixture-scoreboard *{animation:none!important;transition:none!important;}}
 
   footer{
     padding:48px clamp(20px,5vw,64px) 64px;
@@ -800,7 +803,7 @@
 <script src="site-config.js"></script>
 <script src="football-data.js?v=20260901-live"></script>
 <script src="sample-football-data.js"></script>
-<script src="match-centre.js?v=20260901-editorial"></script>
+<script src="match-centre.js?v=20260902-league-result-cover"></script>
 <script>
   // Existing AM4 Vercel API, with an explicit sample fallback.
   (async function(){
