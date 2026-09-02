@@ -429,26 +429,22 @@
   .column-all-link{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:8px 0;color:#9db8ff;font:600 10px var(--mono);letter-spacing:.08em;text-decoration:none;}
   .column-all-link:hover{color:#fff;}
   .column-all-link:focus-visible{color:#fff;outline:2px solid #9db8ff;outline-offset:4px;border-radius:5px;}
-  .column-featured-card{position:relative;display:grid;grid-template-columns:104px minmax(0,1fr);gap:15px;min-height:224px;padding:14px;border:1px solid rgba(160,184,237,.25);border-radius:18px;background:linear-gradient(135deg,rgba(18,36,76,.92),rgba(6,12,27,.96));box-shadow:inset 0 1px rgba(255,255,255,.08),0 24px 56px -34px rgba(0,0,0,.82);color:#fff;overflow:hidden;text-decoration:none;transition:border-color .25s ease,box-shadow .25s ease,transform .25s ease;}
-  .column-featured-card::before{content:"";position:absolute;inset:auto -16% -58% 18%;height:80%;pointer-events:none;background:radial-gradient(ellipse,rgba(26,92,255,.45),transparent 66%);filter:blur(4px);opacity:.72;}
+  .column-featured-card,.column-latest-card{--column-accent:#8daaff;}
+  .column-featured-card[data-tone="tactics"],.column-latest-card[data-tone="tactics"]{--column-accent:#9ab6ff;}
+  .column-featured-card[data-tone="club"],.column-latest-card[data-tone="club"]{--column-accent:#9ec7ff;}
+  .column-featured-card[data-tone="league"],.column-latest-card[data-tone="league"]{--column-accent:#8fd0dc;}
+  .column-featured-card[data-tone="rivalry"],.column-latest-card[data-tone="rivalry"]{--column-accent:#c6a6ea;}
+  .column-featured-card[data-tone="history"],.column-latest-card[data-tone="history"]{--column-accent:#b4c1ff;}
+  .column-featured-card{position:relative;display:block;min-height:204px;padding:clamp(20px,3vw,30px);border:1px solid rgba(160,184,237,.28);border-left:3px solid var(--column-accent);border-radius:18px;background:linear-gradient(118deg,rgba(16,34,72,.96),rgba(7,15,33,.96) 58%,rgba(13,25,57,.9));box-shadow:inset 0 1px rgba(255,255,255,.08),0 24px 56px -34px rgba(0,0,0,.82);color:#fff;overflow:hidden;text-decoration:none;transition:border-color .25s ease,box-shadow .25s ease,transform .25s ease;}
+  .column-featured-card::before{content:"";position:absolute;inset:-32% -14% auto 46%;height:155%;pointer-events:none;background:radial-gradient(ellipse,rgba(55,102,255,.24),transparent 68%);filter:blur(8px);opacity:.9;}
+  .column-featured-card::after{content:"";position:absolute;right:clamp(20px,3vw,30px);bottom:0;left:clamp(20px,3vw,30px);height:1px;background:linear-gradient(90deg,var(--column-accent),rgba(157,184,255,.12) 46%,transparent);opacity:.72;}
   .column-featured-card:hover{transform:translateY(-3px);border-color:rgba(136,169,255,.7);box-shadow:inset 0 1px rgba(255,255,255,.12),0 28px 62px -34px rgba(21,76,210,.68);}
   .column-featured-card:focus-visible{outline:3px solid #86aaff;outline-offset:3px;}
-  .column-story-media{position:relative;display:grid;place-items:center;align-self:stretch;min-width:0;overflow:hidden;border:1px solid rgba(177,198,255,.2);border-radius:12px;background:linear-gradient(145deg,#163e8f,#0a1532 55%,#240d48);box-shadow:inset 0 1px rgba(255,255,255,.12);}
-  .column-story-media::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(145deg,rgba(255,255,255,.18),transparent 33%,rgba(5,10,28,.6));}
-  .column-story-media img{position:relative;z-index:1;width:100%;height:100%;object-fit:cover;}
-  .column-story-media[data-tone="tactics"]{background:linear-gradient(145deg,#2549a8,#071226 58%,#531e68);}
-  .column-story-media[data-tone="club"]{background:linear-gradient(145deg,#114472,#08182e 58%,#8a322c);}
-  .column-story-media[data-tone="league"]{background:linear-gradient(145deg,#2b267e,#071328 60%,#0b6a72);}
-  .column-story-media[data-tone="rivalry"]{background:linear-gradient(145deg,#8a2c43,#111b43 53%,#124c9b);}
-  .column-story-media[data-tone="tournament"]{background:linear-gradient(145deg,#7c6230,#101933 55%,#2755b6);}
-  .column-story-media-fallback{position:relative;z-index:1;display:grid;justify-items:center;gap:5px;padding:10px;text-align:center;}
-  .column-story-media-fallback span{color:#b8ccff;font:700 8px var(--mono);letter-spacing:.16em;}
-  .column-story-media-fallback strong{max-width:100%;color:#fff;font:800 clamp(14px,2vw,22px)/.95 var(--display);letter-spacing:.04em;text-transform:uppercase;overflow-wrap:anywhere;}
-  .column-featured-copy{position:relative;z-index:1;display:flex;min-width:0;flex-direction:column;align-items:flex-start;padding:5px 2px 3px;}
-  .column-article-category{display:inline-flex;align-items:center;min-height:22px;color:#a9c0ff;font:700 9px var(--mono);letter-spacing:.12em;text-transform:uppercase;}
-  .column-featured-title{display:-webkit-box;overflow:hidden;margin:8px 0 9px;color:#fff;font:900 clamp(29px,5.4vw,56px)/.94 var(--display);letter-spacing:-.01em;-webkit-box-orient:vertical;-webkit-line-clamp:3;}
-  .column-featured-summary{display:-webkit-box;overflow:hidden;margin:0;color:#ccd7ed;font-size:13px;line-height:1.6;-webkit-box-orient:vertical;-webkit-line-clamp:3;}
-  .column-featured-meta{display:flex;align-items:center;justify-content:space-between;width:100%;gap:12px;margin-top:auto;padding-top:14px;color:#9fb0cf;font:600 10px var(--mono);letter-spacing:.06em;}
+  .column-featured-copy{position:relative;z-index:1;display:flex;min-width:0;min-height:148px;flex-direction:column;align-items:flex-start;}
+  .column-article-category{display:inline-flex;align-items:center;min-height:22px;color:var(--column-accent);font:700 9px var(--mono);letter-spacing:.14em;text-transform:uppercase;}
+  .column-featured-title{display:-webkit-box;max-width:none;overflow:hidden;margin:8px 0 10px;color:#fff;font:900 clamp(32px,4.4vw,52px)/.91 var(--display);letter-spacing:-.012em;-webkit-box-orient:vertical;-webkit-line-clamp:3;}
+  .column-featured-summary{display:-webkit-box;max-width:68ch;overflow:hidden;margin:0;color:#ccd7ed;font-size:13px;line-height:1.62;-webkit-box-orient:vertical;-webkit-line-clamp:2;}
+  .column-featured-meta{display:flex;align-items:center;justify-content:space-between;width:100%;gap:12px;margin-top:auto;padding:16px 0 4px;color:#9fb0cf;font:600 10px var(--mono);letter-spacing:.06em;}
   .column-arrow{width:18px;height:18px;flex:0 0 auto;fill:none;stroke:currentColor;stroke-width:1.8;}
   .column-featured-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;}
   .column-featured-tags{display:flex;flex:1 1 180px;flex-wrap:wrap;gap:7px;}
@@ -463,16 +459,16 @@
   .column-page .column-search:focus-within{border-color:#5f8dff;box-shadow:0 0 0 3px rgba(69,115,255,.15),inset 0 1px rgba(255,255,255,.06);}
   .column-page .column-active-tag{min-height:34px;border-color:rgba(139,169,255,.66);background:rgba(42,94,255,.18);color:#c9d9ff;}
   .column-page .am4-story-empty{margin:18px 0 0;color:#aab8d1;}
-  .column-latest-list{display:grid;gap:11px;margin-top:16px;}
-  .column-latest-card{display:grid;grid-template-columns:86px minmax(0,1fr) auto;align-items:stretch;gap:13px;min-width:0;padding:10px;border:1px solid rgba(139,163,214,.2);border-radius:14px;background:linear-gradient(135deg,rgba(14,27,58,.8),rgba(6,13,30,.86));box-shadow:inset 0 1px rgba(255,255,255,.05),0 13px 30px -25px rgba(0,0,0,.85);color:#f4f7ff;text-decoration:none;transition:border-color .2s ease,background .2s ease,transform .2s ease;}
-  .column-latest-card:hover{transform:translateY(-2px);border-color:rgba(128,166,255,.6);background:linear-gradient(135deg,rgba(20,40,82,.94),rgba(7,17,39,.96));}
+  .column-latest-list{display:grid;gap:10px;margin-top:16px;}
+  .column-latest-card{position:relative;display:grid;grid-template-columns:minmax(0,1fr) 22px;align-items:stretch;gap:12px;min-width:0;padding:19px 18px 18px 21px;border:1px solid rgba(139,163,214,.2);border-left:2px solid var(--column-accent);border-radius:14px;background:linear-gradient(115deg,rgba(14,27,58,.84),rgba(6,13,30,.9));box-shadow:inset 0 1px rgba(255,255,255,.05),0 13px 30px -25px rgba(0,0,0,.85);color:#f4f7ff;text-decoration:none;transition:border-color .2s ease,background .2s ease,transform .2s ease;}
+  .column-latest-card:hover{transform:translateY(-2px);border-color:rgba(128,166,255,.6);background:linear-gradient(115deg,rgba(20,40,82,.94),rgba(7,17,39,.97));}
   .column-latest-card:focus-visible{outline:3px solid #86aaff;outline-offset:3px;}
-  .column-latest-card .column-story-media{min-height:88px;border-radius:9px;}
-  .column-latest-copy{display:grid;align-content:center;min-width:0;padding:2px 0;}
-  .column-latest-title{display:-webkit-box;overflow:hidden;margin:4px 0 5px;color:#fff;font:800 clamp(19px,2.2vw,28px)/1.02 var(--display);letter-spacing:-.005em;-webkit-box-orient:vertical;-webkit-line-clamp:2;}
-  .column-latest-summary{display:-webkit-box;overflow:hidden;margin:0;color:#acb9d0;font-size:12px;line-height:1.5;-webkit-box-orient:vertical;-webkit-line-clamp:2;}
-  .column-latest-date-mobile{display:none;}
-  .column-latest-meta{display:flex;align-items:center;justify-content:flex-end;align-self:stretch;gap:8px;min-width:62px;color:#9db0cf;font:600 9px/1.35 var(--mono);letter-spacing:.05em;text-align:right;}
+  .column-latest-copy{display:grid;align-content:start;min-width:0;}
+  .column-latest-topline{display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0;}
+  .column-latest-date{flex:0 0 auto;color:#9db0cf;font:600 9px/1.35 var(--mono);letter-spacing:.05em;}
+  .column-latest-title{margin:8px 0 7px;color:#fff;font:800 clamp(23px,3vw,34px)/.98 var(--display);letter-spacing:-.008em;}
+  .column-latest-summary{display:-webkit-box;max-width:68ch;overflow:hidden;margin:0;color:#acb9d0;font-size:12px;line-height:1.55;-webkit-box-orient:vertical;-webkit-line-clamp:2;}
+  .column-latest-meta{display:grid;align-content:end;justify-content:end;min-width:22px;color:#9db0cf;}
   .column-popular{margin-top:42px;padding-top:28px;border-top:1px solid rgba(157,184,255,.18);}
   .column-popular-head{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:11px;}
   .column-popular-title{margin:0;color:#fff;font:900 clamp(26px,3.5vw,38px)/1 var(--display);letter-spacing:.01em;}
@@ -489,24 +485,23 @@
   .column-stagger.is-in{opacity:1;transform:translateY(0) scale(1);animation:column-stagger-in 460ms cubic-bezier(.22,1,.36,1) both;animation-delay:calc(var(--column-stagger, 0) * 100ms);}
   @keyframes column-stagger-in{from{opacity:0;transform:translateY(20px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
   @media(min-width:761px){
-    .column-featured-card{grid-template-columns:minmax(200px,.78fr) minmax(0,1.22fr);gap:24px;min-height:286px;padding:18px;}
+    .column-featured-card{min-height:220px;padding:30px 34px;}
+    .column-featured-card::after{right:34px;left:34px;}
     .column-featured-title{-webkit-line-clamp:2;}
-    .column-featured-summary{font-size:14px;-webkit-line-clamp:3;}
-    .column-latest-card{grid-template-columns:124px minmax(0,1fr) 104px;gap:18px;padding:12px;}
-    .column-latest-card .column-story-media{min-height:104px;}
-    .column-latest-meta{font-size:10px;}
+    .column-featured-summary{font-size:14px;}
+    .column-latest-card{padding:22px 24px 21px 27px;}
+    .column-latest-title{font-size:30px;}
   }
   @media(max-width:480px){
     .column-page-head{align-items:flex-start;flex-direction:column;gap:8px;margin-bottom:26px;padding-bottom:16px;}
     .column-page-title{font-size:42px;}
-    .column-featured-card{min-height:218px;grid-template-columns:92px minmax(0,1fr);gap:13px;padding:12px;}
-    .column-featured-title{font-size:28px;}
-    .column-featured-summary{font-size:12px;-webkit-line-clamp:3;}
-    .column-latest-card{grid-template-columns:72px minmax(0,1fr) 20px;gap:10px;padding:9px;}
-    .column-latest-card .column-story-media{min-height:78px;}
+    .column-featured-card{min-height:204px;padding:20px;}
+    .column-featured-card::after{right:20px;left:20px;}
+    .column-featured-title{font-size:32px;}
+    .column-featured-summary{font-size:12px;}
+    .column-latest-card{gap:9px;padding:17px 14px 16px 16px;}
+    .column-latest-title{font-size:24px;}
     .column-latest-summary{-webkit-line-clamp:2;}
-    .column-latest-meta{display:none;}
-    .column-latest-date-mobile{display:block;margin-top:5px;color:#9db0cf;font:600 9px/1.35 var(--mono);letter-spacing:.05em;}
     .column-popular-card{grid-template-columns:38px minmax(0,1fr) 20px;gap:9px;min-height:58px;}
     .column-popular-card strong{font-size:15px;}
   }
@@ -814,7 +809,6 @@
       <h3 class="column-section-title" id="column-featured-title">FEATURED</h3>
     </div>
     <a class="column-featured-card" id="lead-story-feature" href="/article.html" aria-label="AM4 COLUMNを読む">
-      <div class="column-story-media" id="lead-story-media" aria-hidden="true"></div>
       <div class="column-featured-copy">
         <span class="column-article-category" id="lead-story-category">FEATURED</span>
         <h3 class="column-featured-title" id="lead-story-article-title">新しいコラムを準備中です</h3>
@@ -1172,14 +1166,13 @@
       return COLUMN_CATEGORY_LABELS.get(category) || storyTags(article)[0] || 'AM4 COLUMN';
     }
 
-    function columnMediaTone(article){
+    function columnTone(article){
       const category = columnCategory(article).toLocaleLowerCase('en-US');
       if (category.includes('tactic')) return 'tactics';
       if (category.includes('club')) return 'club';
       if (category.includes('league')) return 'league';
       if (category.includes('rival')) return 'rivalry';
-      if (category.includes('tournament')) return 'tournament';
-      return 'default';
+      return 'history';
     }
 
     function articleDate(article){
@@ -1203,29 +1196,6 @@
       line.setAttribute('d', 'M5 12h13M13 6l6 6-6 6');
       icon.append(line);
       return icon;
-    }
-
-    function renderStoryMedia(container, article){
-      if (!container) return;
-      container.replaceChildren();
-      container.dataset.tone = columnMediaTone(article);
-      if (article.coverImage) {
-        const image = document.createElement('img');
-        image.src = article.coverImage;
-        image.alt = '';
-        image.loading = 'lazy';
-        image.addEventListener('error', () => renderStoryMedia(container, { ...article, coverImage:null }), { once:true });
-        container.append(image);
-        return;
-      }
-      const fallback = document.createElement('span');
-      fallback.className = 'column-story-media-fallback';
-      const mark = document.createElement('span');
-      mark.textContent = 'AM4';
-      const category = document.createElement('strong');
-      category.textContent = columnCategory(article);
-      fallback.append(mark, category);
-      container.append(fallback);
     }
 
     function sortColumnStories(stories){
@@ -1323,7 +1293,6 @@
       const summary = document.getElementById('lead-story-summary');
       const category = document.getElementById('lead-story-category');
       const date = document.getElementById('lead-story-date');
-      const media = document.getElementById('lead-story-media');
       if (title) title.textContent = article.title || 'AM4独自の読みもの';
       if (summary) summary.textContent = storySummary(article);
       if (category) category.textContent = `FEATURED · ${columnCategory(article)}`;
@@ -1331,12 +1300,12 @@
         date.dateTime = article.publishedAt || '';
         date.textContent = articleDate(article);
       }
-      renderStoryMedia(media, article);
       renderLeadStoryTags(article);
       syncLeadStorySave(article);
       if (feature) {
         feature.href = `/article.html?id=${encodeURIComponent(article.id)}`;
         feature.setAttribute('aria-label', `${article.title || 'AM4 COLUMN'}を読む`);
+        feature.dataset.tone = columnTone(article);
         feature.dataset.columnRevealKey = `featured:${article.id}`;
         window.AM4ObserveColumnReveals?.([feature]);
       }
@@ -1351,34 +1320,31 @@
         card.className = 'column-latest-card';
         card.href = `/article.html?id=${encodeURIComponent(article.id)}`;
         card.setAttribute('aria-label', `${article.title || 'AM4 COLUMN'}を読む`);
+        card.dataset.tone = columnTone(article);
         card.dataset.columnRevealKey = `latest:${article.id}`;
-        const media = document.createElement('span');
-        media.className = 'column-story-media';
-        media.setAttribute('aria-hidden', 'true');
-        renderStoryMedia(media, article);
         const copy = document.createElement('span');
         copy.className = 'column-latest-copy';
+        const topline = document.createElement('span');
+        topline.className = 'column-latest-topline';
         const category = document.createElement('span');
         category.className = 'column-article-category';
         category.textContent = columnCategory(article);
+        const date = document.createElement('time');
+        date.className = 'column-latest-date';
+        date.dateTime = article.publishedAt || '';
+        date.textContent = articleDate(article);
         const title = document.createElement('h3');
         title.className = 'column-latest-title';
         title.textContent = article.title || 'AM4独自の読みもの';
         const summary = document.createElement('p');
         summary.className = 'column-latest-summary';
         summary.textContent = storySummary(article);
-        const mobileDate = document.createElement('time');
-        mobileDate.className = 'column-latest-date-mobile';
-        mobileDate.dateTime = article.publishedAt || '';
-        mobileDate.textContent = articleDate(article);
-        copy.append(category, title, summary, mobileDate);
+        topline.append(category, date);
+        copy.append(topline, title, summary);
         const meta = document.createElement('span');
         meta.className = 'column-latest-meta';
-        const date = document.createElement('time');
-        date.dateTime = article.publishedAt || '';
-        date.textContent = articleDate(article);
-        meta.append(date, columnArrowIcon());
-        card.append(media, copy, meta);
+        meta.append(columnArrowIcon());
+        card.append(copy, meta);
         list.append(card);
       });
       list.hidden = stories.length === 0;

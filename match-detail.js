@@ -12,7 +12,6 @@
     "Goalkeeper Saves": "セーブ数", "Total passes": "パス数", "Passes accurate": "成功パス", "Passes %": "パス成功率",
     expected_goals: "xG", goals_prevented: "失点阻止",
   };
-  const eventDetails = { "Normal Goal": "通常ゴール", "Own Goal": "オウンゴール", Penalty: "PK", "Yellow Card": "イエローカード", "Red Card": "レッドカード" };
   const LIVE_REFRESH_MS = 15_000;
   const KICKOFF_RECHECK_BUFFER_MS = 30_000;
   let client = null;
@@ -97,24 +96,34 @@
   function unavailable(label) { return node("p", "match-unavailable", `${label}は提供されていません。`); }
   function eventKind(event) {
     const value = `${event.type || ""} ${event.detail || ""}`.toLowerCase();
-    if (value.includes("goal")) return "goal";
-    if (value.includes("card")) return value.includes("red") || value.includes("second yellow") ? "red-card" : "card";
+    if (value.includes("goal")) {
+      if (value.includes("missed penalty")) return "missed-penalty";
+      if (value.includes("disallowed") || value.includes("cancelled") || value.includes("canceled")) return "disallowed-goal";
+      return value.includes("own goal") ? "own-goal" : "goal";
+    }
+    if (value.includes("card")) {
+      if (value.includes("second yellow")) return "second-yellow";
+      return value.includes("red") ? "red-card" : "card";
+    }
     if (value.includes("subst")) return "sub";
     return "other";
   }
   function eventLabel(kind) {
-    return { goal: "得点", card: "警告", "red-card": "退場", sub: "交代", other: "イベント" }[kind];
+    return {
+      goal: "GOAL", "own-goal": "OWN GOAL", card: "YELLOW CARD",
+      "missed-penalty": "MISSED PENALTY", "disallowed-goal": "GOAL DISALLOWED",
+      "second-yellow": "SECOND YELLOW", "red-card": "RED CARD", sub: "SUBSTITUTION", other: "EVENT",
+    }[kind];
   }
-  function eventSecondaryCopy(event, kind) {
-    const detail = event.detail ? eventDetails[event.detail] || event.detail : "";
-    if (kind === "goal" && event.assist?.name) return [`アシスト ${event.assist.name}`, detail].filter(Boolean).join(" · ");
-    if (kind === "sub" && event.assist?.name) return [`交代相手 ${event.assist.name}`, detail].filter(Boolean).join(" · ");
-    return detail || (event.player?.name ? "記録済み" : "選手情報なし");
+  function eventNote(event, kind) {
+    if (kind === "goal" && event.detail === "Penalty") return "PENALTY";
+    if (kind === "other") return text(event.detail || event.comments, "");
+    return "";
   }
 
-  function eventPlayer(event) {
-    const player = event.player || {};
-    return { id: player.id, name: text(player.name, "選手情報なし") };
+  function eventParticipant(participant) {
+    const value = participant || {};
+    return { id: value.id, name: value.name ? String(value.name).trim() : "" };
   }
 
   function appendEventPhoto(target, player) {
@@ -129,19 +138,60 @@
     image.loading = "lazy";
     image.decoding = "async";
     image.addEventListener("error", () => image.remove(), { once: true });
-    target.prepend(image);
+    target.append(image);
+  }
+
+  function eventPersonLine(player, className = "match-event-person") {
+    if (!player.name) return null;
+    const line = node("div", className);
+    appendEventPhoto(line, player);
+    line.append(node("span", "match-event-player-name", player.name));
+    return line;
+  }
+
+  function eventTeam(detail, event, side) {
+    const fixtureTeam = side === "home" ? detail.fixture?.home : side === "away" ? detail.fixture?.away : null;
+    return {
+      name: event.team?.name || fixtureTeam?.name || "",
+      logo: event.team?.logo || fixtureTeam?.logo || "",
+    };
+  }
+
+  function eventTeamMark(team) {
+    if (!team.name && !team.logo) return null;
+    const mark = node("span", "match-event-team");
+    if (team.logo) {
+      const image = document.createElement("img");
+      image.className = "match-event-team-crest";
+      image.src = team.logo;
+      image.alt = "";
+      image.width = 18;
+      image.height = 18;
+      image.loading = "lazy";
+      image.decoding = "async";
+      image.addEventListener("error", () => image.remove(), { once: true });
+      mark.append(image);
+    }
+    if (team.name) mark.append(node("span", "", team.name));
+    return mark;
+  }
+
+  function appendSubstitutionRow(card, direction, player) {
+    if (!player.name) return;
+    const incoming = direction === "in";
+    const row = node("div", `match-event-sub-row match-event-sub-row--${direction}`);
+    row.append(
+      node("span", "match-event-sub-arrow", incoming ? "↑" : "↓"),
+      node("span", "match-event-sub-label", incoming ? "IN" : "OUT"),
+      eventPersonLine(player, "match-event-sub-person"),
+    );
+    card.append(row);
   }
 
   function renderEvents(detail) {
-    const el = section("events", "イベント", "得点、カード、交代");
+    const el = section("events", "イベント", "ゴール、交代、カードを時系列で表示");
     if (!detail.availability?.events || detail.events == null) { el.append(unavailable("イベントデータ")); return el; }
     if (!detail.events.length) { el.append(node("p", "match-empty", "この試合では記録されたイベントはありません。")); return el; }
-    const teams = node("div", "match-timeline-teams");
-    const home = node("span", "match-timeline-team match-timeline-team--home");
-    const away = node("span", "match-timeline-team match-timeline-team--away");
-    home.append(node("b", "", "ホーム"), node("strong", "", text(detail.fixture?.home?.name, "ホーム")));
-    away.append(node("b", "", "アウェイ"), node("strong", "", text(detail.fixture?.away?.name, "アウェイ")));
-    teams.append(home, node("span", "match-timeline-axis", "時間"), away);
     const timeline = node("ol", "match-timeline");
     detail.events.forEach((event) => {
       const kind = eventKind(event);
@@ -150,19 +200,40 @@
       const side = event.team?.id === homeId ? "home" : event.team?.id === awayId ? "away" : "neutral";
       const item = node("li", `match-event match-event--${kind} match-event--${side}`);
       const minute = node("time", "match-event-minute", text(event.minute, "—"));
-      const body = node("div", "match-event-body");
-      const player = eventPlayer(event);
-      const playerLine = node("div", "match-event-player");
-      appendEventPhoto(playerLine, player);
-      playerLine.append(node("span", "match-event-player-name", player.name));
-      const secondary = eventSecondaryCopy(event, kind);
-      body.append(node("span", "match-event-type", eventLabel(kind)), playerLine, node("p", "", secondary));
-      item.setAttribute("aria-label", `${text(event.team?.name, "チーム情報なし")}、${side === "home" ? "ホーム" : side === "away" ? "アウェイ" : "所属不明"}、${minute.textContent}、${eventLabel(kind)}、${player.name}、${secondary}`);
-      if (side === "away") item.append(node("div", "match-event-spacer"), minute, body);
-      else item.append(body, minute, node("div", "match-event-spacer"));
+      const rail = node("div", "match-event-rail");
+      rail.append(minute);
+      const card = node("article", "match-event-card");
+      const team = eventTeam(detail, event, side);
+      const cardHead = node("div", "match-event-card-head");
+      const teamMark = eventTeamMark(team);
+      if (teamMark) cardHead.append(teamMark);
+      cardHead.append(node("span", "match-event-type", eventLabel(kind)));
+      card.append(cardHead);
+      const player = eventParticipant(event.player);
+      const assist = eventParticipant(event.assist);
+      if (kind === "sub") {
+        appendSubstitutionRow(card, "in", assist);
+        appendSubstitutionRow(card, "out", player);
+      } else {
+        const primary = eventPersonLine(player, "match-event-primary");
+        if (primary) card.append(primary);
+        if (["goal", "own-goal"].includes(kind) && assist.name) {
+          const assistLine = node("div", "match-event-assist");
+          assistLine.append(node("span", "", "ASSIST"), eventPersonLine(assist, "match-event-assist-person"));
+          card.append(assistLine);
+        }
+      }
+      const note = eventNote(event, kind);
+      if (note) card.append(node("p", "match-event-note", note));
+      const sideLabel = side === "home" ? "ホーム" : side === "away" ? "アウェイ" : "所属不明";
+      const people = kind === "sub"
+        ? [assist.name ? `IN ${assist.name}` : "", player.name ? `OUT ${player.name}` : ""].filter(Boolean)
+        : [player.name, ["goal", "own-goal"].includes(kind) ? assist.name && `ASSIST ${assist.name}` : ""].filter(Boolean);
+      item.setAttribute("aria-label", [team.name, sideLabel, minute.textContent, eventLabel(kind), ...people, note].filter(Boolean).join("、"));
+      item.append(rail, card);
       timeline.append(item);
     });
-    el.append(teams, timeline);
+    el.append(timeline);
     return el;
   }
 

@@ -17,7 +17,16 @@ test('fixture detail normalizes provider data and degrades unavailable optional 
         }],
       };
     }
-    if (path === '/fixtures/events') return { response: [{ time: { elapsed: 12, extra: null }, type: 'Goal', detail: 'Normal Goal', team: { id: 42, name: 'Arsenal' }, player: { id: 9, name: 'B. Saka' }, assist: { id: 8, name: 'M. Odegaard' } }] };
+    if (path === '/fixtures/events') return { response: [
+      { time: { elapsed: 12, extra: null }, type: 'Goal', detail: 'Normal Goal', team: { id: 42, name: 'Arsenal', logo: 'https://example.test/a.png' }, player: { id: 9, name: 'B. Saka' }, assist: { id: 8, name: 'M. Odegaard' } },
+      { time: { elapsed: 61, extra: null }, type: 'subst', detail: 'Substitution 1', team: { id: 42, name: 'Arsenal', logo: 'https://example.test/a.png' }, player: { id: 10, name: 'A. Out' }, assist: { id: 11, name: 'B. In' } },
+      { time: { elapsed: 70, extra: null }, type: 'Card', detail: 'Yellow Card', team: { id: 50, name: 'Manchester City', logo: 'https://example.test/mc.png' }, player: { id: 12, name: 'C. Yellow' }, assist: { id: null, name: null } },
+      { time: { elapsed: 73, extra: null }, type: 'Card', detail: 'Second Yellow card', team: { id: 50, name: 'Manchester City', logo: 'https://example.test/mc.png' }, player: { id: 13, name: 'D. Second' }, assist: { id: null, name: null } },
+      { time: { elapsed: 78, extra: null }, type: 'Card', detail: 'Red Card', team: { id: 50, name: 'Manchester City', logo: 'https://example.test/mc.png' }, player: { id: 14, name: 'E. Red' }, assist: { id: null, name: null } },
+      { time: { elapsed: 83, extra: null }, type: 'Goal', detail: 'Own Goal', team: { id: 50, name: 'Manchester City', logo: 'https://example.test/mc.png' }, player: { id: 15, name: 'F. Own' }, assist: { id: 16, name: 'G. Involved' } },
+      { time: { elapsed: 88, extra: null }, type: 'Goal', detail: 'Missed Penalty', team: { id: 42, name: 'Arsenal', logo: 'https://example.test/a.png' }, player: { id: 17, name: 'H. Missed' }, assist: { id: null, name: null } },
+      { time: { elapsed: 90, extra: 2 }, type: 'Goal', detail: 'Goal Disallowed', team: { id: 42, name: 'Arsenal', logo: 'https://example.test/a.png' }, player: { id: 18, name: 'I. Disallowed' }, assist: { id: null, name: null } },
+    ] };
     if (path === '/fixtures/lineups') return { errors: { coverage: 'Not available' }, response: [] };
     return { response: [{ team: { id: 42, name: 'Arsenal' }, statistics: [{ type: 'Ball Possession', value: '60%' }] }] };
   };
@@ -35,10 +44,21 @@ test('fixture detail normalizes provider data and degrades unavailable optional 
   assert.equal(detail.fixture.competitionCountry, 'England');
   assert.equal(detail.fixture.status, 'FT');
   assert.equal(detail.fixture.roundLabel, '第1節');
-  assert.deepEqual(detail.events, [{
+  assert.deepEqual(detail.events[0], {
     minute: "12'", elapsed: 12, extra: null, type: 'Goal', detail: 'Normal Goal', comments: null,
-    team: { id: 42, name: 'Arsenal', logo: null }, player: { id: 9, name: 'B. Saka' }, assist: { id: 8, name: 'M. Odegaard' },
-  }]);
+    team: { id: 42, name: 'Arsenal', logo: 'https://example.test/a.png' }, player: { id: 9, name: 'B. Saka' }, assist: { id: 8, name: 'M. Odegaard' },
+  });
+  assert.deepEqual(detail.events.slice(1).map((event) => ({
+    minute: event.minute, type: event.type, detail: event.detail, team: event.team, player: event.player, assist: event.assist,
+  })), [
+    { minute: "61'", type: 'subst', detail: 'Substitution 1', team: { id: 42, name: 'Arsenal', logo: 'https://example.test/a.png' }, player: { id: 10, name: 'A. Out' }, assist: { id: 11, name: 'B. In' } },
+    { minute: "70'", type: 'Card', detail: 'Yellow Card', team: { id: 50, name: 'Manchester City', logo: 'https://example.test/mc.png' }, player: { id: 12, name: 'C. Yellow' }, assist: { id: null, name: null } },
+    { minute: "73'", type: 'Card', detail: 'Second Yellow card', team: { id: 50, name: 'Manchester City', logo: 'https://example.test/mc.png' }, player: { id: 13, name: 'D. Second' }, assist: { id: null, name: null } },
+    { minute: "78'", type: 'Card', detail: 'Red Card', team: { id: 50, name: 'Manchester City', logo: 'https://example.test/mc.png' }, player: { id: 14, name: 'E. Red' }, assist: { id: null, name: null } },
+    { minute: "83'", type: 'Goal', detail: 'Own Goal', team: { id: 50, name: 'Manchester City', logo: 'https://example.test/mc.png' }, player: { id: 15, name: 'F. Own' }, assist: { id: 16, name: 'G. Involved' } },
+    { minute: "88'", type: 'Goal', detail: 'Missed Penalty', team: { id: 42, name: 'Arsenal', logo: 'https://example.test/a.png' }, player: { id: 17, name: 'H. Missed' }, assist: { id: null, name: null } },
+    { minute: "90+2'", type: 'Goal', detail: 'Goal Disallowed', team: { id: 42, name: 'Arsenal', logo: 'https://example.test/a.png' }, player: { id: 18, name: 'I. Disallowed' }, assist: { id: null, name: null } },
+  ]);
   assert.equal(detail.lineups, null);
   assert.deepEqual(detail.statistics, [{ team: { id: 42, name: 'Arsenal', logo: null }, statistics: [{ type: 'Ball Possession', value: '60%' }] }]);
   assert.deepEqual(detail.availability, { events: true, lineups: false, statistics: true });
