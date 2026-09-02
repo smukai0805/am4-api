@@ -42,6 +42,7 @@ import { checkTransferNews, transferDedupeKey } from '../lib/transfer-news-core.
 import { generateArticleDraft, searchPlayerProfileByName, calcAge, extractTitle } from '../lib/academy-core.js';
 import { saveArticle, getArticle, findArticleBySubject, listArticles, slugify } from '../lib/article-store.js';
 import { searchTeamIdByName } from '../lib/api-football-client.js';
+import { isAuthorizedCronRequest } from '../lib/cron-auth.js';
 
 export const config = { maxDuration: 300 };
 
@@ -182,6 +183,8 @@ async function saveSeenKeys(entries) {
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
+
+  if (!isAuthorizedCronRequest(req)) return res.status(401).json({ error: 'Unauthorized' });
 
   // 保存済み速報一覧の確認用(簡易レビュー): GET /api/transfer-news-watch?list=1
   // 一般公開用の一覧・詳細APIは api/articles.js を使うこと(こちらは動作確認用の簡易版)。

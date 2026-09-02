@@ -3,10 +3,8 @@
 // 試合解説記事(match_report)・選手紹介記事(player_intro)の恒久アーカイブ用、
 // 一般公開向けの一覧・個別取得API。実体はlib/article-store.jsのVercel Blobストア。
 //
-// 【現状の公開ステータスについて】記事はすべてstatus:'draft'で保存される(レビュー後に
-// 公開フラグを立てる運用は今後別途整備予定)。このエンドポイントは現段階では
-// status に関わらず全件を返す(公開フローが無い今の時点でdraftのみ除外すると、
-// フロントに何も表示されなくなってしまうため)。
+// 公開APIは status:'published' かつ public !== false の記事だけを返す。
+// 下書きは同じBlobストアに保持し、同期・生成・編集用の内部経路だけから参照する。
 //
 // GET /api/articles?type=match_report&page=1&pageSize=10  … 一覧(新着順、種別絞り込み可)
 // GET /api/articles?id=<slug>                              … 個別記事
@@ -22,15 +20,11 @@
 import { listArticles, getArticle } from '../lib/article-store.js';
 import { getTrendingPlayersForDisplay, computeAndSaveTrendingPlayers } from '../lib/trending-players.js';
 import { syncNotionContent } from '../lib/notion-content-sync.js';
+import { isAuthorizedCronRequest } from '../lib/cron-auth.js';
 
 const VALID_TYPES = ['match_report', 'match_prediction', 'am4_story', 'player_intro', 'transfer_news'];
 
 export const config = { maxDuration: 120 };
-
-function isAuthorizedCronRequest(req) {
-  const secret = process.env.CRON_SECRET;
-  return Boolean(secret) && req.headers?.authorization === `Bearer ${secret}`;
-}
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -57,6 +51,7 @@ export default async function handler(req, res) {
   }
 
   if (req.query.trendingRefresh === '1') {
+    if (!isAuthorizedCronRequest(req)) return res.status(401).json({ error: 'Unauthorized' });
     try {
       const result = await computeAndSaveTrendingPlayers();
       return res.status(200).json(result);
@@ -80,11 +75,12 @@ export default async function handler(req, res) {
     }
   }
 
-  res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate');
+  // 公開可否が変わった記事をすぐに取り下げられるよう、公開本文・一覧はCDNに残さない。
+  res.setHeader('Cache-Control', 'no-store');
 
   try {
     if (req.query.id) {
-      const article = await getArticle(String(req.query.id));
+      const article = await getArticle(String(req.query.id), { publishedOnly: true });
       if (!article) return res.status(404).json({ error: '記事が見つかりません' });
       return res.status(200).json({ article });
     }
@@ -103,7 +99,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'matchDate は YYYY-MM-DD 形式で指定してください' });
     }
 
-    const result = await listArticles({ type: typeParam, matchDate, page, pageSize });
+    const result = await listArticles({ type: typeParam, matchDate, page, pageSize, publishedOnly: true });
     return res.status(200).json(result);
   } catch (err) {
     console.error('articles API error:', err);

@@ -38,6 +38,7 @@ import { saveArticle, listArticles, slugify } from '../lib/article-store.js';
 import { PILOT_CLUBS } from '../lib/pilot-clubs.js';
 import { apiFootballFetch, mapWithConcurrency } from '../lib/api-football-client.js';
 import { getChampionsLeagueFixtures } from '../lib/champions-league.js';
+import { isAuthorizedCronRequest } from '../lib/cron-auth.js';
 
 // 終了済み(Match Finished)の試合だけを対象にする。延長・PK戦を経た終了(AET/PEN)も含める。
 // PILOT_CLUBS単位・Champions League大会単位の両方の取得経路で共通して使う。
@@ -229,6 +230,8 @@ async function saveSeenMatches(entries) {
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
+
+  if (!isAuthorizedCronRequest(req)) return res.status(401).json({ error: 'Unauthorized' });
 
   // 保存済み記事一覧の確認用(簡易レビュー): GET /api/match-report-watch?list=1
   // 一般公開用の一覧・詳細APIは api/articles.js を使うこと(こちらは動作確認用の簡易版)。

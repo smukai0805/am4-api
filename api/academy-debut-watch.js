@@ -37,6 +37,7 @@ import { saveArticle, listArticles, slugify } from '../lib/article-store.js';
 import { PILOT_CLUBS } from '../lib/pilot-clubs.js';
 import { apiFootballFetch, mapWithConcurrency, searchTeamIdByName } from '../lib/api-football-client.js';
 import { getChampionsLeagueFixtures } from '../lib/champions-league.js';
+import { isAuthorizedCronRequest } from '../lib/cron-auth.js';
 
 // 2026-08-04: extractTitle()はlib/academy-core.jsへ集約(api/transfer-news-watch.js
 // との重複解消、機械的な見出しへのフォールバック不具合の修正を1箇所で反映するため)。
@@ -226,6 +227,8 @@ async function saveProfileCache(cache) {
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
+
+  if (!isAuthorizedCronRequest(req)) return res.status(401).json({ error: 'Unauthorized' });
 
   // 保存済み記事一覧の確認用(簡易レビュー): GET /api/academy-debut-watch?list=1
   // 一般公開用の一覧・詳細APIは api/articles.js を使うこと(こちらは動作確認用の簡易版)。
