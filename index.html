@@ -470,36 +470,39 @@
   .fixture-league-toggle:hover,.fixture-league-toggle:focus-visible{border-color:rgba(122,158,255,.68);background:rgba(42,94,255,.16);color:#fff;outline:0;}
   .fixture-directory-toggle{display:flex;align-items:center;justify-content:center;width:100%;min-height:52px;border:1px solid rgba(126,159,232,.28);border-radius:16px;background:linear-gradient(110deg,rgba(24,58,127,.22),rgba(9,19,41,.78));color:#d9e5ff;cursor:pointer;font:600 11px var(--mono);letter-spacing:.07em;transition:background .18s ease,border-color .18s ease,transform .18s ease;}
   .fixture-directory-toggle:hover,.fixture-directory-toggle:focus-visible{border-color:#5786f5;background:linear-gradient(110deg,rgba(36,88,194,.34),rgba(13,30,67,.88));transform:translateY(-1px);outline:0;}
-  .matchday-board .fixture-league-group .fixture-row{display:grid;grid-template-columns:minmax(0,1fr) 108px minmax(0,1fr);grid-template-areas:"home score away" "meta details details";align-items:center;gap:6px 18px;min-height:98px;padding:14px 16px 11px;border:1px solid transparent;border-radius:16px;background:linear-gradient(110deg,#0a1529,#070d1b) padding-box,linear-gradient(100deg,var(--home-team-color,#6588b8),#8fa7d4 50%,var(--away-team-color,#8a73bd)) border-box;box-shadow:inset 0 1px rgba(255,255,255,.05),0 7px 18px rgba(0,0,0,.14);}
+  .matchday-board .fixture-league-group .fixture-row{display:grid;grid-template-columns:minmax(180px,1fr) clamp(122px,11vw,152px) minmax(180px,1fr);grid-template-areas:"home score away" "home meta away";align-items:center;gap:4px clamp(18px,4vw,56px);min-height:104px;padding:14px 24px 12px;border:1px solid transparent;border-radius:16px;background:linear-gradient(110deg,#0a1529,#070d1b) padding-box,linear-gradient(100deg,var(--home-team-color,#6588b8),#8fa7d4 50%,var(--away-team-color,#8a73bd)) border-box;box-shadow:inset 0 1px rgba(255,255,255,.05),0 7px 18px rgba(0,0,0,.14);}
   .matchday-board .fixture-league-group .fixture-row{position:relative;}
   .fixture-card-tap-target{position:absolute;z-index:2;inset:0;display:block;margin:0;padding:0;border:0;border-radius:inherit;background:transparent;cursor:pointer;}
   .fixture-card-tap-target:focus-visible{outline:2px solid #8bb1ff;outline-offset:3px;}
   .matchday-board .fixture-league-group .fixture-row--interactive > :not(.fixture-card-tap-target){position:relative;z-index:3;pointer-events:none;}
-  .matchday-board .fixture-league-group .fixture-row:hover{background:linear-gradient(110deg,#0d1c35,#080f20) padding-box,linear-gradient(100deg,var(--home-team-color,#6588b8),#d3e0fb 50%,var(--away-team-color,#8a73bd)) border-box;box-shadow:inset 0 1px rgba(255,255,255,.08),0 10px 24px rgba(0,0,0,.24);}
+  .matchday-board .fixture-league-group .fixture-row:hover,.matchday-board .fixture-league-group .fixture-row:focus-within{background:linear-gradient(110deg,#0d1c35,#080f20) padding-box,linear-gradient(100deg,var(--home-team-color,#6588b8),#d3e0fb 50%,var(--away-team-color,#8a73bd)) border-box;box-shadow:inset 0 1px rgba(255,255,255,.08),0 10px 24px rgba(0,0,0,.24);}
   @supports (color:color-mix(in srgb,#fff,#000)){
     .matchday-board .fixture-league-group .fixture-row{box-shadow:inset 0 1px rgba(255,255,255,.05),0 7px 18px rgba(0,0,0,.14),0 0 20px color-mix(in srgb,var(--home-team-color,#6588b8) 14%,transparent);}
-    .matchday-board .fixture-league-group .fixture-row:hover{box-shadow:inset 0 1px rgba(255,255,255,.08),0 10px 24px rgba(0,0,0,.24),0 0 26px color-mix(in srgb,var(--away-team-color,#8a73bd) 20%,transparent);}
+    .matchday-board .fixture-league-group .fixture-row:hover,.matchday-board .fixture-league-group .fixture-row:focus-within{box-shadow:inset 0 1px rgba(255,255,255,.08),0 10px 24px rgba(0,0,0,.24),0 0 26px color-mix(in srgb,var(--away-team-color,#8a73bd) 20%,transparent);}
   }
-  .matchday-board .fixture-league-group .fixture-meta{grid-area:meta;align-self:end;color:#7788a5;}
+  .matchday-board .fixture-league-group .fixture-meta{grid-area:meta;justify-self:center;align-self:start;color:#7788a5;text-align:center;}
   .matchday-board .fixture-league-group .fixture-meta .fixture-date{color:#8d9db9;font:600 9px var(--mono);letter-spacing:.02em;}
   .matchday-board .fixture-league-group .fixture-teams{display:contents;}
-  .matchday-board .fixture-league-group .fixture-team{display:flex;align-items:center;gap:9px;min-width:0;overflow:hidden;}
+  .matchday-board .fixture-league-group .fixture-team{display:flex;align-items:center;align-self:stretch;gap:9px;min-width:0;overflow:hidden;}
   .matchday-board .fixture-league-group .fixture-team:first-child{grid-area:home;justify-content:flex-start;text-align:left;}
-  .matchday-board .fixture-league-group .fixture-team:last-child{grid-area:away;justify-content:flex-end;flex-direction:row-reverse;text-align:right;}
-  .fixture-team-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .matchday-board .fixture-league-group .fixture-team:last-child{grid-area:away;justify-content:flex-start;flex-direction:row-reverse;text-align:right;}
+  .fixture-team-name{min-width:0;overflow-wrap:anywhere;line-height:1.2;white-space:normal;}
   .matchday-board .fixture-league-group .fixture-team-name{color:#f3f6ff;font-weight:750;}
   .matchday-board .fixture-league-group .team-logo,.matchday-board .fixture-league-group .team-logo-fallback{width:30px;height:30px;filter:drop-shadow(0 3px 6px rgba(0,0,0,.5));}
   .fixture-team-score{display:none;}
-  .fixture-scoreboard{grid-area:score;display:flex;flex-direction:column;align-items:center;justify-content:center;justify-self:stretch;min-width:108px;min-height:52px;padding:0;border:0;border-radius:11px;color:#fff;background:transparent;font:900 28px/.92 var(--body);letter-spacing:-.06em;}
+  .fixture-scoreboard{position:relative;isolation:isolate;grid-area:score;display:flex;flex-direction:column;align-items:center;justify-content:center;justify-self:stretch;min-width:0;min-height:52px;padding:0;border:0;border-radius:12px;color:#fff;background:transparent;font:900 clamp(28px,3.2vw,44px)/.92 var(--body);letter-spacing:-.06em;}
+  .fixture-scoreboard-value,.fixture-scoreboard small{position:relative;z-index:2;}
   .fixture-scoreboard small{margin-top:5px;color:#9eabc4;font:700 8px var(--mono);letter-spacing:.08em;}
-  .fixture-reveal-action{transition:border-color .18s ease,background .18s ease,transform .18s ease;}
-  .fixture-row--interactive:hover .fixture-reveal-action{border-color:rgba(185,207,255,.8);background:rgba(88,119,182,.16);transform:translateY(-1px);}
-  .fixture-scoreboard-icon{display:none;width:15px;height:15px;fill:none;stroke:#c2d3f3;stroke-width:1.7;}
-  .fixture-scoreboard[data-result-hidden="true"]{flex-direction:row;gap:7px;min-height:44px;padding:0 10px;border:1px dashed rgba(157,181,233,.44);background:rgba(92,119,175,.10);font-family:var(--body);letter-spacing:0;}
-  .fixture-scoreboard[data-result-hidden="true"] .fixture-scoreboard-icon{display:block;margin:0;}
-  .fixture-scoreboard[data-result-hidden="true"] .fixture-scoreboard-value{font:700 11px/1.2 var(--body);white-space:nowrap;}
-  .fixture-card-action{grid-area:details;display:inline-flex;align-items:center;justify-content:flex-end;justify-self:end;min-width:88px;min-height:28px;padding:5px 0 3px 14px;color:#aabce0;font:600 9px/1 var(--mono);letter-spacing:.05em;}
-  .fixture-row--interactive:hover .fixture-card-action{color:#d9e5ff;}
+  .fixture-scoreboard[data-result-hidden="true"]{overflow:hidden;min-height:52px;padding:3px 4px 0;background:radial-gradient(ellipse at center,rgba(102,142,224,.17),transparent 68%);}
+  .fixture-scoreboard[data-result-hidden="true"] .fixture-scoreboard-value{filter:blur(8px);opacity:.72;transform:scale(1.06);transition:filter .52s ease,opacity .42s ease,transform .52s cubic-bezier(.22,1,.36,1);user-select:none;}
+  .fixture-scoreboard[data-result-hidden="true"]::before,.fixture-scoreboard[data-result-hidden="true"]::after{position:absolute;z-index:1;content:"";pointer-events:none;inset:-38% -24%;background:radial-gradient(ellipse at 30% 50%,rgba(174,204,255,.6),transparent 36%),radial-gradient(ellipse at 72% 46%,rgba(82,124,215,.46),transparent 40%);filter:blur(15px);opacity:.72;transform:translateX(0) scale(1);}
+  .fixture-scoreboard[data-result-hidden="true"]::after{background:radial-gradient(ellipse at 62% 54%,rgba(232,241,255,.5),transparent 28%),radial-gradient(ellipse at 20% 38%,rgba(70,110,211,.38),transparent 39%);filter:blur(20px);opacity:.54;}
+  .fixture-scoreboard.is-score-revealing .fixture-scoreboard-value{animation:fixture-score-sharpen .54s cubic-bezier(.22,1,.36,1) forwards;}
+  .fixture-scoreboard.is-score-revealing::before{animation:fixture-smoke-left .54s cubic-bezier(.22,1,.36,1) forwards;}
+  .fixture-scoreboard.is-score-revealing::after{animation:fixture-smoke-right .58s cubic-bezier(.22,1,.36,1) forwards;}
+  @keyframes fixture-score-sharpen{0%{filter:blur(8px);opacity:.72;transform:scale(1.06)}100%{filter:blur(0);opacity:1;transform:scale(1)}}
+  @keyframes fixture-smoke-left{0%{opacity:.72;transform:translateX(0) scale(1)}100%{opacity:0;transform:translateX(-36%) scale(1.32)}}
+  @keyframes fixture-smoke-right{0%{opacity:.54;transform:translateX(0) scale(1)}100%{opacity:0;transform:translateX(40%) scale(1.42)}}
   .fixture-editorial-strip{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:12px;align-items:start;margin:-1px 7px 4px;padding:11px 12px;border:1px solid rgba(112,148,223,.2);border-radius:12px;background:linear-gradient(110deg,rgba(15,31,61,.82),rgba(7,14,29,.92));}
   a.fixture-editorial-strip{color:inherit;text-decoration:none;cursor:pointer;transition:border-color .18s ease,transform .18s ease;}
   a.fixture-editorial-strip:hover{border-color:rgba(168,195,255,.68);transform:translateY(-1px);}
@@ -551,12 +554,12 @@
     .fixture-league-country{font-size:7px;}
     .fixture-league-toggle{width:calc(100% - 16px);min-height:36px;margin:0 8px 8px;font-size:9px;}
     .fixture-directory-toggle{min-height:48px;border-radius:14px;font-size:10px;}
-    .matchday-board .fixture-league-group .fixture-row{grid-template-columns:minmax(0,1fr) 92px minmax(0,1fr);gap:5px 9px;min-height:86px;padding:11px 10px 9px;border-radius:13px;}
+    .matchday-board .fixture-league-group .fixture-row{grid-template-columns:minmax(0,1fr) 84px minmax(0,1fr);gap:5px 8px;min-height:110px;padding:12px 10px 10px;border-radius:13px;}
     .matchday-board .fixture-league-group .fixture-team{gap:6px;font-size:11px;}
+    .matchday-board .fixture-league-group .fixture-team-name{display:-webkit-box;overflow:hidden;text-overflow:clip;line-height:1.18;-webkit-box-orient:vertical;-webkit-line-clamp:2;}
     .matchday-board .fixture-league-group .team-logo,.matchday-board .fixture-league-group .team-logo-fallback{width:26px;height:26px;}
-    .fixture-scoreboard{min-width:92px;font-size:24px;}
-    .fixture-scoreboard[data-result-hidden="true"]{min-height:40px;padding:0 6px;gap:5px;}
-    .fixture-card-action{min-width:82px;min-height:28px;font-size:8px;}
+    .fixture-scoreboard{min-width:0;min-height:50px;font-size:26px;}
+    .fixture-scoreboard[data-result-hidden="true"]{min-height:50px;padding:3px 0 0;}
     .fixture-editorial-strip{gap:9px;margin:-1px 5px 3px;padding:9px 10px;}
     .fixture-editorial-label{font-size:7px;}
     .fixture-editorial-title{font-size:11px;}
@@ -567,9 +570,16 @@
     .editorial-section .match-feature{padding:30px 22px 34px;box-shadow:7px 8px 0 #1458ff;gap:28px;}
     .editorial-section .match-headline{font-size:38px;}
   }
+  @media(max-width:375px){
+    .matchday-board .fixture-league-group .fixture-row{grid-template-columns:minmax(0,1fr) 72px minmax(0,1fr);column-gap:5px;padding-inline:8px;}
+    .matchday-board .fixture-league-group .fixture-team{gap:4px;font-size:10px;}
+    .matchday-board .fixture-league-group .team-logo,.matchday-board .fixture-league-group .team-logo-fallback{width:22px;height:22px;}
+    .fixture-scoreboard{font-size:22px;}
+  }
 
   .reveal{ opacity:0; transform:translateY(18px); transition:opacity .7s ease, transform .7s ease; }
   .reveal.in{ opacity:1; transform:translateY(0); }
+  @media (prefers-reduced-motion:reduce){.fixture-scoreboard,.fixture-scoreboard *,.fixture-scoreboard::before,.fixture-scoreboard::after{animation:none!important;transition:none!important;}}
 
   footer{
     padding:48px clamp(20px,5vw,64px) 64px;

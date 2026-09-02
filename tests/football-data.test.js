@@ -138,7 +138,7 @@ test("fixture statuses are grouped into live, upcoming, and finished views", () 
 
 test("finished scores stay hidden until the visitor chooses to reveal results", () => {
   const fixture = { status: "FT", homeGoals: 3, awayGoals: 1 };
-  assert.deepEqual(fixtureResultPresentation(fixture, false), { hidden: true, label: "結果を見る" });
+  assert.deepEqual(fixtureResultPresentation(fixture, false), { hidden: true, label: "3-1" });
   assert.deepEqual(fixtureResultPresentation(fixture, true), { hidden: false, label: "3-1" });
 });
 

@@ -64,7 +64,7 @@
   function fixtureResultPresentation(fixture, spoilersRevealed = false) {
     const group = classifyFixtureStatus(fixture?.status);
     const score = fixtureScoreLabel(fixture);
-    if (group === "finished" && !spoilersRevealed) return { hidden: true, label: "結果を見る" };
+    if (group === "finished" && !spoilersRevealed) return { hidden: true, label: score || "試合終了" };
     if (group === "live") return { hidden: false, label: `LIVE${score ? ` · ${score}` : ""}` };
     if (group === "finished") return { hidden: false, label: score || "試合終了" };
     return { hidden: false, label: "" };
