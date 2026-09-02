@@ -104,7 +104,7 @@
   }
 
   function renderArticle(article) {
-    document.title = `${article.title}｜AM4`;
+    document.title = `${article.title}｜AM4 Football`;
     const header = document.createElement("header");
     header.className = "article-header";
     header.innerHTML = '<div class="article-kicker"><span></span></div><h1 class="article-title"></h1><div class="article-meta"></div><div class="article-actions"></div>';
@@ -141,7 +141,7 @@
 
   function renderMissing() {
     paper.innerHTML = '<div class="article-state"><h1>記事が見つかりません</h1><p>URLを確認するか、ホームから別の記事を選んでください。</p><a class="brand-button" href="/">ホームへ戻る</a></div>';
-    document.title = "記事が見つかりません｜AM4";
+    document.title = "記事が見つかりません｜AM4 Football";
   }
 
   (async function loadArticle() {

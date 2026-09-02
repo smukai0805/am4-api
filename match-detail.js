@@ -304,7 +304,7 @@
 
   function render(detail) {
     const fixture = detail.fixture;
-    document.title = `${text(fixture.home?.name)} vs ${text(fixture.away?.name)}｜AM4`;
+    document.title = `${text(fixture.home?.name)} vs ${text(fixture.away?.name)}｜AM4 Football`;
     page.replaceChildren(
       backLink(),
       renderBoard(fixture),
@@ -322,7 +322,7 @@
   function renderLiveUpdate(detail) {
     const fixture = detail.fixture;
     const previousScrollY = window.scrollY;
-    document.title = `${text(fixture.home?.name)} vs ${text(fixture.away?.name)}｜AM4`;
+    document.title = `${text(fixture.home?.name)} vs ${text(fixture.away?.name)}｜AM4 Football`;
     page.querySelector(".match-board")?.replaceWith(renderBoard(fixture));
     replaceSection("overview", renderOverview(fixture));
     replaceSection("events", renderEvents(detail));
