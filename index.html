@@ -17,7 +17,7 @@
 <link rel="manifest" href="/manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;700;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/brand.css">
+<link rel="stylesheet" href="/brand.css?v=20260902-column-discovery">
 <style>
   main{display:flex;flex-direction:column;}
 
@@ -384,9 +384,25 @@
   .editorial-section .comp-badge{color:#9db8ff;}
   .editorial-section .match-headline{font-size:clamp(34px,6vw,62px);letter-spacing:-.025em;text-transform:none;}
   .editorial-section .match-copy{color:#d3daea;}
-  .editorial-section .scoreboard{background:rgba(5,10,23,.72);border-color:rgba(255,255,255,.2);}
-  .editorial-section .sb-row + .sb-row{border-color:rgba(255,255,255,.14);}
   .editorial-section .favorite-btn{border-color:rgba(255,255,255,.24);color:#fff;}
+  .column-topics{display:grid;align-content:center;gap:14px;min-width:0;}
+  .column-topics-label{margin:0;color:#9db8ff;font:700 9px var(--mono);letter-spacing:.16em;text-transform:uppercase;}
+  .column-tag-list{display:flex;flex-wrap:wrap;gap:8px;}
+  .column-tag-chip{display:inline-flex;align-items:center;min-height:30px;border:1px solid rgba(157,184,255,.42);border-radius:999px;background:rgba(8,20,49,.62);color:#d9e5ff;padding:6px 9px;font:600 9px/1.2 var(--mono);letter-spacing:.055em;text-transform:uppercase;}
+  button.column-tag-chip{cursor:pointer;}
+  button.column-tag-chip:hover{border-color:#9db8ff;background:rgba(42,94,255,.22);}
+  .editorial-section .column-topics,.editorial-section .column-topics *{pointer-events:auto;}
+  .column-discovery{display:grid;gap:10px;margin-top:34px;padding-top:26px;border-top:1px solid #a8a7a3;}
+  .column-search{display:flex;align-items:center;gap:10px;min-height:46px;padding:0 14px;border:1px solid rgba(20,88,255,.55);border-radius:10px;background:#071020;color:#dfe9ff;}
+  .column-search svg{flex:0 0 auto;width:17px;height:17px;stroke:#8ea9e7;fill:none;stroke-width:1.8;}
+  .column-search input{width:100%;min-width:0;border:0;outline:0;background:transparent;color:#f4f7ff;font:500 14px var(--body);}
+  .column-search input::placeholder{color:#8b98af;}
+  .column-active-filter{display:flex;flex-wrap:wrap;gap:8px;min-height:0;}
+  .column-active-filter[hidden]{display:none;}
+  .column-active-tag{display:inline-flex;align-items:center;gap:8px;min-height:30px;border:1px solid #1458ff;border-radius:999px;background:rgba(20,88,255,.1);color:#1458ff;padding:5px 9px;font:700 9px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;cursor:pointer;}
+  .column-active-tag span[aria-hidden="true"]{font-size:14px;line-height:.6;}
+  .am4-story-empty{margin:22px 0 0;color:#4b5361;font-size:13px;line-height:1.6;}
+  .am4-story-empty[hidden]{display:none;}
   .am4-story-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:28px;}
   .am4-story-card{display:grid;align-content:start;gap:10px;min-height:160px;padding:17px;border:1px solid #b7b5ae;background:#f5f2ea;color:#0b1120;box-shadow:4px 4px 0 #c8c5bc;text-decoration:none;cursor:pointer;transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease;}
   .am4-story-card:hover{transform:translate(-2px,-2px);border-color:#1458ff;box-shadow:6px 6px 0 #1458ff;}
@@ -395,7 +411,9 @@
   .am4-story-card h3{margin:0;color:#0b1120;font:800 22px/1.02 var(--display);letter-spacing:-.01em;}
   .am4-story-card:hover h3{color:#1458ff;}
   .am4-story-card p{display:-webkit-box;overflow:hidden;margin:0;color:#4b5361;font-size:12px;line-height:1.55;-webkit-box-orient:vertical;-webkit-line-clamp:3;}
-  @media(max-width:760px){.am4-story-grid{grid-template-columns:1fr;gap:10px;margin-top:22px;}.am4-story-card{min-height:0;padding:15px;box-shadow:3px 3px 0 #c8c5bc;}.am4-story-card h3{font-size:20px;}}
+  .am4-story-card-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:auto;padding-top:2px;}
+  .am4-story-card-tags .column-tag-chip{min-height:24px;padding:4px 6px;border-color:rgba(20,88,255,.25);background:rgba(20,88,255,.04);color:#1458ff;font-size:8px;}
+  @media(max-width:760px){.am4-story-grid{grid-template-columns:1fr;gap:10px;margin-top:22px;}.am4-story-card{min-height:0;padding:15px;box-shadow:3px 3px 0 #c8c5bc;}.am4-story-card h3{font-size:20px;}.column-topics{gap:11px;}.column-discovery{margin-top:28px;padding-top:21px;}}
 
   /* ---------- matchday-first homepage ---------- */
   .matchday-home{
@@ -679,8 +697,8 @@
 <div class="tagnav-wrap">
   <nav class="tagnav" aria-label="ページ内ナビゲーション">
     <a class="tag" href="#fixtures">試合日程</a>
-    <a class="tag" href="#transfer">移籍情報</a>
     <a class="tag" id="column-nav-link" href="#lead-story" hidden>AM4 COLUMN</a>
+    <a class="tag" href="#transfer">移籍情報</a>
     <a class="tag" href="#standings">順位表</a>
   </nav>
 </div>
@@ -691,18 +709,27 @@
     <h2 class="block-title" id="lead-story-title"><span id="lead-story-heading">AM4 COLUMN</span></h2>
     <span class="see-all" id="lead-story-read-time">AM4編集部</span>
   </div>
-  <div class="match-feature match-feature--link reveal">
+  <div class="match-feature match-feature--link reveal" id="lead-story-feature">
     <a class="card-tap-target" id="lead-story-link" href="/article.html" aria-label="AM4 COLUMNを読む"></a>
     <div>
       <h3 class="match-headline" id="lead-story-article-title">新しいコラムを<br>準備中です</h3>
       <p class="match-copy" id="lead-story-summary">試合の背景、クラブの歴史、街とカルチャーをAM4の視点で読み解きます。</p>
       <button class="favorite-btn" id="lead-story-save" type="button" data-favorite-type="articles" data-favorite-id="" data-favorite-label="" data-favorite-detail="" data-favorite-href="/article.html">記事を保存</button>
     </div>
-    <div class="scoreboard" aria-label="記事の要点">
-      <div class="sb-row"><span class="sb-club" id="lead-story-score-left">AM4</span><span class="sb-score" id="lead-story-score-right">COLUMN</span></div>
-      <div class="sb-row"><span class="sb-club" id="lead-story-score-bottom-left">AM4</span><span class="sb-score" id="lead-story-score-bottom-right">COLUMN</span></div>
+    <div class="column-topics" aria-label="記事タグ">
+      <p class="column-topics-label">Topics</p>
+      <div class="column-tag-list" id="lead-story-tags"></div>
     </div>
   </div>
+  <div class="column-discovery">
+    <label class="sr-only" for="column-search">記事を検索</label>
+    <div class="column-search">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.4"></circle><path d="m16 16 4.5 4.5"></path></svg>
+      <input id="column-search" type="search" autocomplete="off" placeholder="記事を検索">
+    </div>
+    <div class="column-active-filter" id="column-active-filter" aria-live="polite" hidden></div>
+  </div>
+  <p class="am4-story-empty" id="am4-story-empty" role="status" hidden>該当する記事がありません</p>
   <div class="am4-story-grid" id="am4-story-list" hidden></div>
 </section>
 
@@ -953,13 +980,14 @@
     const fixtureEditorialByDate = new Map();
     let activeFixtureEditorialDate = null;
 
-    async function loadArticleType(type, { matchDate, pageSize = 50, allPages = false } = {}){
+    async function loadArticleType(type, { matchDate, search, pageSize = 50, allPages = false } = {}){
       const items = [];
       let page = 1;
       let totalPages = 1;
       do {
         const params = new URLSearchParams({ type, page: String(page), pageSize: String(pageSize) });
         if (matchDate) params.set('matchDate', matchDate);
+        if (search) params.set('search', search);
         const response = await fetch(`${apiBase}/articles?${params}`, { headers:{ Accept:'application/json' } });
         if (!response.ok) throw new Error(`articles unavailable (${response.status})`);
         const data = await response.json();
@@ -996,22 +1024,108 @@
       return summary;
     }
 
+    const columnUrlParams = new URLSearchParams(location.search);
+    let columnStories = [];
+    let columnSearchResults = [];
+    let columnSearchValue = columnUrlParams.get('columnSearch') || '';
+    let selectedColumnTag = columnUrlParams.get('columnTag') || '';
+    let columnSearchTimer = 0;
+    let columnSearchRequest = 0;
+
+    function compactColumnText(value){
+      return String(value || '').normalize('NFKC').replace(/\s+/g, ' ').trim();
+    }
+
+    function normalizedColumnTag(value){
+      return compactColumnText(value).replace(/^#+\s*/, '').toLocaleLowerCase('en-US');
+    }
+
+    function storyTags(article){
+      const tags = Array.isArray(article.tags) ? article.tags : [];
+      const fallback = tags.length ? [] : [article.story?.category, ...(compactColumnText(article.story?.relatedClubs).split(/[／/,、\n]+/))];
+      return [...tags, ...fallback]
+        .map((tag) => compactColumnText(tag).replace(/^#+\s*/, '').replace(/\s+ほか$/u, ''))
+        .filter((tag) => tag && !/^(?:AM4|COLUMN|ほか|その他)$/i.test(tag))
+        .filter((tag, index, list) => list.findIndex((item) => normalizedColumnTag(item) === normalizedColumnTag(tag)) === index)
+        .slice(0, 8);
+    }
+
+    function displayColumnTag(value){
+      const tag = compactColumnText(value).replace(/^#+\s*/, '');
+      const latinTag = /^[\p{Script=Latin}\p{Number}\s&.'’+\-]+$/u.test(tag);
+      return `#${latinTag ? tag.toLocaleUpperCase('en-US') : tag}`;
+    }
+
+    function updateColumnUrl(){
+      const url = new URL(location.href);
+      if (selectedColumnTag) url.searchParams.set('columnTag', selectedColumnTag);
+      else url.searchParams.delete('columnTag');
+      if (columnSearchValue) url.searchParams.set('columnSearch', columnSearchValue);
+      else url.searchParams.delete('columnSearch');
+      history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+    }
+
+    function renderColumnActiveFilter(){
+      const filter = document.getElementById('column-active-filter');
+      if (!filter) return;
+      filter.replaceChildren();
+      if (!selectedColumnTag) {
+        filter.hidden = true;
+        return;
+      }
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'column-active-tag';
+      button.setAttribute('aria-label', `${displayColumnTag(selectedColumnTag)}の絞り込みを解除`);
+      const text = document.createElement('span');
+      text.textContent = displayColumnTag(selectedColumnTag);
+      const close = document.createElement('span');
+      close.setAttribute('aria-hidden', 'true');
+      close.textContent = '×';
+      button.append(text, close);
+      button.addEventListener('click', () => setColumnTag(''));
+      filter.append(button);
+      filter.hidden = false;
+    }
+
+    function setColumnTag(tag){
+      selectedColumnTag = compactColumnText(tag).replace(/^#+\s*/, '');
+      updateColumnUrl();
+      renderColumnActiveFilter();
+      renderColumnStories(columnSearchValue ? columnSearchResults : columnStories);
+    }
+
+    function renderLeadStoryTags(article){
+      const container = document.getElementById('lead-story-tags');
+      if (!container) return;
+      container.replaceChildren();
+      storyTags(article).forEach((tag) => {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'column-tag-chip';
+        chip.textContent = displayColumnTag(tag);
+        chip.setAttribute('aria-label', `${displayColumnTag(tag)}で記事を絞り込む`);
+        chip.addEventListener('click', (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          setColumnTag(tag);
+        });
+        container.append(chip);
+      });
+    }
+
     function renderLeadStory(article){
       const section = document.getElementById('lead-story');
       const navLink = document.getElementById('column-nav-link');
       if (section) section.hidden = false;
       if (navLink) navLink.hidden = false;
-      const relatedClubs = article.story?.relatedClubs || 'AM4';
       setEditorialText('lead-story-issue', 'The match is only the beginning.');
       setEditorialText('lead-story-edition', 'Latest');
       setEditorialText('lead-story-heading', 'AM4 COLUMN');
       setEditorialText('lead-story-read-time', 'AM4編集部');
       setEditorialText('lead-story-article-title', article.title || 'AM4独自の読みもの');
       setEditorialText('lead-story-summary', storySummary(article));
-      setEditorialText('lead-story-score-left', 'AM4');
-      setEditorialText('lead-story-score-right', 'COLUMN');
-      setEditorialText('lead-story-score-bottom-left', relatedClubs);
-      setEditorialText('lead-story-score-bottom-right', 'AM4');
+      renderLeadStoryTags(article);
       const link = document.getElementById('lead-story-link');
       if (link) {
         link.href = `/article.html?id=${encodeURIComponent(article.id)}`;
@@ -1024,9 +1138,8 @@
     function renderStoryList(stories){
       const list = document.getElementById('am4-story-list');
       if (!list) return;
-      const extraStories = stories.slice(1, 4);
       list.replaceChildren();
-      extraStories.forEach((article) => {
+      stories.forEach((article) => {
         const card = document.createElement('a');
         card.className = 'am4-story-card';
         card.href = `/article.html?id=${encodeURIComponent(article.id)}`;
@@ -1036,18 +1149,83 @@
         title.textContent = article.title || 'AM4独自の読みもの';
         const summary = document.createElement('p');
         summary.textContent = storySummary(article);
-        card.append(category, title, summary);
+        const tags = storyTags(article).slice(0, 3);
+        const tagList = document.createElement('div');
+        tagList.className = 'am4-story-card-tags';
+        tags.forEach((tag) => {
+          const chip = document.createElement('span');
+          chip.className = 'column-tag-chip';
+          chip.textContent = displayColumnTag(tag);
+          tagList.append(chip);
+        });
+        card.append(category, title, summary, tagList);
         list.append(card);
       });
-      list.hidden = extraStories.length === 0;
+      list.hidden = stories.length === 0;
+    }
+
+    function filteredColumnStories(stories){
+      if (!selectedColumnTag) return stories;
+      const selected = normalizedColumnTag(selectedColumnTag);
+      return stories.filter((article) => storyTags(article).some((tag) => normalizedColumnTag(tag) === selected));
+    }
+
+    function renderColumnStories(stories){
+      const feature = document.getElementById('lead-story-feature');
+      const empty = document.getElementById('am4-story-empty');
+      const filtering = Boolean(selectedColumnTag || columnSearchValue);
+      const filtered = filteredColumnStories(stories);
+      const listStories = filtering
+        ? filtered
+        : filtered.filter((article) => article.id !== columnStories[0]?.id).slice(0, 3);
+      if (feature) feature.hidden = filtering;
+      renderStoryList(listStories);
+      if (empty) empty.hidden = !filtering || listStories.length > 0;
+    }
+
+    async function runColumnSearch(){
+      const request = ++columnSearchRequest;
+      const query = columnSearchValue;
+      if (!query) {
+        columnSearchResults = columnStories;
+        renderColumnStories(columnStories);
+        return;
+      }
+      try {
+        const results = await loadArticleType('am4_story', { search: query, pageSize: 100, allPages: true });
+        if (request !== columnSearchRequest) return;
+        columnSearchResults = results;
+        renderColumnStories(results);
+      } catch (error) {
+        if (request !== columnSearchRequest) return;
+        console.warn('Column search unavailable.', error);
+        columnSearchResults = [];
+        renderColumnStories([]);
+      }
+    }
+
+    function bindColumnDiscovery(){
+      const input = document.getElementById('column-search');
+      if (!input) return;
+      input.value = columnSearchValue;
+      input.addEventListener('input', () => {
+        columnSearchValue = input.value.trim();
+        updateColumnUrl();
+        window.clearTimeout(columnSearchTimer);
+        columnSearchTimer = window.setTimeout(runColumnSearch, 160);
+      });
     }
 
     async function loadStoryContent(){
-      const result = await Promise.allSettled([loadArticleType('am4_story', { pageSize: 4 })]);
+      const result = await Promise.allSettled([loadArticleType('am4_story', { pageSize: 100, allPages: true })]);
       const stories = result[0].status === 'fulfilled' ? result[0].value : [];
       if (stories.length) {
+        columnStories = stories;
+        columnSearchResults = stories;
         renderLeadStory(stories[0]);
-        renderStoryList(stories);
+        renderColumnActiveFilter();
+        renderColumnStories(stories);
+        if (columnSearchValue) runColumnSearch();
         document.dispatchEvent(new CustomEvent('am4:data-ready'));
       }
       if (result[0].status === 'rejected') console.warn('Editorial content unavailable.', 'stories', result[0].reason);
@@ -1092,6 +1270,7 @@
 
     enhanceStaticCrests();
     renderStandings(sample.standings);
+    bindColumnDiscovery();
     loadStoryContent();
     const todayKey = AM4FootballData.tokyoDateKey(new Date());
     const todayParts = todayKey.split('-').map(Number);

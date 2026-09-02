@@ -98,8 +98,9 @@ export default async function handler(req, res) {
     if (matchDate && !/^\d{4}-\d{2}-\d{2}$/.test(matchDate)) {
       return res.status(400).json({ error: 'matchDate は YYYY-MM-DD 形式で指定してください' });
     }
+    const search = req.query.search ? String(req.query.search).trim().slice(0, 120) : undefined;
 
-    const result = await listArticles({ type: typeParam, matchDate, page, pageSize, publishedOnly: true });
+    const result = await listArticles({ type: typeParam, matchDate, search, page, pageSize, publishedOnly: true });
     return res.status(200).json(result);
   } catch (err) {
     console.error('articles API error:', err);
