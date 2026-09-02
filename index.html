@@ -385,13 +385,10 @@
   .editorial-section .match-headline{font-size:clamp(34px,6vw,62px);letter-spacing:-.025em;text-transform:none;}
   .editorial-section .match-copy{color:#d3daea;}
   .editorial-section .favorite-btn{border-color:rgba(255,255,255,.24);color:#fff;}
-  .column-topics{display:grid;align-content:center;gap:14px;min-width:0;}
-  .column-topics-label{margin:0;color:#9db8ff;font:700 9px var(--mono);letter-spacing:.16em;text-transform:uppercase;}
   .column-tag-list{display:flex;flex-wrap:wrap;gap:8px;}
   .column-tag-chip{display:inline-flex;align-items:center;min-height:30px;border:1px solid rgba(157,184,255,.42);border-radius:999px;background:rgba(8,20,49,.62);color:#d9e5ff;padding:6px 9px;font:600 9px/1.2 var(--mono);letter-spacing:.055em;text-transform:uppercase;}
   button.column-tag-chip{cursor:pointer;}
   button.column-tag-chip:hover{border-color:#9db8ff;background:rgba(42,94,255,.22);}
-  .editorial-section .column-topics,.editorial-section .column-topics *{pointer-events:auto;}
   .column-discovery{display:grid;gap:10px;margin-top:34px;padding-top:26px;border-top:1px solid #a8a7a3;}
   .column-search{display:flex;align-items:center;gap:10px;min-height:46px;padding:0 14px;border:1px solid rgba(20,88,255,.55);border-radius:10px;background:#071020;color:#dfe9ff;}
   .column-search svg{flex:0 0 auto;width:17px;height:17px;stroke:#8ea9e7;fill:none;stroke-width:1.8;}
@@ -403,17 +400,117 @@
   .column-active-tag span[aria-hidden="true"]{font-size:14px;line-height:.6;}
   .am4-story-empty{margin:22px 0 0;color:#4b5361;font-size:13px;line-height:1.6;}
   .am4-story-empty[hidden]{display:none;}
-  .am4-story-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:28px;}
-  .am4-story-card{display:grid;align-content:start;gap:10px;min-height:160px;padding:17px;border:1px solid #b7b5ae;background:#f5f2ea;color:#0b1120;box-shadow:4px 4px 0 #c8c5bc;text-decoration:none;cursor:pointer;transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease;}
-  .am4-story-card:hover{transform:translate(-2px,-2px);border-color:#1458ff;box-shadow:6px 6px 0 #1458ff;}
-  .am4-story-card:focus-visible{outline:3px solid #1458ff;outline-offset:3px;}
-  .am4-story-card small{display:inline-flex;width:max-content;padding:5px 7px;border:1px solid rgba(20,88,255,.35);border-radius:999px;background:rgba(20,88,255,.06);color:#1458ff;font:700 8px var(--mono);letter-spacing:.09em;text-transform:uppercase;}
-  .am4-story-card h3{margin:0;color:#0b1120;font:800 22px/1.02 var(--display);letter-spacing:-.01em;}
-  .am4-story-card:hover h3{color:#1458ff;}
-  .am4-story-card p{display:-webkit-box;overflow:hidden;margin:0;color:#4b5361;font-size:12px;line-height:1.55;-webkit-box-orient:vertical;-webkit-line-clamp:3;}
-  .am4-story-card-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:auto;padding-top:2px;}
-  .am4-story-card-tags .column-tag-chip{min-height:24px;padding:4px 6px;border-color:rgba(20,88,255,.25);background:rgba(20,88,255,.04);color:#1458ff;font-size:8px;}
-  @media(max-width:760px){.am4-story-grid{grid-template-columns:1fr;gap:10px;margin-top:22px;}.am4-story-card{min-height:0;padding:15px;box-shadow:3px 3px 0 #c8c5bc;}.am4-story-card h3{font-size:20px;}.column-topics{gap:11px;}.column-discovery{margin-top:28px;padding-top:21px;}}
+
+  /* ---------- AM4 COLUMN discovery page ---------- */
+  section.block.editorial-section.column-page{
+    isolation:isolate;
+    overflow:hidden;
+    padding-top:clamp(42px,6vw,72px);
+    padding-bottom:clamp(52px,7vw,86px);
+    color:var(--paper);
+    border-color:rgba(139,163,214,.18);
+    background:
+      radial-gradient(circle at 11% 3%,rgba(33,92,255,.24),transparent 31%),
+      radial-gradient(circle at 91% 18%,rgba(124,66,255,.13),transparent 28%),
+      linear-gradient(150deg,#071020 0%,#09152d 52%,#060b18 100%);
+  }
+  .column-page::before{
+    content:"";position:absolute;z-index:-1;inset:0;pointer-events:none;opacity:.26;
+    background-image:linear-gradient(rgba(142,169,231,.1) 1px,transparent 1px),linear-gradient(90deg,rgba(142,169,231,.1) 1px,transparent 1px);
+    background-size:58px 58px;
+    mask-image:linear-gradient(to bottom,#000,transparent 78%);
+  }
+  .column-page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin-bottom:34px;padding-bottom:20px;border-bottom:1px solid rgba(157,184,255,.18);}
+  .column-page-eyebrow{margin:0 0 10px;color:#8fabff;font:700 10px var(--mono);letter-spacing:.18em;text-transform:uppercase;}
+  .column-page-title{margin:0;color:#fff;font:900 clamp(38px,5.2vw,62px)/.94 var(--display);letter-spacing:.015em;}
+  .column-page-editorial{margin:0;color:#aebbd5;font:600 10px var(--mono);letter-spacing:.12em;white-space:nowrap;}
+  .column-section-head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:14px;}
+  .column-section-title{margin:0;color:#b9caff;font:700 11px var(--mono);letter-spacing:.16em;text-transform:uppercase;}
+  .column-all-link{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:8px 0;color:#9db8ff;font:600 10px var(--mono);letter-spacing:.08em;text-decoration:none;}
+  .column-all-link:hover{color:#fff;}
+  .column-all-link:focus-visible{color:#fff;outline:2px solid #9db8ff;outline-offset:4px;border-radius:5px;}
+  .column-featured-card{position:relative;display:grid;grid-template-columns:104px minmax(0,1fr);gap:15px;min-height:224px;padding:14px;border:1px solid rgba(160,184,237,.25);border-radius:18px;background:linear-gradient(135deg,rgba(18,36,76,.92),rgba(6,12,27,.96));box-shadow:inset 0 1px rgba(255,255,255,.08),0 24px 56px -34px rgba(0,0,0,.82);color:#fff;overflow:hidden;text-decoration:none;transition:border-color .25s ease,box-shadow .25s ease,transform .25s ease;}
+  .column-featured-card::before{content:"";position:absolute;inset:auto -16% -58% 18%;height:80%;pointer-events:none;background:radial-gradient(ellipse,rgba(26,92,255,.45),transparent 66%);filter:blur(4px);opacity:.72;}
+  .column-featured-card:hover{transform:translateY(-3px);border-color:rgba(136,169,255,.7);box-shadow:inset 0 1px rgba(255,255,255,.12),0 28px 62px -34px rgba(21,76,210,.68);}
+  .column-featured-card:focus-visible{outline:3px solid #86aaff;outline-offset:3px;}
+  .column-story-media{position:relative;display:grid;place-items:center;align-self:stretch;min-width:0;overflow:hidden;border:1px solid rgba(177,198,255,.2);border-radius:12px;background:linear-gradient(145deg,#163e8f,#0a1532 55%,#240d48);box-shadow:inset 0 1px rgba(255,255,255,.12);}
+  .column-story-media::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(145deg,rgba(255,255,255,.18),transparent 33%,rgba(5,10,28,.6));}
+  .column-story-media img{position:relative;z-index:1;width:100%;height:100%;object-fit:cover;}
+  .column-story-media[data-tone="tactics"]{background:linear-gradient(145deg,#2549a8,#071226 58%,#531e68);}
+  .column-story-media[data-tone="club"]{background:linear-gradient(145deg,#114472,#08182e 58%,#8a322c);}
+  .column-story-media[data-tone="league"]{background:linear-gradient(145deg,#2b267e,#071328 60%,#0b6a72);}
+  .column-story-media[data-tone="rivalry"]{background:linear-gradient(145deg,#8a2c43,#111b43 53%,#124c9b);}
+  .column-story-media[data-tone="tournament"]{background:linear-gradient(145deg,#7c6230,#101933 55%,#2755b6);}
+  .column-story-media-fallback{position:relative;z-index:1;display:grid;justify-items:center;gap:5px;padding:10px;text-align:center;}
+  .column-story-media-fallback span{color:#b8ccff;font:700 8px var(--mono);letter-spacing:.16em;}
+  .column-story-media-fallback strong{max-width:100%;color:#fff;font:800 clamp(14px,2vw,22px)/.95 var(--display);letter-spacing:.04em;text-transform:uppercase;overflow-wrap:anywhere;}
+  .column-featured-copy{position:relative;z-index:1;display:flex;min-width:0;flex-direction:column;align-items:flex-start;padding:5px 2px 3px;}
+  .column-article-category{display:inline-flex;align-items:center;min-height:22px;color:#a9c0ff;font:700 9px var(--mono);letter-spacing:.12em;text-transform:uppercase;}
+  .column-featured-title{display:-webkit-box;overflow:hidden;margin:8px 0 9px;color:#fff;font:900 clamp(29px,5.4vw,56px)/.94 var(--display);letter-spacing:-.01em;-webkit-box-orient:vertical;-webkit-line-clamp:3;}
+  .column-featured-summary{display:-webkit-box;overflow:hidden;margin:0;color:#ccd7ed;font-size:13px;line-height:1.6;-webkit-box-orient:vertical;-webkit-line-clamp:3;}
+  .column-featured-meta{display:flex;align-items:center;justify-content:space-between;width:100%;gap:12px;margin-top:auto;padding-top:14px;color:#9fb0cf;font:600 10px var(--mono);letter-spacing:.06em;}
+  .column-arrow{width:18px;height:18px;flex:0 0 auto;fill:none;stroke:currentColor;stroke-width:1.8;}
+  .column-featured-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;}
+  .column-featured-tags{display:flex;flex:1 1 180px;flex-wrap:wrap;gap:7px;}
+  .column-featured-save{flex:0 0 auto;min-height:34px;margin:0;padding:7px 10px;font:600 9px/1.2 var(--mono);letter-spacing:.055em;}
+  .column-latest,.column-popular,#am4-story-list{scroll-margin-top:152px;}
+  .column-page .column-tag-chip{min-height:34px;border-color:rgba(157,184,255,.36);background:rgba(11,25,58,.68);color:#c8d8ff;padding:7px 10px;}
+  .column-page button.column-tag-chip:hover{border-color:#9db8ff;background:rgba(42,94,255,.24);}
+  .column-page button.column-tag-chip:focus-visible{border-color:#9db8ff;background:rgba(42,94,255,.24);outline:2px solid #9db8ff;outline-offset:2px;}
+  .column-latest{margin-top:38px;}
+  .column-page .column-discovery{gap:10px;margin-top:0;padding-top:0;border-top:0;}
+  .column-page .column-search{min-height:48px;border-color:rgba(139,163,214,.3);border-radius:13px;background:rgba(5,13,31,.72);box-shadow:inset 0 1px rgba(255,255,255,.05);}
+  .column-page .column-search:focus-within{border-color:#5f8dff;box-shadow:0 0 0 3px rgba(69,115,255,.15),inset 0 1px rgba(255,255,255,.06);}
+  .column-page .column-active-tag{min-height:34px;border-color:rgba(139,169,255,.66);background:rgba(42,94,255,.18);color:#c9d9ff;}
+  .column-page .am4-story-empty{margin:18px 0 0;color:#aab8d1;}
+  .column-latest-list{display:grid;gap:11px;margin-top:16px;}
+  .column-latest-card{display:grid;grid-template-columns:86px minmax(0,1fr) auto;align-items:stretch;gap:13px;min-width:0;padding:10px;border:1px solid rgba(139,163,214,.2);border-radius:14px;background:linear-gradient(135deg,rgba(14,27,58,.8),rgba(6,13,30,.86));box-shadow:inset 0 1px rgba(255,255,255,.05),0 13px 30px -25px rgba(0,0,0,.85);color:#f4f7ff;text-decoration:none;transition:border-color .2s ease,background .2s ease,transform .2s ease;}
+  .column-latest-card:hover{transform:translateY(-2px);border-color:rgba(128,166,255,.6);background:linear-gradient(135deg,rgba(20,40,82,.94),rgba(7,17,39,.96));}
+  .column-latest-card:focus-visible{outline:3px solid #86aaff;outline-offset:3px;}
+  .column-latest-card .column-story-media{min-height:88px;border-radius:9px;}
+  .column-latest-copy{display:grid;align-content:center;min-width:0;padding:2px 0;}
+  .column-latest-title{display:-webkit-box;overflow:hidden;margin:4px 0 5px;color:#fff;font:800 clamp(19px,2.2vw,28px)/1.02 var(--display);letter-spacing:-.005em;-webkit-box-orient:vertical;-webkit-line-clamp:2;}
+  .column-latest-summary{display:-webkit-box;overflow:hidden;margin:0;color:#acb9d0;font-size:12px;line-height:1.5;-webkit-box-orient:vertical;-webkit-line-clamp:2;}
+  .column-latest-date-mobile{display:none;}
+  .column-latest-meta{display:flex;align-items:center;justify-content:flex-end;align-self:stretch;gap:8px;min-width:62px;color:#9db0cf;font:600 9px/1.35 var(--mono);letter-spacing:.05em;text-align:right;}
+  .column-popular{margin-top:42px;padding-top:28px;border-top:1px solid rgba(157,184,255,.18);}
+  .column-popular-head{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:11px;}
+  .column-popular-title{margin:0;color:#fff;font:900 clamp(26px,3.5vw,38px)/1 var(--display);letter-spacing:.01em;}
+  .column-popular-note{margin:0;color:#96a9c9;font:600 9px var(--mono);letter-spacing:.08em;text-align:right;}
+  .column-popular-list{display:grid;gap:0;margin:0;padding:0;list-style:none;border-top:1px solid rgba(157,184,255,.16);}
+  .column-popular-item{border-bottom:1px solid rgba(157,184,255,.16);}
+  .column-popular-card{display:grid;grid-template-columns:44px minmax(0,1fr) 22px;align-items:center;gap:12px;min-height:62px;color:#e9efff;text-decoration:none;transition:color .2s ease,background .2s ease;}
+  .column-popular-card:hover{color:#fff;background:rgba(42,94,255,.11);}
+  .column-popular-card:focus-visible{color:#fff;background:rgba(42,94,255,.11);outline:2px solid #9db8ff;outline-offset:-2px;}
+  .column-popular-rank{color:#83a5ff;font:700 13px var(--mono);letter-spacing:.04em;}
+  .column-popular-card strong{display:-webkit-box;overflow:hidden;font:700 17px/1.18 var(--body);letter-spacing:-.015em;-webkit-box-orient:vertical;-webkit-line-clamp:2;}
+  .column-popular-card .column-arrow{justify-self:end;}
+  .column-stagger{opacity:0;transform:translateY(20px) scale(.97);will-change:opacity,transform;}
+  .column-stagger.is-in{opacity:1;transform:translateY(0) scale(1);animation:column-stagger-in 460ms cubic-bezier(.22,1,.36,1) both;animation-delay:calc(var(--column-stagger, 0) * 100ms);}
+  @keyframes column-stagger-in{from{opacity:0;transform:translateY(20px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+  @media(min-width:761px){
+    .column-featured-card{grid-template-columns:minmax(200px,.78fr) minmax(0,1.22fr);gap:24px;min-height:286px;padding:18px;}
+    .column-featured-title{-webkit-line-clamp:2;}
+    .column-featured-summary{font-size:14px;-webkit-line-clamp:3;}
+    .column-latest-card{grid-template-columns:124px minmax(0,1fr) 104px;gap:18px;padding:12px;}
+    .column-latest-card .column-story-media{min-height:104px;}
+    .column-latest-meta{font-size:10px;}
+  }
+  @media(max-width:480px){
+    .column-page-head{align-items:flex-start;flex-direction:column;gap:8px;margin-bottom:26px;padding-bottom:16px;}
+    .column-page-title{font-size:42px;}
+    .column-featured-card{min-height:218px;grid-template-columns:92px minmax(0,1fr);gap:13px;padding:12px;}
+    .column-featured-title{font-size:28px;}
+    .column-featured-summary{font-size:12px;-webkit-line-clamp:3;}
+    .column-latest-card{grid-template-columns:72px minmax(0,1fr) 20px;gap:10px;padding:9px;}
+    .column-latest-card .column-story-media{min-height:78px;}
+    .column-latest-summary{-webkit-line-clamp:2;}
+    .column-latest-meta{display:none;}
+    .column-latest-date-mobile{display:block;margin-top:5px;color:#9db0cf;font:600 9px/1.35 var(--mono);letter-spacing:.05em;}
+    .column-popular-card{grid-template-columns:38px minmax(0,1fr) 20px;gap:9px;min-height:58px;}
+    .column-popular-card strong{font-size:15px;}
+  }
+  @media(prefers-reduced-motion:reduce){.column-stagger,.column-stagger.is-in{opacity:1;transform:none;animation:none;transition:none;}}
 
   /* ---------- matchday-first homepage ---------- */
   .matchday-home{
@@ -703,34 +800,58 @@
   </nav>
 </div>
 
-<section class="block editorial-section" id="lead-story" aria-labelledby="lead-story-title" hidden>
-  <div class="editorial-issue"><span id="lead-story-issue">The match is only the beginning.</span><span id="lead-story-edition">Latest</span></div>
-  <div class="block-head">
-    <h2 class="block-title" id="lead-story-title"><span id="lead-story-heading">AM4 COLUMN</span></h2>
-    <span class="see-all" id="lead-story-read-time">AM4編集部</span>
-  </div>
-  <div class="match-feature match-feature--link reveal" id="lead-story-feature">
-    <a class="card-tap-target" id="lead-story-link" href="/article.html" aria-label="AM4 COLUMNを読む"></a>
+<section class="block editorial-section column-page" id="lead-story" aria-labelledby="lead-story-title" hidden>
+  <header class="column-page-head">
     <div>
-      <h3 class="match-headline" id="lead-story-article-title">新しいコラムを<br>準備中です</h3>
-      <p class="match-copy" id="lead-story-summary">試合の背景、クラブの歴史、街とカルチャーをAM4の視点で読み解きます。</p>
-      <button class="favorite-btn" id="lead-story-save" type="button" data-favorite-type="articles" data-favorite-id="" data-favorite-label="" data-favorite-detail="" data-favorite-href="/article.html">記事を保存</button>
+      <p class="column-page-eyebrow">The match is only the beginning.</p>
+      <h2 class="column-page-title" id="lead-story-title">AM4 COLUMN</h2>
     </div>
-    <div class="column-topics" aria-label="記事タグ">
-      <p class="column-topics-label">Topics</p>
-      <div class="column-tag-list" id="lead-story-tags"></div>
+    <p class="column-page-editorial">AM4編集部</p>
+  </header>
+
+  <section class="column-featured" id="column-featured" aria-labelledby="column-featured-title">
+    <div class="column-section-head">
+      <h3 class="column-section-title" id="column-featured-title">FEATURED</h3>
     </div>
-  </div>
-  <div class="column-discovery">
-    <label class="sr-only" for="column-search">記事を検索</label>
-    <div class="column-search">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.4"></circle><path d="m16 16 4.5 4.5"></path></svg>
-      <input id="column-search" type="search" autocomplete="off" placeholder="記事を検索">
+    <a class="column-featured-card" id="lead-story-feature" href="/article.html" aria-label="AM4 COLUMNを読む">
+      <div class="column-story-media" id="lead-story-media" aria-hidden="true"></div>
+      <div class="column-featured-copy">
+        <span class="column-article-category" id="lead-story-category">FEATURED</span>
+        <h3 class="column-featured-title" id="lead-story-article-title">新しいコラムを準備中です</h3>
+        <p class="column-featured-summary" id="lead-story-summary">試合の背景、クラブの歴史、街とカルチャーをAM4の視点で読み解きます。</p>
+        <span class="column-featured-meta"><time id="lead-story-date"></time><svg class="column-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"></path></svg></span>
+      </div>
+    </a>
+    <div class="column-featured-footer">
+      <div class="column-featured-tags column-tag-list" id="lead-story-tags" aria-label="注目記事のタグ"></div>
+      <button class="favorite-btn column-featured-save" id="lead-story-save" type="button">記事を保存</button>
     </div>
-    <div class="column-active-filter" id="column-active-filter" aria-live="polite" hidden></div>
-  </div>
-  <p class="am4-story-empty" id="am4-story-empty" role="status" hidden>該当する記事がありません</p>
-  <div class="am4-story-grid" id="am4-story-list" hidden></div>
+  </section>
+
+  <section class="column-latest" aria-labelledby="column-latest-title">
+    <div class="column-section-head">
+      <h3 class="column-section-title" id="column-latest-title">LATEST ARTICLES</h3>
+      <a class="column-all-link" href="#am4-story-list">すべて見る <span aria-hidden="true">→</span></a>
+    </div>
+    <div class="column-discovery">
+      <label class="sr-only" for="column-search">記事を検索</label>
+      <div class="column-search">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.4"></circle><path d="m16 16 4.5 4.5"></path></svg>
+        <input id="column-search" type="search" autocomplete="off" placeholder="記事を検索">
+      </div>
+      <div class="column-active-filter" id="column-active-filter" aria-live="polite" hidden></div>
+    </div>
+    <p class="am4-story-empty" id="am4-story-empty" role="status" hidden>該当する記事がありません</p>
+    <div class="column-latest-list" id="am4-story-list" hidden></div>
+  </section>
+
+  <section class="column-popular" id="column-popular" aria-labelledby="column-popular-title" hidden>
+    <div class="column-popular-head">
+      <h3 class="column-popular-title" id="column-popular-title">よく読まれている記事</h3>
+      <p class="column-popular-note" id="column-popular-note"></p>
+    </div>
+    <ol class="column-popular-list" id="column-popular-list"></ol>
+  </section>
 </section>
 
 <section class="block" id="transfer">
@@ -998,24 +1119,6 @@
       return items;
     }
 
-    function setEditorialText(id, value){
-      const node = document.getElementById(id);
-      if (node) node.textContent = value;
-    }
-
-    function syncLeadStorySave(article){
-      const button = document.getElementById('lead-story-save');
-      if (!button) return;
-      button.dataset.favoriteType = 'articles';
-      button.dataset.favoriteId = article.id;
-      button.dataset.favoriteLabel = article.title || 'AM4 COLUMN';
-      button.dataset.favoriteDetail = 'AM4 COLUMNを読む';
-      button.dataset.favoriteHref = `/article.html?id=${encodeURIComponent(article.id)}`;
-      const saved = AM4Favorites.has(AM4Favorites.read(localStorage), 'articles', article.id);
-      button.setAttribute('aria-pressed', String(saved));
-      button.textContent = saved ? '記事を保存済み' : '記事を保存';
-    }
-
     function storySummary(article){
       const summary = String(article.summary || article.deck || '').replace(/\s+/g, ' ').trim();
       if (!summary || /(?:^|\s)(?:3行要約|アジェンダ)(?:\s|$)/.test(summary)) {
@@ -1054,6 +1157,79 @@
       const tag = compactColumnText(value).replace(/^#+\s*/, '');
       const latinTag = /^[\p{Script=Latin}\p{Number}\s&.'’+\-]+$/u.test(tag);
       return `#${latinTag ? tag.toLocaleUpperCase('en-US') : tag}`;
+    }
+
+    const COLUMN_CATEGORY_LABELS = new Map([
+      ['戦術史', 'TACTICS'],
+      ['クラブ史', 'CLUB'],
+      ['リーグ文化', 'LEAGUE'],
+      ['ライバル・ダービー', 'RIVALRY'],
+      ['大会史', 'HISTORY'],
+    ]);
+
+    function columnCategory(article){
+      const category = compactColumnText(article?.story?.category || article?.category);
+      return COLUMN_CATEGORY_LABELS.get(category) || storyTags(article)[0] || 'AM4 COLUMN';
+    }
+
+    function columnMediaTone(article){
+      const category = columnCategory(article).toLocaleLowerCase('en-US');
+      if (category.includes('tactic')) return 'tactics';
+      if (category.includes('club')) return 'club';
+      if (category.includes('league')) return 'league';
+      if (category.includes('rival')) return 'rivalry';
+      if (category.includes('tournament')) return 'tournament';
+      return 'default';
+    }
+
+    function articleDate(article){
+      const value = String(article?.publishedAt || '');
+      const date = new Date(value);
+      if (!value || Number.isNaN(date.getTime())) return '';
+      return new Intl.DateTimeFormat('ja-JP', { year:'numeric', month:'short', day:'numeric' }).format(date);
+    }
+
+    function articleTimestamp(article){
+      const timestamp = Date.parse(article?.publishedAt || '');
+      return Number.isFinite(timestamp) ? timestamp : 0;
+    }
+
+    function columnArrowIcon(){
+      const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      icon.setAttribute('class', 'column-arrow');
+      icon.setAttribute('viewBox', '0 0 24 24');
+      icon.setAttribute('aria-hidden', 'true');
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      line.setAttribute('d', 'M5 12h13M13 6l6 6-6 6');
+      icon.append(line);
+      return icon;
+    }
+
+    function renderStoryMedia(container, article){
+      if (!container) return;
+      container.replaceChildren();
+      container.dataset.tone = columnMediaTone(article);
+      if (article.coverImage) {
+        const image = document.createElement('img');
+        image.src = article.coverImage;
+        image.alt = '';
+        image.loading = 'lazy';
+        image.addEventListener('error', () => renderStoryMedia(container, { ...article, coverImage:null }), { once:true });
+        container.append(image);
+        return;
+      }
+      const fallback = document.createElement('span');
+      fallback.className = 'column-story-media-fallback';
+      const mark = document.createElement('span');
+      mark.textContent = 'AM4';
+      const category = document.createElement('strong');
+      category.textContent = columnCategory(article);
+      fallback.append(mark, category);
+      container.append(fallback);
+    }
+
+    function sortColumnStories(stories){
+      return [...stories].sort((left, right) => articleTimestamp(right) - articleTimestamp(left));
     }
 
     function updateColumnUrl(){
@@ -1114,25 +1290,56 @@
       });
     }
 
+    function syncLeadStorySave(article){
+      const button = document.getElementById('lead-story-save');
+      if (!button || !article?.id) return;
+      const articleId = String(article.id);
+      button.dataset.favoriteType = 'articles';
+      button.dataset.favoriteId = articleId;
+      button.dataset.favoriteLabel = article.title || 'AM4 COLUMN';
+      button.dataset.favoriteDetail = 'あとで読む';
+      button.dataset.favoriteHref = `/article.html?id=${encodeURIComponent(articleId)}`;
+      const selected = window.AM4Favorites?.has?.(
+        window.AM4Favorites.read(localStorage),
+        'articles',
+        articleId,
+      );
+      button.setAttribute('aria-pressed', String(Boolean(selected)));
+      button.textContent = selected ? '記事を保存済み' : '記事を保存';
+      document.dispatchEvent(new CustomEvent('am4:favorites-catalog-updated'));
+    }
+
+    document.addEventListener('am4:favorites-changed', () => {
+      if (columnStories[0]) syncLeadStorySave(columnStories[0]);
+    });
+
     function renderLeadStory(article){
       const section = document.getElementById('lead-story');
       const navLink = document.getElementById('column-nav-link');
       if (section) section.hidden = false;
       if (navLink) navLink.hidden = false;
-      setEditorialText('lead-story-issue', 'The match is only the beginning.');
-      setEditorialText('lead-story-edition', 'Latest');
-      setEditorialText('lead-story-heading', 'AM4 COLUMN');
-      setEditorialText('lead-story-read-time', 'AM4編集部');
-      setEditorialText('lead-story-article-title', article.title || 'AM4独自の読みもの');
-      setEditorialText('lead-story-summary', storySummary(article));
-      renderLeadStoryTags(article);
-      const link = document.getElementById('lead-story-link');
-      if (link) {
-        link.href = `/article.html?id=${encodeURIComponent(article.id)}`;
-        link.setAttribute('aria-label', `${article.title || 'AM4 COLUMN'}を読む`);
+      const feature = document.getElementById('lead-story-feature');
+      const title = document.getElementById('lead-story-article-title');
+      const summary = document.getElementById('lead-story-summary');
+      const category = document.getElementById('lead-story-category');
+      const date = document.getElementById('lead-story-date');
+      const media = document.getElementById('lead-story-media');
+      if (title) title.textContent = article.title || 'AM4独自の読みもの';
+      if (summary) summary.textContent = storySummary(article);
+      if (category) category.textContent = `FEATURED · ${columnCategory(article)}`;
+      if (date) {
+        date.dateTime = article.publishedAt || '';
+        date.textContent = articleDate(article);
       }
+      renderStoryMedia(media, article);
+      renderLeadStoryTags(article);
       syncLeadStorySave(article);
-      document.dispatchEvent(new CustomEvent('am4:favorites-catalog-updated'));
+      if (feature) {
+        feature.href = `/article.html?id=${encodeURIComponent(article.id)}`;
+        feature.setAttribute('aria-label', `${article.title || 'AM4 COLUMN'}を読む`);
+        feature.dataset.columnRevealKey = `featured:${article.id}`;
+        window.AM4ObserveColumnReveals?.([feature]);
+      }
     }
 
     function renderStoryList(stories){
@@ -1141,27 +1348,41 @@
       list.replaceChildren();
       stories.forEach((article) => {
         const card = document.createElement('a');
-        card.className = 'am4-story-card';
+        card.className = 'column-latest-card';
         card.href = `/article.html?id=${encodeURIComponent(article.id)}`;
-        const category = document.createElement('small');
-        category.textContent = 'AM4 COLUMN';
+        card.setAttribute('aria-label', `${article.title || 'AM4 COLUMN'}を読む`);
+        card.dataset.columnRevealKey = `latest:${article.id}`;
+        const media = document.createElement('span');
+        media.className = 'column-story-media';
+        media.setAttribute('aria-hidden', 'true');
+        renderStoryMedia(media, article);
+        const copy = document.createElement('span');
+        copy.className = 'column-latest-copy';
+        const category = document.createElement('span');
+        category.className = 'column-article-category';
+        category.textContent = columnCategory(article);
         const title = document.createElement('h3');
+        title.className = 'column-latest-title';
         title.textContent = article.title || 'AM4独自の読みもの';
         const summary = document.createElement('p');
+        summary.className = 'column-latest-summary';
         summary.textContent = storySummary(article);
-        const tags = storyTags(article).slice(0, 3);
-        const tagList = document.createElement('div');
-        tagList.className = 'am4-story-card-tags';
-        tags.forEach((tag) => {
-          const chip = document.createElement('span');
-          chip.className = 'column-tag-chip';
-          chip.textContent = displayColumnTag(tag);
-          tagList.append(chip);
-        });
-        card.append(category, title, summary, tagList);
+        const mobileDate = document.createElement('time');
+        mobileDate.className = 'column-latest-date-mobile';
+        mobileDate.dateTime = article.publishedAt || '';
+        mobileDate.textContent = articleDate(article);
+        copy.append(category, title, summary, mobileDate);
+        const meta = document.createElement('span');
+        meta.className = 'column-latest-meta';
+        const date = document.createElement('time');
+        date.dateTime = article.publishedAt || '';
+        date.textContent = articleDate(article);
+        meta.append(date, columnArrowIcon());
+        card.append(media, copy, meta);
         list.append(card);
       });
       list.hidden = stories.length === 0;
+      window.AM4ObserveColumnReveals?.([...list.children]);
     }
 
     function filteredColumnStories(stories){
@@ -1170,16 +1391,73 @@
       return stories.filter((article) => storyTags(article).some((tag) => normalizedColumnTag(tag) === selected));
     }
 
+    function articlePopularityRank(article){
+      const rank = Number(article?.popularRank);
+      return Number.isInteger(rank) && rank > 0 ? rank : null;
+    }
+
+    function renderPopularStories(stories, { hidden = false } = {}){
+      const section = document.getElementById('column-popular');
+      const list = document.getElementById('column-popular-list');
+      const title = document.getElementById('column-popular-title');
+      const note = document.getElementById('column-popular-note');
+      if (!section || !list || !title || !note) return;
+      list.replaceChildren();
+      if (hidden) {
+        section.hidden = true;
+        return;
+      }
+      const featuredId = columnStories[0]?.id;
+      const candidates = stories.filter((article) => article.id !== featuredId);
+      const manuallyRanked = candidates
+        .filter((article) => articlePopularityRank(article) !== null)
+        .sort((left, right) => articlePopularityRank(left) - articlePopularityRank(right));
+      const hasPublishedPopularity = manuallyRanked.length >= 3;
+      const articles = (hasPublishedPopularity ? manuallyRanked : candidates).slice(0, 4);
+      if (!articles.length) {
+        section.hidden = true;
+        return;
+      }
+      title.textContent = hasPublishedPopularity ? 'よく読まれている記事' : 'AM4編集部のおすすめ';
+      note.textContent = hasPublishedPopularity
+        ? '人気順位'
+        : manuallyRanked.length
+          ? '人気順位を設定中'
+          : '閲覧データ集計前';
+      articles.forEach((article, index) => {
+        const item = document.createElement('li');
+        item.className = 'column-popular-item';
+        const card = document.createElement('a');
+        card.className = 'column-popular-card';
+        card.href = `/article.html?id=${encodeURIComponent(article.id)}`;
+        card.setAttribute('aria-label', `${article.title || 'AM4 COLUMN'}を読む`);
+        card.dataset.columnRevealKey = `popular:${article.id}`;
+        const rank = document.createElement('span');
+        rank.className = 'column-popular-rank';
+        rank.textContent = String(hasPublishedPopularity ? articlePopularityRank(article) : index + 1).padStart(2, '0');
+        const articleTitle = document.createElement('strong');
+        articleTitle.textContent = article.title || 'AM4独自の読みもの';
+        card.append(rank, articleTitle, columnArrowIcon());
+        item.append(card);
+        list.append(item);
+      });
+      section.hidden = false;
+      window.AM4ObserveColumnReveals?.([...list.querySelectorAll('.column-popular-card')]);
+    }
+
     function renderColumnStories(stories){
-      const feature = document.getElementById('lead-story-feature');
+      const featured = document.getElementById('column-featured');
       const empty = document.getElementById('am4-story-empty');
+      const latestTitle = document.getElementById('column-latest-title');
       const filtering = Boolean(selectedColumnTag || columnSearchValue);
       const filtered = filteredColumnStories(stories);
       const listStories = filtering
         ? filtered
-        : filtered.filter((article) => article.id !== columnStories[0]?.id).slice(0, 3);
-      if (feature) feature.hidden = filtering;
+        : filtered.filter((article) => article.id !== columnStories[0]?.id);
+      if (featured) featured.hidden = filtering;
+      if (latestTitle) latestTitle.textContent = filtering ? 'SEARCH RESULTS' : 'LATEST ARTICLES';
       renderStoryList(listStories);
+      renderPopularStories(columnStories, { hidden: filtering });
       if (empty) empty.hidden = !filtering || listStories.length > 0;
     }
 
@@ -1194,8 +1472,8 @@
       try {
         const results = await loadArticleType('am4_story', { search: query, pageSize: 100, allPages: true });
         if (request !== columnSearchRequest) return;
-        columnSearchResults = results;
-        renderColumnStories(results);
+        columnSearchResults = sortColumnStories(results);
+        renderColumnStories(columnSearchResults);
       } catch (error) {
         if (request !== columnSearchRequest) return;
         console.warn('Column search unavailable.', error);
@@ -1216,15 +1494,33 @@
       });
     }
 
+    function restoreColumnHashPosition(){
+      const targetId = location.hash.slice(1);
+      if (!['lead-story', 'am4-story-list', 'column-popular'].includes(targetId)) return;
+      window.requestAnimationFrame(() => {
+        const target = document.getElementById(targetId);
+        if (!target) return;
+        target.scrollIntoView({ block:'start' });
+        window.requestAnimationFrame(() => {
+          const topbar = document.querySelector('.topbar');
+          const navigation = document.querySelector('.tagnav-wrap');
+          const safeTop = (topbar?.getBoundingClientRect().height || 0) + (navigation?.getBoundingClientRect().height || 0) + 18;
+          const targetTop = target.getBoundingClientRect().top;
+          if (targetTop < safeTop) window.scrollBy(0, targetTop - safeTop);
+        });
+      });
+    }
+
     async function loadStoryContent(){
       const result = await Promise.allSettled([loadArticleType('am4_story', { pageSize: 100, allPages: true })]);
       const stories = result[0].status === 'fulfilled' ? result[0].value : [];
       if (stories.length) {
-        columnStories = stories;
-        columnSearchResults = stories;
-        renderLeadStory(stories[0]);
+        columnStories = sortColumnStories(stories);
+        columnSearchResults = columnStories;
+        renderLeadStory(columnStories[0]);
         renderColumnActiveFilter();
-        renderColumnStories(stories);
+        renderColumnStories(columnStories);
+        restoreColumnHashPosition();
         if (columnSearchValue) runColumnSearch();
         document.dispatchEvent(new CustomEvent('am4:data-ready'));
       }
@@ -1414,6 +1710,55 @@
       io.observe(el);
     });
   }
+
+  // AM4 COLUMN cards are created after the article API resolves, so they need
+  // their own observer rather than relying on the static page reveal pass.
+  (() => {
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const revealedColumnCards = new Set();
+    let observer = null;
+
+    function revealColumnCards(nodes){
+      const cards = Array.from(nodes || []).filter((node) => node instanceof Element);
+      if (!cards.length) return;
+      cards.forEach((card) => {
+        const revealKey = card.dataset.columnRevealKey;
+        card.classList.add('column-stagger');
+        if (revealKey && revealedColumnCards.has(revealKey)) {
+          card.classList.add('is-in');
+          return;
+        }
+        card.classList.remove('is-in');
+        card.style.setProperty('--column-stagger', '0');
+        if (reducedMotion) {
+          if (revealKey) revealedColumnCards.add(revealKey);
+          card.classList.add('is-in');
+          return;
+        }
+        if (!observer) {
+          observer = new IntersectionObserver((entries) => {
+            entries
+              .filter((entry) => entry.isIntersecting)
+              .sort((left, right) => {
+                const vertical = left.boundingClientRect.top - right.boundingClientRect.top;
+                return vertical || left.boundingClientRect.left - right.boundingClientRect.left;
+              })
+              .forEach((entry, index) => {
+              const key = entry.target.dataset.columnRevealKey;
+              if (key) revealedColumnCards.add(key);
+              entry.target.style.setProperty('--column-stagger', String(index));
+              entry.target.classList.add('is-in');
+              observer.unobserve(entry.target);
+              });
+          }, { threshold:0.12, rootMargin:'0px 0px -8% 0px' });
+        }
+        observer.unobserve(card);
+        observer.observe(card);
+      });
+    }
+
+    window.AM4ObserveColumnReveals = revealColumnCards;
+  })();
 
   // ページ内ナビ：スクロール位置に合わせて、今いるセクションを明確に示す。
   (() => {
