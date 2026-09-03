@@ -66,6 +66,7 @@ test('Notion story entries retain the editorial taxonomy and produce a compact e
       '関連クラブ': textProperty('rich_text', 'Real Madrid / FC Barcelona'),
       'Topic Key': textProperty('rich_text', 'rivalry|clasico'),
       'タグ': { type: 'multi_select', multi_select: [{ name: 'La Liga' }, { name: 'Rivalry' }] },
+      '表示優先度': { type: 'number', number: 100 },
       '人気順位': { type: 'number', number: 2 },
       'カバー画像': { type: 'url', url: 'https://images.example/clasico.jpg' },
     },
@@ -76,6 +77,7 @@ test('Notion story entries retain the editorial taxonomy and produce a compact e
   assert.equal(article.story.relatedClubs, 'Real Madrid / FC Barcelona');
   assert.equal(article.summary, '100年以上かけて作られた特別な一戦を読み解く。');
   assert.deepEqual(article.tags, ['La Liga', 'Rivalry']);
+  assert.equal(article.priority, 100);
   assert.equal(article.popularRank, 2);
   assert.equal(article.coverImage, 'https://images.example/clasico.jpg');
   assert.equal(markdownExcerpt('## 見出し\n\n本文'), '本文');

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { articleCoverImage, articleMatchesSearch, articlePopularRank, articleTags } from '../lib/article-taxonomy.js';
+import { articleCoverImage, articleMatchesSearch, articlePopularRank, articlePriority, articleTags } from '../lib/article-taxonomy.js';
 
 test('article tags retain explicit editorial tags and safely derive useful legacy tags', () => {
   const article = {
@@ -31,6 +31,8 @@ test('article search includes title, summary, body, and derived tags', () => {
 test('optional popularity and cover metadata never invent values', () => {
   assert.equal(articlePopularRank('2'), 2);
   assert.equal(articlePopularRank(0), null);
+  assert.equal(articlePriority('100'), 100);
+  assert.equal(articlePriority(0), 0);
   assert.equal(articleCoverImage({ coverImage: 'https://images.example/cover.jpg' }), 'https://images.example/cover.jpg');
   assert.equal(articleCoverImage({ coverImage: '/not-a-public-image.jpg' }), null);
 });

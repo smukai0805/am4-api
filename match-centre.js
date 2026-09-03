@@ -806,6 +806,13 @@
         button.querySelector("span").textContent = option.label;
         return button;
       }));
+      if (fixtureMode !== "date") return;
+      window.requestAnimationFrame(() => {
+        const selected = fixtureFilters.querySelector('[aria-pressed="true"]');
+        if (!selected || fixtureFilters.scrollWidth <= fixtureFilters.clientWidth) return;
+        const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+        selected.scrollIntoView({ block: "nearest", inline: "center", behavior: reducedMotion ? "auto" : "smooth" });
+      });
     }
 
     function renderFixtureView() {

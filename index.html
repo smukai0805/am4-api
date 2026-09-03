@@ -442,7 +442,7 @@
   .column-featured-card:focus-visible{outline:3px solid #86aaff;outline-offset:3px;}
   .column-featured-copy{position:relative;z-index:1;display:flex;min-width:0;min-height:148px;flex-direction:column;align-items:flex-start;}
   .column-article-category{display:inline-flex;align-items:center;min-height:22px;color:var(--column-accent);font:700 9px var(--mono);letter-spacing:.14em;text-transform:uppercase;}
-  .column-featured-title{display:-webkit-box;max-width:none;overflow:hidden;margin:8px 0 10px;color:#fff;font:900 clamp(32px,4.4vw,52px)/.91 var(--display);letter-spacing:-.012em;-webkit-box-orient:vertical;-webkit-line-clamp:3;}
+  .column-featured-title{display:-webkit-box;max-width:none;overflow:hidden;margin:8px 0 10px;color:#fff;font:900 clamp(32px,4.4vw,52px)/1.2 var(--display);letter-spacing:-.012em;-webkit-box-orient:vertical;-webkit-line-clamp:3;}
   .column-featured-summary{display:-webkit-box;max-width:68ch;overflow:hidden;margin:0;color:#ccd7ed;font-size:13px;line-height:1.62;-webkit-box-orient:vertical;-webkit-line-clamp:2;}
   .column-featured-meta{display:flex;align-items:center;justify-content:space-between;width:100%;gap:12px;margin-top:auto;padding:16px 0 4px;color:#9fb0cf;font:600 10px var(--mono);letter-spacing:.06em;}
   .column-arrow{width:18px;height:18px;flex:0 0 auto;fill:none;stroke:currentColor;stroke-width:1.8;}
@@ -459,16 +459,20 @@
   .column-page .column-search:focus-within{border-color:#5f8dff;box-shadow:0 0 0 3px rgba(69,115,255,.15),inset 0 1px rgba(255,255,255,.06);}
   .column-page .column-active-tag{min-height:34px;border-color:rgba(139,169,255,.66);background:rgba(42,94,255,.18);color:#c9d9ff;}
   .column-page .am4-story-empty{margin:18px 0 0;color:#aab8d1;}
-  .column-latest-list{display:grid;gap:10px;margin-top:16px;}
-  .column-latest-card{position:relative;display:grid;grid-template-columns:minmax(0,1fr) 22px;align-items:stretch;gap:12px;min-width:0;padding:19px 18px 18px 21px;border:1px solid rgba(139,163,214,.2);border-left:2px solid var(--column-accent);border-radius:14px;background:linear-gradient(115deg,rgba(14,27,58,.84),rgba(6,13,30,.9));box-shadow:inset 0 1px rgba(255,255,255,.05),0 13px 30px -25px rgba(0,0,0,.85);color:#f4f7ff;text-decoration:none;transition:border-color .2s ease,background .2s ease,transform .2s ease;}
+  .column-latest-list{display:grid;gap:13px;margin-top:16px;}
+  .column-latest-card{position:relative;display:grid;grid-template-columns:minmax(0,1fr) 22px;align-items:stretch;gap:12px;min-width:0;min-height:164px;padding:19px 18px 18px 21px;border:1px solid rgba(139,163,214,.2);border-left:2px solid var(--column-accent);border-radius:14px;background:linear-gradient(115deg,rgba(14,27,58,.84),rgba(6,13,30,.9));box-shadow:inset 0 1px rgba(255,255,255,.05),0 13px 30px -25px rgba(0,0,0,.85);color:#f4f7ff;text-decoration:none;transition:border-color .2s ease,background .2s ease,transform .2s ease;}
   .column-latest-card:hover{transform:translateY(-2px);border-color:rgba(128,166,255,.6);background:linear-gradient(115deg,rgba(20,40,82,.94),rgba(7,17,39,.97));}
   .column-latest-card:focus-visible{outline:3px solid #86aaff;outline-offset:3px;}
   .column-latest-copy{display:grid;align-content:start;min-width:0;}
   .column-latest-topline{display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0;}
   .column-latest-date{flex:0 0 auto;color:#9db0cf;font:600 9px/1.35 var(--mono);letter-spacing:.05em;}
-  .column-latest-title{margin:8px 0 7px;color:#fff;font:800 clamp(23px,3vw,34px)/.98 var(--display);letter-spacing:-.008em;}
-  .column-latest-summary{display:-webkit-box;max-width:68ch;overflow:hidden;margin:0;color:#acb9d0;font-size:12px;line-height:1.55;-webkit-box-orient:vertical;-webkit-line-clamp:2;}
+  .column-latest-title{display:-webkit-box;overflow:hidden;margin:8px 0 7px;color:#fff;font:800 clamp(23px,3vw,34px)/1.26 var(--display);letter-spacing:-.008em;-webkit-box-orient:vertical;-webkit-line-clamp:3;}
+  .column-latest-summary{display:-webkit-box;max-width:68ch;overflow:hidden;margin:0;color:#acb9d0;font-size:12px;line-height:1.62;-webkit-box-orient:vertical;-webkit-line-clamp:2;}
   .column-latest-meta{display:grid;align-content:end;justify-content:end;min-width:22px;color:#9db0cf;}
+  .column-load-more{display:flex;align-items:center;justify-content:center;width:100%;min-height:48px;margin-top:17px;border:1px solid rgba(124,159,240,.38);border-radius:13px;background:linear-gradient(120deg,rgba(18,40,88,.82),rgba(8,19,43,.9));box-shadow:inset 0 1px rgba(255,255,255,.07);color:#c9d9ff;cursor:pointer;font:700 10px/1.2 var(--mono);letter-spacing:.1em;transition:border-color .2s ease,background .2s ease,color .2s ease,transform .2s ease;}
+  .column-load-more:hover{border-color:#80a6ff;background:linear-gradient(120deg,rgba(29,61,130,.92),rgba(10,25,58,.97));color:#fff;}
+  .column-load-more:focus-visible{outline:3px solid #86aaff;outline-offset:3px;}
+  .column-load-more:active{transform:translateY(1px);}
   .column-popular{margin-top:42px;padding-top:28px;border-top:1px solid rgba(157,184,255,.18);}
   .column-popular-head{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:11px;}
   .column-popular-title{margin:0;color:#fff;font:900 clamp(26px,3.5vw,38px)/1 var(--display);letter-spacing:.01em;}
@@ -487,9 +491,9 @@
   @media(min-width:761px){
     .column-featured-card{min-height:220px;padding:30px 34px;}
     .column-featured-card::after{right:34px;left:34px;}
-    .column-featured-title{-webkit-line-clamp:2;}
+    .column-featured-title{-webkit-line-clamp:3;}
     .column-featured-summary{font-size:14px;}
-    .column-latest-card{padding:22px 24px 21px 27px;}
+    .column-latest-card{min-height:172px;padding:22px 24px 21px 27px;}
     .column-latest-title{font-size:30px;}
   }
   @media(max-width:480px){
@@ -497,9 +501,9 @@
     .column-page-title{font-size:42px;}
     .column-featured-card{min-height:204px;padding:20px;}
     .column-featured-card::after{right:20px;left:20px;}
-    .column-featured-title{font-size:32px;}
+    .column-featured-title{font-size:30px;}
     .column-featured-summary{font-size:12px;}
-    .column-latest-card{gap:9px;padding:17px 14px 16px 16px;}
+    .column-latest-card{min-height:160px;gap:9px;padding:17px 14px 16px 16px;}
     .column-latest-title{font-size:24px;}
     .column-latest-summary{-webkit-line-clamp:2;}
     .column-popular-card{grid-template-columns:38px minmax(0,1fr) 20px;gap:9px;min-height:58px;}
@@ -648,8 +652,8 @@
     .matchday-toolbar{padding:14px;}
     .matchday-toolbar .fixture-mode-tab{min-width:62px;padding:8px 12px;}
     .spoiler-toggle{min-height:40px;padding:8px 11px;}
-    .matchday-dates{display:flex;overflow-x:auto;padding:0 8px;scrollbar-width:none;}
-    .matchday-dates .fixture-filter-tab{min-width:72px;padding:13px 7px 14px;}
+    .matchday-dates{display:flex;overflow-x:auto;overflow-y:hidden;padding:0 8px;scrollbar-width:none;scroll-snap-type:x mandatory;scroll-padding-inline:calc(50% - 36px);overscroll-behavior-x:contain;overscroll-behavior-y:auto;touch-action:pan-x pan-y;-webkit-overflow-scrolling:touch;}
+    .matchday-dates .fixture-filter-tab{min-width:72px;padding:13px 7px 14px;scroll-snap-align:center;scroll-snap-stop:always;}
     .matchday-quicktools{padding:12px 14px;}
     .matchday-quicktools .fixture-scope-tab{padding:7px 10px;font-size:10px;}
     .fixture-more-panel{right:-2px;width:calc(100vw - 40px);}
@@ -825,7 +829,7 @@
   <section class="column-latest" aria-labelledby="column-latest-title">
     <div class="column-section-head">
       <h3 class="column-section-title" id="column-latest-title">LATEST ARTICLES</h3>
-      <a class="column-all-link" href="#am4-story-list">すべて見る <span aria-hidden="true">→</span></a>
+      <span class="column-all-link" id="column-latest-state" aria-live="polite"></span>
     </div>
     <div class="column-discovery">
       <label class="sr-only" for="column-search">記事を検索</label>
@@ -837,6 +841,7 @@
     </div>
     <p class="am4-story-empty" id="am4-story-empty" role="status" hidden>該当する記事がありません</p>
     <div class="column-latest-list" id="am4-story-list" hidden></div>
+    <button class="column-load-more" id="column-load-more" type="button" aria-controls="am4-story-list" hidden>もっと見る</button>
   </section>
 
   <section class="column-popular" id="column-popular" aria-labelledby="column-popular-title" hidden>
@@ -1128,6 +1133,8 @@
     let selectedColumnTag = columnUrlParams.get('columnTag') || '';
     let columnSearchTimer = 0;
     let columnSearchRequest = 0;
+    const COLUMN_LATEST_PAGE_SIZE = 6;
+    let visibleColumnStoryCount = COLUMN_LATEST_PAGE_SIZE;
 
     function compactColumnText(value){
       return String(value || '').normalize('NFKC').replace(/\s+/g, ' ').trim();
@@ -1202,6 +1209,38 @@
       return [...stories].sort((left, right) => articleTimestamp(right) - articleTimestamp(left));
     }
 
+    function isClasicoStory(article){
+      const searchable = [
+        article?.id,
+        article?.title,
+        article?.summary,
+        article?.deck,
+        article?.story?.topicKey,
+        article?.story?.subject,
+        ...storyTags(article),
+      ].filter(Boolean).join(' ');
+      return /クラシコ|el\s*cl[áa]sico|clasico/iu.test(searchable);
+    }
+
+    function columnStoryPriority(article){
+      const priority = Number(article?.priority ?? article?.story?.priority);
+      return Number.isFinite(priority) ? priority : 0;
+    }
+
+    function sortLatestColumnStories(stories){
+      return [...stories].sort((left, right) => {
+        const clasicoDifference = Number(isClasicoStory(right)) - Number(isClasicoStory(left));
+        if (clasicoDifference) return clasicoDifference;
+        const priorityDifference = columnStoryPriority(right) - columnStoryPriority(left);
+        if (priorityDifference) return priorityDifference;
+        return articleTimestamp(right) - articleTimestamp(left);
+      });
+    }
+
+    function resetColumnStoryPagination(){
+      visibleColumnStoryCount = COLUMN_LATEST_PAGE_SIZE;
+    }
+
     function updateColumnUrl(){
       const url = new URL(location.href);
       if (selectedColumnTag) url.searchParams.set('columnTag', selectedColumnTag);
@@ -1236,6 +1275,7 @@
 
     function setColumnTag(tag){
       selectedColumnTag = compactColumnText(tag).replace(/^#+\s*/, '');
+      resetColumnStoryPagination();
       updateColumnUrl();
       renderColumnActiveFilter();
       renderColumnStories(columnSearchValue ? columnSearchResults : columnStories);
@@ -1313,9 +1353,10 @@
 
     function renderStoryList(stories){
       const list = document.getElementById('am4-story-list');
-      if (!list) return;
+      if (!list) return 0;
       list.replaceChildren();
-      stories.forEach((article) => {
+      const visibleStories = stories.slice(0, visibleColumnStoryCount);
+      visibleStories.forEach((article) => {
         const card = document.createElement('a');
         card.className = 'column-latest-card';
         card.href = `/article.html?id=${encodeURIComponent(article.id)}`;
@@ -1347,8 +1388,17 @@
         card.append(copy, meta);
         list.append(card);
       });
-      list.hidden = stories.length === 0;
+      list.hidden = visibleStories.length === 0;
       window.AM4ObserveColumnReveals?.([...list.children]);
+      return visibleStories.length;
+    }
+
+    function syncColumnLatestControls(total, visible){
+      const state = document.getElementById('column-latest-state');
+      const loadMore = document.getElementById('column-load-more');
+      if (state) state.textContent = total ? `${visible} / ${total}` : '';
+      if (!loadMore) return;
+      loadMore.hidden = total <= visible;
     }
 
     function filteredColumnStories(stories){
@@ -1417,12 +1467,14 @@
       const latestTitle = document.getElementById('column-latest-title');
       const filtering = Boolean(selectedColumnTag || columnSearchValue);
       const filtered = filteredColumnStories(stories);
-      const listStories = filtering
+      const latestCandidates = filtering
         ? filtered
         : filtered.filter((article) => article.id !== columnStories[0]?.id);
+      const listStories = sortLatestColumnStories(latestCandidates);
       if (featured) featured.hidden = filtering;
       if (latestTitle) latestTitle.textContent = filtering ? 'SEARCH RESULTS' : 'LATEST ARTICLES';
-      renderStoryList(listStories);
+      const visibleStories = renderStoryList(listStories);
+      syncColumnLatestControls(listStories.length, visibleStories);
       renderPopularStories(columnStories, { hidden: filtering });
       if (empty) empty.hidden = !filtering || listStories.length > 0;
     }
@@ -1450,13 +1502,20 @@
 
     function bindColumnDiscovery(){
       const input = document.getElementById('column-search');
-      if (!input) return;
-      input.value = columnSearchValue;
-      input.addEventListener('input', () => {
-        columnSearchValue = input.value.trim();
-        updateColumnUrl();
-        window.clearTimeout(columnSearchTimer);
-        columnSearchTimer = window.setTimeout(runColumnSearch, 160);
+      if (input) {
+        input.value = columnSearchValue;
+        input.addEventListener('input', () => {
+          columnSearchValue = input.value.trim();
+          resetColumnStoryPagination();
+          updateColumnUrl();
+          window.clearTimeout(columnSearchTimer);
+          columnSearchTimer = window.setTimeout(runColumnSearch, 160);
+        });
+      }
+      const loadMore = document.getElementById('column-load-more');
+      loadMore?.addEventListener('click', () => {
+        visibleColumnStoryCount += COLUMN_LATEST_PAGE_SIZE;
+        renderColumnStories(columnSearchValue ? columnSearchResults : columnStories);
       });
     }
 
@@ -1483,6 +1542,7 @@
       if (stories.length) {
         columnStories = sortColumnStories(stories);
         columnSearchResults = columnStories;
+        resetColumnStoryPagination();
         renderLeadStory(columnStories[0]);
         renderColumnActiveFilter();
         renderColumnStories(columnStories);
