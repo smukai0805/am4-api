@@ -12,8 +12,8 @@ test('fixture detail normalizes provider data and degrades unavailable optional 
           fixture: { id: 123, date: '2026-08-16T14:00:00+00:00', timestamp: 1786888800, referee: 'A. Ref', timezone: 'UTC', status: { short: 'FT', long: 'Match Finished', elapsed: 90 }, venue: { name: 'Stadium', city: 'City' } },
           league: { id: 39, name: 'Premier League', logo: 'https://example.test/league.png', country: 'England', round: 'Regular Season - 1' },
           teams: { home: { id: 42, name: 'Arsenal', logo: 'https://example.test/a.png' }, away: { id: 50, name: 'Manchester City', logo: 'https://example.test/mc.png' } },
-          goals: { home: 2, away: 1 },
-          score: { halftime: { home: 1, away: 0 }, fulltime: { home: 2, away: 1 }, extratime: { home: null, away: null }, penalty: { home: null, away: null } },
+          goals: { home: 1, away: 2 },
+          score: { halftime: { home: 1, away: 0 }, fulltime: { home: 1, away: 2 }, extratime: { home: null, away: null }, penalty: { home: null, away: null } },
         }],
       };
     }
@@ -168,6 +168,33 @@ test('fixture detail excludes foreign events and suppresses contradictory scorin
   const detail = await getFixtureDetail(999, fetchFixture);
   assert.deepEqual(detail.events.map((event) => [event.type, event.team.id]), [['yellow_card', 10]]);
   assert.deepEqual(detail.eventIntegrity, { teamAssociation: true, goalScore: 'mismatch' });
+});
+
+test('fixture detail credits API-Football own goals to the provider event team', async () => {
+  const fetchFixture = async (path) => {
+    if (path === '/fixtures') return { response: [{
+      fixture: { id: 1557395, date: '2026-09-05T11:30:00+00:00', status: { short: 'FT' } },
+      league: { id: 39, name: 'Premier League' },
+      teams: { home: { id: 34, name: 'Newcastle' }, away: { id: 35, name: 'Bournemouth' } },
+      goals: { home: 2, away: 2 }, score: {},
+    }] };
+    if (path === '/fixtures/events') return { response: [
+      { time: { elapsed: 9 }, type: 'Goal', detail: 'Normal Goal', team: { id: 35, name: 'Bournemouth' }, player: { name: 'Marcus Tavernier' } },
+      // Captured provider payload: the scorer is a Newcastle defender, while
+      // the event team is Bournemouth, which receives the goal on the scoreboard.
+      { time: { elapsed: 35 }, type: 'Goal', detail: 'Own Goal', team: { id: 35, name: 'Bournemouth' }, player: { name: 'Malick Thiaw' } },
+      { time: { elapsed: 37 }, type: 'Goal', detail: 'Normal Goal', team: { id: 34, name: 'Newcastle' }, player: { name: 'Harvey Barnes' } },
+      { time: { elapsed: 88 }, type: 'Goal', detail: 'Normal Goal', team: { id: 34, name: 'Newcastle' }, player: { name: 'Jacob Ramsey' } },
+    ] };
+    return { response: [] };
+  };
+
+  const detail = await getFixtureDetail(1557395, fetchFixture);
+
+  assert.deepEqual(detail.events.map((event) => [event.type, event.team.id]), [
+    ['goal', 35], ['own_goal', 35], ['goal', 34], ['goal', 34],
+  ]);
+  assert.deepEqual(detail.eventIntegrity, { teamAssociation: true, goalScore: 'consistent' });
 });
 
 test('provider event labels are normalised to canonical event keys', () => {

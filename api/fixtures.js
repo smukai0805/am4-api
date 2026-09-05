@@ -415,8 +415,10 @@ function isScoringEvent(event) {
 function scoreSideForEvent(event, fixture) {
   if (!isScoringEvent(event)) return null;
   const teamId = event.team?.id;
-  if (teamId === fixture.home?.id) return event.type === 'own_goal' ? 'away' : 'home';
-  if (teamId === fixture.away?.id) return event.type === 'own_goal' ? 'home' : 'away';
+  // API-Football assigns every goal event, including own goals, to the side
+  // credited on the scoreboard. The player may belong to the opposing team.
+  if (teamId === fixture.home?.id) return 'home';
+  if (teamId === fixture.away?.id) return 'away';
   return null;
 }
 
