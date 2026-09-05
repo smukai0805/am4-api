@@ -1,4 +1,7 @@
 {
+  "rewrites": [
+    { "source": "/column/20-seasons", "destination": "/column-20-seasons.html" }
+  ],
   "crons": [
     { "path": "/api/academy-debut-watch", "schedule": "0 21 * * *" },
     { "path": "/api/academy-debut-watch", "schedule": "0 14 * * *" },

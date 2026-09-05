@@ -83,6 +83,23 @@ test('Notion story entries retain the editorial taxonomy and produce a compact e
   assert.equal(markdownExcerpt('## 見出し\n\n本文'), '本文');
 });
 
+test('Notion story entries derive 20 Seasons metadata from the existing Topic Key and subject', () => {
+  const page = {
+    id: 'twenty-seasons-story',
+    properties: {
+      '記事タイトル': textProperty('title', 'カカ、欧州の王になる'),
+      '記事状態': { type: 'select', select: { name: '自動生成' } },
+      'カテゴリ': { type: 'select', select: { name: '大会史' } },
+      'Topic Key': textProperty('rich_text', '大会史|20 Seasons, 20 Stories. 2006-07'),
+      '主題': textProperty('rich_text', '20 Seasons, 20 Stories. 2006-07シーズン'),
+    },
+  };
+
+  const article = notionPageToArticle({ type: 'am4_story', page, markdown: '本文' });
+  assert.equal(article.story.series, '20 Seasons, 20 Stories.');
+  assert.equal(article.story.season, '2006-07');
+});
+
 test('Notion status properties use the same public-state gate as select properties', () => {
   const page = {
     id: 'status-page',

@@ -28,6 +28,19 @@ test('article search includes title, summary, body, and derived tags', () => {
   assert.equal(articleMatchesSearch(article, 'ドルトムント'), false);
 });
 
+test('20 Seasons stories gain a reusable series tag from existing story metadata', () => {
+  const article = {
+    story: {
+      series: '20 Seasons, 20 Stories.',
+      category: '大会史',
+      topicKey: '大会史|20 Seasons, 20 Stories. 2006-07',
+    },
+  };
+
+  assert.deepEqual(articleTags(article), ['20 SEASONS', 'TOURNAMENT HISTORY']);
+  assert.equal(articleMatchesSearch(article, '20 seasons'), true);
+});
+
 test('optional popularity and cover metadata never invent values', () => {
   assert.equal(articlePopularRank('2'), 2);
   assert.equal(articlePopularRank(0), null);

@@ -17,7 +17,7 @@
 <link rel="manifest" href="/manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;700;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/brand.css?v=20260902-column-discovery">
+<link rel="stylesheet" href="/brand.css?v=20260904-20-seasons">
 <style>
   main{display:flex;flex-direction:column;}
 
@@ -424,6 +424,16 @@
   .column-page-eyebrow{margin:0 0 10px;color:#8fabff;font:700 10px var(--mono);letter-spacing:.18em;text-transform:uppercase;}
   .column-page-title{margin:0;color:#fff;font:900 clamp(38px,5.2vw,62px)/.94 var(--display);letter-spacing:.015em;}
   .column-page-editorial{margin:0;color:#aebbd5;font:600 10px var(--mono);letter-spacing:.12em;white-space:nowrap;}
+  .column-series-feature{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:end;overflow:hidden;margin:-5px 0 36px;padding:22px 23px 20px;border:1px solid rgba(139,163,214,.28);border-left:3px solid #86a9ff;border-radius:16px;background:linear-gradient(122deg,rgba(16,35,78,.88),rgba(7,15,33,.91) 68%,rgba(17,36,82,.72));box-shadow:inset 0 1px rgba(255,255,255,.06),0 18px 38px -31px rgba(0,0,0,.85);color:#f6f8ff;text-decoration:none;transition:transform .22s ease,border-color .22s ease,background .22s ease;}
+  .column-series-feature::before{content:"";position:absolute;inset:-74% 45% -84% -10%;background:radial-gradient(ellipse,rgba(53,99,255,.29),transparent 68%);filter:blur(9px);pointer-events:none;}
+  .column-series-feature:hover{transform:translateY(-2px);border-color:rgba(136,169,255,.72);background:linear-gradient(122deg,rgba(20,44,99,.95),rgba(7,17,39,.96) 68%,rgba(19,42,95,.8));}
+  .column-series-feature:focus-visible{outline:3px solid #86aaff;outline-offset:3px;}
+  .column-series-feature-copy,.column-series-feature-cta{position:relative;z-index:1;}
+  .column-series-feature-copy{display:grid;gap:8px;min-width:0;}
+  .column-series-feature-kicker{color:#94b2ff;font:700 9px var(--mono);letter-spacing:.15em;text-transform:uppercase;}
+  .column-series-feature-title{color:#fff;font:900 clamp(31px,4vw,46px)/.94 var(--display);letter-spacing:.005em;}
+  .column-series-feature-copy small{color:#b8c6e0;font:500 12px/1.5 var(--body);}
+  .column-series-feature-cta{display:inline-flex;align-items:center;gap:8px;color:#b9ccff;font:700 9px/1.35 var(--mono);letter-spacing:.08em;text-align:right;white-space:nowrap;}
   .column-section-head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:14px;}
   .column-section-title{margin:0;color:#b9caff;font:700 11px var(--mono);letter-spacing:.16em;text-transform:uppercase;}
   .column-all-link{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:8px 0;color:#9db8ff;font:600 10px var(--mono);letter-spacing:.08em;text-decoration:none;}
@@ -508,6 +518,9 @@
     .column-latest-summary{-webkit-line-clamp:2;}
     .column-popular-card{grid-template-columns:38px minmax(0,1fr) 20px;gap:9px;min-height:58px;}
     .column-popular-card strong{font-size:15px;}
+    .column-series-feature{grid-template-columns:1fr;gap:14px;margin-bottom:28px;padding:19px 18px 17px;}
+    .column-series-feature-title{font-size:34px;}
+    .column-series-feature-cta{justify-content:space-between;text-align:left;}
   }
   @media(prefers-reduced-motion:reduce){.column-stagger,.column-stagger.is-in{opacity:1;transform:none;animation:none;transition:none;}}
 
@@ -808,6 +821,15 @@
     <p class="column-page-editorial">AM4編集部</p>
   </header>
 
+  <a class="column-series-feature" href="/column/20-seasons" aria-label="20 Seasons, 20 Stories. 特集ページを開く">
+    <span class="column-series-feature-copy">
+      <span class="column-series-feature-kicker">FEATURE SERIES</span>
+      <strong class="column-series-feature-title">20 Seasons, 20 Stories.</strong>
+      <small>欧州サッカー、激動の20年。 2006-07 → 2025-26</small>
+    </span>
+    <span class="column-series-feature-cta">EXPLORE THE 20 SEASONS <svg class="column-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"></path></svg></span>
+  </a>
+
   <section class="column-featured" id="column-featured" aria-labelledby="column-featured-title">
     <div class="column-section-head">
       <h3 class="column-section-title" id="column-featured-title">FEATURED</h3>
@@ -951,6 +973,7 @@
 <script src="football-data.js?v=20260901-live"></script>
 <script src="sample-football-data.js"></script>
 <script src="match-centre.js?v=20260902-league-result-cover"></script>
+<script src="column-series.js?v=20260904-20-seasons"></script>
 <script>
   // Existing AM4 Vercel API, with an explicit sample fallback.
   (async function(){
@@ -1128,6 +1151,7 @@
 
     const columnUrlParams = new URLSearchParams(location.search);
     let columnStories = [];
+    let allColumnStories = [];
     let columnSearchResults = [];
     let columnSearchValue = columnUrlParams.get('columnSearch') || '';
     let selectedColumnTag = columnUrlParams.get('columnTag') || '';
@@ -1144,10 +1168,21 @@
       return compactColumnText(value).replace(/^#+\s*/, '').toLocaleLowerCase('en-US');
     }
 
+    function isTwentySeasonsStory(article){
+      if (window.AM4ColumnSeries?.isTwentySeasonsStory) return window.AM4ColumnSeries.isTwentySeasonsStory(article);
+      const source = [article?.story?.series, article?.story?.topicKey, article?.story?.subject]
+        .filter(Boolean)
+        .join(' ')
+        .normalize('NFKC')
+        .toLocaleLowerCase('en-US');
+      return /20\s*seasons\s*,?\s*20\s*stories\.?/u.test(source);
+    }
+
     function storyTags(article){
       const tags = Array.isArray(article.tags) ? article.tags : [];
+      const seriesTag = isTwentySeasonsStory(article) ? ['20 SEASONS'] : [];
       const fallback = tags.length ? [] : [article.story?.category, ...(compactColumnText(article.story?.relatedClubs).split(/[／/,、\n]+/))];
-      return [...tags, ...fallback]
+      return [...tags, ...seriesTag, ...fallback]
         .map((tag) => compactColumnText(tag).replace(/^#+\s*/, '').replace(/\s+ほか$/u, ''))
         .filter((tag) => tag && !/^(?:AM4|COLUMN|ほか|その他)$/i.test(tag))
         .filter((tag, index, list) => list.findIndex((item) => normalizedColumnTag(item) === normalizedColumnTag(tag)) === index)
@@ -1466,7 +1501,12 @@
       const empty = document.getElementById('am4-story-empty');
       const latestTitle = document.getElementById('column-latest-title');
       const filtering = Boolean(selectedColumnTag || columnSearchValue);
-      const filtered = filteredColumnStories(stories);
+      const sourceStories = columnSearchValue
+        ? stories
+        : normalizedColumnTag(selectedColumnTag) === '20 seasons'
+          ? allColumnStories
+          : stories;
+      const filtered = filteredColumnStories(sourceStories);
       const latestCandidates = filtering
         ? filtered
         : filtered.filter((article) => article.id !== columnStories[0]?.id);
@@ -1540,7 +1580,9 @@
       const result = await Promise.allSettled([loadArticleType('am4_story', { pageSize: 100, allPages: true })]);
       const stories = result[0].status === 'fulfilled' ? result[0].value : [];
       if (stories.length) {
-        columnStories = sortColumnStories(stories);
+        allColumnStories = sortColumnStories(stories);
+        const regularStories = allColumnStories.filter((article) => !isTwentySeasonsStory(article));
+        columnStories = regularStories.length ? regularStories : allColumnStories;
         columnSearchResults = columnStories;
         resetColumnStoryPagination();
         renderLeadStory(columnStories[0]);
