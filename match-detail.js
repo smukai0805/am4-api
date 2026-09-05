@@ -167,7 +167,9 @@
   const PLAYER_NAME_JUNIOR_SUFFIXES = new Set(["junior", "júnior", "jr", "jr."]);
 
   function cleanPlayerName(value) {
-    return typeof value === "string" ? value.replace(/\s+/g, " ").trim() : "";
+    return typeof value === "string"
+      ? value.replace(/&(?:apos|#39|#x27);/gi, "'").replace(/&quot;/gi, '"').replace(/&amp;/gi, "&").replace(/\s+/g, " ").trim()
+      : "";
   }
 
   function playerNameKey(value) {
