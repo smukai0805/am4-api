@@ -46,8 +46,8 @@
   let currentDetail = null;
   let currentEditorial = { prediction: null, report: null };
   let currentStandings = { state: "idle", data: null };
-  const DATA_PANEL_IDS = new Set(["events", "lineups", "statistics", "standings"]);
-  let activeDataPanel = DATA_PANEL_IDS.has(window.location.hash.slice(1)) ? window.location.hash.slice(1) : "events";
+  const PANEL_IDS = new Set(["overview", "events", "lineups", "statistics", "standings"]);
+  let activePanel = PANEL_IDS.has(window.location.hash.slice(1)) ? window.location.hash.slice(1) : "overview";
   let liveRefreshTimer = null;
   let liveRefreshInFlight = false;
   let editorialRequest = 0;
@@ -155,15 +155,59 @@
     return "";
   }
 
+  const PLAYER_NAME_ALIASES = new Map([
+    ["vinicius jose paixao de oliveira junior", "Vinícius Jr."],
+    ["neymar da silva santos junior", "Neymar"],
+    ["rodrygo silva de goes", "Rodrygo"],
+    ["natan bernardo de souza", "Natan"],
+    ["rodrigo riquelme reche", "Riquelme"],
+    ["alvaro fernandez carreras", "Álvaro Carreras"],
+  ]);
+  const PLAYER_NAME_PARTICLES = new Set(["al", "bin", "da", "das", "de", "del", "di", "do", "dos", "du", "ibn", "la", "van", "von", "y"]);
+  const PLAYER_NAME_JUNIOR_SUFFIXES = new Set(["junior", "júnior", "jr", "jr."]);
+
+  function cleanPlayerName(value) {
+    return typeof value === "string" ? value.replace(/\s+/g, " ").trim() : "";
+  }
+
+  function playerNameKey(value) {
+    return cleanPlayerName(value)
+      .normalize("NFKD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/gi, " ")
+      .trim()
+      .toLowerCase();
+  }
+
+  function generatedPlayerDisplayName(fullName) {
+    const name = cleanPlayerName(fullName);
+    if (!name) return "";
+    const alias = PLAYER_NAME_ALIASES.get(playerNameKey(name));
+    if (alias) return alias;
+
+    const parts = name.split(" ").filter(Boolean);
+    if (parts.length <= 2 || parts.some((part) => /^[a-z]\.$/i.test(part))) return name;
+    const tail = parts.at(-1).toLocaleLowerCase();
+    if (PLAYER_NAME_JUNIOR_SUFFIXES.has(tail)) return `${parts[0]} Jr.`;
+    if (parts.slice(1).some((part) => PLAYER_NAME_PARTICLES.has(part.toLocaleLowerCase()))) return parts[0];
+    // A first-and-family-name fallback remains recognizable without cutting a
+    // name at an arbitrary character boundary. Known exceptions live above.
+    return `${parts[0]} ${parts.at(-1)}`;
+  }
+
   function displayPlayerName(participant) {
-    const value = participant || {};
-    // Keep API-FOOTBALL's canonical name as a fallback, but use an explicitly
-    // supplied display/short name whenever a provider starts supplying one.
-    // We deliberately do not crop names by character count: that would turn a
-    // legitimate name into an ambiguous or misleading label.
-    return [value.displayName, value.display_name, value.shortName, value.short_name, value.commonName, value.common_name, value.name]
-      .map((name) => typeof name === "string" ? name.trim() : "")
-      .find(Boolean) || "";
+    const value = participant?.player && typeof participant.player === "object" ? participant.player : participant || {};
+    const supplied = [
+      value.knownAs,
+      value.known_as,
+      value.commonName,
+      value.common_name,
+      value.shortName,
+      value.short_name,
+      value.displayName,
+      value.display_name,
+    ].map(cleanPlayerName).find(Boolean);
+    return supplied || generatedPlayerDisplayName(value.name);
   }
 
   function eventParticipant(participant) {
@@ -352,7 +396,7 @@
   function playerRow(player) {
     const item = node("li", "lineup-player");
     const number = node("span", "lineup-number", player.number == null ? "—" : String(player.number));
-    const name = node("span", "lineup-name", text(player.name, "選手情報なし"));
+    const name = node("span", "lineup-name", text(displayPlayerName(player), "選手情報なし"));
     const position = node("small", "", text(player.position, "—"));
     item.append(number, name, position);
     return item;
@@ -575,37 +619,38 @@
   function renderNavigation() {
     const nav = node("nav", "match-anchor-nav");
     nav.setAttribute("aria-label", locale === "ja" ? "試合詳細のセクション" : "Match detail sections");
-    const overview = node("a", "", t("overview"));
-    overview.href = "#overview";
-    nav.append(overview);
-    [["events", t("events")], ["lineups", t("lineups")], ["statistics", t("statistics")], ["standings", t("standings")]].forEach(([id, label]) => {
+    [["overview", t("overview")], ["events", t("events")], ["lineups", t("lineups")], ["statistics", t("statistics")], ["standings", t("standings")]].forEach(([id, label]) => {
       const button = node("button", "", label);
       button.type = "button";
       button.dataset.matchPanel = id;
-      if (id === activeDataPanel) button.setAttribute("aria-current", "true");
-      button.addEventListener("click", () => selectDataPanel(id));
+      if (id === activePanel) button.setAttribute("aria-current", "true");
+      button.addEventListener("click", () => selectPanel(id));
       nav.append(button);
     });
     return nav;
   }
 
-  function renderDataPanel(detail) {
-    if (activeDataPanel === "lineups") return renderLineups(detail);
-    if (activeDataPanel === "statistics") return renderStatistics(detail);
-    if (activeDataPanel === "standings") return renderStandings(detail, currentStandings);
+  function renderActivePanel(detail) {
+    if (activePanel === "overview") return renderOverview(detail, currentEditorial);
+    if (activePanel === "lineups") return renderLineups(detail);
+    if (activePanel === "statistics") return renderStatistics(detail);
+    if (activePanel === "standings") return renderStandings(detail, currentStandings);
     return renderEvents(detail, currentEditorial.report);
   }
 
-  function selectDataPanel(id, { updateHash = true } = {}) {
-    if (!DATA_PANEL_IDS.has(id) || !currentDetail) return;
-    activeDataPanel = id;
+  function selectPanel(id, { updateHash = true } = {}) {
+    if (!PANEL_IDS.has(id)) return;
+    activePanel = id;
+    // A hash can change while the fixture request is still in flight. Preserve
+    // that requested panel so the first completed render respects the URL.
+    if (!currentDetail) return;
     if (updateHash) history.replaceState(null, "", `#${id}`);
-    const previous = page.querySelector(".match-section[data-match-data-panel]");
-    const next = renderDataPanel(currentDetail);
-    next.dataset.matchDataPanel = id;
+    const previous = page.querySelector(".match-section[data-match-panel]");
+    const next = renderActivePanel(currentDetail);
+    next.dataset.matchPanel = id;
     if (previous) previous.replaceWith(next);
     else page.append(next);
-    page.querySelectorAll("[data-match-panel]").forEach((button) => {
+    page.querySelectorAll(".match-anchor-nav [data-match-panel]").forEach((button) => {
       if (button.dataset.matchPanel === id) button.setAttribute("aria-current", "true");
       else button.removeAttribute("aria-current");
     });
@@ -721,15 +766,16 @@
     }
     if (request !== editorialRequest || currentDetail?.fixture?.id !== fixture.id) return;
     currentEditorial = editorial;
-    replaceSection("overview", renderOverview(currentDetail, currentEditorial));
-    if (activeDataPanel === "events") replaceActiveDataPanel();
+    // Editorial content changes the active overview and can also add the
+    // Notion-backed first-/second-half flow to the events panel.
+    if (activePanel === "overview" || activePanel === "events") replaceActivePanel();
   }
 
   async function refreshStandingsForFixture(fixture) {
     if (!client || !fixture?.id) return;
     const request = ++standingsRequest;
     currentStandings = { state: "loading", data: null };
-    if (activeDataPanel === "standings") replaceActiveDataPanel();
+    if (activePanel === "standings") replaceActivePanel();
     try {
       const data = await client.standings({
         season: fixtureSeason(fixture),
@@ -745,7 +791,7 @@
       console.warn("Fixture standings unavailable.", error);
       currentStandings = { state: "unavailable", data: null };
     }
-    if (activeDataPanel === "standings") replaceActiveDataPanel();
+    if (activePanel === "standings") replaceActivePanel();
   }
 
   function cleanEditorialText(value) {
@@ -959,30 +1005,20 @@
     return overview;
   }
 
-  function replaceSection(id, sectionNode) {
-    const previous = page.querySelector(`#${id}`);
-    if (previous) previous.replaceWith(sectionNode);
-  }
-
-  function replaceActiveDataPanel() {
-    const previous = page.querySelector(".match-section[data-match-data-panel]");
+  function replaceActivePanel() {
+    const previous = page.querySelector(".match-section[data-match-panel]");
     if (!previous || !currentDetail) return;
-    const next = renderDataPanel(currentDetail);
-    next.dataset.matchDataPanel = activeDataPanel;
+    const next = renderActivePanel(currentDetail);
+    next.dataset.matchPanel = activePanel;
     previous.replaceWith(next);
   }
 
   function render(detail) {
     const fixture = detail.fixture;
     document.title = `${text(fixture.home?.name)} vs ${text(fixture.away?.name)}｜AM4 Football`;
-    page.replaceChildren(
-      backLink(),
-      renderBoard(fixture),
-      renderOverview(detail, currentEditorial),
-      renderNavigation(),
-      renderDataPanel(detail),
-    );
-    page.querySelector(`#${activeDataPanel}`)?.setAttribute("data-match-data-panel", activeDataPanel);
+    const panel = renderActivePanel(detail);
+    panel.dataset.matchPanel = activePanel;
+    page.replaceChildren(backLink(), renderBoard(fixture), renderNavigation(), panel);
     // Only the compact live indicator announces a later refresh. Re-announcing
     // an entire event timeline every 15 seconds would be disruptive to readers.
     page.setAttribute("aria-live", "off");
@@ -997,13 +1033,7 @@
       : null;
     document.title = `${text(fixture.home?.name)} vs ${text(fixture.away?.name)}｜AM4 Football`;
     page.querySelector(".match-board")?.replaceWith(renderBoard(fixture));
-    replaceSection("overview", renderOverview(detail, currentEditorial));
-    const activePanel = page.querySelector(".match-section[data-match-data-panel]");
-    if (activePanel) {
-      const next = renderDataPanel(detail);
-      next.dataset.matchDataPanel = activeDataPanel;
-      activePanel.replaceWith(next);
-    }
+    replaceActivePanel();
     if (focusedSummarySection) page.querySelector(`#${focusedSummarySection} summary`)?.focus({ preventScroll: true });
     window.scrollTo(0, previousScrollY);
   }
@@ -1132,7 +1162,7 @@
   });
   window.addEventListener("hashchange", () => {
     const requestedPanel = window.location.hash.slice(1);
-    if (DATA_PANEL_IDS.has(requestedPanel)) selectDataPanel(requestedPanel, { updateHash: false });
+    if (PANEL_IDS.has(requestedPanel)) selectPanel(requestedPanel, { updateHash: false });
   });
   window.addEventListener("pagehide", clearLiveRefresh, { once: true });
   load();

@@ -313,6 +313,28 @@ function normalizeParticipant(participant) {
   };
 }
 
+// Keep a provider's already-curated player label when it is available. The
+// browser owns the final presentation fallback, but this normalization layer
+// must not discard a short/common name before it reaches that shared resolver.
+function normalizePlayerIdentity(player) {
+  const normalized = {
+    id: nullableNumber(player?.id),
+    name: player?.name || null,
+  };
+  const displayName = [
+    player?.knownAs,
+    player?.known_as,
+    player?.commonName,
+    player?.common_name,
+    player?.shortName,
+    player?.short_name,
+    player?.displayName,
+    player?.display_name,
+  ].find((value) => typeof value === 'string' && value.trim());
+  if (displayName) normalized.displayName = displayName.trim();
+  return normalized;
+}
+
 function normalizeDetailFixture(source) {
   const fixture = source?.fixture || {};
   const league = source?.league || {};
@@ -443,8 +465,8 @@ function normalizeDetailEvents(events, fixture) {
         detail: event?.detail || null,
         comments: event?.comments || null,
         team: team ? { ...team } : normalizeParticipant(event?.team),
-        player: { id: nullableNumber(event?.player?.id), name: event?.player?.name || null },
-        assist: { id: nullableNumber(event?.assist?.id), name: event?.assist?.name || null },
+        player: normalizePlayerIdentity(event?.player),
+        assist: normalizePlayerIdentity(event?.assist),
         sortIndex: index,
       };
     })
@@ -459,8 +481,7 @@ function normalizeDetailEvents(events, fixture) {
 function normalizeLineupPlayer(entry) {
   const player = entry?.player || {};
   return {
-    id: nullableNumber(player.id),
-    name: player.name || null,
+    ...normalizePlayerIdentity(player),
     number: nullableNumber(player.number),
     position: player.pos || null,
     grid: player.grid || null,

@@ -18,7 +18,7 @@ test('fixture detail normalizes provider data and degrades unavailable optional 
       };
     }
     if (path === '/fixtures/events') return { response: [
-      { time: { elapsed: 12, extra: null }, type: 'Goal', detail: 'Normal Goal', team: { id: 42, name: 'Arsenal', logo: 'https://example.test/a.png' }, player: { id: 9, name: 'B. Saka' }, assist: { id: 8, name: 'M. Odegaard' } },
+      { time: { elapsed: 12, extra: null }, type: 'Goal', detail: 'Normal Goal', team: { id: 42, name: 'Arsenal', logo: 'https://example.test/a.png' }, player: { id: 9, name: 'Bukayo Ayoyinka T. M. Saka', shortName: 'Bukayo Saka' }, assist: { id: 8, name: 'M. Odegaard' } },
       { time: { elapsed: 45, extra: null }, type: 'Goal', detail: 'Normal Goal', team: { id: 50, name: 'Manchester City', logo: 'https://example.test/mc.png' }, player: { id: 19, name: 'J. Away' }, assist: { id: 20, name: 'K. Away' } },
       { time: { elapsed: 61, extra: null }, type: 'subst', detail: 'Substitution 1', team: { id: 42, name: 'Arsenal', logo: 'https://example.test/a.png' }, player: { id: 10, name: 'A. Out' }, assist: { id: 11, name: 'B. In' } },
       { time: { elapsed: 70, extra: null }, type: 'Card', detail: 'Yellow Card', team: { id: 50, name: 'Manchester City', logo: 'https://example.test/mc.png' }, player: { id: 12, name: 'C. Yellow' }, assist: { id: null, name: null } },
@@ -47,7 +47,7 @@ test('fixture detail normalizes provider data and degrades unavailable optional 
   assert.equal(detail.fixture.roundLabel, '第1節');
   assert.deepEqual(detail.events[0], {
     minute: "12'", elapsed: 12, extra: null, type: 'goal', subtype: null, providerType: 'Goal', detail: 'Normal Goal', comments: null,
-    team: { id: 42, name: 'Arsenal', logo: 'https://example.test/a.png' }, player: { id: 9, name: 'B. Saka' }, assist: { id: 8, name: 'M. Odegaard' },
+    team: { id: 42, name: 'Arsenal', logo: 'https://example.test/a.png' }, player: { id: 9, name: 'Bukayo Ayoyinka T. M. Saka', displayName: 'Bukayo Saka' }, assist: { id: 8, name: 'M. Odegaard' },
   });
   assert.deepEqual(detail.events.slice(1).map((event) => ({
     minute: event.minute, type: event.type, subtype: event.subtype, providerType: event.providerType, detail: event.detail, team: event.team, player: event.player, assist: event.assist,
@@ -177,4 +177,29 @@ test('provider event labels are normalised to canonical event keys', () => {
   assert.equal(canonicalEventType({ type: 'Card', detail: 'Yellow Card' }), 'yellow_card');
   assert.equal(canonicalEventType({ type: 'subst', detail: 'Substitution 1' }), 'substitution');
   assert.equal(canonicalEventType({ type: 'VAR', detail: 'Goal cancelled' }), 'var');
+});
+
+test('fixture detail retains provider display labels for events and lineups', async () => {
+  const fetchFixture = async (path) => {
+    if (path === '/fixtures') return { response: [{
+      fixture: { id: 321, date: '2026-08-16T14:00:00+00:00', status: { short: 'NS' } },
+      league: { id: 39, name: 'Premier League' },
+      teams: { home: { id: 10, name: 'Home' }, away: { id: 20, name: 'Away' } },
+      goals: { home: null, away: null }, score: {},
+    }] };
+    if (path === '/fixtures/events') return { response: [{
+      time: { elapsed: 10 }, type: 'Goal', detail: 'Normal Goal', team: { id: 10, name: 'Home' },
+      player: { id: 1, name: 'Vinícius José Paixão de Oliveira Júnior', commonName: 'Vinícius Jr.' },
+      assist: { id: 2, name: 'Long Assist Name', knownAs: 'A. Assist' },
+    }] };
+    if (path === '/fixtures/lineups') return { response: [{
+      team: { id: 10, name: 'Home' }, startXI: [{ player: { id: 1, name: 'Natan Bernardo de Souza', shortName: 'Natan', number: 4, pos: 'D' } }], substitutes: [],
+    }] };
+    return { response: [] };
+  };
+
+  const detail = await getFixtureDetail(321, fetchFixture);
+  assert.equal(detail.events[0].player.displayName, 'Vinícius Jr.');
+  assert.equal(detail.events[0].assist.displayName, 'A. Assist');
+  assert.equal(detail.lineups[0].startXI[0].displayName, 'Natan');
 });
