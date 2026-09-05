@@ -10,7 +10,6 @@
   const LEAGUE_GROUP_BATCH_SIZE = 6;
   const LIVE_DAILY_REFRESH_MS = 30_000;
   const KICKOFF_RECHECK_BUFFER_MS = 30_000;
-  const SCORE_REVEAL_FALLBACK_MS = 700;
   const MAJOR_LEAGUES = [
     { providerId: 39, rank: 1, competition: "プレミアリーグ", country: "England", names: ["プレミアリーグ", "Premier League"] },
     { providerId: 140, rank: 2, competition: "ラ・リーガ", country: "Spain", names: ["ラ・リーガ", "La Liga"] },
@@ -124,13 +123,16 @@
     const fixturesStatus = document.getElementById("fixtures-status");
     const fixtureOrderLabel = document.getElementById("fixture-order-label");
     const fixtureFilters = document.getElementById("fixture-filters");
+    const fixtureTodayButton = document.getElementById("fixture-today-button");
     const spoilerToggle = document.getElementById("spoiler-toggle");
-    const matchDialog = document.getElementById("match-detail-dialog");
-    const matchDialogBody = document.getElementById("match-detail-body");
     const leagueCache = new Map();
     const dailyCache = new Map();
-    const eventCache = new Map();
-    const revealedFixtureIds = new Set();
+    // Editorial availability is a lightweight, public archive lookup. It is
+    // deliberately separate from fixture data so a missing article can never
+    // affect the schedule itself.
+    const contentAvailability = new Map();
+    let contentAvailabilityRequestKey = "";
+    let contentAvailabilityRequestId = 0;
     const expandedLeagueGroups = new Set();
     const expandedLeagueGroupCounts = new Map();
     let activeFixtureLeague = ALL_COMPETITIONS;
@@ -140,12 +142,17 @@
     let activeFixtureData = null;
     let activeFixtureFilter = null;
     let spoilersRevealed = false;
-    let pendingRevealedFixtureFocus = null;
-    let activeDialogFixtureId = null;
-    let selectedDailyDate = AM4FootballData.tokyoDateKey(new Date());
+    const DATE_WINDOW_DAYS = 30;
+    const DATE_WINDOW_EXTENSION_DAYS = 30;
+    const initialToday = AM4FootballData.tokyoDateKey(new Date());
+    let selectedDailyDate = initialToday;
+    // The date strip and daily provider requests are intentionally separate:
+    // the reader can browse a continuous window without downloading 61 days of
+    // fixtures up front. `ensureDateInWindow` lets future controls extend it.
+    let dateWindowStart = shiftDate(initialToday, -DATE_WINDOW_DAYS);
+    let dateWindowEnd = shiftDate(initialToday, DATE_WINDOW_DAYS);
     let liveDailyRefreshTimer = null;
     let liveDailyRefreshInFlight = false;
-    let editorialArticles = [];
 
     function fixtureTeam(name, logo, score = "") {
       const team = document.createElement("span");
@@ -159,6 +166,59 @@
       teamScore.hidden = !score;
       team.append(teamLogo(name, logo), clubName, teamScore);
       return team;
+    }
+
+    function appendContentBadges(meta, fixture) {
+      const types = contentAvailability.get(String(fixture?.id)) || [];
+      if (!types.length) return;
+
+      const labels = {
+        prediction: "PREDICTION",
+        report: "MATCH REPORT",
+      };
+      const badges = document.createElement("span");
+      badges.className = "fixture-content-badges";
+      types.forEach((type) => {
+        const label = labels[type];
+        if (!label) return;
+        const badge = document.createElement("span");
+        badge.className = `fixture-content-badge fixture-content-badge--${type}`;
+        badge.textContent = label;
+        badges.append(badge);
+      });
+      if (badges.childElementCount) meta.append(badges);
+    }
+
+    function requestContentAvailability(fixtures) {
+      if (typeof client.contentAvailability !== "function") return;
+      const fixtureIds = [...new Set((fixtures || [])
+        .map((fixture) => Number(fixture?.id))
+        .filter((fixtureId) => Number.isInteger(fixtureId) && fixtureId > 0))]
+        .slice(0, 50);
+      if (!fixtureIds.length) return;
+
+      const requestKey = fixtureIds.join(",");
+      if (requestKey === contentAvailabilityRequestKey) return;
+      contentAvailabilityRequestKey = requestKey;
+      const requestId = ++contentAvailabilityRequestId;
+
+      client.contentAvailability(fixtureIds)
+        .then((payload) => {
+          if (requestId !== contentAvailabilityRequestId) return;
+          fixtureIds.forEach((fixtureId) => contentAvailability.delete(String(fixtureId)));
+          Object.entries(payload?.availability || {}).forEach(([fixtureId, types]) => {
+            if (!Array.isArray(types) || !types.length) return;
+            contentAvailability.set(String(fixtureId), types);
+          });
+          // Only the schedule cards are redrawn: fixture state, filters, and
+          // the selected date remain untouched when availability arrives.
+          if (activeFixtureData) renderFixtureView();
+        })
+        .catch((error) => {
+          if (requestId !== contentAvailabilityRequestId) return;
+          contentAvailabilityRequestKey = "";
+          console.warn("Editorial content availability unavailable.", error);
+        });
     }
 
     function fixtureStatusLabel(status) {
@@ -233,162 +293,6 @@
       return Number.isFinite(value) ? value : Number.MAX_SAFE_INTEGER;
     }
 
-    function detailFact(label, value) {
-      const row = document.createElement("div");
-      row.className = "match-dialog-fact";
-      const key = document.createElement("span");
-      const detail = document.createElement("span");
-      key.textContent = label;
-      detail.textContent = value;
-      row.append(key, detail);
-      return row;
-    }
-
-    function clubFavoriteButton(id, name) {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "favorite-btn";
-      button.dataset.favoriteType = "clubs";
-      button.dataset.favoriteId = `team-${id}`;
-      button.dataset.favoriteLabel = name;
-      button.dataset.favoriteDetail = "次戦と関連記事を見る";
-      button.dataset.favoriteHref = "#fixtures";
-      const selected = AM4Favorites.has(AM4Favorites.read(localStorage), "clubs", button.dataset.favoriteId);
-      button.setAttribute("aria-pressed", String(selected));
-      button.textContent = selected ? "クラブを保存済み" : `${name}を保存`;
-      return button;
-    }
-
-    function goalDetailLabel(goal) {
-      if (goal.ownGoal) return "オウンゴール";
-      if (goal.detail === "Penalty") return "PK";
-      return goal.assist ? `アシスト ${goal.assist}` : goal.team;
-    }
-
-    function renderGoalTimeline(container, goals) {
-      container.replaceChildren();
-      const heading = document.createElement("h4");
-      heading.textContent = "得点者";
-      container.append(heading);
-      if (!goals.length) {
-        const empty = document.createElement("p");
-        empty.className = "goal-empty";
-        empty.textContent = "得点イベントの情報はありません。";
-        container.append(empty);
-        return;
-      }
-      goals.forEach((goal) => {
-        const row = document.createElement("div");
-        row.className = "goal-event";
-        const minute = document.createElement("time");
-        minute.textContent = goal.minute;
-        const copy = document.createElement("div");
-        const scorer = document.createElement("strong");
-        scorer.textContent = goal.scorer;
-        const detail = document.createElement("small");
-        detail.textContent = goalDetailLabel(goal);
-        copy.append(scorer, detail);
-        row.append(minute, copy);
-        container.append(row);
-      });
-    }
-
-    async function loadGoalEvents(fixture, container) {
-      if (!fixture.id || AM4FootballData.classifyFixtureStatus(fixture.status) === "upcoming") return;
-      const loading = document.createElement("p");
-      loading.className = "goal-empty";
-      loading.textContent = "得点者を読み込んでいます…";
-      container.append(loading);
-      try {
-        const data = eventCache.get(fixture.id) || await client.fixtureEvents(fixture.id);
-        if (data.errors && Object.keys(data.errors).length) throw new Error("provider returned errors");
-        eventCache.set(fixture.id, data);
-        if (activeDialogFixtureId === fixture.id) renderGoalTimeline(container, data.goals || []);
-      } catch (error) {
-        if (activeDialogFixtureId === fixture.id) {
-          container.replaceChildren();
-          const unavailable = document.createElement("p");
-          unavailable.className = "goal-empty";
-          unavailable.textContent = "得点者情報を取得できませんでした。スコアは公式試合データを表示しています。";
-          container.append(unavailable);
-        }
-        console.warn("Fixture goal events unavailable.", error);
-      }
-    }
-
-    function fixtureKey(fixture) {
-      return String(fixture.id || `${fixture.home}-${fixture.away}-${fixture.kickoff}`);
-    }
-
-    function editorialDateKey(value) {
-      if (!value) return null;
-      const timestamp = Date.parse(value);
-      return Number.isFinite(timestamp)
-        ? AM4FootballData.tokyoDateKey(value)
-        : String(value).slice(0, 10) || null;
-    }
-
-    function articleMatchesFixture(article, fixture) {
-      const match = article?.match;
-      if (!match) return false;
-      const articleFixtureId = Number(match.fixtureId);
-      if (Number.isInteger(articleFixtureId) && articleFixtureId > 0 && articleFixtureId === Number(fixture.id)) return true;
-      const fixtureDate = editorialDateKey(fixture.kickoff || fixture.date);
-      const articleDate = editorialDateKey(match.date);
-      const homeTeam = normalizeTeamName(match.homeTeam);
-      const awayTeam = normalizeTeamName(match.awayTeam);
-      return Boolean(
-        fixtureDate && articleDate && fixtureDate === articleDate
-        && homeTeam && awayTeam
-        && homeTeam === normalizeTeamName(fixture.home)
-        && awayTeam === normalizeTeamName(fixture.away)
-      );
-    }
-
-    function editorialArticleForFixture(fixture, type) {
-      return editorialArticles.find((article) => article?.type === type && articleMatchesFixture(article, fixture)) || null;
-    }
-
-    function editorialStrip(fixture, resultPresentation) {
-      const status = AM4FootballData.classifyFixtureStatus(fixture.status);
-      const report = status === "finished" ? editorialArticleForFixture(fixture, "match_report") : null;
-      const prediction = status === "upcoming" ? editorialArticleForFixture(fixture, "match_prediction") : null;
-      const article = report || prediction;
-      if (!article) return null;
-
-      const isResultGated = report && resultPresentation.hidden;
-      const strip = document.createElement(isResultGated ? "aside" : "a");
-      strip.className = "fixture-editorial-strip";
-      strip.style.setProperty("--home-team-color", teamAccent(fixture.home));
-      strip.style.setProperty("--away-team-color", teamAccent(fixture.away));
-      const label = document.createElement("span");
-      label.className = "fixture-editorial-label";
-      label.textContent = report ? "AM4 試合解説" : "AM4 次節プレビュー";
-      const copy = document.createElement("div");
-      copy.className = "fixture-editorial-copy";
-      const title = document.createElement("span");
-      title.className = "fixture-editorial-title";
-
-      if (isResultGated) {
-        title.textContent = "結果を表示すると、AM4の試合解説を読めます";
-        copy.append(title);
-        strip.classList.add("fixture-editorial-strip--gated");
-      } else {
-        title.textContent = article.title || (report ? "試合解説を読む" : "次節プレビューを読む");
-        strip.href = `/article.html?id=${encodeURIComponent(article.id)}`;
-        strip.setAttribute("aria-label", `${report ? "AM4 試合解説" : "AM4 次節プレビュー"}: ${title.textContent}`);
-        copy.append(title);
-        const summary = document.createElement("p");
-        const predictionMeta = prediction
-          ? [article.prediction?.pick, article.prediction?.score].filter(Boolean).join(" · ")
-          : "";
-        summary.textContent = [predictionMeta, article.summary || article.deck].filter(Boolean).join(" — ");
-        if (summary.textContent) copy.append(summary);
-      }
-      strip.append(label, copy);
-      return strip;
-    }
-
     function leagueGroupKey(competition) {
       return [
         fixtureMode,
@@ -400,53 +304,8 @@
       ].join("|");
     }
 
-    function openMatchDetail(fixture, sourceLabel) {
-      activeDialogFixtureId = fixture.id || null;
-      if (AM4FootballData.classifyFixtureStatus(fixture.status) === "finished") revealedFixtureIds.add(fixtureKey(fixture));
-      const meta = document.createElement("div");
-      meta.className = "match-dialog-meta";
-      const kickoff = fixture.kickoff
-        ? new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", year: "numeric", month: "long", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(fixture.kickoff))
-        : fixture.date || "日時未定";
-      meta.textContent = `${fixture.competition || activeFixtureLeague} · ${fixture.roundLabel || "節情報なし"} · ${kickoff} JST`;
-
-      const teams = document.createElement("div");
-      teams.className = "match-dialog-teams";
-      const home = document.createElement("div");
-      const away = document.createElement("div");
-      home.className = away.className = "match-dialog-team";
-      home.append(teamLogo(fixture.home, fixture.homeLogo), document.createTextNode(fixture.home));
-      away.append(teamLogo(fixture.away, fixture.awayLogo), document.createTextNode(fixture.away));
-      const score = document.createElement("strong");
-      score.className = "match-dialog-score";
-      score.textContent = fixtureScoreLabel(fixture, " – ") || "VS";
-      teams.append(home, score, away);
-
-      const facts = document.createElement("div");
-      facts.className = "match-dialog-facts";
-      facts.append(
-        detailFact("状況", fixtureStatusLabel(fixture.status)),
-        detailFact("会場", fixture.venue || "会場情報は確認中"),
-        detailFact("放送", "放送情報は確認中"),
-        detailFact("データ", sourceLabel === "SAMPLE" ? "画面確認用サンプル" : "公式試合データ"),
-      );
-
-      const actions = document.createElement("div");
-      actions.className = "match-dialog-actions";
-      if (fixture.homeId) actions.append(clubFavoriteButton(fixture.homeId, fixture.home));
-      if (fixture.awayId) actions.append(clubFavoriteButton(fixture.awayId, fixture.away));
-      const goals = document.createElement("div");
-      goals.className = "goal-timeline";
-      goals.hidden = AM4FootballData.classifyFixtureStatus(fixture.status) === "upcoming";
-      matchDialogBody.replaceChildren(meta, teams, goals, facts, actions);
-      matchDialog.showModal();
-      loadGoalEvents(fixture, goals);
-    }
-
     function renderFixtures(items, sourceLabel = "") {
       fixturesNode.replaceChildren();
-      const focusAfterReveal = pendingRevealedFixtureFocus;
-      pendingRevealedFixtureFocus = null;
       const groups = new Map();
       AM4FootballData.sortFixturesForViewing(items).forEach((fixture) => {
         const competition = fixture.competition || fixture.roundLabel || "大会情報確認中";
@@ -558,7 +417,7 @@
           const statusGroup = AM4FootballData.classifyFixtureStatus(fixture.status);
           const resultPresentation = AM4FootballData.fixtureResultPresentation(
             fixture,
-            spoilersRevealed || revealedFixtureIds.has(fixtureKey(fixture)),
+            spoilersRevealed,
           );
           const homeAccent = teamAccent(fixture.home);
           const awayAccent = teamAccent(fixture.away);
@@ -572,6 +431,7 @@
             ? `${new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", hour: "2-digit", minute: "2-digit" }).format(new Date(fixture.kickoff))} JST`
             : fixture.date || "日時確認中";
           meta.append(date);
+          appendContentBadges(meta, fixture);
           const teams = document.createElement("div");
           teams.className = "fixture-teams";
           const scores = resultPresentation.hidden ? { home: "", away: "" } : fixtureTeamScores(fixture);
@@ -607,7 +467,7 @@
             const copy = document.createElement("span");
             copy.className = "fixture-result-cover-copy";
             const hint = document.createElement("span");
-            hint.textContent = "タップして";
+            hint.textContent = "詳細で";
             const label = document.createElement("strong");
             label.textContent = "試合結果を表示";
             copy.append(hint, label);
@@ -634,56 +494,20 @@
           if (scoreCaption.textContent) scoreboard.append(scoreCaption);
           scoreboard.dataset.resultHidden = String(resultPresentation.hidden);
 
-          const cardTarget = document.createElement(resultPresentation.hidden || !fixture.id ? "button" : "a");
+          const cardTarget = document.createElement(fixture.id ? "a" : "span");
           cardTarget.className = "fixture-card-tap-target";
-          if (resultPresentation.hidden || !fixture.id) cardTarget.type = "button";
-          if (fixture.id && !resultPresentation.hidden) {
+          if (fixture.id) {
             cardTarget.href = `/match.html?id=${encodeURIComponent(fixture.id)}`;
           }
           cardTarget.setAttribute(
             "aria-label",
             resultPresentation.hidden
-              ? `${fixture.competition || "大会"}、${fixture.home}対${fixture.away}の試合結果を表示`
+              ? `${fixture.competition || "大会"}、${fixture.home}対${fixture.away}。試合詳細で結果を表示`
               : `${fixture.home}対${fixture.away}${scoreText ? `、${scoreText}` : ""}。${fixture.id ? "試合詳細へ移動" : "試合情報を開く"}`,
           );
-          if (resultPresentation.hidden || !fixture.id) {
-            cardTarget.addEventListener("click", () => {
-              if (resultPresentation.hidden) {
-                revealedFixtureIds.add(fixtureKey(fixture));
-                pendingRevealedFixtureFocus = fixtureKey(fixture);
-                if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-                  renderFixtureView();
-                  return;
-                }
-                cardTarget.disabled = true;
-                cardTarget.setAttribute("aria-busy", "true");
-                let revealCompleted = false;
-                const finishReveal = () => {
-                  if (revealCompleted) return;
-                  revealCompleted = true;
-                  renderFixtureView();
-                };
-                scoreValue.addEventListener("animationend", (event) => {
-                  if (event.animationName === "fixture-score-reveal") finishReveal();
-                }, { once:true });
-                scoreboard.classList.add("is-score-revealing");
-                window.setTimeout(finishReveal, SCORE_REVEAL_FALLBACK_MS);
-                return;
-              }
-              openMatchDetail(fixture, sourceLabel);
-            });
-          }
           row.append(cardTarget, meta, teams, scoreboard);
-          if (focusAfterReveal === fixtureKey(fixture)) {
-            window.requestAnimationFrame(() => cardTarget.focus());
-          }
           list.append(row);
-          const relatedEditorial = editorialStrip(fixture, resultPresentation);
-          if (relatedEditorial) {
-            relatedEditorial.hidden = row.hidden;
-            list.append(relatedEditorial);
-          }
-          if (row.hidden) concealedNodes.push(row, relatedEditorial);
+          if (row.hidden) concealedNodes.push(row);
         });
         group.append(heading, list);
         if (canCompact && !isExpanded) {
@@ -726,6 +550,7 @@
         });
         fixturesNode.append(showMoreGroups);
       }
+      requestContentAvailability(items);
     }
 
     function savedClubFilters() {
@@ -762,17 +587,23 @@
       return value.toISOString().slice(0, 10);
     }
 
+    function ensureDateInWindow(date) {
+      while (date < dateWindowStart) dateWindowStart = shiftDate(dateWindowStart, -DATE_WINDOW_EXTENSION_DAYS);
+      while (date > dateWindowEnd) dateWindowEnd = shiftDate(dateWindowEnd, DATE_WINDOW_EXTENSION_DAYS);
+    }
+
     function dateOptions() {
       const today = AM4FootballData.tokyoDateKey(new Date());
-      return [-2, -1, 0, 1, 2, 3, 4].map((offset) => {
-        const date = shiftDate(selectedDailyDate, offset);
+      const options = [];
+      for (let date = dateWindowStart; date <= dateWindowEnd; date = shiftDate(date, 1)) {
         const value = new Date(`${date}T12:00:00Z`);
-        return {
+        options.push({
           value: date,
           label: new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric" }).format(value),
           small: date === today ? "今日" : new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", weekday: "short" }).format(value),
-        };
-      });
+        });
+      }
+      return options;
     }
 
     function roundOptions(data) {
@@ -901,6 +732,7 @@
     }
 
     function useDailyData(date, data) {
+      ensureDateInWindow(date);
       dailyCache.set(date, data);
       fixtureMode = "date";
       selectedDailyDate = date;
@@ -913,12 +745,8 @@
       scheduleLiveDailyRefresh();
     }
 
-    function setEditorialArticles(items) {
-      editorialArticles = Array.isArray(items) ? items.filter((article) => article?.id) : [];
-      if (activeFixtureData) renderFixtureView();
-    }
-
     async function loadFixtureDate(date) {
+      ensureDateInWindow(date);
       clearLiveDailyRefresh();
       selectedDailyDate = date;
       activeFixtureFilter = date;
@@ -939,6 +767,7 @@
     }
 
     function showDailyUnavailable(date, message = "試合情報を取得できませんでした") {
+      ensureDateInWindow(date);
       clearLiveDailyRefresh();
       activeFixtureData = null;
       selectedDailyDate = date;
@@ -1016,6 +845,16 @@
       }
     }));
 
+    fixtureTodayButton?.addEventListener("click", () => {
+      const today = AM4FootballData.tokyoDateKey(new Date());
+      ensureDateInWindow(today);
+      fixtureMode = "date";
+      document.querySelectorAll(".fixture-mode-tab").forEach((button) => {
+        button.setAttribute("aria-pressed", String(button.dataset.fixtureMode === "date"));
+      });
+      loadFixtureDate(today);
+    });
+
     document.querySelectorAll(".fixture-status-tab").forEach((button) => button.addEventListener("click", () => {
       fixtureStatus = button.dataset.fixtureStatus;
       document.querySelectorAll(".fixture-status-tab").forEach((item) => item.setAttribute("aria-pressed", String(item === button)));
@@ -1033,7 +872,6 @@
 
     spoilerToggle?.addEventListener("click", () => {
       spoilersRevealed = !spoilersRevealed;
-      if (!spoilersRevealed) revealedFixtureIds.clear();
       spoilerToggle.setAttribute("aria-pressed", String(spoilersRevealed));
       spoilerToggle.querySelector("span").textContent = spoilersRevealed ? "結果を隠す" : "結果を表示";
       if (activeFixtureData) renderFixtureView();
@@ -1065,13 +903,8 @@
       }
     });
     window.addEventListener("pagehide", clearLiveDailyRefresh, { once: true });
-    matchDialog.querySelector(".match-dialog-close").addEventListener("click", () => matchDialog.close());
-    matchDialog.addEventListener("close", () => { activeDialogFixtureId = null; });
-    matchDialog.addEventListener("click", (event) => {
-      if (event.target === matchDialog) matchDialog.close();
-    });
 
-    return { renderFixtures, useDailyData, loadFixtureDate, showDailyUnavailable, useFixtureData, showFallback, setEditorialArticles };
+    return { renderFixtures, useDailyData, loadFixtureDate, showDailyUnavailable, useFixtureData, showFallback };
   }
 
   return { create };

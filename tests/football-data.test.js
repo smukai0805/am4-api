@@ -29,6 +29,16 @@ test("client reports provider failures", async () => {
   await assert.rejects(() => client.standings(2026), /429/);
 });
 
+test("fixture standings request only the competition being viewed", async () => {
+  let requested;
+  const client = createClient(async (url) => {
+    requested = url;
+    return { ok: true, json: async () => ({ standings: [] }) };
+  });
+  await client.standings({ season: 2026, competition: "プレミアリーグ", competitionId: 39 });
+  assert.equal(requested, "https://am4-api.vercel.app/api/standings?season=2026&competition=%E3%83%97%E3%83%AC%E3%83%9F%E3%82%A2%E3%83%AA%E3%83%BC%E3%82%B0&competitionId=39");
+});
+
 test("featured fixtures use the server-side curated endpoint", async () => {
   let requested;
   const client = createClient(async (url) => {
@@ -88,6 +98,38 @@ test("live fixture detail uses the lightweight same-origin refresh route", async
   });
   await client.fixtureLiveDetail(123456);
   assert.equal(requested, "https://am4-api.vercel.app/api/fixtures?liveDetail=123456");
+});
+
+test("editorial articles can be queried by fixture ID without exposing Notion details", async () => {
+  let requested;
+  const client = createClient(async (url) => {
+    requested = url;
+    return { ok: true, json: async () => ({ items: [] }) };
+  });
+  await client.articles({ type: "match_prediction", fixtureId: 123456, pageSize: 12 });
+  assert.equal(requested, "https://am4-api.vercel.app/api/articles?type=match_prediction&fixtureId=123456&page=1&pageSize=12");
+});
+
+test("match editorial content is requested through the server-side Notion bridge", async () => {
+  let requested;
+  const client = createClient(async (url) => {
+    requested = url;
+    return { ok: true, json: async () => ({ prediction: null, report: null }) };
+  });
+  await client.matchContent({ fixtureId: 123456 });
+  assert.equal(requested, "https://am4-api.vercel.app/api/articles?fixtureId=123456&matchContent=1");
+  assert.equal(requested.includes("NOTION_API_KEY"), false);
+});
+
+test("match card content availability is fetched in one bounded archive request", async () => {
+  let requested;
+  const client = createClient(async (url) => {
+    requested = url;
+    return { ok: true, json: async () => ({ availability: { 123456: ['prediction'] } }) };
+  });
+  await client.contentAvailability([123456, 654321]);
+  assert.equal(requested, "https://am4-api.vercel.app/api/articles?availability=1&fixtureIds=123456%2C654321");
+  assert.equal(requested.includes("NOTION_API_KEY"), false);
 });
 
 test("player photos can use a validated API-Football player reference", async () => {

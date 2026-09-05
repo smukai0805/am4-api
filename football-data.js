@@ -18,8 +18,43 @@
       // can change during a match. This keeps the paid provider quota focused on
       // score, timeline, and team-stat changes.
       fixtureLiveDetail: (fixtureId) => request(`/fixtures?liveDetail=${encodeURIComponent(fixtureId)}`),
+      articles: ({ type, fixtureId, matchDate, page = 1, pageSize = 10 } = {}) => {
+        const params = new URLSearchParams();
+        if (type) params.set("type", type);
+        if (fixtureId) params.set("fixtureId", fixtureId);
+        if (matchDate) params.set("matchDate", matchDate);
+        params.set("page", page);
+        params.set("pageSize", pageSize);
+        return request(`/articles?${params}`);
+      },
+      article: (id) => request(`/articles?id=${encodeURIComponent(id)}`),
+      matchContent: ({ fixtureId } = {}) => {
+        const params = new URLSearchParams();
+        if (fixtureId) params.set("fixtureId", fixtureId);
+        // Reuse the existing articles serverless function: the current Vercel
+        // plan is at its function cap, while this remains a server-only route.
+        params.set("matchContent", "1");
+        return request(`/articles?${params}`);
+      },
+      contentAvailability: (fixtureIds) => {
+        const ids = Array.isArray(fixtureIds) ? fixtureIds : [];
+        const params = new URLSearchParams();
+        params.set("availability", "1");
+        params.set("fixtureIds", ids.join(","));
+        return request(`/articles?${params}`);
+      },
       featuredFixtures: () => request('/fixtures?featured=1'),
-      standings: (season) => request(`/standings?season=${encodeURIComponent(season)}`),
+      standings: (seasonOrOptions) => {
+        const options = typeof seasonOrOptions === "object" && seasonOrOptions !== null
+          ? seasonOrOptions
+          : { season: seasonOrOptions };
+        const params = new URLSearchParams();
+        if (options.season != null) params.set("season", options.season);
+        if (options.competition) params.set("competition", options.competition);
+        if (options.competitionId != null) params.set("competitionId", options.competitionId);
+        const query = params.toString();
+        return request(`/standings${query ? `?${query}` : ""}`);
+      },
       playerPhoto: ({ search, fullName, providerId }) => {
         const providerReference = providerId ? `&playerId=${encodeURIComponent(providerId)}` : "";
         return request(`/player-photo?search=${encodeURIComponent(search)}&fullName=${encodeURIComponent(fullName)}${providerReference}`);

@@ -352,20 +352,102 @@ function normalizeDetailFixture(source) {
   };
 }
 
-function normalizeDetailEvents(events) {
+export function canonicalEventType(event) {
+  const providerType = String(event?.type || '').toLowerCase();
+  const detail = String(event?.detail || '').toLowerCase();
+  const value = `${providerType} ${detail}`;
+  if (value.includes('var') || value.includes('disallowed') || value.includes('cancelled') || value.includes('canceled')) return 'var';
+  if (value.includes('subst')) return 'substitution';
+  if (value.includes('card')) {
+    if (value.includes('red') || value.includes('second yellow')) return 'red_card';
+    return 'yellow_card';
+  }
+  if (value.includes('goal')) {
+    if (value.includes('missed penalty')) return 'penalty_missed';
+    if (value.includes('own goal')) return 'own_goal';
+    if (value.includes('penalty')) return 'penalty';
+    return 'goal';
+  }
+  return 'other';
+}
+
+function canonicalEventSubtype(event, type) {
+  const value = `${event?.type || ''} ${event?.detail || ''}`.toLowerCase();
+  if (type === 'red_card' && value.includes('second yellow')) return 'second_yellow';
+  if (type === 'var' && value.includes('goal')) return 'goal_review';
+  return null;
+}
+
+function fixtureTeamForEvent(team, fixture) {
+  const teamId = nullableNumber(team?.id);
+  if (teamId === fixture?.home?.id) return fixture.home;
+  if (teamId === fixture?.away?.id) return fixture.away;
+  return null;
+}
+
+function isScoringEvent(event) {
+  return ['goal', 'penalty', 'own_goal'].includes(event?.type);
+}
+
+function scoreSideForEvent(event, fixture) {
+  if (!isScoringEvent(event)) return null;
+  const teamId = event.team?.id;
+  if (teamId === fixture.home?.id) return event.type === 'own_goal' ? 'away' : 'home';
+  if (teamId === fixture.away?.id) return event.type === 'own_goal' ? 'home' : 'away';
+  return null;
+}
+
+function hasFinalScore(fixture) {
+  return FINISHED_STATUSES.includes(fixture?.status)
+    && Number.isInteger(fixture?.goals?.home)
+    && Number.isInteger(fixture?.goals?.away);
+}
+
+// API-Football's event endpoint is requested with the fixture ID, but the
+// provider response itself does not repeat that ID for each item. Validate its
+// team association against the authoritative primary fixture before it reaches
+// the browser. For completed matches, only keep scoring events when their
+// home/away tally agrees with the official final score.
+export function validateFixtureEvents(events, fixture) {
+  const teamMatched = (events || []).filter((event) => fixtureTeamForEvent(event.team, fixture));
+  if (!hasFinalScore(fixture)) {
+    return { events: teamMatched, integrity: { teamAssociation: true, goalScore: 'not_final' } };
+  }
+
+  const scored = { home: 0, away: 0 };
+  teamMatched.forEach((event) => {
+    const side = scoreSideForEvent(event, fixture);
+    if (side) scored[side] += 1;
+  });
+  const consistent = scored.home === fixture.goals.home && scored.away === fixture.goals.away;
+  return {
+    events: consistent ? teamMatched : teamMatched.filter((event) => !isScoringEvent(event)),
+    integrity: { teamAssociation: true, goalScore: consistent ? 'consistent' : 'mismatch' },
+  };
+}
+
+function normalizeDetailEvents(events, fixture) {
   return (Array.isArray(events) ? events : [])
-    .map((event, index) => ({
-      minute: minuteLabel(event?.time),
-      elapsed: nullableNumber(event?.time?.elapsed),
-      extra: nullableNumber(event?.time?.extra),
-      type: event?.type || null,
-      detail: event?.detail || null,
-      comments: event?.comments || null,
-      team: normalizeParticipant(event?.team),
-      player: { id: nullableNumber(event?.player?.id), name: event?.player?.name || null },
-      assist: { id: nullableNumber(event?.assist?.id), name: event?.assist?.name || null },
-      sortIndex: index,
-    }))
+    .map((event, index) => {
+      const team = fixtureTeamForEvent(event?.team, fixture);
+      const type = canonicalEventType(event);
+      return {
+        minute: minuteLabel(event?.time),
+        elapsed: nullableNumber(event?.time?.elapsed),
+        extra: nullableNumber(event?.time?.extra),
+        // A canonical event type is deliberately separate from provider prose;
+        // the UI translates this key for the selected locale.
+        type,
+        subtype: canonicalEventSubtype(event, type),
+        providerType: event?.type || null,
+        detail: event?.detail || null,
+        comments: event?.comments || null,
+        team: team ? { ...team } : normalizeParticipant(event?.team),
+        player: { id: nullableNumber(event?.player?.id), name: event?.player?.name || null },
+        assist: { id: nullableNumber(event?.assist?.id), name: event?.assist?.name || null },
+        sortIndex: index,
+      };
+    })
     .sort((a, b) => {
       const aElapsed = a.elapsed ?? Number.MAX_SAFE_INTEGER;
       const bElapsed = b.elapsed ?? Number.MAX_SAFE_INTEGER;
@@ -439,7 +521,7 @@ function isNearKickoff(fixture, now = Date.now()) {
 // The primary fixture establishes whether the requested match exists. Each optional
 // section is intentionally fetched independently so a provider gap (for example,
 // pre-match lineups) does not hide the rest of the match detail.
-export async function getFixtureDetail(fixtureId, fetchFixture = apiFootballFetch) {
+export async function getFixtureIdentity(fixtureId, fetchFixture = apiFootballFetch) {
   // A detail page is an explicit, user-initiated request. Do not keep it alive for
   // retry backoffs: the shared throttle already spaces requests safely, and the UI
   // can offer a clear retry when a provider is unavailable.
@@ -448,7 +530,15 @@ export async function getFixtureDetail(fixtureId, fetchFixture = apiFootballFetc
   if (hasProviderErrors(primary)) throw new Error('Primary fixture unavailable');
   const source = Array.isArray(primary?.response) ? primary.response[0] : null;
   if (!source) return null;
+  const fixture = normalizeDetailFixture(source);
+  if (fixture.id !== Number(fixtureId)) throw new Error('Primary fixture ID mismatch');
+  return fixture;
+}
 
+export async function getFixtureDetail(fixtureId, fetchFixture = apiFootballFetch) {
+  const detailRequestOptions = { timeoutMs: 6000, retries: 0 };
+  const fixture = await getFixtureIdentity(fixtureId, fetchFixture);
+  if (!fixture) return null;
   const sections = await Promise.allSettled([
     fetchFixture('/fixtures/events', { fixture: fixtureId }, detailRequestOptions),
     fetchFixture('/fixtures/lineups', { fixture: fixtureId }, detailRequestOptions),
@@ -458,11 +548,13 @@ export async function getFixtureDetail(fixtureId, fetchFixture = apiFootballFetc
   const eventData = usable(sections[0]) ? sections[0].value.response : null;
   const lineupData = usable(sections[1]) ? sections[1].value.response : null;
   const statisticsData = usable(sections[2]) ? sections[2].value.response : null;
-  const fixture = normalizeDetailFixture(source);
+  const normalizedEvents = eventData == null ? null : normalizeDetailEvents(eventData, fixture);
+  const eventResult = normalizedEvents == null ? null : validateFixtureEvents(normalizedEvents, fixture);
 
   return {
     fixture,
-    events: eventData == null ? null : normalizeDetailEvents(eventData),
+    events: eventResult?.events ?? null,
+    eventIntegrity: eventResult?.integrity ?? { teamAssociation: null, goalScore: 'unavailable' },
     lineups: lineupData == null ? null : normalizeDetailLineups(lineupData, fixture),
     statistics: statisticsData == null ? null : normalizeDetailStatistics(statisticsData, fixture),
     availability: {
@@ -479,12 +571,8 @@ export async function getFixtureDetail(fixtureId, fetchFixture = apiFootballFetc
 // and statistics data update. Optional provider gaps remain independent.
 export async function getFixtureLiveDetail(fixtureId, fetchFixture = apiFootballFetch) {
   const detailRequestOptions = { timeoutMs: 6000, retries: 0 };
-  const primary = await fetchFixture('/fixtures', { id: fixtureId }, detailRequestOptions);
-  if (hasProviderErrors(primary)) throw new Error('Primary fixture unavailable');
-  const source = Array.isArray(primary?.response) ? primary.response[0] : null;
-  if (!source) return null;
-
-  const fixture = normalizeDetailFixture(source);
+  const fixture = await getFixtureIdentity(fixtureId, fetchFixture);
+  if (!fixture) return null;
   const sections = await Promise.allSettled([
     fetchFixture('/fixtures/events', { fixture: fixtureId }, detailRequestOptions),
     fetchFixture('/fixtures/statistics', { fixture: fixtureId }, detailRequestOptions),
@@ -492,10 +580,13 @@ export async function getFixtureLiveDetail(fixtureId, fetchFixture = apiFootball
   const usable = (result) => result.status === 'fulfilled' && !hasProviderErrors(result.value);
   const eventData = usable(sections[0]) ? sections[0].value.response : null;
   const statisticsData = usable(sections[1]) ? sections[1].value.response : null;
+  const normalizedEvents = eventData == null ? null : normalizeDetailEvents(eventData, fixture);
+  const eventResult = normalizedEvents == null ? null : validateFixtureEvents(normalizedEvents, fixture);
 
   return {
     fixture,
-    events: eventData == null ? null : normalizeDetailEvents(eventData),
+    events: eventResult?.events ?? null,
+    eventIntegrity: eventResult?.integrity ?? { teamAssociation: null, goalScore: 'unavailable' },
     statistics: statisticsData == null ? null : normalizeDetailStatistics(statisticsData, fixture),
     availability: {
       events: eventData != null,

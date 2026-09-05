@@ -17,7 +17,7 @@
 <link rel="manifest" href="/manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;700;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/brand.css?v=20260904-20-seasons">
+<link rel="stylesheet" href="/brand.css?v=20260905-match-ui-v1">
 <style>
   main{display:flex;flex-direction:column;}
 
@@ -281,7 +281,6 @@
   .quick-fixtures{padding-top:34px;padding-bottom:40px;background:linear-gradient(180deg,#060a17,#081126);}
   .quick-fixtures .match-centre-panel{box-shadow:0 28px 70px rgba(0,0,0,.3);}
   .quick-fixtures .data-panel-head h3{font-size:clamp(22px,3vw,34px);}
-  #standings-section .data-grid{grid-template-columns:1fr;}
   @media(max-width:780px){.data-grid{grid-template-columns:1fr;}}
   .data-panel{border:1px solid var(--line);border-radius:var(--radius);background:var(--ink-2);overflow:hidden;}
   .match-centre-panel{grid-column:1/-1;}
@@ -322,21 +321,6 @@
   .player-photo{width:88px;height:88px;border-radius:50%;object-fit:cover;border:1px solid var(--line);background:var(--ink-3);}
   .p-card .player-photo{width:64px;height:64px;margin:18px 0 16px;}
   .player-media-source{display:inline-flex;margin:-8px 0 10px;font-family:var(--mono);font-size:9px;color:var(--gold);letter-spacing:.04em;}
-  .match-dialog{width:min(92vw,620px);max-height:86vh;padding:0;border:1px solid rgba(201,212,227,.2);border-radius:22px;background:#0a1328;color:var(--paper);box-shadow:0 28px 90px rgba(0,0,0,.65);}
-  .match-dialog::backdrop{background:rgba(2,5,13,.78);backdrop-filter:blur(5px);}
-  .match-dialog-head{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 20px;border-bottom:1px solid var(--line);}
-  .match-dialog-head strong{font:900 26px var(--display);}
-  .match-dialog-close{display:grid;place-items:center;width:38px;height:38px;border:1px solid var(--line);border-radius:50%;background:transparent;cursor:pointer;font-size:20px;}
-  .match-dialog-body{padding:24px 20px 26px;}
-  .match-dialog-meta{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:24px;color:var(--steel-dim);font:10px var(--mono);}
-  .match-dialog-teams{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:14px;text-align:center;}
-  .match-dialog-team{display:grid;justify-items:center;gap:10px;font-weight:700;min-width:0;}
-  .match-dialog-team .team-logo,.match-dialog-team .team-logo-fallback{width:64px;height:64px;}
-  .match-dialog-score{font:900 38px var(--display);}
-  .match-dialog-facts{display:grid;gap:10px;margin-top:26px;padding-top:20px;border-top:1px solid var(--line);}
-  .match-dialog-fact{display:grid;grid-template-columns:90px 1fr;gap:12px;font-size:13px;line-height:1.5;}
-  .match-dialog-fact span:first-child{color:var(--steel-dim);font:10px var(--mono);}
-  .match-dialog-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px;}
   @media(max-width:560px){
     .fixture-row{grid-template-columns:76px 1fr auto;padding:14px 12px;gap:8px;}
     .fixture-teams{align-items:flex-start;flex-direction:column;gap:5px;}
@@ -350,8 +334,6 @@
     .quick-fixtures .league-tabs{display:flex;overflow-x:auto;scroll-snap-type:x proximity;}
     .quick-fixtures .league-tab{scroll-snap-align:start;}
     .league-tab{text-align:center;overflow:hidden;text-overflow:ellipsis;}
-    .match-dialog-teams{gap:8px;}
-    .match-dialog-team .team-logo,.match-dialog-team .team-logo-fallback{width:52px;height:52px;}
   }
   .stat-list{display:flex;flex-wrap:wrap;gap:16px;margin-top:14px;}
   .stat{min-width:90px;}.stat strong{display:block;font-family:var(--display);font-size:26px;}.stat span{font-family:var(--mono);font-size:10px;color:var(--steel-dim);}
@@ -560,16 +542,20 @@
   .spoiler-toggle svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.6;}
   .spoiler-toggle:hover{color:#fff;border-color:#5c89f5;background:rgba(42,94,255,.1);}
   .spoiler-toggle[aria-pressed="true"]{color:#fff;background:#174fd2;border-color:#3474ff;box-shadow:0 8px 26px rgba(23,79,210,.32);}
-  .matchday-dates{display:grid;grid-template-columns:repeat(7,minmax(68px,1fr));gap:0;padding:0 14px;border-block:1px solid rgba(121,151,218,.14);}
-  .matchday-dates .fixture-filter-tab{position:relative;min-width:0;padding:15px 8px 16px;border:0;border-radius:0;background:transparent;box-shadow:none;color:#687894;}
+  .matchday-dates{display:flex;overflow-x:auto;overflow-y:hidden;gap:0;padding:0 8px;border-block:1px solid rgba(121,151,218,.14);scrollbar-width:none;scroll-snap-type:x proximity;scroll-padding-inline:calc(50% - 38px);overscroll-behavior-x:contain;overscroll-behavior-y:auto;touch-action:pan-x pan-y;-webkit-overflow-scrolling:touch;}
+  .matchday-dates::-webkit-scrollbar{display:none;}
+  .matchday-dates .fixture-filter-tab{position:relative;flex:0 0 76px;min-width:76px;padding:15px 8px 16px;border:0;border-radius:0;background:transparent;box-shadow:none;color:#687894;scroll-snap-align:center;scroll-snap-stop:normal;}
   .matchday-dates .fixture-filter-tab::after{content:"";position:absolute;left:26%;right:26%;bottom:-1px;height:2px;border-radius:4px;background:transparent;}
   .matchday-dates .fixture-filter-tab[aria-pressed="true"]{color:#fff;background:linear-gradient(180deg,transparent,rgba(42,94,255,.08));box-shadow:none;}
   .matchday-dates .fixture-filter-tab[aria-pressed="true"]::after{background:#3474ff;box-shadow:0 0 16px #3474ff;}
   .matchday-dates .fixture-filter-tab small{font-size:9px;letter-spacing:.08em;text-transform:uppercase;}
   .matchday-dates .fixture-filter-tab span{font:700 15px var(--body);}
   .matchday-quicktools{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 20px;border-bottom:1px solid rgba(121,151,218,.14);}
+  .matchday-quicktools-actions{display:flex;align-items:center;gap:8px;}
   .matchday-quicktools .fixture-scope-tabs{padding:0;}
   .matchday-quicktools .fixture-scope-tab{padding:8px 12px;font-size:11px;}
+  .fixture-today-button{min-height:34px;padding:7px 11px;border:1px solid rgba(112,151,245,.36);border-radius:999px;background:rgba(42,94,255,.08);color:#bdd1ff;cursor:pointer;font:700 9px var(--mono);letter-spacing:.06em;transition:.18s ease;}
+  .fixture-today-button:hover,.fixture-today-button:focus-visible{border-color:#6d9cff;background:rgba(42,94,255,.18);color:#fff;outline:0;}
   .fixture-more-filters{position:relative;}
   .fixture-more-filters summary{list-style:none;cursor:pointer;padding:8px 12px;border:1px solid rgba(130,159,224,.2);border-radius:999px;color:#91a2c2;font-size:11px;font-weight:600;}
   .fixture-more-filters summary::-webkit-details-marker{display:none;}
@@ -609,6 +595,9 @@
   }
   .matchday-board .fixture-league-group .fixture-meta{grid-area:meta;justify-self:center;align-self:start;color:#7788a5;text-align:center;}
   .matchday-board .fixture-league-group .fixture-meta .fixture-date{color:#8d9db9;font:600 9px var(--mono);letter-spacing:.02em;}
+  .fixture-content-badges{display:flex;flex-wrap:wrap;justify-content:center;gap:4px;max-width:152px;margin-top:6px;}
+  .fixture-content-badge{display:inline-flex;align-items:center;min-height:16px;padding:2px 5px;border:1px solid rgba(116,151,233,.36);border-radius:999px;background:rgba(39,72,140,.17);color:#adc9ff;font:700 7px/1 var(--mono);letter-spacing:.045em;white-space:nowrap;}
+  .fixture-content-badge--report{border-color:rgba(154,187,226,.3);background:rgba(56,83,122,.16);color:#d0def7;}
   .matchday-board .fixture-league-group .fixture-teams{display:contents;}
   .matchday-board .fixture-league-group .fixture-team{display:flex;align-items:center;align-self:stretch;gap:9px;min-width:0;overflow:hidden;}
   .matchday-board .fixture-league-group .fixture-team:first-child{grid-area:home;justify-content:flex-start;text-align:left;}
@@ -620,40 +609,14 @@
   .fixture-scoreboard{position:relative;isolation:isolate;grid-area:score;display:flex;flex-direction:column;align-items:center;justify-content:center;justify-self:stretch;min-width:0;min-height:52px;padding:0;border:0;border-radius:12px;color:#fff;background:transparent;font:900 clamp(28px,3.2vw,44px)/.92 var(--body);letter-spacing:-.06em;}
   .fixture-scoreboard-value,.fixture-scoreboard small{position:relative;z-index:2;}
   .fixture-scoreboard small{margin-top:5px;color:#9eabc4;font:700 8px var(--mono);letter-spacing:.08em;}
-  .fixture-scoreboard[data-result-hidden="true"]{min-height:58px;padding:3px 4px;border:1px solid rgba(157,180,234,.2);background:linear-gradient(145deg,rgba(32,55,102,.56),rgba(9,19,40,.9));box-shadow:inset 0 1px rgba(255,255,255,.07),0 8px 18px rgba(0,0,0,.16);}
+  .fixture-scoreboard[data-result-hidden="true"]{min-height:58px;padding:3px 4px;border:1px solid rgba(166,192,244,.26);background:linear-gradient(135deg,rgba(131,164,233,.18),rgba(32,53,97,.42) 48%,rgba(9,19,40,.58));box-shadow:inset 0 1px rgba(255,255,255,.14),inset 0 -1px rgba(4,8,19,.22),0 8px 18px rgba(0,0,0,.16);backdrop-filter:blur(11px) saturate(1.12);}
   .fixture-scoreboard[data-result-hidden="true"] .fixture-scoreboard-value{position:absolute;z-index:1;opacity:0;transform:scale(.84) translateY(4px);user-select:none;}
-  .fixture-result-cover{position:relative;z-index:2;display:grid;justify-items:center;gap:2px;min-width:88px;color:#dce7ff;text-align:center;font:600 8px/1.05 var(--mono);letter-spacing:.04em;}
+  .fixture-result-cover{position:relative;z-index:2;display:grid;justify-items:center;gap:2px;min-width:88px;color:#dce7ff;text-align:center;font:600 8px/1.05 var(--mono);letter-spacing:.04em;text-shadow:0 1px 8px rgba(6,11,25,.75);}
   .fixture-result-cover-logo,.fixture-result-cover-fallback{width:26px;height:26px;object-fit:contain;filter:drop-shadow(0 3px 7px rgba(0,0,0,.38));}
   .fixture-result-cover-fallback{display:grid;place-items:center;border:1px solid rgba(180,201,243,.35);border-radius:50%;background:rgba(56,86,148,.28);color:#eaf0ff;font:800 8px var(--mono);}
   .fixture-result-cover-copy{display:grid;gap:2px;justify-items:center;white-space:nowrap;}
   .fixture-result-cover-copy span{color:#9eb3dc;font-size:7px;letter-spacing:.08em;}
   .fixture-result-cover-copy strong{color:#eff4ff;font:700 8px var(--mono);letter-spacing:.04em;}
-  .fixture-scoreboard.is-score-revealing .fixture-result-cover{animation:fixture-result-cover-out .18s ease-out forwards;}
-  .fixture-scoreboard.is-score-revealing .fixture-scoreboard-value{animation:fixture-score-reveal .32s .11s cubic-bezier(.22,1,.36,1) forwards;}
-  @keyframes fixture-result-cover-out{to{opacity:0;transform:scale(.84) translateY(-3px)}}
-  @keyframes fixture-score-reveal{from{opacity:0;transform:scale(.84) translateY(4px)}to{opacity:1;transform:scale(1) translateY(0)}}
-  .fixture-editorial-strip{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:12px;align-items:start;margin:-1px 7px 4px;padding:11px 12px;border:1px solid rgba(112,148,223,.2);border-radius:12px;background:linear-gradient(110deg,rgba(15,31,61,.82),rgba(7,14,29,.92));}
-  a.fixture-editorial-strip{color:inherit;text-decoration:none;cursor:pointer;transition:border-color .18s ease,transform .18s ease;}
-  a.fixture-editorial-strip:hover{border-color:rgba(168,195,255,.68);transform:translateY(-1px);}
-  a.fixture-editorial-strip:focus-visible{outline:2px solid #8bb1ff;outline-offset:2px;}
-  .fixture-editorial-label{padding-top:2px;color:#a9c0f7;font:700 8px var(--mono);letter-spacing:.09em;white-space:nowrap;}
-  .fixture-editorial-copy{display:grid;gap:4px;min-width:0;}
-  .fixture-editorial-title{overflow:hidden;color:#e7efff;font:700 12px/1.35 var(--body);text-overflow:ellipsis;white-space:nowrap;}
-  a.fixture-editorial-strip:hover .fixture-editorial-title{color:#fff;}
-  .fixture-editorial-copy p{display:-webkit-box;overflow:hidden;margin:0;color:#92a3c0;font-size:10px;line-height:1.45;-webkit-box-orient:vertical;-webkit-line-clamp:2;}
-  .fixture-editorial-strip--gated{border-style:dashed;background:rgba(20,34,62,.5);}
-  .fixture-editorial-strip--gated .fixture-editorial-title{color:#a9bad8;font-weight:600;white-space:normal;}
-  @supports (color:color-mix(in srgb,#fff,#000)){
-    .fixture-editorial-strip{border-color:color-mix(in srgb,var(--home-team-color,#6588b8) 38%,var(--away-team-color,#8a73bd));background:linear-gradient(105deg,color-mix(in srgb,var(--home-team-color,#6588b8) 10%,#081022),color-mix(in srgb,var(--away-team-color,#8a73bd) 8%,#070d1b));}
-  }
-  .match-dialog-score.is-hidden{font-size:14px;color:#8da0c2;border:1px dashed rgba(140,165,220,.35);border-radius:999px;padding:9px 13px;}
-  .goal-timeline{display:grid;gap:8px;margin-top:22px;padding-top:18px;border-top:1px solid var(--line);}
-  .goal-timeline h4{margin:0 0 4px;font:800 18px var(--display);letter-spacing:.02em;}
-  .goal-event{display:grid;grid-template-columns:50px minmax(0,1fr);gap:12px;align-items:center;padding:10px 12px;border:1px solid rgba(128,155,216,.14);border-radius:12px;background:rgba(255,255,255,.025);}
-  .goal-event time{color:#7da1ff;font:600 11px var(--mono);}
-  .goal-event strong{display:block;font-size:13px;}
-  .goal-event small{display:block;margin-top:3px;color:#71819c;font-size:10px;}
-  .goal-empty{color:#71819c;font-size:12px;line-height:1.6;}
 
   @media(max-width:640px){
     .matchday-home{padding:30px 14px 46px;}
@@ -665,8 +628,8 @@
     .matchday-toolbar{padding:14px;}
     .matchday-toolbar .fixture-mode-tab{min-width:62px;padding:8px 12px;}
     .spoiler-toggle{min-height:40px;padding:8px 11px;}
-    .matchday-dates{display:flex;overflow-x:auto;overflow-y:hidden;padding:0 8px;scrollbar-width:none;scroll-snap-type:x mandatory;scroll-padding-inline:calc(50% - 36px);overscroll-behavior-x:contain;overscroll-behavior-y:auto;touch-action:pan-x pan-y;-webkit-overflow-scrolling:touch;}
-    .matchday-dates .fixture-filter-tab{min-width:72px;padding:13px 7px 14px;scroll-snap-align:center;scroll-snap-stop:always;}
+    .matchday-dates{scroll-padding-inline:calc(50% - 36px);}
+    .matchday-dates .fixture-filter-tab{flex-basis:72px;min-width:72px;padding:13px 7px 14px;}
     .matchday-quicktools{padding:12px 14px;}
     .matchday-quicktools .fixture-scope-tab{padding:7px 10px;font-size:10px;}
     .fixture-more-panel{right:-2px;width:calc(100vw - 40px);}
@@ -690,10 +653,8 @@
     .fixture-scoreboard{min-width:0;min-height:50px;font-size:26px;}
     .fixture-scoreboard[data-result-hidden="true"]{min-height:58px;padding:3px 4px;}
     .fixture-result-cover{min-width:84px;}
-    .fixture-editorial-strip{gap:9px;margin:-1px 5px 3px;padding:9px 10px;}
-    .fixture-editorial-label{font-size:7px;}
-    .fixture-editorial-title{font-size:11px;}
-    .fixture-editorial-copy p{font-size:9px;}
+    .fixture-content-badges{max-width:96px;margin-top:5px;gap:3px;}
+    .fixture-content-badge{min-height:15px;padding:2px 4px;font-size:6px;}
     .editorial-issue{margin-bottom:22px;}
     section.block.editorial-section{padding:42px 20px 54px;}
     .editorial-section .block-head{margin-bottom:24px;}
@@ -760,7 +721,9 @@
           <button class="fixture-scope-tab" type="button" data-fixture-scope="all" aria-pressed="true">すべて</button>
           <button class="fixture-scope-tab" type="button" data-fixture-scope="favorites" aria-pressed="false">お気に入り</button>
         </div>
-        <details class="fixture-more-filters">
+        <div class="matchday-quicktools-actions">
+          <button class="fixture-today-button" id="fixture-today-button" type="button">今日へ戻る</button>
+          <details class="fixture-more-filters">
           <summary>絞り込み</summary>
           <div class="fixture-more-panel">
             <div class="league-tabs" id="fixture-leagues" aria-label="大会を選択">
@@ -782,7 +745,8 @@
               </div>
             </div>
           </div>
-        </details>
+          </details>
+        </div>
       </div>
 
       <div class="matchday-list-head">
@@ -808,7 +772,6 @@
     <a class="tag" href="#fixtures">試合日程</a>
     <a class="tag" id="column-nav-link" href="#lead-story" hidden>AM4 COLUMN</a>
     <a class="tag" href="#transfer">移籍情報</a>
-    <a class="tag" href="#standings">順位表</a>
   </nav>
 </div>
 
@@ -944,23 +907,6 @@
   <div class="player-profile reveal" id="player-profile" style="margin-top:18px"></div>
 </section>
 
-<section class="block" id="standings-section">
-  <div class="block-head">
-    <h2 class="block-title"><small>Standings</small>順位表</h2>
-    <span class="see-all">リーグの現在地</span>
-  </div>
-  <div class="data-grid standings-grid">
-    <div class="data-panel reveal" id="standings">
-      <div class="data-panel-head"><h3>Premier League</h3><span class="sample-label" id="standings-source">読み込み中</span></div>
-      <div class="data-status" id="standings-status" aria-live="polite">最新情報を読み込んでいます</div>
-      <div id="standing-list"></div>
-    </div>
-  </div>
-</section>
-<dialog class="match-dialog" id="match-detail-dialog" aria-labelledby="match-detail-title">
-  <div class="match-dialog-head"><strong id="match-detail-title">試合詳細</strong><button class="match-dialog-close" type="button" aria-label="閉じる">×</button></div>
-  <div class="match-dialog-body" id="match-detail-body"></div>
-</dialog>
 </main>
 
 <footer>
@@ -970,9 +916,9 @@
 
 <script src="favorites.js"></script>
 <script src="site-config.js"></script>
-<script src="football-data.js?v=20260901-live"></script>
+<script src="football-data.js?v=20260905-match-ui-v1"></script>
 <script src="sample-football-data.js"></script>
-<script src="match-centre.js?v=20260902-league-result-cover"></script>
+<script src="match-centre.js?v=20260905-match-ui-v1"></script>
 <script src="column-series.js?v=20260904-20-seasons"></script>
 <script>
   // Existing AM4 Vercel API, with an explicit sample fallback.
@@ -980,10 +926,7 @@
     const sample = AM4SampleFootballData;
     const apiBase = AM4SiteConfig.resolveApiBase(window.location.hostname);
     const client = AM4FootballData.createClient(fetch, apiBase);
-    const standingsNode = document.getElementById('standing-list');
     const profile = document.getElementById('player-profile');
-    const standingsSource = document.getElementById('standings-source');
-    const standingsStatus = document.getElementById('standings-status');
     const updatedAt = () => new Intl.DateTimeFormat('ja-JP', { hour:'2-digit', minute:'2-digit' }).format(new Date());
     window.AM4LiveContext = { fixtures: [], playerPhotoVerified: false };
     const matchCentre = AM4MatchCentre.create({
@@ -991,9 +934,8 @@
       teamLogo,
       updatedAt,
       fallbackFixtures: sample.fixtures,
-      onDailyData: ({ date, data }) => {
+      onDailyData: ({ data }) => {
         window.AM4LiveContext.fixtures = data.fixtures || [];
-        setFixtureEditorialDate(date);
       },
     });
     const FEATURED_PLAYERS = {
@@ -1054,25 +996,6 @@
       });
     }
 
-    function renderStandings(items){
-      standingsNode.replaceChildren();
-      items.forEach((club) => {
-      const row = document.createElement('div');
-      row.className = 'standing-row';
-      row.innerHTML = '<strong></strong><span></span><span class="fixture-comp">試合</span><span class="fixture-comp">勝点</span>';
-      row.children[0].textContent = club.rank || club.position;
-      const clubCell = document.createElement('span');
-      clubCell.className = 'standing-club';
-      clubCell.append(teamLogo(club.club, club.logo, true));
-      const clubName = document.createElement('span'); clubName.textContent = club.club;
-      clubCell.append(clubName);
-      row.children[1].replaceWith(clubCell);
-      row.children[2].textContent = club.played;
-      row.children[3].textContent = club.points;
-      standingsNode.append(row);
-      });
-    }
-
     function renderPlayer(player, photo, photoSource){
     profile.innerHTML = '<div class="p-avatar">JH</div><div><span class="sample-label"></span><h3 class="match-headline" style="margin-top:12px"></h3><p class="p-club"></p><div class="stat-list"></div><p class="fixture-comp"></p></div>';
     if (photo) {
@@ -1118,10 +1041,6 @@
       if (source) source.hidden = true;
       return true;
     }
-
-    const FIXTURE_EDITORIAL_CACHE_MS = 10 * 60 * 1000;
-    const fixtureEditorialByDate = new Map();
-    let activeFixtureEditorialDate = null;
 
     async function loadArticleType(type, { matchDate, search, pageSize = 50, allPages = false } = {}){
       const items = [];
@@ -1595,54 +1514,11 @@
       if (result[0].status === 'rejected') console.warn('Editorial content unavailable.', 'stories', result[0].reason);
     }
 
-    async function loadFixtureEditorialContent(date){
-      const cached = fixtureEditorialByDate.get(date);
-      if (cached?.items && Date.now() - cached.fetchedAt < FIXTURE_EDITORIAL_CACHE_MS) return cached.items;
-      if (cached?.promise) return cached.promise;
-      const promise = Promise.allSettled([
-        loadArticleType('match_report', { matchDate: date, pageSize: 100, allPages: true }),
-        loadArticleType('match_prediction', { matchDate: date, pageSize: 100, allPages: true }),
-      ]).then((results) => {
-        const reports = results[0].status === 'fulfilled' ? results[0].value : [];
-        const predictions = results[1].status === 'fulfilled' ? results[1].value : [];
-        results.forEach((result, index) => {
-          if (result.status === 'rejected') console.warn('Fixture editorial unavailable.', ['reports', 'predictions'][index], result.reason);
-        });
-        const items = [...reports, ...predictions];
-        fixtureEditorialByDate.set(date, { items, fetchedAt: Date.now() });
-        return items;
-      });
-      fixtureEditorialByDate.set(date, { promise });
-      return promise;
-    }
-
-    function setFixtureEditorialDate(date){
-      if (!date) return;
-      activeFixtureEditorialDate = date;
-      const cached = fixtureEditorialByDate.get(date);
-      if (cached?.items && Date.now() - cached.fetchedAt < FIXTURE_EDITORIAL_CACHE_MS) {
-        matchCentre.setEditorialArticles(cached.items);
-        return;
-      }
-      // A date change must not leave the prior day's preview under a new card
-      // while this date's exact-match records are loading.
-      matchCentre.setEditorialArticles([]);
-      loadFixtureEditorialContent(date).then((items) => {
-        if (activeFixtureEditorialDate === date) matchCentre.setEditorialArticles(items);
-      });
-    }
-
     enhanceStaticCrests();
-    renderStandings(sample.standings);
     bindColumnDiscovery();
     loadStoryContent();
     const todayKey = AM4FootballData.tokyoDateKey(new Date());
-    const todayParts = todayKey.split('-').map(Number);
-    const currentSeason = todayParts[1] >= 7 ? todayParts[0] : todayParts[0] - 1;
-    // The matchday board is the homepage priority. Do not keep it on the
-    // static sample while unrelated standings and player-photo requests finish.
     const dailyResultPromise = client.dailyFixtures(todayKey);
-    const supportingDataPromise = Promise.allSettled([client.standings(currentSeason)]);
     const dailyResult = await dailyResultPromise.then(
       (value) => ({ status: 'fulfilled', value }),
       (reason) => ({ status: 'rejected', reason })
@@ -1656,22 +1532,6 @@
     } else {
       matchCentre.showDailyUnavailable(todayKey);
       if (dailyResult.status === 'rejected') console.warn('Daily fixture API unavailable.', dailyResult.reason);
-    }
-
-    const [standingResult] = await supportingDataPromise;
-
-    const premierLeague = standingResult.status === 'fulfilled' ? standingResult.value.leagues?.['プレミアリーグ'] : null;
-    if (premierLeague?.length) {
-      renderStandings(premierLeague.slice(0, 5));
-      standingsSource.hidden = true;
-      standingsStatus.textContent = `${currentSeason}-${String(currentSeason + 1).slice(-2)}シーズン · ${updatedAt()}更新`;
-    } else {
-      standingsSource.hidden = false;
-      standingsSource.textContent = 'SAMPLE FALLBACK';
-      const providerError = standingResult.status === 'fulfilled' && standingResult.value.errors;
-      standingsStatus.textContent = providerError ? 'API応答エラーのためサンプルを表示しています' : '実データが未公開のためサンプルを表示しています';
-      if (standingResult.status === 'rejected') console.warn('Standings API unavailable.', standingResult.reason);
-      if (standingResult.status === 'rejected') standingsStatus.textContent = 'APIへ接続できないためサンプルを表示しています';
     }
 
     document.dispatchEvent(new CustomEvent('am4:data-ready'));
