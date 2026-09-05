@@ -168,7 +168,7 @@
 
   function cleanPlayerName(value) {
     return typeof value === "string"
-      ? value.replace(/&(?:apos|#39|#x27);/gi, "'").replace(/&quot;/gi, '"').replace(/&amp;/gi, "&").replace(/\s+/g, " ").trim()
+      ? value.replace(/&amp;/gi, "&").replace(/&(?:apos|#39|#x27);/gi, "'").replace(/&quot;/gi, '"').replace(/\s+/g, " ").trim()
       : "";
   }
 
