@@ -304,3 +304,33 @@ img{max-width:100%;}
   .pitch-row[data-count="5"] .pitch-player:nth-child(even) .pitch-name{width:112px;}
   .pitch-row[data-count="5"] .pitch-player:nth-child(even) .pitch-name::before{content:'';position:absolute;top:90px;left:50%;height:52px;border-left:1px solid #a4c5ee55;}
 }
+
+/* Compact match reading: keep paired data on one row, without shrinking text. */
+.match-section{padding:16px 12px;}
+.match-section-head{margin-bottom:14px;}
+.match-section-head p{margin-top:6px;line-height:1.5;}
+.match-summary-block{margin:10px 0;padding:12px 10px;}
+.match-summary-score{padding:10px 14px;margin-bottom:10px;}
+.match-summary-list{gap:0;}
+.match-summary-event{padding:8px 0;}
+.match-summary-event-main{flex-wrap:nowrap;gap:5px;}
+.match-summary-event-main time{flex:0 0 auto;font-size:11px;}
+.match-summary-event-main .player-name-button{display:flex;align-items:center;gap:5px;min-height:36px;line-height:1.3;text-align:left;}
+.match-summary-event-main .player-name-button>span{min-width:0;overflow-wrap:anywhere;}
+.match-summary-event-main .match-event-photo{display:block;flex:0 0 26px;width:26px;height:26px;}
+.match-summary-lane--away .match-summary-event-main .player-name-button{flex-direction:row-reverse;text-align:right;justify-content:flex-start;}
+.summary-assist{min-height:28px;padding:2px 0;line-height:1.3;}
+.match-event-card{gap:4px;padding:10px 12px;}
+.match-timeline{gap:8px;}
+.match-event-sub-row{padding:0;gap:5px;}
+.match-event-sub-row>*{grid-row:1;}
+.match-event-sub-person .player-name-button{font-size:14px;min-height:36px;padding:2px 0;line-height:1.3;}
+.match-event-card .match-event-photo{display:block;}
+.match-event-primary .player-name-button{min-height:36px;line-height:1.35;}
+.match-event-assist .player-name-button{min-height:28px;line-height:1.35;}
+.match-event-sub-arrow{font-size:16px;}
+.match-event-sub-label{font-size:10px;}
+.match-editorial-summary,.match-editorial-block p{line-height:1.65;}
+.match-editorial-hero{gap:10px;padding:14px;}
+.match-editorial-content{gap:10px;}
+@media(min-width:700px){.match-section{padding:22px;}.match-summary-block{padding:14px;}.match-summary-event-main .match-event-photo{width:30px;height:30px;flex-basis:30px;}}

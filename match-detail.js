@@ -983,6 +983,11 @@
       : player.name || eventLabel(event);
     const primary = playerButton(kind === 'substitution' && assist.name ? assist : player);
     primary.textContent = primaryName;
+    if (["goal", "penalty", "own_goal"].includes(kind)) {
+      primary.textContent = "";
+      appendEventPhoto(primary, player);
+      primary.append(node("span", "", primaryName));
+    }
     top.append(node("time", "", text(event.minute)), primary);
     if (["yellow_card", "red_card"].includes(kind)) {
       const kindMark = node("span", `match-summary-event-kind match-summary-event-kind--${kind}`);
@@ -1069,10 +1074,8 @@
       if (score) overview.append(score);
       const goals = summaryBlock(detail, t("goals"), scoringEvents(detail));
       const cards = summaryBlock(detail, t("cards"), cardEvents(detail));
-      const substitutions = summaryBlock(detail, t("substitution"), substitutionEvents(detail));
       if (goals) overview.append(goals);
       if (cards) overview.append(cards);
-      if (substitutions) overview.append(substitutions);
       overview.append(reportPanel(editorial.report));
       return overview;
     }
