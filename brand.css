@@ -219,3 +219,88 @@ img{max-width:100%;}
 .match-summary-team-name{min-width:0;max-width:44%;}
 .lineup-card-head h3,.lineup-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 @media(min-width:700px){.match-anchor-nav button{padding:14px 20px;}}
+
+/* AM4 night-match presentation. Layout stays in normal flow beneath one sticky rail. */
+.match-page{background:radial-gradient(ellipse at 70% 0,rgba(33,82,192,.18),transparent 48%),#050916;}
+.match-page .brand-topbar{position:sticky;top:0;height:auto;min-height:64px;box-sizing:border-box;background:#070d1c;}
+.match-page .brand-pill{color:#b5cdff;border-color:#466391;}
+.match-shell{width:min(100% - 24px,1060px);overflow:visible;}
+.match-board{background:linear-gradient(145deg,#142652,#080e20 70%);border-color:#314b7c;box-shadow:inset 0 1px #8fafff30;}
+.match-competition{background:#07112480;}
+.match-score>strong{font-variant-numeric:tabular-nums;color:#fff;}
+.match-anchor-nav{top:var(--match-header-height,74px);z-index:25;scroll-margin-top:var(--match-header-height,74px);border-radius:12px;margin:16px 0;background:#081126;box-shadow:0 8px 24px #02061188;}
+.match-anchor-nav button{flex:1 0 auto;min-height:48px;padding:12px 10px;font-size:14px;letter-spacing:0;}
+.match-anchor-nav button:focus-visible,.player-name-button:focus-visible,.pitch-player-button:focus-visible{outline:2px solid #afcbff;outline-offset:-2px;}
+.match-section{padding:20px 16px;scroll-margin-top:calc(var(--match-header-height,74px) + 64px);}
+.match-section-head{display:block;}
+.match-section-head h2{font-size:clamp(28px,6vw,42px);line-height:1.12;word-break:normal;}
+.match-section-head p{max-width:none;margin-top:12px;text-align:left;font-size:14px;line-height:1.65;}
+.match-summary-block{padding:14px 10px;border-radius:8px;}
+.match-summary-lanes{gap:14px;}
+.match-summary-lane-label{font-size:12px;white-space:normal;overflow-wrap:anywhere;}
+.match-summary-event-main{align-items:center;flex-wrap:wrap;gap:5px;}
+.match-summary-event-main time{flex:0 0 100%;font-size:12px;color:#9cbbff;}
+.match-summary-lane--away .match-summary-event-main time{text-align:right;}
+.player-name-button{border:0;background:transparent;color:inherit;font:inherit;cursor:pointer;text-align:inherit;min-height:44px;padding:4px 0;white-space:normal;overflow-wrap:anywhere;}
+.match-summary-event-main .player-name-button{flex:1;min-width:0;color:#f2f6ff;font-size:14px;font-weight:650;line-height:1.45;}
+.summary-assist{display:block;width:100%;color:#a8bddf;font-size:12px;line-height:1.5;}
+.match-summary-event-copy small,.match-summary-lane--away .match-summary-event-copy small{margin:0;white-space:normal;overflow:visible;font-size:12px;}
+.match-event-player-name,.lineup-name{white-space:normal;text-overflow:clip;overflow:visible;font-size:14px;line-height:1.5;}
+.match-editorial-summary,.match-editorial-block p{font-size:16px;line-height:1.85;}
+.match-editorial-kicker,.match-editorial-block h3,.match-summary-block h3{font-size:12px;}
+.match-summary-score{border-color:#3a5787;background:linear-gradient(120deg,#162b50,#0b142c);}
+.match-summary-score span,.lineup-number,.lineup-card-head span{color:#a9c8ff;}
+.formation-pitch{max-width:760px;margin:24px auto 12px;border:1px solid #38507b;border-radius:14px;overflow:hidden;background:repeating-linear-gradient(0deg,#112440 0,#112440 80px,#102139 80px,#102139 160px);}
+.pitch-half{position:relative;}
+.pitch-team{display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:6px 10px;align-items:center;padding:14px;background:#071124;}
+.pitch-team .match-crest,.pitch-team .match-crest img,.pitch-team .match-crest-fallback{width:28px;height:28px;font-size:12px;}
+.pitch-team h3{font-size:16px;margin:0;overflow-wrap:anywhere;}
+.pitch-team>strong{font-size:16px;color:#bad2ff;}
+.pitch-status{grid-column:2/-1;color:#a7bddc;font-size:12px;}
+.pitch-field{position:relative;display:grid;gap:24px;padding:26px 4px 30px;min-height:180px;isolation:isolate;}
+.pitch-field::before{content:'';position:absolute;z-index:-1;inset:10px 10px 0;border:1px solid #9eb8d533;pointer-events:none;}
+.pitch-half--home .pitch-field{border-bottom:1px solid #9eb8d566;}
+.pitch-half--away{display:flex;flex-direction:column;}
+.pitch-half--away .pitch-team{order:2;}
+.pitch-row{display:grid;grid-template-columns:repeat(var(--players),minmax(0,1fr));align-items:start;gap:4px;position:relative;}
+.pitch-player{min-width:0;text-align:center;}
+.pitch-player-button{display:flex;position:relative;flex-direction:column;align-items:center;gap:4px;width:100%;min-height:110px;padding:4px 1px;border:0;background:none;color:#fff;cursor:pointer;font:inherit;}
+.pitch-portrait{display:grid;position:relative;place-items:center;flex-shrink:0;width:44px;height:44px;overflow:hidden;border:1px solid #a5c8ff88;border-radius:50%;background:#233e66;color:#e6efff;font-size:18px;}
+.pitch-portrait img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+.pitch-number{font-size:12px;color:#a9c7f5;}
+.pitch-name{max-width:100%;font-size:14px;font-weight:600;line-height:1.35;overflow-wrap:anywhere;}
+.pitch-rating{order:-1;min-width:34px;padding:2px 5px;border-radius:5px;color:#0b1526;background:#b7d5ff;font-size:12px;font-weight:750;}
+.pitch-icons{display:flex;flex-wrap:wrap;gap:3px;justify-content:center;font-size:12px;}
+.pitch-icon{background:#071225;border-radius:3px;padding:2px 3px;}
+.pitch-icon--2{color:#ffe279;}.pitch-icon--3{color:#ff818a;}.pitch-change{color:#abd7ff;}
+.pitch-uncertain{color:#ffe29a;font-size:14px;}
+.lineup-evidence,.pitch-disclaimer{margin:14px;font-size:14px;line-height:1.7;color:#c4d4ef;}
+.lineup-evidence summary,.lineup-details>summary{min-height:44px;padding:12px 0;cursor:pointer;font-size:14px;}
+.lineup-evidence a{display:block;padding:8px 0;color:#b5d0ff;}
+.lineup-updated{font-size:12px;color:#a4b9da;}
+.lineup-details{margin-top:20px;}
+.lineup-card{padding:14px;}.lineup-card h4,.lineup-coach{font-size:14px;}.lineup-number{font-size:12px;}.lineup-player{font-size:14px;}
+.lineup-change{grid-column:2/-1;color:#adc9ef;font-size:12px;}
+.lineup-retry,.player-sheet-close{border:1px solid #6889bb;border-radius:8px;padding:12px 18px;min-height:44px;background:#162746;color:#fff;cursor:pointer;}
+.player-sheet{box-sizing:border-box;width:min(94vw,460px);max-height:80vh;overflow:auto;border:1px solid #5879ad;border-radius:18px;background:#0c1730;color:#edf4ff;padding:24px;font-size:16px;line-height:1.7;}
+.player-sheet::backdrop{background:#000b;}.player-sheet h2{font-size:24px;overflow-wrap:anywhere;}.player-sheet-close{float:right;margin:0 0 16px 16px;}
+@media(max-width:480px){.match-section{padding:20px 10px;}.match-section-head{display:block!important;}.match-section-head h2{max-width:none;}.pitch-row[data-count="5"] .pitch-player:nth-child(even){padding-top:40px;}.pitch-row[data-count="4"] .pitch-player:nth-child(even){padding-top:18px;}}
+@media(min-width:700px){.match-section{padding:28px;}.match-summary-block{padding:20px;}.pitch-field{gap:32px;padding:30px 18px;}.pitch-portrait{width:52px;height:52px;}.pitch-name{font-size:16px;}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto;}*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;}}
+.season-choose{display:inline-flex;align-items:center;min-height:48px;margin-top:22px;padding:12px 18px;border:1px solid #7b9bcc;border-radius:8px;background:#1a3862;color:#f1f6ff;font-size:16px;}
+#twenty-seasons-collection-title{scroll-margin-top:150px;}
+@media(max-width:480px){
+  .pitch-row[data-count="5"] .pitch-name{width:90px;max-width:none;}
+  .pitch-row[data-count="5"] .pitch-player:first-child .pitch-name{align-self:flex-start;text-align:left;}
+  .pitch-row[data-count="5"] .pitch-player:last-child .pitch-name{align-self:flex-end;text-align:right;}
+  .pitch-row[data-count="5"] .pitch-player:nth-child(even){padding-top:150px;}
+}
+@media(max-width:480px){
+  .pitch-row[data-count="5"] .pitch-player:nth-child(even){padding-top:0;}
+  .pitch-row[data-count="5"] .pitch-player:nth-child(even) .pitch-name{margin-top:76px;}
+  .pitch-row[data-count="4"] .pitch-player:nth-child(even){padding-top:0;}
+}
+@media(max-width:480px){
+  .pitch-row[data-count="5"] .pitch-player:nth-child(even) .pitch-name{width:112px;}
+  .pitch-row[data-count="5"] .pitch-player:nth-child(even) .pitch-name::before{content:'';position:absolute;top:90px;left:50%;height:52px;border-left:1px solid #a4c5ee55;}
+}

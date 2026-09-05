@@ -17,7 +17,7 @@
 <link rel="manifest" href="/manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;700;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/brand.css?v=20260905-match-ui-v1">
+<link rel="stylesheet" href="/brand.css?v=ui3-20260905-match-ui-v1">
 <style>
   main{display:flex;flex-direction:column;}
 
@@ -678,6 +678,20 @@
     flex-wrap:wrap; gap:16px;
     font-family:var(--mono); font-size:11.5px; color:var(--steel-dim);
   }
+
+  #column-featured[hidden]{display:none;}
+  #column-feed-status{font-size:14px;line-height:1.7;color:#b3c9ec;}
+  #column-feed-retry{min-height:44px;padding:12px 18px;border:1px solid #688cbb;border-radius:8px;background:#183260;color:#fff;}
+  .home-series-link{display:flex;align-items:center;flex-wrap:wrap;gap:6px 16px;margin:18px 0;padding:14px 18px;border:1px solid #34538b;border-left:3px solid #8cb3ff;border-radius:10px;background:linear-gradient(110deg,#142b56,#080f22);color:#ecf3ff;text-decoration:none;}
+  .home-series-link>span,.home-series-link>small{font-size:12px;color:#b3c9ec;}.home-series-link>strong{font:700 24px var(--display);}.home-series-link>small{margin-left:auto;}
+  .column-series-feature{padding:clamp(28px,5vw,60px);min-height:310px;border-radius:18px;background:radial-gradient(ellipse at 80% 0,#2459b744,transparent 65%),linear-gradient(135deg,#12264f,#070e20 70%);}
+  .column-series-feature-title{max-width:650px;font-size:clamp(48px,8vw,92px);line-height:.98;}
+  .column-series-feature-copy{gap:20px;}.column-series-feature-copy small{font-size:16px;line-height:1.8;}.column-series-feature-kicker{font-size:12px;}.column-series-feature-cta{font-size:14px;white-space:normal;min-height:44px;}
+  .series-years{font:500 18px var(--mono);letter-spacing:.05em;color:#a7c5ff;}.series-years span{padding:0 10px;color:#5676ae;}
+  .column-featured-card .column-featured-title{font-size:clamp(26px,4vw,42px);}
+  .matchday-home{background:radial-gradient(ellipse at 80% 0,#2052aa22,transparent 60%);}.matchday-intro h1{letter-spacing:-.04em;}.matchday-board{border-color:#344b75;}
+  @media(max-width:600px){.column-series-feature{display:block;min-height:0;padding:30px 22px;}.column-series-feature-title{display:block;font-size:56px;}.column-series-feature-cta{display:flex;margin-top:22px;}.home-series-link>small{margin-left:0;}.column-page-title{font-size:40px;}.column-page-head{padding-bottom:20px;}}
+  @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;}}
 </style>
 </head>
 <body>
@@ -702,6 +716,7 @@
       <span class="sample-label" id="fixtures-source">読み込み中</span>
     </div>
 
+    <a class="home-series-link" href="/column/20-seasons"><span>AM4の看板企画</span><strong>20 Seasons, 20 Stories.</strong><small>欧州サッカーの20年を読む →</small></a>
     <div class="matchday-board">
       <div class="matchday-toolbar">
         <div class="fixture-mode-tabs" aria-label="表示方法を選択">
@@ -770,12 +785,12 @@
 <div class="tagnav-wrap">
   <nav class="tagnav" aria-label="ページ内ナビゲーション">
     <a class="tag" href="#fixtures">試合日程</a>
-    <a class="tag" id="column-nav-link" href="#lead-story" hidden>AM4 COLUMN</a>
+    <a class="tag" id="column-nav-link" href="#lead-story">AM4 COLUMN</a>
     <a class="tag" href="#transfer">移籍情報</a>
   </nav>
 </div>
 
-<section class="block editorial-section column-page" id="lead-story" aria-labelledby="lead-story-title" hidden>
+<section class="block editorial-section column-page" id="lead-story" aria-labelledby="lead-story-title">
   <header class="column-page-head">
     <div>
       <p class="column-page-eyebrow">The match is only the beginning.</p>
@@ -786,14 +801,15 @@
 
   <a class="column-series-feature" href="/column/20-seasons" aria-label="20 Seasons, 20 Stories. 特集ページを開く">
     <span class="column-series-feature-copy">
-      <span class="column-series-feature-kicker">FEATURE SERIES</span>
+      <span class="column-series-feature-kicker">AM4 SIGNATURE SERIES · 2006–2026</span>
       <strong class="column-series-feature-title">20 Seasons, 20 Stories.</strong>
-      <small>欧州サッカー、激動の20年。 2006-07 → 2025-26</small>
+      <small>欧州サッカーの20年を、20の物語で。<br>あのシーズンの主役と、忘れられない瞬間をもう一度。</small>
+      <span class="series-years">2006-07 <span>—</span> 2025-26</span>
     </span>
-    <span class="column-series-feature-cta">EXPLORE THE 20 SEASONS <svg class="column-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"></path></svg></span>
+    <span class="column-series-feature-cta">特集を読む・シーズンを選ぶ <svg class="column-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"></path></svg></span>
   </a>
 
-  <section class="column-featured" id="column-featured" aria-labelledby="column-featured-title">
+  <section class="column-featured" id="column-featured" aria-labelledby="column-featured-title" hidden>
     <div class="column-section-head">
       <h3 class="column-section-title" id="column-featured-title">FEATURED</h3>
     </div>
@@ -816,6 +832,8 @@
       <h3 class="column-section-title" id="column-latest-title">LATEST ARTICLES</h3>
       <span class="column-all-link" id="column-latest-state" aria-live="polite"></span>
     </div>
+    <p id="column-feed-status" role="status">記事を読み込んでいます。</p>
+    <button id="column-feed-retry" type="button" hidden>もう一度取得する</button>
     <div class="column-discovery">
       <label class="sr-only" for="column-search">記事を検索</label>
       <div class="column-search">
@@ -1278,6 +1296,7 @@
     });
 
     function renderLeadStory(article){
+      document.getElementById('column-featured').hidden = false;
       const section = document.getElementById('lead-story');
       const navLink = document.getElementById('column-nav-link');
       if (section) section.hidden = false;
@@ -1511,11 +1530,16 @@
         if (columnSearchValue) runColumnSearch();
         document.dispatchEvent(new CustomEvent('am4:data-ready'));
       }
-      if (result[0].status === 'rejected') console.warn('Editorial content unavailable.', 'stories', result[0].reason);
+      const failed = result[0].status === 'rejected';
+      document.getElementById('column-feed-status').textContent = failed ? '記事を取得できませんでした。公開状況は確認できていません。' : stories.length ? '' : '現在表示できる公開記事はありません。';
+      document.getElementById('column-feed-retry').hidden = !failed;
+      if (failed) console.warn('Editorial content unavailable.', 'stories', result[0].reason);
     }
 
     enhanceStaticCrests();
     bindColumnDiscovery();
+    document.getElementById('column-feed-retry').addEventListener('click',loadStoryContent);
+    restoreColumnHashPosition();
     loadStoryContent();
     const todayKey = AM4FootballData.tokyoDateKey(new Date());
     const dailyResultPromise = client.dailyFixtures(todayKey);

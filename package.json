@@ -3,10 +3,14 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "test": "node --test tests/*.test.js"
+    "test": "node --test tests/*.test.js",
+    "dev": "vite"
   },
   "dependencies": {
-    "fast-xml-parser": "^4.3.6",
-    "@vercel/blob": "^2.6.1"
+    "@vercel/blob": "^2.6.1",
+    "fast-xml-parser": "^4.3.6"
+  },
+  "devDependencies": {
+    "vite": "^8.2.2"
   }
 }

@@ -16,6 +16,7 @@
 // 競合が無い)では問題なく取得できる、という症状で発覚)。リトライ・グローバル
 // スロットリング機能を持つlib/api-football-client.jsのapiFootballFetch()に統一した。
 
+import { getLineupInsights } from '../lib/lineup-insights.js';
 import { apiFootballFetch } from '../lib/api-football-client.js';
 
 const COMPETITIONS = {
@@ -671,7 +672,18 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'API_FOOTBALL_KEY が設定されていません' });
   }
 
-  const { league, featured, date, events, detail, liveDetail } = req.query;
+  const { league, featured, date, events, detail, liveDetail, lineupInsights } = req.query;
+  if (lineupInsights != null) {
+    const id = Number(lineupInsights);
+    if (!Number.isSafeInteger(id) || id <= 0) return res.status(400).json({error:'Invalid fixture ID'});
+    try {
+      const fixture = await getFixtureIdentity(id);
+      if (!fixture) return res.status(404).json({error:'Fixture not found'});
+      const result = await getLineupInsights(fixture);
+      res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=30');
+      return res.status(200).json(result);
+    } catch { return res.status(503).json({error:'Lineup information unavailable'}); }
+  }
 
   if (liveDetail != null) {
     const fixtureId = Number(liveDetail);

@@ -13,6 +13,7 @@
       fixtures: (league, season) => request(`/fixtures?league=${encodeURIComponent(league)}${season == null ? "" : `&season=${encodeURIComponent(season)}`}`),
       dailyFixtures: (date) => request(`/fixtures?date=${encodeURIComponent(date)}`),
       fixtureEvents: (fixtureId) => request(`/fixtures?events=${encodeURIComponent(fixtureId)}`),
+      lineupInsights: (fixtureId) => request(`/fixtures?lineupInsights=${encodeURIComponent(fixtureId)}`),
       fixtureDetail: (fixtureId) => request(`/fixtures?detail=${encodeURIComponent(fixtureId)}`),
       // Live pages retain their initial lineup payload and only refresh data that
       // can change during a match. This keeps the paid provider quota focused on

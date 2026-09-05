@@ -44,7 +44,7 @@
   const KICKOFF_RECHECK_BUFFER_MS = 30_000;
   let client = null;
   let currentDetail = null;
-  let currentEditorial = { prediction: null, report: null };
+  let currentEditorial = { prediction: null, report: null, loading: true };
   let currentStandings = { state: "idle", data: null };
   const PANEL_IDS = new Set(["overview", "events", "lineups", "statistics", "standings"]);
   let activePanel = PANEL_IDS.has(window.location.hash.slice(1)) ? window.location.hash.slice(1) : "overview";
@@ -155,66 +155,95 @@
     return "";
   }
 
-  const PLAYER_NAME_ALIASES = new Map([
-    ["vinicius jose paixao de oliveira junior", "Vinícius Jr."],
-    ["neymar da silva santos junior", "Neymar"],
-    ["rodrygo silva de goes", "Rodrygo"],
-    ["natan bernardo de souza", "Natan"],
-    ["rodrigo riquelme reche", "Riquelme"],
-    ["alvaro fernandez carreras", "Álvaro Carreras"],
-  ]);
-  const PLAYER_NAME_PARTICLES = new Set(["al", "bin", "da", "das", "de", "del", "di", "do", "dos", "du", "ibn", "la", "van", "von", "y"]);
-  const PLAYER_NAME_JUNIOR_SUFFIXES = new Set(["junior", "júnior", "jr", "jr."]);
-
-  function cleanPlayerName(value) {
-    return typeof value === "string"
-      ? value.replace(/&amp;/gi, "&").replace(/&(?:apos|#39|#x27);/gi, "'").replace(/&quot;/gi, '"').replace(/\s+/g, " ").trim()
-      : "";
+  let nameRegistry = AM4PlayerDisplay.createRegistry();
+  let insightState = {state:'idle', data:null};
+  let insightFetchedAt = 0;
+  function updateNames(detail) {
+    nameRegistry = AM4PlayerDisplay.createRegistry([
+      ...(detail.events || []).flatMap(e => [e.player,e.assist]),
+      ...(insightState.data?.lineups || detail.lineups || []).flatMap(l => [...(l.startXI || []),...(l.substitutes || [])]),
+      ...(insightState.data?.players || [])
+    ]);
   }
-
-  function playerNameKey(value) {
-    return cleanPlayerName(value)
-      .normalize("NFKD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/[^a-z0-9]+/gi, " ")
-      .trim()
-      .toLowerCase();
+  function displayPlayerName(player) { return nameRegistry.name(player?.player || player || {}); }
+  function playerButton(player, className = '') {
+    const button = node('button', `player-name-button ${className}`, displayPlayerName(player));
+    button.type = 'button';
+    button.addEventListener('click', () => showPlayer(player));
+    return button;
   }
-
-  function generatedPlayerDisplayName(fullName) {
-    const name = cleanPlayerName(fullName);
-    if (!name) return "";
-    const alias = PLAYER_NAME_ALIASES.get(playerNameKey(name));
-    if (alias) return alias;
-
-    const parts = name.split(" ").filter(Boolean);
-    if (parts.length <= 2 || parts.some((part) => /^[a-z]\.$/i.test(part))) return name;
-    const tail = parts.at(-1).toLocaleLowerCase();
-    if (PLAYER_NAME_JUNIOR_SUFFIXES.has(tail)) return `${parts[0]} Jr.`;
-    if (parts.slice(1).some((part) => PLAYER_NAME_PARTICLES.has(part.toLocaleLowerCase()))) return parts[0];
-    // A first-and-family-name fallback remains recognizable without cutting a
-    // name at an arbitrary character boundary. Known exceptions live above.
-    return `${parts[0]} ${parts.at(-1)}`;
+  function showPlayer(player) {
+    const dialog = node('dialog','player-sheet');
+    const close = node('button','player-sheet-close',locale === 'ja' ? '閉じる' : 'Close');
+    close.type = 'button'; close.addEventListener('click',()=>dialog.close());
+    const title = node('h2','', nameRegistry.full(player)); title.id = 'player-sheet-title';
+    dialog.setAttribute('aria-labelledby',title.id);
+    dialog.append(close,title);
+    const stat = insightState.data?.players?.find(p => p.id === player.id);
+    if (stat?.rating != null) dialog.append(node('p','',`${locale === 'ja' ? '評価' : 'Rating'} ${stat.rating.toFixed(1)}`));
+    const contribution = AM4Formation.contributions(player.id,currentDetail?.events || []);
+    contribution.details.forEach(e => dialog.append(node('p','', `${e.minute || ''} ${e.assist?.id === player.id && ['goal','penalty'].includes(e.type) ? t('assist') : eventLabel(e)}${e.type === 'substitution' ? ` · OUT ${displayPlayerName(e.player)} → IN ${displayPlayerName(e.assist)}` : ''}`)));
+    if (player.roleUncertain) dialog.append(node('p','',locale === 'ja' ? 'この選手の左右・中央の役割は推定です。' : 'This positional role is estimated.'));
+    if (player.uncertain) dialog.append(node('p','',locale === 'ja' ? '出場可否は未確定です。' : 'Availability is uncertain.'));
+    if (!contribution.details.length && !stat) dialog.append(node('p','',locale === 'ja' ? '追加の出場成績はありません。' : 'No additional appearance data.'));
+    document.body.append(dialog);
+    dialog.addEventListener('close',()=>dialog.remove(),{once:true});
+    dialog.addEventListener('click',event=>{if(event.target === dialog){ const r=dialog.getBoundingClientRect(); if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)dialog.close(); }});
+    dialog.showModal();
   }
-
-  function displayPlayerName(participant) {
-    const value = participant?.player && typeof participant.player === "object" ? participant.player : participant || {};
-    const supplied = [
-      value.knownAs,
-      value.known_as,
-      value.commonName,
-      value.common_name,
-      value.shortName,
-      value.short_name,
-      value.displayName,
-      value.display_name,
-    ].map(cleanPlayerName).find(Boolean);
-    return supplied || generatedPlayerDisplayName(value.name);
+  async function refreshInsights(force = false) {
+    if (!currentDetail || insightState.state === 'loading' || (!force && Date.now()-insightFetchedAt < 60000)) return;
+    insightState = {...insightState,state:'loading'};
+    if (activePanel === 'lineups') replaceActivePanel();
+    try {
+      const data = await client.lineupInsights(fixtureId);
+      if (data.fixtureId !== currentDetail.fixture.id) throw new Error('Fixture mismatch');
+      if (data.errors?.players && insightState.data?.players) data.players = insightState.data.players;
+      insightState = {state:Object.values(data.errors || {}).some(Boolean) ? 'partial' : 'ready',data}; insightFetchedAt = Date.now();
+      const official = (data.lineups || []).filter(l => !l.predicted);
+      if (official.length) {
+        const map = new Map((currentDetail.lineups || []).map(l => [l.team.id,l]));
+        official.forEach(l => map.set(l.team.id,l));
+        currentDetail.lineups = [...map.values()];
+        currentDetail.availability.lineups = true;
+      }
+      updateNames(currentDetail);
+    } catch { insightState = {...insightState,state:'error'}; }
+    if (activePanel === 'lineups') replaceActivePanel();
+  }
+  function pitchPlayer(player, predicted) {
+    const item = node('div','pitch-player');
+    const button = node('button','pitch-player-button'); button.type='button';
+    button.setAttribute('aria-label',`${displayPlayerName(player)} · ${locale === 'ja' ? '選手詳細' : 'Player details'}`);
+    const portrait = node('span','pitch-portrait',String(player.number ?? '–'));
+    const stat = !predicted && insightState.data?.players?.find(p=>p.id===player.id);
+    const photo = player.photo || stat?.photo || (player.id ? `https://media.api-sports.io/football/players/${player.id}.png` : null);
+    if (photo) { const img = node('img',''); img.src=photo; img.alt=''; img.loading='lazy'; img.width=44; img.height=44; img.addEventListener('error',()=>img.remove(),{once:true}); portrait.append(img); }
+    button.append(portrait,node('span','pitch-number',String(player.number ?? '–')),node('span','pitch-name',displayPlayerName(player)));
+    if (stat && stat.rating != null) button.append(node('span','pitch-rating',Number(stat.rating).toFixed(1)));
+    if (player.uncertain) button.append(node('span','pitch-uncertain','?'));
+    if (!predicted) {
+      const c=AM4Formation.contributions(player.id,currentDetail.events || []), icons=node('span','pitch-icons');
+      [[c.goals,'⚽'],[c.assists,'A'],[c.yellow,'▨'],[c.red,'▨']].forEach(([count,label],i)=>{if(count){const mark=node('span',`pitch-icon pitch-icon--${i}`,`${label}${count>1 ? count : ''}`);mark.setAttribute('aria-label',`${[t('goal'),t('assist'),t('yellow_card'),t('red_card')][i]} ${count}`);icons.append(mark);}});
+      c.changes.forEach(change=>{const mark=node('span','pitch-change',change.direction==='IN'?'↑':'↓');mark.setAttribute('aria-label',`${change.direction} ${change.minute || ''}`);icons.append(mark);});
+      if(icons.childElementCount) button.append(icons);
+    }
+    button.addEventListener('click',()=>showPlayer(player)); item.append(button); return item;
+  }
+  function predictionEvidence(lineup) {
+    const box=node('details','lineup-evidence');
+    box.append(node('summary','',locale==='ja'?'予想の根拠・欠場情報':'Reasoning and availability'));
+    const e=lineup.evidence || {};
+    box.append(node('p','',locale==='ja'?`直近${e.fixtures?.length || 0}試合の先発・配置を基にした未確定の予想。${e.minutes?'直近試合の出場時間を反映。':'出場時間は未取得。'}${e.restDays != null ? `前の試合から約${e.restDays}日。短い間隔では負荷を加味しています。` : ''}`:`Unconfirmed prediction based on ${e.fixtures?.length || 0} recent line-ups. Minutes ${e.minutes?'available':'unavailable'}. Rest: ${e.restDays ?? '—'} days.`));
+    box.append(node('p','',locale==='ja'?`所属情報：${e.roster==='available'?'現行登録リストと照合':'直近の出場記録のみ。最新の所属は未確認'}。欠場情報：${e.injuries==='available'?'この試合のAPI情報を参照':'未取得'}。累積警告による停止・復帰・公式会見の独立確認は未実施。カード枚数から出場停止を推定していません。`:`Squad: ${e.roster}. Availability feed: ${e.injuries}. Suspensions, returns and press conferences are not independently verified; card totals are not used to infer suspensions.`));
+    (lineup.absences || []).forEach(p=>box.append(node('p','',`${displayPlayerName(p)} · ${p.status==='out'?(locale==='ja'?'欠場（API報告）':'Out (provider)'):(locale==='ja'?'出場不透明':'Doubtful')} · ${p.reason || '—'}`)));
+    (e.fixtures || []).forEach(f=>{const link=node('a','',`${locale==='ja'?'参照試合':'Source match'} · ${new Date(f.date).toLocaleDateString(locale==='ja'?'ja-JP':'en-GB')}`);link.href=`/match.html?id=${f.id}#lineups`;box.append(link);});
+    return box;
   }
 
   function eventParticipant(participant) {
     const value = participant || {};
-    return { id: value.id, name: displayPlayerName(value) };
+    return { ...value, fullName: nameRegistry.full(value), name: displayPlayerName(value) };
   }
 
   function appendEventPhoto(target, player) {
@@ -236,7 +265,7 @@
     if (!player.name) return null;
     const line = node("div", className);
     appendEventPhoto(line, player);
-    line.append(node("span", "match-event-player-name", player.name));
+    line.append(playerButton(player, "match-event-player-name"));
     return line;
   }
 
@@ -398,32 +427,62 @@
   function playerRow(player) {
     const item = node("li", "lineup-player");
     const number = node("span", "lineup-number", player.number == null ? "—" : String(player.number));
-    const name = node("span", "lineup-name", text(displayPlayerName(player), "選手情報なし"));
+    const name = playerButton(player, "lineup-name");
     const position = node("small", "", text(player.position, "—"));
     item.append(number, name, position);
+    AM4Formation.contributions(player.id,currentDetail?.events || []).changes.forEach(c => item.append(node('span','lineup-change',`${c.direction} ${c.minute || ''} · ${displayPlayerName(c.other)}`)));
     return item;
   }
   function lineupCard(lineup) {
     const card = node("article", "lineup-card");
     const heading = node("div", "lineup-card-head");
     heading.append(node("h3", "", text(lineup.team?.name, "チーム情報なし")), node("span", "", lineup.formation ? `${lineup.formation}` : "フォーメーション未発表"));
-    const coach = node("p", "lineup-coach", `監督 ${text(lineup.coach?.name, "情報なし")}`);
+    const coach = node("p", "lineup-coach", `${locale === "ja" ? "監督" : "Coach"} ${text(lineup.coach?.name, "—")}`);
     card.append(heading, coach);
-    const xiTitle = node("h4", "", "スターティングXI");
+    const xiTitle = node("h4", "", locale === "ja" ? "スターティングXI" : "Starting XI");
     card.append(xiTitle);
     if (lineup.startXI?.length) { const list = node("ol", "lineup-list"); lineup.startXI.forEach((player) => list.append(playerRow(player))); card.append(list); }
     else card.append(node("p", "match-empty", "先発メンバーは未発表です。"));
-    const subTitle = node("h4", "", "控え選手");
+    const subTitle = node("h4", "", locale === "ja" ? "控え選手" : "Substitutes");
     card.append(subTitle);
     if (lineup.substitutes?.length) { const list = node("ol", "lineup-list lineup-list--subs"); lineup.substitutes.forEach((player) => list.append(playerRow(player))); card.append(list); }
     else card.append(node("p", "match-empty", "控え選手の情報はありません。"));
     return card;
   }
   function renderLineups(detail) {
-    const el = section("lineups", "ラインナップ", "フォーメーション、監督、登録選手");
-    if (!detail.availability?.lineups || detail.lineups == null) { el.append(unavailable("ラインナップ")); return el; }
-    if (!detail.lineups.length) { el.append(node("p", "match-empty", "ラインナップはまだ発表されていません。")); return el; }
-    const grid = node("div", "lineup-grid"); detail.lineups.slice(0, 2).forEach((lineup) => grid.append(lineupCard(lineup))); el.append(grid); return el;
+    const el = section('lineups',t('lineups'),locale==='ja'?'配置から試合を読む。選手をタップして詳細へ。':'Read the shape. Tap a player for details.');
+    if (insightState.state === 'loading') el.append(node('p','match-empty',locale==='ja'?'選手成績・スタメン情報を更新中…':'Updating line-ups and player stats…'));
+    if (['error','partial'].includes(insightState.state)) {
+      el.append(node('p','match-unavailable',locale==='ja'?'追加情報を取得できませんでした。取得済みの情報を表示しています。':'Additional data could not be loaded. Showing available information.'));
+      const retry=node('button','lineup-retry',t('retry'));retry.type='button';retry.addEventListener('click',()=>refreshInsights(true));el.append(retry);
+    }
+    const official = new Map((detail.lineups || []).map(l=>[l.team.id,l]));
+    const additional = new Map((insightState.data?.lineups || []).map(l=>[l.team.id,l]));
+    const lineups = [detail.fixture.home,detail.fixture.away].map(team=> {
+      const actual=official.get(team.id), extra=additional.get(team.id);
+      return actual?.startXI?.length===11 ? actual : extra && (!extra.predicted || matchGroup(detail.fixture)==='upcoming') ? extra : actual || {team,startXI:[],substitutes:[]};
+    });
+    const pitch=node('div','formation-pitch');
+    lineups.forEach((lineup,index)=> {
+      const half=node('section',`pitch-half pitch-half--${index ? 'away':'home'}`);
+      const heading=node('header','pitch-team');
+      heading.append(crest(lineup.team),node('h3','',lineup.team.name),node('strong','',lineup.formation || '—'));
+      const label=lineup.predicted ? (locale==='ja'?'予想スタメン · 未確定':'Predicted · Unconfirmed') : lineup.startXI?.length===11 ? (locale==='ja'?'確定スタメン':'Confirmed XI') : (locale==='ja'?'スタメン情報未取得':'Line-up unavailable');
+      heading.append(node('span','pitch-status',label));half.append(heading);
+      const layout=AM4Formation.rows(lineup,Boolean(index));
+      const field=node('div','pitch-field');
+      layout.rows.forEach(row=>{const line=node('div','pitch-row');line.style.setProperty('--players',row.players.length);line.dataset.count=row.players.length;row.players.forEach(p=>line.append(pitchPlayer(p,Boolean(lineup.predicted))));field.append(line);});
+      if (!layout.rows.length) field.append(node('p','match-empty',locale==='ja'?'配置情報はまだありません。':'Positions are not available yet.'));
+      half.append(field);
+      if (layout.unplaced.length) half.append(node('p','match-empty',locale==='ja'?`${layout.unplaced.length}人は配置情報がないため下の一覧で確認できます。`:`${layout.unplaced.length} players without positions are listed below.`));
+      if (lineup.predicted) {half.append(node('p','pitch-disclaimer',locale==='ja'?'配置も直近の布陣を基にした推定です。':'Positions are estimated from recent formations.')); half.append(predictionEvidence(lineup));}
+      pitch.append(half);
+    });
+    el.append(pitch);
+    if(insightState.data?.updatedAt) el.append(node('p','lineup-updated',`${locale==='ja'?'最終更新':'Updated'} ${new Date(insightState.data.updatedAt).toLocaleString(locale==='ja'?'ja-JP':'en-GB')}`));
+    const lists=node('details','lineup-details');lists.append(node('summary','',locale==='ja'?'先発・控え・監督を確認':'Starting XI, substitutes and coaches'));
+    const grid=node('div','lineup-grid');lineups.forEach(l=>grid.append(lineupCard(l)));lists.append(grid);el.append(lists);
+    return el;
   }
 
   function statNumber(value) {
@@ -646,12 +705,15 @@
     // A hash can change while the fixture request is still in flight. Preserve
     // that requested panel so the first completed render respects the URL.
     if (!currentDetail) return;
-    if (updateHash) history.replaceState(null, "", `#${id}`);
+    if (updateHash && window.location.hash !== `#${id}`) history.pushState(null, "", `#${id}`);
     const previous = page.querySelector(".match-section[data-match-panel]");
     const next = renderActivePanel(currentDetail);
     next.dataset.matchPanel = id;
     if (previous) previous.replaceWith(next);
     else page.append(next);
+    const nav = page.querySelector('.match-anchor-nav');
+    if (updateHash && nav && nav.getBoundingClientRect().top < 100) nav.scrollIntoView({block:'start',behavior:'instant'});
+    if (id === 'lineups') void refreshInsights();
     page.querySelectorAll(".match-anchor-nav [data-match-panel]").forEach((button) => {
       if (button.dataset.matchPanel === id) button.setAttribute("aria-current", "true");
       else button.removeAttribute("aria-current");
@@ -764,6 +826,7 @@
       editorial = {
         prediction: results[0].status === "fulfilled" ? results[0].value : null,
         report: results[1].status === "fulfilled" ? results[1].value : null,
+        errors: { match_prediction: true, match_report: true },
       };
     }
     if (request !== editorialRequest || currentDetail?.fixture?.id !== fixture.id) return;
@@ -862,7 +925,7 @@
   }
 
   function predictionPanel(prediction, { disclosure = false } = {}) {
-    if (!prediction) return node("p", "match-editorial-pending", t("predictionPending"));
+    if (!prediction) return editorialEmpty('match_prediction');
     const wrap = node(disclosure ? "details" : "div", disclosure ? "match-editorial-disclosure" : "match-editorial-content");
     if (disclosure) wrap.append(node("summary", "", t("priorPrediction")));
     const content = node("div", "match-editorial-content");
@@ -918,7 +981,9 @@
     const primaryName = kind === "substitution"
       ? assist.name ? `IN ${assist.name}` : player.name ? `OUT ${player.name}` : eventLabel(event)
       : player.name || eventLabel(event);
-    top.append(node("time", "", text(event.minute)), node("strong", "", primaryName));
+    const primary = playerButton(kind === 'substitution' && assist.name ? assist : player);
+    primary.textContent = primaryName;
+    top.append(node("time", "", text(event.minute)), primary);
     if (["yellow_card", "red_card"].includes(kind)) {
       const kindMark = node("span", `match-summary-event-kind match-summary-event-kind--${kind}`);
       kindMark.setAttribute("aria-label", eventLabel(event));
@@ -926,8 +991,8 @@
     }
     if (team.name) top.append(node("span", "match-summary-team-name", team.name));
     copy.append(top);
-    if (["goal", "penalty", "own_goal"].includes(kind) && assist.name) copy.append(node("small", "", `${t("assist")} ${assist.name}`));
-    if (kind === "substitution" && assist.name && player.name) copy.append(node("small", "", `OUT ${player.name}`));
+    if (["goal", "penalty", "own_goal"].includes(kind) && assist.name) { const by=playerButton(assist,'summary-assist'); by.textContent=`${t('assist')} ${displayPlayerName(assist)}`; copy.append(by); }
+    if (kind === "substitution" && assist.name && player.name) { const out=playerButton(player,'summary-assist'); out.textContent=`OUT ${player.name}`; copy.append(out); };
     if (kind === "own_goal") copy.append(node("small", "", t("own_goal")));
     row.append(copy);
     return row;
@@ -957,12 +1022,21 @@
     const fixture = detail.fixture;
     if (fixture.goals?.home == null || fixture.goals?.away == null) return null;
     const score = node("div", "match-summary-score");
-    score.append(node("span", "", t("score")), node("strong", "", `${fixture.home?.name || ""} ${fixture.goals.home} – ${fixture.goals.away} ${fixture.away?.name || ""}`));
+    score.append(node("span", "", t("score")), node("strong", "", `${fixture.goals.home} – ${fixture.goals.away}`));
     return score;
   }
 
+  function editorialEmpty(kind) {
+    if (currentEditorial.loading) return node('p','match-editorial-pending',locale==='ja'?'AM4の記事を読み込んでいます。':'Loading AM4 editorial.');
+    if (currentEditorial.errors?.[kind]) {
+      const wrap=node('div','match-editorial-pending');
+      wrap.append(node('p','',locale==='ja'?'記事の取得・照合が完了していません。未公開とは限りません。':'Editorial retrieval or matching is incomplete; publication status is unknown.'));
+      const retry=node('button','lineup-retry',t('retry'));retry.type='button';retry.addEventListener('click',()=>refreshEditorialForFixture(currentDetail.fixture));wrap.append(retry);return wrap;
+    }
+    return node('p','match-editorial-pending',t(kind==='match_report'?'reportPending':'predictionPending'));
+  }
   function reportPanel(report) {
-    if (!report) return node("p", "match-editorial-pending", t("reportPending"));
+    if (!report) return editorialEmpty('match_report');
     const content = node("div", "match-editorial-content match-editorial-content--report");
     content.append(node("span", "match-editorial-kicker", t("matchSummary")));
     const summary = editorialValue(report, "report", "summary", ["3行要約", "試合要約", "summary"]);
@@ -1016,6 +1090,7 @@
   }
 
   function render(detail) {
+    updateNames(detail);
     const fixture = detail.fixture;
     document.title = `${text(fixture.home?.name)} vs ${text(fixture.away?.name)}｜AM4 Football`;
     const panel = renderActivePanel(detail);
@@ -1123,7 +1198,11 @@
       currentDetail = nextDetail;
       announceFixtureUpdate(previousFixture, fresh.fixture);
       renderLiveUpdate(currentDetail);
-      if (previousGroup !== matchGroup(currentDetail.fixture)) void refreshEditorialForFixture(currentDetail.fixture);
+      if (previousGroup !== matchGroup(currentDetail.fixture)) {
+        void refreshEditorialForFixture(currentDetail.fixture);
+        finishedInsightsUntil = Date.now() + 30 * 60 * 1000;
+        if (activePanel === 'lineups') void refreshInsights(true);
+      }
     } catch (error) {
       console.warn("Live fixture detail refresh unavailable.", error);
     } finally {
@@ -1140,9 +1219,10 @@
       const detail = await client.fixtureDetail(fixtureId);
       if (!detail || !detail.fixture) { state(locale === "ja" ? "試合が見つかりません" : "Match not found", locale === "ja" ? "指定された試合は見つかりませんでした。" : "The requested match could not be found."); return; }
       currentDetail = detail;
-      currentEditorial = { prediction: null, report: null };
+      currentEditorial = { prediction: null, report: null, loading: true };
       currentStandings = { state: "loading", data: null };
       render(currentDetail);
+      if (activePanel === "lineups") void refreshInsights();
       scheduleLiveRefresh();
       // Editorial loading is intentionally independent: a missing Notion record
       // can never hide the API-FOOTBALL facts already rendered above.
@@ -1164,8 +1244,16 @@
   });
   window.addEventListener("hashchange", () => {
     const requestedPanel = window.location.hash.slice(1);
-    if (PANEL_IDS.has(requestedPanel)) selectPanel(requestedPanel, { updateHash: false });
+    if (!requestedPanel || PANEL_IDS.has(requestedPanel)) selectPanel(requestedPanel || "overview", { updateHash: false });
   });
-  window.addEventListener("pagehide", clearLiveRefresh, { once: true });
+  let finishedInsightsUntil = Date.now() + 30 * 60 * 1000;
+  const insightTimer = setInterval(() => {
+    if (document.visibilityState !== 'visible' || activePanel !== 'lineups' || !currentDetail) return;
+    const finished = matchGroup(currentDetail.fixture) === 'finished';
+    if (!finished || (Date.now() < finishedInsightsUntil && Date.now()-insightFetchedAt >= 300000)) void refreshInsights();
+  },60000);
+  window.addEventListener("pagehide", () => { clearLiveRefresh(); clearInterval(insightTimer); }, { once: true });
+  const topbar=document.querySelector('.brand-topbar');
+  if (topbar && typeof ResizeObserver !== 'undefined') new ResizeObserver(() => document.documentElement.style.setProperty('--match-header-height',`${topbar.getBoundingClientRect().height}px`)).observe(topbar);
   load();
 })();
