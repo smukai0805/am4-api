@@ -116,6 +116,10 @@ async function matchInputFromFixtureId(fixtureId) {
     date: validMatchDate(fixture.date) ? fixture.date : tokyoDateKey(fixture.kickoff),
     homeTeam: fixture.home.name,
     awayTeam: fixture.away.name,
+    homeTeamId: Number.isInteger(Number(fixture.home.id)) ? Number(fixture.home.id) : null,
+    awayTeamId: Number.isInteger(Number(fixture.away.id)) ? Number(fixture.away.id) : null,
+    kickoff: fixture.kickoff || null,
+    timezone: fixture.timezone || null,
   };
 }
 

@@ -249,8 +249,14 @@ function matchContentFetcher({ prediction, report, exactMatchKeys = {}, sourceSc
       const exact = body.filter?.rich_text?.equals;
       const date = body.filter?.date?.equals;
       const fixtureId = body.filter?.number?.equals;
+      const teamFilters = Array.isArray(body.filter?.and) ? body.filter.and : [];
+      const homeTeamId = teamFilters.find((filter) => /Home Team ID/i.test(filter.property || ''))?.number?.equals;
+      const awayTeamId = teamFilters.find((filter) => /Away Team ID/i.test(filter.property || ''))?.number?.equals;
       const pages = fixtureId != null
         ? (Number(page.properties['Fixture ID']?.number) === Number(fixtureId) ? [page] : [])
+        : homeTeamId != null && awayTeamId != null
+          ? (Number(page.properties['Home Team ID']?.number) === Number(homeTeamId)
+            && Number(page.properties['Away Team ID']?.number) === Number(awayTeamId) ? [page] : [])
         : exact
         ? (exact === (exactMatchKeys[sourceId] || page.properties['Match Key'].rich_text[0].plain_text) ? [page] : [])
         : (date === page.properties['試合日'].date.start ? [page] : []);
@@ -316,6 +322,113 @@ test('Match Key alias fallback requires the full competition, date, home and awa
   assert.equal(canonicalMatchKey({ competition: 'Serie A', date: '2026-09-07', homeTeam: 'AC Milan', awayTeam: 'Inter' }), 'seriea|2026-09-07|acmilan|inter');
   assert.equal(result.prediction.notion.pageId, 'milan-prediction');
   assert.equal(result.report, null);
+});
+
+test('legacy provider club names resolve the real Newcastle and Ipswich editorial aliases', async () => {
+  const prediction = matchPage({
+    id: 'newcastle-prediction', type: 'match_prediction',
+    matchKey: 'Premier League|2026-09-05|Newcastle United|AFC Bournemouth',
+    home: 'Newcastle United', away: 'AFC Bournemouth', date: '2026-09-05',
+  });
+  const report = matchPage({
+    id: 'newcastle-report', type: 'match_report',
+    matchKey: 'Premier League|2026-09-05|Newcastle United|AFC Bournemouth',
+    home: 'Newcastle United', away: 'AFC Bournemouth', date: '2026-09-05',
+  });
+  const result = await fetchNotionMatchContent({
+    match: {
+      fixtureId: 1557395,
+      competition: 'プレミアリーグ',
+      date: '2026-09-05',
+      homeTeam: 'Newcastle',
+      awayTeam: 'Bournemouth',
+      homeTeamId: 34,
+      awayTeamId: 35,
+    },
+    apiKey: 'test-key',
+    fetcher: matchContentFetcher({ prediction, report }),
+    sourceIds: { match_prediction: 'predictions', match_report: 'reports' },
+    logger: { info: () => {}, error: () => {} },
+  });
+
+  assert.equal(result.prediction.notion.pageId, 'newcastle-prediction');
+  assert.equal(result.report.notion.pageId, 'newcastle-report');
+
+  const timezonePrediction = matchPage({
+    id: 'ipswich-prediction', type: 'match_prediction',
+    matchKey: 'Premier League|2026-09-05|Ipswich Town|Liverpool',
+    home: 'Ipswich Town', away: 'Liverpool', date: '2026-09-05',
+  });
+  const timezoneReport = matchPage({
+    id: 'ipswich-report', type: 'match_report',
+    matchKey: 'Premier League|2026-09-05|Ipswich Town|Liverpool',
+    home: 'Ipswich Town', away: 'Liverpool', date: '2026-09-05',
+  });
+  const timezoneResult = await fetchNotionMatchContent({
+    match: {
+      fixtureId: 1557393,
+      competition: 'プレミアリーグ',
+      date: '2026-09-04',
+      kickoff: '2026-09-04T19:00:00+00:00',
+      timezone: 'UTC',
+      homeTeam: 'Ipswich',
+      awayTeam: 'Liverpool',
+      homeTeamId: 57,
+      awayTeamId: 40,
+    },
+    apiKey: 'test-key',
+    fetcher: matchContentFetcher({ prediction: timezonePrediction, report: timezoneReport }),
+    sourceIds: { match_prediction: 'predictions', match_report: 'reports' },
+    logger: { info: () => {}, error: () => {} },
+  });
+
+  assert.equal(timezoneResult.prediction.notion.pageId, 'ipswich-prediction');
+  assert.equal(timezoneResult.report.notion.pageId, 'ipswich-report');
+});
+
+test('explicit provider team IDs win before stale legacy team names', async () => {
+  const prediction = matchPage({
+    id: 'team-id-prediction', type: 'match_prediction',
+    matchKey: 'Premier League|2026-08-01|Old Home|Old Away',
+    home: 'Old Home', away: 'Old Away', date: '2026-09-05',
+  });
+  prediction.properties['Home Team ID'] = { type: 'number', number: 34 };
+  prediction.properties['Away Team ID'] = { type: 'number', number: 35 };
+  const report = matchPage({
+    id: 'other-report', type: 'match_report',
+    matchKey: 'Premier League|2026-09-05|Other Home|Other Away',
+    home: 'Other Home', away: 'Other Away', date: '2026-09-05',
+  });
+  const logs = [];
+  const result = await fetchNotionMatchContent({
+    match: {
+      fixtureId: 1557395,
+      competition: 'プレミアリーグ',
+      date: '2026-09-05',
+      homeTeam: 'Newcastle',
+      awayTeam: 'Bournemouth',
+      homeTeamId: 34,
+      awayTeamId: 35,
+    },
+    apiKey: 'test-key',
+    fetcher: matchContentFetcher({
+      prediction,
+      report,
+      predictionSourceId: 'team-id-predictions',
+      sourceSchemas: {
+        'team-id-predictions': {
+          'Home Team ID': { type: 'number' },
+          'Away Team ID': { type: 'number' },
+        },
+      },
+    }),
+    sourceIds: { match_prediction: 'team-id-predictions', match_report: 'reports' },
+    logger: { info: (...args) => logs.push(args), error: () => {} },
+  });
+
+  assert.equal(result.prediction.notion.pageId, 'team-id-prediction');
+  assert.equal(result.report, null);
+  assert.ok(logs.some((entry) => entry[0] === '[match-content] article matched' && entry[1]?.matchMethod === 'team_ids'));
 });
 
 test('an explicit Fixture ID wins even when a legacy Match Key and date are stale', async () => {
