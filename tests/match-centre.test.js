@@ -1,6 +1,13 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { contentAvailabilityBatches, mergeRoundFixtureData, roundLeagueNames, selectFavoriteFixtures } = require("../match-centre.js");
+const {
+  contentAvailabilityBatches,
+  contentBadgeLabels,
+  mergeRoundFixtureData,
+  partitionFavoriteFixtures,
+  roundLeagueNames,
+  selectFavoriteFixtures,
+} = require("../match-centre.js");
 
 test("round view combines the five major leagues without selecting one of them", () => {
   assert.deepEqual(roundLeagueNames, [
@@ -58,10 +65,32 @@ test("legacy club favourite IDs still select their provider fixture", () => {
   );
 });
 
+test("club favourites lead league favourites and ordinary fixtures without duplicate cards", () => {
+  const fixtures = [
+    { id: 1, competitionId: 39, competition: "プレミアリーグ", homeId: 40, home: "Liverpool", awayId: 42, away: "Arsenal" },
+    { id: 2, competitionId: 39, competition: "プレミアリーグ", homeId: 33, home: "Manchester United", awayId: 34, away: "Newcastle" },
+    { id: 3, competitionId: 140, competition: "ラ・リーガ", homeId: 541, home: "Real Madrid", awayId: 529, away: "Valencia" },
+    { id: 3, competitionId: 140, competition: "ラ・リーガ", homeId: 541, home: "Real Madrid", awayId: 529, away: "Valencia" },
+  ];
+
+  const partitioned = partitionFavoriteFixtures(fixtures, {
+    leagues: ["league-39"], clubs: ["team-40"], players: [], articles: [],
+  });
+  assert.deepEqual(partitioned.clubs.map((fixture) => fixture.id), [1]);
+  assert.deepEqual(partitioned.leagues.map((fixture) => fixture.id), [2]);
+  assert.deepEqual(partitioned.others.map((fixture) => fixture.id), [3]);
+  assert.deepEqual([...partitioned.clubs, ...partitioned.leagues, ...partitioned.others].map((fixture) => fixture.id), [1, 2, 3]);
+});
+
 test("article availability covers every fixture in bounded API batches", () => {
   const fixtures = Array.from({ length: 61 }, (_, index) => ({ id: index + 1 }));
   assert.deepEqual(contentAvailabilityBatches(fixtures), [
     Array.from({ length: 50 }, (_, index) => index + 1),
     Array.from({ length: 11 }, (_, index) => index + 51),
   ]);
+});
+
+test("editorial badges use compact Japanese labels unless the page is English", () => {
+  assert.deepEqual(contentBadgeLabels('ja'), { prediction: '予想あり', report: '解説あり' });
+  assert.deepEqual(contentBadgeLabels('en-GB'), { prediction: 'PREDICTION', report: 'MATCH REPORT' });
 });

@@ -3,6 +3,9 @@
   const paper = document.getElementById("article-paper");
   const id = new URLSearchParams(location.search).get("id");
   const apiBase = AM4SiteConfig.resolveApiBase(location.hostname);
+  const articleBack = document.querySelector(".article-back");
+  const homeState = window.AM4NavigationState?.readHomeState(sessionStorage);
+  if (articleBack && homeState?.returnUrl) articleBack.href = homeState.returnUrl;
 
   function articleTypeLabel(type) {
     return {

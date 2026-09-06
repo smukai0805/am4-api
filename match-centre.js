@@ -157,21 +157,37 @@
     return clubs.has(favoriteTeamId(teamId, teamName)) || favoriteTeamAliases(teamName).some((id) => clubs.has(id));
   }
 
-  function selectFavoriteFixtures(fixtures, favorites) {
+  function fixtureKey(fixture) {
+    return fixture?.id != null
+      ? String(fixture.id)
+      : `${fixture?.competition}|${fixture?.kickoff}|${fixture?.home}|${fixture?.away}`;
+  }
+
+  // Each fixture is assigned once: club favourites outrank league favourites,
+  // which in turn outrank the ordinary competition directory. This keeps a
+  // reader's preferred matches at the top without showing the same fixture in
+  // two groups.
+  function partitionFavoriteFixtures(fixtures, favorites) {
     const leagues = new Set(favorites?.leagues || []);
+    const result = { clubs: [], leagues: [], others: [] };
     const seen = new Set();
-    return (fixtures || []).filter((fixture) => {
-      const isFavorite = leagues.has(favoriteLeagueId(fixture)) ||
-        isFavoriteTeam(favorites, fixture.homeId, fixture.home) ||
-        isFavoriteTeam(favorites, fixture.awayId, fixture.away);
-      if (!isFavorite) return false;
-      const fixtureKey = fixture?.id != null
-        ? String(fixture.id)
-        : `${fixture?.competition}|${fixture?.kickoff}|${fixture?.home}|${fixture?.away}`;
-      if (seen.has(fixtureKey)) return false;
-      seen.add(fixtureKey);
-      return true;
+    (fixtures || []).forEach((fixture) => {
+      const key = fixtureKey(fixture);
+      if (seen.has(key)) return;
+      seen.add(key);
+      const clubFavorite = isFavoriteTeam(favorites, fixture.homeId, fixture.home)
+        || isFavoriteTeam(favorites, fixture.awayId, fixture.away);
+      const leagueFavorite = leagues.has(favoriteLeagueId(fixture));
+      if (clubFavorite) result.clubs.push(fixture);
+      else if (leagueFavorite) result.leagues.push(fixture);
+      else result.others.push(fixture);
     });
+    return result;
+  }
+
+  function selectFavoriteFixtures(fixtures, favorites) {
+    const partitioned = partitionFavoriteFixtures(fixtures, favorites);
+    return [...partitioned.clubs, ...partitioned.leagues];
   }
 
   function contentAvailabilityBatches(fixtures, batchSize = 50) {
@@ -185,6 +201,12 @@
     }
     return batches;
   }
+
+  function contentBadgeLabels(language) {
+    return String(language || "").toLowerCase().startsWith("en")
+      ? { prediction: "PREDICTION", report: "MATCH REPORT" }
+      : { prediction: "予想あり", report: "解説あり" };
+  }
   // These are deliberately neutral UI accents, not inferred club colours. They keep
   // unlisted teams distinguishable while the provider name remains the source of truth.
   function neutralTeamAccent(normalizedName) {
@@ -196,7 +218,14 @@
     return `hsl(${hue} ${saturation}% ${lightness}%)`;
   }
 
-  function create({ client, teamLogo, updatedAt, fallbackFixtures = [], onDailyData = null }) {
+  function create({
+    client,
+    teamLogo,
+    updatedAt,
+    onDailyData = null,
+    initialState = null,
+    onStateChange = null,
+  }) {
     const fixturesNode = document.getElementById("fixture-list");
     const fixturesSource = document.getElementById("fixtures-source");
     const fixturesStatus = document.getElementById("fixtures-status");
@@ -212,17 +241,19 @@
     const contentAvailability = new Map();
     let contentAvailabilityRequestKey = "";
     let contentAvailabilityRequestId = 0;
-    const expandedLeagueGroups = new Set();
+    const restoredState = initialState && typeof initialState === "object" ? initialState : {};
+    const validInitialDate = /^\d{4}-\d{2}-\d{2}$/.test(restoredState.date || "") ? restoredState.date : "";
+    const expandedLeagueGroups = new Set(Array.isArray(restoredState.expandedGroups) ? restoredState.expandedGroups : []);
     const expandedLeagueGroupCounts = new Map();
-    let fixtureMode = "date";
-    let fixtureStatus = "all";
+    let fixtureMode = restoredState.mode === "round" ? "round" : "date";
+    let fixtureStatus = ["all", "upcoming", "live", "finished"].includes(restoredState.status) ? restoredState.status : "all";
     let activeFixtureData = null;
-    let activeFixtureFilter = null;
-    let spoilersRevealed = false;
+    let activeFixtureFilter = typeof restoredState.filter === "string" ? restoredState.filter : null;
+    let spoilersRevealed = restoredState.spoilersRevealed === true;
     const DATE_WINDOW_DAYS = 30;
     const DATE_WINDOW_EXTENSION_DAYS = 30;
     const initialToday = AM4FootballData.tokyoDateKey(new Date());
-    let selectedDailyDate = initialToday;
+    let selectedDailyDate = validInitialDate || initialToday;
     // The date strip and daily provider requests are intentionally separate:
     // the reader can browse a continuous window without downloading 61 days of
     // fixtures up front. `ensureDateInWindow` lets future controls extend it.
@@ -230,6 +261,41 @@
     let dateWindowEnd = shiftDate(initialToday, DATE_WINDOW_DAYS);
     let liveDailyRefreshTimer = null;
     let liveDailyRefreshInFlight = false;
+    let pendingInitialScrollY = Number.isFinite(Number(restoredState.scrollY)) ? Math.max(0, Number(restoredState.scrollY)) : 0;
+
+    function snapshotState() {
+      return {
+        date: selectedDailyDate,
+        mode: fixtureMode,
+        filter: activeFixtureFilter || "",
+        status: fixtureStatus,
+        expandedGroups: [...expandedLeagueGroups],
+        spoilersRevealed,
+        scrollY: window.scrollY,
+      };
+    }
+
+    function persistState({ updateUrl = false, forceHash = "" } = {}) {
+      if (typeof onStateChange === "function") onStateChange(snapshotState(), { updateUrl, forceHash });
+    }
+
+    function restoreInitialScroll() {
+      if (!pendingInitialScrollY) return;
+      const scrollY = pendingInitialScrollY;
+      pendingInitialScrollY = 0;
+      window.requestAnimationFrame(() => window.scrollTo({ top: scrollY, behavior: "auto" }));
+    }
+
+    document.querySelectorAll(".fixture-mode-tab").forEach((button) => {
+      button.setAttribute("aria-pressed", String(button.dataset.fixtureMode === fixtureMode));
+    });
+    document.querySelectorAll(".fixture-status-tab").forEach((button) => {
+      button.setAttribute("aria-pressed", String(button.dataset.fixtureStatus === fixtureStatus));
+    });
+    if (spoilerToggle) {
+      spoilerToggle.setAttribute("aria-pressed", String(spoilersRevealed));
+      spoilerToggle.querySelector("span").textContent = spoilersRevealed ? "結果を隠す" : "結果を表示";
+    }
 
     function favoriteButton(type, id, label, className = "") {
       const saved = AM4Favorites.read(localStorage);
@@ -273,10 +339,7 @@
       const types = contentAvailability.get(String(fixture?.id)) || [];
       if (!types.length) return;
 
-      const labels = {
-        prediction: "PREDICTION",
-        report: "MATCH REPORT",
-      };
+      const labels = contentBadgeLabels(document.documentElement.lang);
       const badges = document.createElement("span");
       badges.className = "fixture-content-badges";
       types.forEach((type) => {
@@ -414,8 +477,11 @@
 
     function renderFixtures(items, sourceLabel = "") {
       fixturesNode.replaceChildren();
+      const sortedItems = AM4FootballData.sortFixturesForViewing(items);
+      const favorites = AM4Favorites.read(localStorage);
+      const partitioned = partitionFavoriteFixtures(sortedItems, favorites);
       const groups = new Map();
-      AM4FootballData.sortFixturesForViewing(items).forEach((fixture) => {
+      partitioned.others.forEach((fixture) => {
         const competition = fixture.competition || fixture.roundLabel || "大会情報確認中";
         const groupId = competitionGroupKey(fixture);
         if (!groups.has(groupId)) {
@@ -429,46 +495,38 @@
         }
         groups.get(groupId).fixtures.push(fixture);
       });
-      const favoriteFixtures = selectFavoriteFixtures(items, AM4Favorites.read(localStorage));
-      if (favoriteFixtures.length) {
-        groups.set("favorites", {
-          groupId: "favorites",
-          competition: "お気に入り",
+      if (partitioned.clubs.length) {
+        groups.set("favorites-clubs", {
+          groupId: "favorites-clubs",
+          competition: "お気に入りクラブ",
           competitionId: null,
           competitionCountry: null,
-          fixtures: favoriteFixtures,
+          fixtures: partitioned.clubs,
+          isFavoriteGroup: true,
+          favoriteGroupRank: 0,
         });
+      }
+      if (partitioned.leagues.length) {
+        groups.set("favorites-leagues", {
+          groupId: "favorites-leagues",
+          competition: "お気に入りリーグ",
+          competitionId: null,
+          competitionCountry: null,
+          fixtures: partitioned.leagues,
+          isFavoriteGroup: true,
+          favoriteGroupRank: 1,
+        });
+      }
+      if ((favorites.clubs.length || favorites.leagues.length) && !partitioned.clubs.length && !partitioned.leagues.length) {
+        const notice = document.createElement("p");
+        notice.className = "fixture-favorite-empty";
+        notice.textContent = "お気に入りの試合はこの表示条件にはありません。ほかの試合を続けて確認できます。";
+        fixturesNode.append(notice);
       }
       const prioritizeMajorLeagues = true;
-      const showMajorLeagueEmptyStates = prioritizeMajorLeagues && fixtureStatus === "all";
-      if (showMajorLeagueEmptyStates) {
-        const majorLeaguesForEmptyStates = fixtureMode === "round" && Array.isArray(activeFixtureData?.availableLeagues)
-          ? MAJOR_LEAGUES.filter(({ competition }) => activeFixtureData.availableLeagues.includes(competition))
-          : MAJOR_LEAGUES;
-        majorLeaguesForEmptyStates.forEach(({ providerId, competition, country, names }) => {
-          const groupId = `id:${providerId}`;
-          const isAlreadyRepresented = [...groups.values()].some((group) => (
-            group.fixtures.some((fixture) => (
-              Number(fixture.competitionId) === providerId || (
-                names.includes(fixture.competition)
-                && (!fixture.competitionCountry || fixture.competitionCountry === country)
-              )
-            ))
-          ));
-          if (!groups.has(groupId) && !isAlreadyRepresented) {
-            groups.set(groupId, {
-              groupId,
-              competition,
-              competitionId: providerId,
-              competitionCountry: country,
-              fixtures: [],
-            });
-          }
-        });
-      }
       const orderedGroups = [...groups.values()].sort((left, right) => {
-        if (left.groupId === "favorites") return -1;
-        if (right.groupId === "favorites") return 1;
+        const favoriteRank = (left.favoriteGroupRank ?? Number.MAX_SAFE_INTEGER) - (right.favoriteGroupRank ?? Number.MAX_SAFE_INTEGER);
+        if (favoriteRank) return favoriteRank;
         const leftFixture = left.fixtures[0] || left;
         const rightFixture = right.fixtures[0] || right;
         if (prioritizeMajorLeagues) {
@@ -488,7 +546,7 @@
       const visibleGroupLimit = canPageLeagueGroups
         ? Math.min(orderedGroups.length, expandedLeagueGroupCounts.get(directoryKey) || LEAGUE_GROUP_PREVIEW_LIMIT)
         : orderedGroups.length;
-      orderedGroups.forEach(({ groupId, competition, competitionId, competitionCountry, fixtures }, currentGroupIndex) => {
+      orderedGroups.forEach(({ groupId, competition, competitionId, competitionCountry, fixtures, isFavoriteGroup = false }, currentGroupIndex) => {
         if (currentGroupIndex >= visibleGroupLimit) return;
         const group = document.createElement("section");
         group.className = "fixture-league-group";
@@ -501,14 +559,14 @@
         const heading = document.createElement("h3");
         heading.className = "fixture-league-heading";
         heading.tabIndex = -1;
-        const logo = competitionLogo(groupFixture);
+        const logo = isFavoriteGroup ? null : competitionLogo(groupFixture);
         const headingCopy = document.createElement("span");
         headingCopy.className = "fixture-league-heading-copy";
         const title = document.createElement("span");
         title.className = "fixture-league-title";
         title.textContent = competition;
         headingCopy.append(title);
-        const countryName = competitionCountryLabel(groupFixture);
+        const countryName = isFavoriteGroup ? "" : competitionCountryLabel(groupFixture);
         if (countryName) {
           const country = document.createElement("small");
           country.className = "fixture-league-country";
@@ -521,7 +579,7 @@
         if (isEmpty) count.classList.add("fixture-league-empty-status");
         if (logo) heading.append(logo, headingCopy);
         else heading.append(headingCopy);
-        if (competition === "お気に入り") {
+        if (isFavoriteGroup) {
           const favoriteMark = document.createElement("span");
           favoriteMark.className = "fixture-favorite-heading-mark";
           favoriteMark.setAttribute("aria-hidden", "true");
@@ -628,6 +686,7 @@
           cardTarget.className = "fixture-card-tap-target";
           if (fixture.id) {
             cardTarget.href = `/match.html?id=${encodeURIComponent(fixture.id)}`;
+            cardTarget.addEventListener("click", () => persistState({ updateUrl: true, forceHash: "fixtures" }));
           }
           cardTarget.setAttribute(
             "aria-label",
@@ -653,6 +712,7 @@
             concealedNodes.forEach((node) => { if (node) node.hidden = false; });
             group.dataset.expanded = "true";
             showMore.remove();
+            persistState();
           });
           group.append(showMore);
         }
@@ -855,6 +915,8 @@
       renderFixtureView();
       if (typeof onDailyData === "function") onDailyData({ date, data });
       scheduleLiveDailyRefresh();
+      persistState({ updateUrl: true });
+      restoreInitialScroll();
     }
 
     async function loadFixtureDate(date) {
@@ -889,6 +951,8 @@
       fixturesSource.hidden = false;
       fixturesSource.textContent = "取得できません";
       fixturesStatus.textContent = `${date}の${message}。架空の試合は表示していません。`;
+      persistState({ updateUrl: true });
+      restoreInitialScroll();
     }
 
     function useFixtureData(data) {
@@ -898,6 +962,8 @@
       if (!hasRound(data, activeFixtureFilter)) activeFixtureFilter = defaultRoundFilter(data);
       fixturesSource.hidden = true;
       renderFixtureView();
+      persistState({ updateUrl: true });
+      restoreInitialScroll();
     }
 
     async function loadAllRoundFixtures() {
@@ -925,23 +991,26 @@
           .filter(Boolean);
         useFixtureData(roundData);
       } else {
-        showFallback("5大リーグの節別日程を取得できないため、画面確認用サンプルを表示しています");
+        showRoundUnavailable("5大リーグの節別日程を取得できませんでした。通信状況を確認して、もう一度お試しください。");
       }
       results.forEach((result, index) => {
         if (result.status === "rejected") console.warn("Fixture league unavailable.", ROUND_LEAGUES[index], result.reason);
       });
     }
 
-    function showFallback(message) {
+    function showRoundUnavailable(message) {
       clearLiveDailyRefresh();
       fixturesSource.hidden = false;
-      fixturesSource.textContent = "SAMPLE FALLBACK";
+      fixturesSource.textContent = "取得できません";
       fixturesStatus.textContent = message;
-      renderFixtures(fallbackFixtures, "SAMPLE");
+      fixturesNode.replaceChildren();
+      persistState({ updateUrl: true });
+      restoreInitialScroll();
     }
 
     document.querySelectorAll(".fixture-mode-tab").forEach((button) => button.addEventListener("click", () => {
       fixtureMode = button.dataset.fixtureMode;
+      if (fixtureMode === "round" && /^\d{4}-\d{2}-\d{2}$/.test(activeFixtureFilter || "")) activeFixtureFilter = null;
       clearLiveDailyRefresh();
       document.querySelectorAll(".fixture-mode-tab").forEach((item) => item.setAttribute("aria-pressed", String(item === button)));
       if (fixtureMode === "date") {
@@ -967,6 +1036,7 @@
       if (activeFixtureData) {
         renderFixtureView();
       }
+      persistState({ updateUrl: true });
     }));
 
     spoilerToggle?.addEventListener("click", () => {
@@ -974,6 +1044,7 @@
       spoilerToggle.setAttribute("aria-pressed", String(spoilersRevealed));
       spoilerToggle.querySelector("span").textContent = spoilersRevealed ? "結果を隠す" : "結果を表示";
       if (activeFixtureData) renderFixtureView();
+      persistState();
     });
 
     fixtureFilters.addEventListener("click", (event) => {
@@ -984,6 +1055,7 @@
       } else {
         activeFixtureFilter = button.dataset.fixtureFilter;
         renderFixtureView();
+        persistState({ updateUrl: true });
       }
     });
 
@@ -1001,10 +1073,29 @@
         }
       }
     });
-    window.addEventListener("pagehide", clearLiveDailyRefresh, { once: true });
+    window.addEventListener("pagehide", () => {
+      persistState({ updateUrl: false });
+      clearLiveDailyRefresh();
+    }, { once: true });
 
-    return { renderFixtures, useDailyData, loadFixtureDate, showDailyUnavailable, useFixtureData, showFallback };
+    return {
+      renderFixtures,
+      useDailyData,
+      loadFixtureDate,
+      showDailyUnavailable,
+      useFixtureData,
+      showRoundUnavailable,
+      getState: snapshotState,
+    };
   }
 
-  return { create, contentAvailabilityBatches, mergeRoundFixtureData, roundLeagueNames: ROUND_LEAGUES, selectFavoriteFixtures };
+  return {
+    create,
+    contentBadgeLabels,
+    contentAvailabilityBatches,
+    mergeRoundFixtureData,
+    partitionFavoriteFixtures,
+    roundLeagueNames: ROUND_LEAGUES,
+    selectFavoriteFixtures,
+  };
 });

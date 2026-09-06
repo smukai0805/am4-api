@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AM4 Football｜今日の海外サッカー試合日程・結果</title>
 <meta name="description" content="AM4 Football。今日の海外サッカー日程を日本時間で一覧表示。欧州5大リーグ、チャンピオンズリーグ、親善試合の結果はネタバレを避けて確認できます。">
 <meta name="theme-color" content="#060a17">
@@ -17,7 +17,7 @@
 <link rel="manifest" href="/manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;700;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/brand.css?v=ui3-20260905-match-ui-v1">
+<link rel="stylesheet" href="/brand.css?v=20260906-am4-improvements-v1">
 <style>
   main{display:flex;flex-direction:column;}
 
@@ -276,6 +276,10 @@
   .for-you-card small{display:block;color:var(--floodlight);font-family:var(--mono);font-size:10px;text-transform:uppercase;margin-bottom:8px;}
   .for-you-card strong{display:block;font-size:15px;margin-bottom:5px;}
   .for-you-card span{font-size:12px;color:var(--steel-dim);}
+  .for-you-empty{grid-column:1/-1;margin:0;padding:18px;border:1px dashed rgba(148,176,227,.4);border-radius:var(--radius);color:var(--steel);font-size:13px;line-height:1.7;}
+  .for-you-unavailable{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border:1px solid rgba(178,194,222,.28);border-radius:var(--radius);background:rgba(4,11,25,.34);color:var(--steel);font-size:13px;}
+  .for-you-unavailable-remove{min-height:40px;padding:8px 12px;border:1px solid rgba(143,175,236,.52);border-radius:999px;background:transparent;color:#e1ebff;cursor:pointer;font:600 10px/1 var(--mono);letter-spacing:.04em;white-space:nowrap;}
+  .for-you-unavailable-remove:hover,.for-you-unavailable-remove:focus-visible{border-color:#a8c8ff;background:rgba(77,121,213,.16);outline:2px solid #8bb1ff;outline-offset:2px;}
 
   .data-grid{display:grid;grid-template-columns:1.2fr .8fr;gap:18px;}
   .quick-fixtures{padding-top:34px;padding-bottom:40px;background:linear-gradient(180deg,#060a17,#081126);}
@@ -590,8 +594,8 @@
   }
   .matchday-board .fixture-league-group .fixture-meta{grid-area:meta;justify-self:center;align-self:start;color:#7788a5;text-align:center;}
   .matchday-board .fixture-league-group .fixture-meta .fixture-date{color:#8d9db9;font:600 9px var(--mono);letter-spacing:.02em;}
-  .fixture-content-badges{display:flex;flex-wrap:wrap;justify-content:center;gap:4px;max-width:152px;margin-top:6px;}
-  .fixture-content-badge{display:inline-flex;align-items:center;min-height:16px;padding:2px 5px;border:1px solid rgba(116,151,233,.36);border-radius:999px;background:rgba(39,72,140,.17);color:#adc9ff;font:700 7px/1 var(--mono);letter-spacing:.045em;white-space:nowrap;}
+  .fixture-content-badges{display:flex;flex-wrap:wrap;justify-content:center;gap:4px;max-width:168px;margin-top:6px;}
+  .fixture-content-badge{display:inline-flex;align-items:center;min-height:22px;padding:3px 6px;border:1px solid rgba(116,151,233,.36);border-radius:999px;background:rgba(39,72,140,.17);color:#d7e5ff;font:700 11px/1 var(--mono);letter-spacing:.02em;white-space:nowrap;}
   .fixture-content-badge--report{border-color:rgba(154,187,226,.3);background:rgba(56,83,122,.16);color:#d0def7;}
   .matchday-board .fixture-league-group .fixture-teams{display:contents;}
   .matchday-board .fixture-league-group .fixture-team{display:flex;align-items:center;align-self:stretch;gap:9px;min-width:0;overflow:hidden;}
@@ -648,8 +652,8 @@
     .fixture-scoreboard{min-width:0;min-height:50px;font-size:26px;}
     .fixture-scoreboard[data-result-hidden="true"]{min-height:58px;padding:3px 4px;}
     .fixture-result-cover{min-width:84px;}
-    .fixture-content-badges{max-width:96px;margin-top:5px;gap:3px;}
-    .fixture-content-badge{min-height:15px;padding:2px 4px;font-size:6px;}
+    .fixture-content-badges{max-width:112px;margin-top:5px;gap:3px;}
+    .fixture-content-badge{min-height:22px;padding:3px 5px;font-size:11px;letter-spacing:0;}
     .editorial-issue{margin-bottom:22px;}
     section.block.editorial-section{padding:42px 20px 54px;}
     .editorial-section .block-head{margin-bottom:24px;}
@@ -661,6 +665,18 @@
     .matchday-board .fixture-league-group .fixture-team{gap:4px;font-size:10px;}
     .matchday-board .fixture-league-group .team-logo,.matchday-board .fixture-league-group .team-logo-fallback{width:22px;height:22px;}
     .fixture-scoreboard{font-size:22px;}
+  }
+  @media(max-width:280px){
+    .matchday-home{padding-inline:8px;}
+    .matchday-board #fixture-list{padding-inline:3px;}
+    .matchday-board .fixture-league-group .fixture-row{grid-template-columns:minmax(0,1fr) 76px;grid-template-areas:"meta score" "home score" "away score";gap:5px;min-height:144px;padding:9px 6px;}
+    .matchday-board .fixture-league-group .fixture-meta{justify-self:start;align-self:center;text-align:left;}
+    .fixture-content-badges{justify-content:flex-start;max-width:70px;}
+    .fixture-favorite-button--team{flex:0 0 32px;width:32px;height:32px;margin:0 -4px;font-size:16px;}
+    .matchday-board .fixture-league-group .team-logo,.matchday-board .fixture-league-group .team-logo-fallback{display:none;}
+    .matchday-board .fixture-league-group .fixture-team{gap:3px;font-size:10px;}
+    .fixture-scoreboard{font-size:20px;}
+    .fixture-result-cover{min-width:68px;font-size:7px;}
   }
 
   .reveal{ opacity:0; transform:translateY(18px); transition:opacity .7s ease, transform .7s ease; }
@@ -677,6 +693,7 @@
   #column-featured[hidden]{display:none;}
   #column-feed-status{font-size:14px;line-height:1.7;color:#b3c9ec;}
   #column-feed-retry{min-height:44px;padding:12px 18px;border:1px solid #688cbb;border-radius:8px;background:#183260;color:#fff;}
+  .fixture-favorite-empty{margin:0;padding:13px 14px;border:1px solid rgba(139,169,222,.26);border-radius:12px;background:rgba(9,21,45,.56);color:#bccbe4;font-size:12px;line-height:1.65;}
   .home-series-link{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;column-gap:16px;margin:18px 0;padding:16px 18px;border:1px solid #34538b;border-left:3px solid #8cb3ff;border-radius:10px;background:linear-gradient(110deg,#142b56,#080f22);color:#ecf3ff;text-decoration:none;}
   .home-series-edition{color:#b3c9ec;font:500 28px/1 var(--display);}
   .home-series-copy{display:grid;gap:5px;min-width:0;}
@@ -701,6 +718,15 @@
     <small>Football</small>
   </a>
   <div class="lang">日本語</div>
+</div>
+
+<div class="tagnav-wrap">
+  <nav class="tagnav" aria-label="主要ナビゲーション">
+    <a class="tag" href="#fixtures">試合</a>
+    <a class="tag" id="column-nav-link" href="#lead-story">COLUMN</a>
+    <a class="tag" href="/column/20-seasons">20 Seasons</a>
+    <a class="tag" href="#for-you">保存</a>
+  </nav>
 </div>
 
 <main>
@@ -763,14 +789,6 @@
   <div class="for-you-grid" id="for-you-grid"></div>
   <p class="for-you-status" id="for-you-status" aria-live="polite"></p>
 </section>
-
-<div class="tagnav-wrap">
-  <nav class="tagnav" aria-label="ページ内ナビゲーション">
-    <a class="tag" href="#fixtures">試合日程</a>
-    <a class="tag" id="column-nav-link" href="#lead-story">AM4 COLUMN</a>
-    <a class="tag" href="#transfer">移籍情報</a>
-  </nav>
-</div>
 
 <section class="block editorial-section column-page" id="lead-story" aria-labelledby="lead-story-title">
   <header class="column-page-head">
@@ -915,27 +933,62 @@
   <div>matchday first / v0.5</div>
 </footer>
 
-<script src="favorites.js"></script>
+<script src="favorites.js?v=20260906-am4-improvements-v1"></script>
 <script src="site-config.js"></script>
-<script src="article-presentation.js"></script>
+<script src="article-presentation.js?v=20260906-am4-improvements-v1"></script>
 <script src="football-data.js?v=20260905-match-ui-v1"></script>
-<script src="sample-football-data.js"></script>
-<script src="match-centre.js?v=20260906-round-view-v2"></script>
+<script src="navigation-state.js?v=20260906-navigation-v2"></script>
+<script src="match-centre.js?v=20260906-am4-improvements-v1"></script>
 <script src="column-series.js?v=20260904-20-seasons"></script>
 <script>
-  // Existing AM4 Vercel API, with an explicit sample fallback.
+  // Public AM4 API clients. Failed provider reads remain explicit rather than
+  // being replaced with sample fixtures.
   (async function(){
-    const sample = AM4SampleFootballData;
     const apiBase = AM4SiteConfig.resolveApiBase(window.location.hostname);
     const client = AM4FootballData.createClient(fetch, apiBase);
     const profile = document.getElementById('player-profile');
     const updatedAt = () => new Intl.DateTimeFormat('ja-JP', { hour:'2-digit', minute:'2-digit' }).format(new Date());
     window.AM4LiveContext = { fixtures: [], playerPhotoVerified: false };
+    const navigation = window.AM4NavigationState;
+    const initialMatchState = navigation?.readMatchListState({ search: location.search, storage: sessionStorage }) || null;
+    const initialHomeState = navigation?.readHomeState(sessionStorage) || null;
+
+    function relativeUrl(value) {
+      const url = new URL(value, location.origin);
+      return `${url.pathname}${url.search}${url.hash}`;
+    }
+
+    function matchReturnUrl(state, forceHash = '') {
+      const url = new URL(navigation.matchListUrl(location.href, state), location.origin);
+      if (forceHash) url.hash = forceHash;
+      return relativeUrl(url);
+    }
+
+    function persistMatchListState(state, { updateUrl = false, forceHash = '' } = {}) {
+      if (!navigation) return;
+      const returnUrl = matchReturnUrl(state, forceHash);
+      navigation.writeMatchListState(sessionStorage, { ...state, returnUrl });
+      if (updateUrl) history.replaceState(null, '', returnUrl);
+    }
+
+    document.addEventListener('click', (event) => {
+      if (!navigation || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const link = event.target.closest('a[href]');
+      if (!link || link.target || link.hasAttribute('download')) return;
+      const target = new URL(link.href, location.origin);
+      if (target.origin !== location.origin || target.pathname !== '/article.html') return;
+      navigation.writeHomeState(sessionStorage, {
+        returnUrl: relativeUrl(location.href),
+        scrollY: window.scrollY,
+      });
+    });
+
     const matchCentre = AM4MatchCentre.create({
       client,
       teamLogo,
       updatedAt,
-      fallbackFixtures: sample.fixtures,
+      initialState: initialMatchState,
+      onStateChange: persistMatchListState,
       onDailyData: ({ data }) => {
         window.AM4LiveContext.fixtures = data.fixtures || [];
       },
@@ -1537,22 +1590,30 @@
     restoreColumnHashPosition();
     loadStoryContent();
     const todayKey = AM4FootballData.tokyoDateKey(new Date());
-    const dailyResultPromise = client.dailyFixtures(todayKey);
-    const dailyResult = await dailyResultPromise.then(
-      (value) => ({ status: 'fulfilled', value }),
-      (reason) => ({ status: 'rejected', reason })
-    );
-
-    const dailyDataIsValid = dailyResult.status === 'fulfilled' &&
-      Array.isArray(dailyResult.value.fixtures) &&
-      !(dailyResult.value.errors && Object.keys(dailyResult.value.errors).length);
-    if (dailyDataIsValid) {
-      matchCentre.useDailyData(todayKey, dailyResult.value);
+    const requestedDate = initialMatchState?.mode === 'date' && initialMatchState.date
+      ? initialMatchState.date
+      : todayKey;
+    if (initialMatchState?.mode === 'round') {
+      await matchCentre.loadAllRoundFixtures();
     } else {
-      matchCentre.showDailyUnavailable(todayKey);
-      if (dailyResult.status === 'rejected') console.warn('Daily fixture API unavailable.', dailyResult.reason);
+      const dailyResult = await client.dailyFixtures(requestedDate).then(
+        (value) => ({ status: 'fulfilled', value }),
+        (reason) => ({ status: 'rejected', reason })
+      );
+      const dailyDataIsValid = dailyResult.status === 'fulfilled' &&
+        Array.isArray(dailyResult.value.fixtures) &&
+        !(dailyResult.value.errors && Object.keys(dailyResult.value.errors).length);
+      if (dailyDataIsValid) {
+        matchCentre.useDailyData(requestedDate, dailyResult.value);
+      } else {
+        matchCentre.showDailyUnavailable(requestedDate);
+        if (dailyResult.status === 'rejected') console.warn('Daily fixture API unavailable.', dailyResult.reason);
+      }
     }
 
+    if (initialHomeState && relativeUrl(location.href) === initialHomeState.returnUrl && initialHomeState.scrollY > 0) {
+      window.requestAnimationFrame(() => window.scrollTo({ top: initialHomeState.scrollY, behavior: 'auto' }));
+    }
     document.dispatchEvent(new CustomEvent('am4:data-ready'));
   })();
 
@@ -1625,11 +1686,12 @@
         }
       });
 
-      section.classList.toggle('visible', count > 0 || unavailableArticleIds.size > 0);
+      const savedDestinationOpen = location.hash === '#for-you';
+      section.classList.toggle('visible', count > 0 || unavailableArticleIds.size > 0 || savedDestinationOpen);
       countLabel.textContent = count ? `${count}件のお気に入り` : '';
       if (status) {
         status.textContent = unavailableArticleIds.size
-          ? '保存した記事の一部は現在公開されていません。保存IDはこの端末に保持しています。'
+          ? '保存した記事の一部は現在公開されていません。必要であれば、ここから保存を解除できます。'
           : '';
       }
       grid.replaceChildren();
@@ -1643,6 +1705,26 @@
           card.querySelector('span').textContent = liveDetail(item);
           grid.append(card);
       });
+      unavailableArticleIds.forEach((articleId) => {
+        const unavailable = document.createElement('div');
+        unavailable.className = 'for-you-unavailable';
+        const copy = document.createElement('span');
+        copy.textContent = '公開されていない保存記事';
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'for-you-unavailable-remove';
+        remove.dataset.removeUnavailableArticle = articleId;
+        remove.textContent = '保存を解除';
+        remove.setAttribute('aria-label', '公開されていない保存記事を保存から解除');
+        unavailable.append(copy, remove);
+        grid.append(unavailable);
+      });
+      if (!count && !unavailableArticleIds.size && savedDestinationOpen) {
+        const empty = document.createElement('p');
+        empty.className = 'for-you-empty';
+        empty.textContent = '保存した記事、クラブ、リーグはここにまとまります。試合一覧や記事ページの☆／保存から追加できます。';
+        grid.append(empty);
+      }
     }
 
     document.addEventListener('click', (event) => {
@@ -1676,6 +1758,28 @@
     });
     document.addEventListener('am4:favorites-changed', render);
     document.addEventListener('am4:data-ready', render);
+    window.addEventListener('hashchange', render);
+
+    grid.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-remove-unavailable-article]');
+      if (!button) return;
+      const articleId = button.dataset.removeUnavailableArticle;
+      const saved = AM4Favorites.read(localStorage);
+      const result = AM4Favorites.write(localStorage, {
+        ...saved,
+        articles: saved.articles.filter((id) => id !== articleId),
+      });
+      if (!result) {
+        if (status) status.textContent = 'この端末に保存できませんでした。ブラウザーの保存容量または設定を確認してください。';
+        return;
+      }
+      unavailableArticleIds.delete(articleId);
+      pendingArticleIds.delete(articleId);
+      delete catalog[`articles:${articleId}`];
+      AM4Favorites.writeCatalog(localStorage, catalog);
+      render();
+      document.dispatchEvent(new CustomEvent('am4:favorites-changed'));
+    });
 
     async function restoreSavedArticles(){
       const ids = AM4Favorites.read(localStorage).articles;
@@ -1683,32 +1787,39 @@
       ids.forEach((id) => pendingArticleIds.add(id));
       render();
       const apiBase = AM4SiteConfig.resolveApiBase(location.hostname);
-      await Promise.all(ids.map(async (articleId) => {
-        try {
-          const response = await fetch(`${apiBase}/articles?id=${encodeURIComponent(articleId)}`, { headers:{ Accept:'application/json' } });
-          if (response.status === 404) {
-            unavailableArticleIds.add(articleId);
-            return;
+      let nextIndex = 0;
+      const restoreOne = async () => {
+        while (nextIndex < ids.length) {
+          const articleId = ids[nextIndex++];
+          try {
+            const response = await fetch(`${apiBase}/articles?id=${encodeURIComponent(articleId)}`, { headers:{ Accept:'application/json' } });
+            if (response.status === 404) {
+              unavailableArticleIds.add(articleId);
+              continue;
+            }
+            if (!response.ok) continue;
+            const payload = await response.json();
+            const article = payload?.article;
+            if (!article?.id) continue;
+            const item = {
+              type: 'articles',
+              id: String(article.id),
+              label: article.title || 'AM4記事',
+              detail: article.type === 'am4_story' ? 'AM4 COLUMN' : article.type || 'AM4記事',
+              href: `/article.html?id=${encodeURIComponent(article.id)}`,
+            };
+            catalog[`articles:${item.id}`] = item;
+            AM4Favorites.remember(localStorage, item);
+          } catch (_error) {
+            // A transient failure never removes a saved ID or marks it unavailable.
+          } finally {
+            pendingArticleIds.delete(articleId);
           }
-          if (!response.ok) return;
-          const payload = await response.json();
-          const article = payload?.article;
-          if (!article?.id) return;
-          const item = {
-            type: 'articles',
-            id: String(article.id),
-            label: article.title || 'AM4記事',
-            detail: article.type === 'am4_story' ? 'AM4 COLUMN' : article.type || 'AM4記事',
-            href: `/article.html?id=${encodeURIComponent(article.id)}`,
-          };
-          catalog[`articles:${item.id}`] = item;
-          AM4Favorites.remember(localStorage, item);
-        } catch (_error) {
-          // A transient failure never removes a saved ID or marks it unavailable.
-        } finally {
-          pendingArticleIds.delete(articleId);
         }
-      }));
+      };
+      // Keep the home responsive for a long saved list while still restoring
+      // entries independently of whichever articles happen to be featured.
+      await Promise.all(Array.from({ length: Math.min(4, ids.length) }, restoreOne));
       render();
     }
 
@@ -1717,7 +1828,7 @@
   })();
 
   // scroll-reveal
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || !('IntersectionObserver' in window)) {
     document.querySelectorAll('.reveal').forEach(el => el.classList.add('in'));
   } else {
     const io = new IntersectionObserver((entries) => {
@@ -1738,6 +1849,7 @@
   // their own observer rather than relying on the static page reveal pass.
   (() => {
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const supportsObserver = 'IntersectionObserver' in window;
     const revealedColumnCards = new Set();
     let observer = null;
 
@@ -1753,7 +1865,7 @@
         }
         card.classList.remove('is-in');
         card.style.setProperty('--column-stagger', '0');
-        if (reducedMotion) {
+        if (reducedMotion || !supportsObserver) {
           if (revealKey) revealedColumnCards.add(revealKey);
           card.classList.add('is-in');
           return;
@@ -1775,7 +1887,7 @@
               });
           }, { threshold:0.12, rootMargin:'0px 0px -8% 0px' });
         }
-        observer.unobserve(card);
+        if (observer) observer.unobserve(card);
         observer.observe(card);
       });
     }

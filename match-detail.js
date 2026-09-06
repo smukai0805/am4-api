@@ -60,11 +60,20 @@
     return el;
   }
 
+  function matchListReturnUrl() {
+    return window.AM4NavigationState?.readMatchReturnUrl(sessionStorage, "/#fixtures") || "/#fixtures";
+  }
+
   function backLink() {
     const link = node("a", "match-back", t("back"));
-    link.href = "/#fixtures";
+    link.href = matchListReturnUrl();
     return link;
   }
+
+  // Keep the static loading/error-state return link in sync too; users should
+  // not lose their selected list merely because the detail request is pending.
+  const initialBackLink = page?.querySelector(".match-back");
+  if (initialBackLink) initialBackLink.href = matchListReturnUrl();
 
   function state(title, message, retry) {
     const box = node("section", "match-page-state");
@@ -99,17 +108,28 @@
     team = team || {};
     if (!team.id) return null;
     const id = `team-${team.id}`;
-    const button = node("button", "favorite-btn", "");
+    const button = node("button", "favorite-btn match-team-favorite", "");
     button.type = "button";
     button.setAttribute("aria-pressed", String(AM4Favorites.has(AM4Favorites.read(localStorage), "clubs", id)));
     function update() {
       const active = AM4Favorites.has(AM4Favorites.read(localStorage), "clubs", id);
       button.setAttribute("aria-pressed", String(active));
-      button.textContent = active ? `${text(team.name)}を保存済み` : `${text(team.name)}を保存`;
+      button.textContent = active ? "★" : "☆";
       button.setAttribute("aria-label", active ? `${text(team.name)}をお気に入りから削除` : `${text(team.name)}をお気に入りに保存`);
+      button.title = button.getAttribute("aria-label");
     }
-    button.addEventListener("click", () => {
-      AM4Favorites.toggle(localStorage, "clubs", id);
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const saved = AM4Favorites.toggleWithItem(localStorage, "clubs", id, {
+        label: text(team.name),
+        detail: `${text(team.name)}の試合を優先表示`,
+        href: "/#fixtures",
+      });
+      if (!saved) {
+        button.setAttribute("aria-label", `${text(team.name)}をこの端末に保存できませんでした`);
+        button.title = "この端末に保存できませんでした";
+        return;
+      }
       update();
       document.dispatchEvent(new CustomEvent("am4:favorites-changed"));
     });

@@ -18,8 +18,8 @@
   --content-width:1180px;
 }
 *{box-sizing:border-box;}
-html{scroll-behavior:smooth;}
-body{margin:0;background:var(--ink);color:var(--paper);font-family:var(--body);-webkit-font-smoothing:antialiased;}
+html{scroll-behavior:smooth;overflow-x:clip;}
+body{margin:0;overflow-x:hidden;background:var(--ink);color:var(--paper);font-family:var(--body);-webkit-font-smoothing:antialiased;}
 a{color:inherit;text-decoration:none;}
 button{font:inherit;color:inherit;}
 img{max-width:100%;}
@@ -47,6 +47,7 @@ img{max-width:100%;}
 .article-title{margin:0;font:900 clamp(46px,8vw,86px)/.93 var(--display);letter-spacing:-.035em;}
 .article-actions{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-top:28px;}
 .article-actions .favorite-btn{color:#0b1120;border-color:#8c8b87;background:transparent;}
+.article-save-status{flex:1 1 220px;margin:0;color:#7b3329;font:600 11px/1.45 var(--body);}
 .article-meta{display:flex;flex-wrap:wrap;gap:16px;margin-top:22px;color:#626a77;font:500 10px var(--mono);}
 .article-body{max-width:720px;margin:0 auto;padding:clamp(38px,7vw,74px) 24px 70px;font-family:"Noto Sans JP",var(--body);font-size:17px;line-height:2;}
 .article-body p{margin:0 0 1.75em;}
@@ -98,6 +99,7 @@ img{max-width:100%;}
   .article-related-card{padding:14px;box-shadow:2px 3px 0 #c8c5bc;}
 }
 @media(prefers-reduced-motion:reduce){*{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto;}}
 
 /* Match detail: a deliberately utilitarian match room inside the AM4 night shell. */
 .match-page{min-height:100vh;background:radial-gradient(ellipse 72% 34% at 50% -7%,rgba(42,94,255,.28),transparent 66%),var(--ink);}
@@ -116,6 +118,9 @@ img{max-width:100%;}
 .match-team{display:grid;justify-items:center;align-content:start;gap:9px;min-width:0;}
 .match-team h1{min-height:2.4em;margin:0;color:#f6f8ff;font:800 clamp(17px,4.5vw,28px)/1.08 var(--display);letter-spacing:.01em;overflow-wrap:anywhere;}
 .match-team .favorite-btn{max-width:100%;padding:7px 9px;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.match-team .match-team-favorite{display:grid;place-items:center;flex:0 0 44px;width:44px;min-width:44px;height:44px;padding:0;border-color:transparent;background:transparent;color:#aab9d1;font-size:21px;line-height:1;overflow:visible;}
+.match-team .match-team-favorite[aria-pressed="true"]{border-color:rgba(217,180,106,.56);color:var(--gold);background:rgba(217,180,106,.1);}
+.match-team .match-team-favorite:hover,.match-team .match-team-favorite:focus-visible{border-color:#9bbdff;color:#e5efff;background:rgba(55,104,209,.18);outline:2px solid #8bb1ff;outline-offset:2px;}
 .match-crest{display:grid;place-items:center;width:68px;height:68px;}
 .match-crest img,.match-crest-fallback{width:68px;height:68px;object-fit:contain;}
 .match-crest-fallback{display:grid;place-items:center;border:1px solid rgba(201,212,227,.26);border-radius:50%;background:var(--ink-3);color:var(--steel);font:700 12px var(--mono);}

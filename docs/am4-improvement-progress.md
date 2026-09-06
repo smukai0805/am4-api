@@ -34,17 +34,41 @@
 
 - `git diff --check` — passed.
 - `npm test` — **111 passed, 0 failed**. Existing Node module-type warnings were retained; no package configuration was changed.
-- Browser and responsive screenshots: **pending Phase 2 UI changes**. No production browser behavior is being represented as locally verified.
+- The behavior was subsequently exercised against the current working tree during Phase 2 browser verification; this is a local preview only, not a production claim.
 
 ## Phase 2 — favorites and discovery
 
-Work begins only after the Phase 1 suite above passed. Pending implementation and verification:
+Work began only after the Phase 1 suite above passed.
 
-- Favourite club / league ordering without duplicate fixtures; retained date and round navigation.
-- Top-level routes for fixtures, COLUMN, 20 Seasons, and saved items; compact, keyboard-accessible favourite controls.
-- Readable Japanese prediction/report badges; no empty-major-league blocks ahead of real fixtures.
-- Restore list state after match or article navigation; safe expiry for device-only state.
-- Mobile/zoom/reduced-motion/accessibility checks and real browser screenshots.
+| Item | Status | Implemented / confirmed |
+| --- | --- | --- |
+| 5-1 League / club favourites | Fixed | Compact ☆/★ controls use stable provider IDs, retain legacy club matching, stop propagation from match cards, expose pressed state / labels, and keep stored article / club data. Fixture groups are ordered favourite clubs, favourite leagues, then other competitions, with each fixture shown once. |
+| 5-2 Article discovery navigation | Fixed | The top navigation now exposes matches, COLUMN, 20 Seasons, and saved items before the long fixture list. `#for-you` restores saved articles independently of the current home catalog and provides a safe remove action for unavailable saved entries. |
+| 5-3 Editorial badges | Fixed | Match cards use `予想あり` / `解説あり` for Japanese and English labels for English, at a 11px baseline without lengthening cards unnecessarily. |
+| 5-4 Empty states and return behavior | Fixed | Provider failures now render an unavailable state rather than sample fixtures. URL selection state is shareable; scroll / expansion / spoiler state is device-only, expires after six hours, and is restored only for the matching list selection. Article and match return links honor the saved home/list state. |
+| 5-5 Small-screen and motion resilience | Fixed in code / partially browser-verified | The viewport no longer limits zoom, horizontal overflow is clipped at the document boundary, reduced motion disables smooth scrolling / reveal reliance, and semantic buttons retain focus-visible behavior. Chromium viewport checks are complete; actual browser 200% zoom and iPhone Safari remain unverified. |
+
+### Phase 2 files and rationale
+
+- `navigation-state.js`, `article-page.js`, `article.html`, `match.html`, `match-detail.js`: bounded, internal-only return-state storage and match/article return links, including the loading-state return link.
+- `match-centre.js`, `tests/match-centre.test.js`, `tests/navigation-state.test.js`: favourite priority/deduplication, localized badges, failure state, and URL/device-state rules.
+- `index.html`, `brand.css`: main discovery navigation, saved-item recovery/removal UI, responsive cards, zoom-friendly viewport, and reduced-motion / overflow behavior.
+
+### Phase 2 validation
+
+- `node --check navigation-state.js match-centre.js match-detail.js article-page.js` — passed.
+- Focused tests (`tests/navigation-state.test.js`, `tests/match-centre.test.js`, `tests/favorites.test.js`) — **21 passed, 0 failed**.
+- Full `npm test` — **117 passed, 0 failed** after the final state-restoration and cache-reference changes. Existing Node module-type warnings remain unchanged.
+- `git diff --check` — passed.
+- Independent final review found a stale bare-home state restore and protocol-relative return-link acceptance; both were corrected with navigation-state regression coverage (including invalid calendar dates).
+- Updated modified static asset references use a shared version token and were reloaded in the local browser; the loaded CSS, favourites, editorial presentation, navigation, and match-centre resources all resolved to the current version.
+- Local Chromium preview at `http://127.0.0.1:4180/` (current worktree; no deployment):
+  - Saved three distinct article-detail pages, returned home, reloaded, opened `保存`, and confirmed all three restored article destinations.
+  - Added a league and a club; confirmed the click did not navigate, ordering was club → league → other, no duplicate Rayo fixture appeared, and both persisted after reload.
+  - Opened a match detail and returned through its visible return link; the list URL, daily selection, favourite ordering, and list viewport were restored.
+  - After opening a shared 2026-09-07 list, opening a fresh home URL correctly selected the current Tokyo date rather than reusing the stale device-only selection.
+  - Inspected actual screenshots at 360, 375, 390, 430, 1280, and 1440 CSS pixels. This is Chromium viewport testing, not iPhone Safari testing.
+- Screenshots inspected: `docs/screenshots/am4-home-mobile-360-top.png`, `am4-home-375.png`, `am4-home-390.png`, `am4-home-430.png`, `am4-home-1280.png`, `am4-home-1440.png`, `am4-for-you-saved-articles.png`, and `am4-match-return-restored.png`.
 
 ## Phase 3+ recommended follow-up (not implemented here)
 
@@ -55,6 +79,6 @@ Work begins only after the Phase 1 suite above passed. Pending implementation an
 
 ## Release requirements
 
-- Complete Phase 2 tests and local browser verification, including screenshots at the requested widths.
+- Obtain actual browser-zoom (200%) and iPhone Safari checks if release acceptance requires them; neither is implied by the Chromium viewport evidence above.
 - Review the final diff and receive explicit authorization before any push, merge to `am4-production`, Vercel preview creation requiring external authorization, or production deployment.
 - For the generation route, inspect authorized provider/Vercel logs before changing cron schedules, balances, notification destinations, or external configuration.
