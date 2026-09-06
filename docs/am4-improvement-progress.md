@@ -82,3 +82,10 @@ Work began only after the Phase 1 suite above passed.
 - Obtain actual browser-zoom (200%) and iPhone Safari checks if release acceptance requires them; neither is implied by the Chromium viewport evidence above.
 - Review the final diff and receive explicit authorization before any push, merge to `am4-production`, Vercel preview creation requiring external authorization, or production deployment.
 - For the generation route, inspect authorized provider/Vercel logs before changing cron schedules, balances, notification destinations, or external configuration.
+
+## Production release and publication-gate follow-up
+
+- `am4-production` was fast-forwarded to `3473bf8` and pushed after the Phase 1/2 release checks. GitHub's Vercel deployment status reported `success` for the Production environment, and `https://am4football.com/` returned the updated navigation and versioned assets.
+- Read-only production API checks returned `200` for the public article list and the bounded content-availability route. The home page loaded the current fixture list in Chromium without browser-console errors.
+- The first 100 public archive records inspected after release still carried Notion state `自動生成` while their legacy Blob flags said `status: 'published', public: true`. This is a fail-open gap for pre-gate records, not evidence that a generation job is currently failing.
+- Follow-up hotfix: a record with a Notion `pageId` is now public only when its mirrored state is `公開準備` or `公開済`. Historical records without Notion provenance retain their existing public rule. This intentionally fails closed when Notion state is stale or unavailable; a later authorized Notion sync can persist the corresponding retractions or republish records that have been editorially advanced.
