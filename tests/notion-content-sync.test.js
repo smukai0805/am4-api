@@ -211,6 +211,42 @@ test('sync retracts a public mirror when its Notion page is archived or deleted'
   assert.equal(records.get(articleId).notion.state, 'Notionで非公開または削除');
 });
 
+test('sync preserves a published legacy archive record marked only as generated provenance', async () => {
+  const articleId = 'notion-am4_story-legacygenerated';
+  const pageId = 'legacy-generated-page';
+  const records = new Map([[articleId, {
+    id: articleId,
+    type: 'am4_story',
+    status: 'published',
+    public: true,
+    notion: { pageId, pageUrl: `https://notion.so/${pageId}`, updatedAt: '2026-09-01T00:00:00.000Z', state: '自動生成' },
+  }]]);
+  const store = {
+    listArticles: async () => ({ items: [...records.values()], page: 1, totalPages: 1 }),
+    getArticle: async (id) => records.get(id) || null,
+    saveArticle: async (article) => { records.set(article.id, article); return article; },
+  };
+  const page = {
+    id: pageId,
+    properties: { '記事状態': { type: 'select', select: { name: '自動生成' } } },
+  };
+  const fetcher = async (url) => notionResponse({
+    results: String(url).includes('/data_sources/stories/query') ? [page] : [],
+    has_more: false,
+    next_cursor: null,
+  });
+
+  const result = await syncNotionContent({
+    apiKey: 'test-key',
+    fetcher,
+    articleStore: store,
+    sourceIds: { match_report: 'reports', match_prediction: 'predictions', am4_story: 'stories' },
+  });
+
+  assert.equal(result.hidden, 0);
+  assert.equal(records.get(articleId).public, true);
+});
+
 function notionResponse(payload, status = 200) {
   return { ok: status >= 200 && status < 300, status, json: async () => payload };
 }
