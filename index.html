@@ -475,9 +475,6 @@
   .column-popular-rank{color:#83a5ff;font:700 13px var(--mono);letter-spacing:.04em;}
   .column-popular-card strong{display:-webkit-box;overflow:hidden;font:700 17px/1.18 var(--body);letter-spacing:-.015em;-webkit-box-orient:vertical;-webkit-line-clamp:2;}
   .column-popular-card .column-arrow{justify-self:end;}
-  .column-stagger{opacity:0;transform:translateY(20px) scale(.97);will-change:opacity,transform;}
-  .column-stagger.is-in{opacity:1;transform:translateY(0) scale(1);animation:column-stagger-in 460ms cubic-bezier(.22,1,.36,1) both;animation-delay:calc(var(--column-stagger, 0) * 100ms);}
-  @keyframes column-stagger-in{from{opacity:0;transform:translateY(20px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
   @media(min-width:761px){
     .column-featured-card{min-height:220px;padding:30px 34px;}
     .column-featured-card::after{right:34px;left:34px;}
@@ -502,8 +499,6 @@
     .column-series-feature-title{font-size:34px;}
     .column-series-feature-cta{justify-content:space-between;text-align:left;}
   }
-  @media(prefers-reduced-motion:reduce){.column-stagger,.column-stagger.is-in{opacity:1;transform:none;animation:none;transition:none;}}
-
   /* ---------- matchday-first homepage ---------- */
   .matchday-home{
     position:relative;
@@ -679,8 +674,6 @@
     .fixture-result-cover{min-width:68px;font-size:7px;}
   }
 
-  .reveal{ opacity:0; transform:translateY(18px); transition:opacity .7s ease, transform .7s ease; }
-  .reveal.in{ opacity:1; transform:translateY(0); }
   @media (prefers-reduced-motion:reduce){.fixture-scoreboard,.fixture-scoreboard *{animation:none!important;transition:none!important;}}
 
   footer{
@@ -862,7 +855,7 @@
     <h2 class="block-title"><small>Transfer Desk</small>移籍情報</h2>
     <span class="see-all">更新中</span>
   </div>
-  <article class="transfer-updating reveal" aria-live="polite">
+  <article class="transfer-updating" aria-live="polite">
     <small>AM4 TRANSFER DESK · UPDATING</small>
     <h3>最新の移籍情報を確認中です</h3>
     <p>確認できた情報だけを、AM4の基準で更新します。</p>
@@ -875,7 +868,7 @@
     <h2 class="block-title"><small>Match Report</small>試合解説</h2>
     <span class="see-all">AM4編集部</span>
   </div>
-  <div class="match-feature reveal">
+  <div class="match-feature">
     <div>
       <div class="comp-badge">Premier League · 第32節</div>
       <h3 class="match-headline">Mainooの劇的弾で<br>Old Traffordが歓喜</h3>
@@ -904,7 +897,7 @@
     <span class="see-all">注目の若手</span>
   </div>
   <div class="player-grid">
-    <div class="p-card reveal">
+    <div class="p-card">
       <div class="p-flag"></div>
       <div class="p-avatar" data-player-photo="jorrel-hato">JH</div>
       <span class="player-media-source" data-player-media-source="jorrel-hato">SAMPLE FALLBACK</span>
@@ -913,7 +906,7 @@
       <p class="p-copy">ロッテルダム生まれの若きディフェンダー、新天地でのプレシーズンに見せた確かな一歩。</p>
       <button class="favorite-btn" type="button" data-favorite-type="players" data-favorite-id="j-hato" data-favorite-label="J. Hato" data-favorite-detail="プロフィールと最新ストーリーを見る" data-favorite-href="#players">選手を保存</button>
     </div>
-    <div class="p-card reveal">
+    <div class="p-card">
       <div class="p-flag"></div>
       <div class="p-avatar" data-player-photo="stephen-mfuni">SM</div>
       <span class="player-media-source" data-player-media-source="stephen-mfuni">SAMPLE FALLBACK</span>
@@ -923,7 +916,7 @@
       <button class="favorite-btn" type="button" data-favorite-type="players" data-favorite-id="s-mfuni" data-favorite-label="S. Mfuni" data-favorite-detail="プロフィールと最新ストーリーを見る" data-favorite-href="#players">選手を保存</button>
     </div>
   </div>
-  <div class="player-profile reveal" id="player-profile" style="margin-top:18px"></div>
+  <div class="player-profile" id="player-profile" style="margin-top:18px"></div>
 </section>
 
 </main>
@@ -1354,8 +1347,6 @@
         feature.href = `/article.html?id=${encodeURIComponent(article.id)}`;
         feature.setAttribute('aria-label', `${article.title || 'AM4 COLUMN'}を読む`);
         feature.dataset.tone = columnTone(article);
-        feature.dataset.columnRevealKey = `featured:${article.id}`;
-        window.AM4ObserveColumnReveals?.([feature]);
       }
     }
 
@@ -1370,7 +1361,6 @@
         card.href = `/article.html?id=${encodeURIComponent(article.id)}`;
         card.setAttribute('aria-label', `${article.title || 'AM4 COLUMN'}を読む`);
         card.dataset.tone = columnTone(article);
-        card.dataset.columnRevealKey = `latest:${article.id}`;
         const copy = document.createElement('span');
         copy.className = 'column-latest-copy';
         const topline = document.createElement('span');
@@ -1399,7 +1389,6 @@
         list.append(card);
       });
       list.hidden = visibleStories.length === 0;
-      window.AM4ObserveColumnReveals?.([...list.children]);
       return visibleStories.length;
     }
 
@@ -1457,7 +1446,6 @@
         card.className = 'column-popular-card';
         card.href = `/article.html?id=${encodeURIComponent(article.id)}`;
         card.setAttribute('aria-label', `${article.title || 'AM4 COLUMN'}を読む`);
-        card.dataset.columnRevealKey = `popular:${article.id}`;
         const rank = document.createElement('span');
         rank.className = 'column-popular-rank';
         rank.textContent = String(hasPublishedPopularity ? articlePopularityRank(article) : index + 1).padStart(2, '0');
@@ -1468,7 +1456,6 @@
         list.append(item);
       });
       section.hidden = false;
-      window.AM4ObserveColumnReveals?.([...list.querySelectorAll('.column-popular-card')]);
     }
 
     function renderColumnStories(stories){
@@ -1825,74 +1812,6 @@
 
     render();
     restoreSavedArticles();
-  })();
-
-  // scroll-reveal
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || !('IntersectionObserver' in window)) {
-    document.querySelectorAll('.reveal').forEach(el => el.classList.add('in'));
-  } else {
-    const io = new IntersectionObserver((entries) => {
-      entries.forEach(e => {
-        if (e.isIntersecting) {
-          e.target.classList.add('in');
-          io.unobserve(e.target);
-        }
-      });
-    }, { threshold: 0.15 });
-    document.querySelectorAll('.reveal').forEach((el, i) => {
-      el.style.transitionDelay = (i % 4) * 70 + 'ms';
-      io.observe(el);
-    });
-  }
-
-  // AM4 COLUMN cards are created after the article API resolves, so they need
-  // their own observer rather than relying on the static page reveal pass.
-  (() => {
-    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const supportsObserver = 'IntersectionObserver' in window;
-    const revealedColumnCards = new Set();
-    let observer = null;
-
-    function revealColumnCards(nodes){
-      const cards = Array.from(nodes || []).filter((node) => node instanceof Element);
-      if (!cards.length) return;
-      cards.forEach((card) => {
-        const revealKey = card.dataset.columnRevealKey;
-        card.classList.add('column-stagger');
-        if (revealKey && revealedColumnCards.has(revealKey)) {
-          card.classList.add('is-in');
-          return;
-        }
-        card.classList.remove('is-in');
-        card.style.setProperty('--column-stagger', '0');
-        if (reducedMotion || !supportsObserver) {
-          if (revealKey) revealedColumnCards.add(revealKey);
-          card.classList.add('is-in');
-          return;
-        }
-        if (!observer) {
-          observer = new IntersectionObserver((entries) => {
-            entries
-              .filter((entry) => entry.isIntersecting)
-              .sort((left, right) => {
-                const vertical = left.boundingClientRect.top - right.boundingClientRect.top;
-                return vertical || left.boundingClientRect.left - right.boundingClientRect.left;
-              })
-              .forEach((entry, index) => {
-              const key = entry.target.dataset.columnRevealKey;
-              if (key) revealedColumnCards.add(key);
-              entry.target.style.setProperty('--column-stagger', String(index));
-              entry.target.classList.add('is-in');
-              observer.unobserve(entry.target);
-              });
-          }, { threshold:0.12, rootMargin:'0px 0px -8% 0px' });
-        }
-        if (observer) observer.unobserve(card);
-        observer.observe(card);
-      });
-    }
-
-    window.AM4ObserveColumnReveals = revealColumnCards;
   })();
 
   // ページ内ナビ：スクロール位置に合わせて、今いるセクションを明確に示す。

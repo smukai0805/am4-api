@@ -11,7 +11,6 @@
     ['2020-21', '2020 — 2024'],
     ['2025-26', '2025 — 2026'],
   ]);
-  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   function node(tag, className, text) {
     const element = document.createElement(tag);
@@ -49,10 +48,9 @@
     return icon;
   }
 
-  function seasonCard(season, article, index) {
+  function seasonCard(season, article) {
     const available = Boolean(article?.id);
-    const card = node(available ? 'a' : 'article', `twenty-season-card ${available ? 'is-available' : 'is-coming-soon'} twenty-season-reveal`);
-    card.style.setProperty('--twenty-season-delay', String(index % 5));
+    const card = node(available ? 'a' : 'article', `twenty-season-card ${available ? 'is-available' : 'is-coming-soon'}`);
     if (available) {
       card.href = `/article.html?id=${encodeURIComponent(article.id)}`;
       card.setAttribute('aria-label', `${article.title || season}を読む`);
@@ -84,17 +82,16 @@
   function render(articles) {
     const bySeason = series.storiesBySeason(articles);
     const fragment = document.createDocumentFragment();
-    series.seasons().forEach((season, index) => {
+    series.seasons().forEach((season) => {
       const period = PERIODS.get(season);
       if (period) {
         const divider = node('div', 'twenty-season-period');
         divider.append(node('span', '', period), node('span', '', 'SEASONS'));
         fragment.append(divider);
       }
-      fragment.append(seasonCard(season, bySeason.get(season), index));
+      fragment.append(seasonCard(season, bySeason.get(season)));
     });
     root.replaceChildren(fragment);
-    observeReveals();
     const published = bySeason.size;
     status.textContent = published
       ? `${published} / 20 STORIES AVAILABLE`
@@ -103,25 +100,6 @@
 
   function renderArchiveState(kind, message) {
     root.replaceChildren(node('p', `twenty-seasons-archive-state ${kind}`, message));
-  }
-
-  function observeReveals() {
-    const cards = Array.from(root.querySelectorAll('.twenty-season-reveal'));
-    if (reducedMotion || !('IntersectionObserver' in window)) {
-      cards.forEach((card) => card.classList.add('is-visible'));
-      return;
-    }
-    const observer = new IntersectionObserver((entries) => {
-      entries
-        .filter((entry) => entry.isIntersecting)
-        .sort((left, right) => left.boundingClientRect.top - right.boundingClientRect.top)
-        .forEach((entry, index) => {
-          entry.target.style.setProperty('--twenty-season-delay', String(index % 5));
-          entry.target.classList.add('is-visible');
-          observer.unobserve(entry.target);
-        });
-    }, { threshold: 0.12, rootMargin: '0px 0px -7% 0px' });
-    cards.forEach((card) => observer.observe(card));
   }
 
   async function loadStories() {
