@@ -4,10 +4,12 @@
   if (root) root.AM4Favorites = api;
 })(typeof window !== "undefined" ? window : globalThis, function () {
   const STORAGE_KEY = "am4:favorites:v1";
-  const TYPES = ["clubs", "players", "articles"];
+  // Leagues and clubs are stored independently so the same lightweight local
+  // preference can later map directly onto account-level favourite entities.
+  const TYPES = ["leagues", "clubs", "players", "articles"];
 
   function emptyFavorites() {
-    return { clubs: [], players: [], articles: [] };
+    return { leagues: [], clubs: [], players: [], articles: [] };
   }
 
   function normalize(value) {
@@ -49,9 +51,8 @@
   }
 
   function count(favorites) {
-    return TYPES.reduce((total, type) => total + favorites[type].length, 0);
+    return TYPES.reduce((total, type) => total + (Array.isArray(favorites?.[type]) ? favorites[type].length : 0), 0);
   }
 
   return { STORAGE_KEY, emptyFavorites, normalize, read, write, toggle, has, count };
 });
-

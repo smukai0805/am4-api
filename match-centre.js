@@ -3,7 +3,6 @@
   if (typeof module === "object" && module.exports) module.exports = api;
   if (root) root.AM4MatchCentre = api;
 })(typeof window !== "undefined" ? window : globalThis, function () {
-  const ALL_COMPETITIONS = "すべて";
   const LEAGUE_PREVIEW_LIMIT = 4;
   const LEAGUE_GROUP_PREVIEW_LIMIT = 6;
   const LEAGUE_GROUP_BATCH_SIZE = 6;
@@ -125,6 +124,55 @@
   const NORMALIZED_TEAM_ACCENTS = new Map(
     [...TEAM_ACCENTS].map(([name, accent]) => [normalizeTeamName(name), accent]),
   );
+  // Before provider IDs were available in the match UI, a small set of club
+  // favourites used these human-readable IDs. Keep them readable so returning
+  // visitors retain their saved clubs while new saves use provider IDs.
+  const LEGACY_FAVORITE_TEAMS = new Map([
+    ["manchester-united", ["Manchester United"]], ["liverpool", ["Liverpool"]],
+    ["arsenal", ["Arsenal"]], ["chelsea", ["Chelsea"]],
+    ["manchester-city", ["Manchester City"]], ["newcastle", ["Newcastle United", "Newcastle"]],
+  ]);
+
+  function favoriteLeagueId(fixture) {
+    const providerId = Number(fixture?.competitionId);
+    if (Number.isInteger(providerId) && providerId > 0) return `league-${providerId}`;
+    return `league-name-${normalizeTeamName(fixture?.competition)}`;
+  }
+
+  function favoriteTeamId(teamId, teamName) {
+    const providerId = Number(teamId);
+    if (Number.isInteger(providerId) && providerId > 0) return `team-${providerId}`;
+    return `team-name-${normalizeTeamName(teamName)}`;
+  }
+
+  function favoriteTeamAliases(teamName) {
+    const normalizedName = normalizeTeamName(teamName);
+    return [...LEGACY_FAVORITE_TEAMS]
+      .filter(([, names]) => names.some((name) => normalizeTeamName(name) === normalizedName))
+      .map(([id]) => id);
+  }
+
+  function isFavoriteTeam(favorites, teamId, teamName) {
+    const clubs = new Set(favorites?.clubs || []);
+    return clubs.has(favoriteTeamId(teamId, teamName)) || favoriteTeamAliases(teamName).some((id) => clubs.has(id));
+  }
+
+  function selectFavoriteFixtures(fixtures, favorites) {
+    const leagues = new Set(favorites?.leagues || []);
+    const seen = new Set();
+    return (fixtures || []).filter((fixture) => {
+      const isFavorite = leagues.has(favoriteLeagueId(fixture)) ||
+        isFavoriteTeam(favorites, fixture.homeId, fixture.home) ||
+        isFavoriteTeam(favorites, fixture.awayId, fixture.away);
+      if (!isFavorite) return false;
+      const fixtureKey = fixture?.id != null
+        ? String(fixture.id)
+        : `${fixture?.competition}|${fixture?.kickoff}|${fixture?.home}|${fixture?.away}`;
+      if (seen.has(fixtureKey)) return false;
+      seen.add(fixtureKey);
+      return true;
+    });
+  }
   // These are deliberately neutral UI accents, not inferred club colours. They keep
   // unlisted teams distinguishable while the provider name remains the source of truth.
   function neutralTeamAccent(normalizedName) {
@@ -154,10 +202,8 @@
     let contentAvailabilityRequestId = 0;
     const expandedLeagueGroups = new Set();
     const expandedLeagueGroupCounts = new Map();
-    let activeFixtureLeague = ALL_COMPETITIONS;
     let fixtureMode = "date";
     let fixtureStatus = "all";
-    let fixtureScope = "all";
     let activeFixtureData = null;
     let activeFixtureFilter = null;
     let spoilersRevealed = false;
@@ -173,7 +219,26 @@
     let liveDailyRefreshTimer = null;
     let liveDailyRefreshInFlight = false;
 
-    function fixtureTeam(name, logo, score = "") {
+    function favoriteButton(type, id, label, className = "") {
+      const saved = AM4Favorites.read(localStorage);
+      const aliases = type === "clubs" ? favoriteTeamAliases(label) : [];
+      const selected = AM4Favorites.has(saved, type, id) || aliases.some((alias) => AM4Favorites.has(saved, type, alias));
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `fixture-favorite-button ${className}`.trim();
+      button.dataset.favoriteType = type;
+      button.dataset.favoriteId = id;
+      if (aliases.length) button.dataset.favoriteAliases = aliases.join(",");
+      button.dataset.favoriteLabel = label;
+      button.dataset.favoriteDetail = type === "leagues" ? `${label}の試合を優先表示` : `${label}の試合を優先表示`;
+      button.dataset.favoriteHref = "#fixtures";
+      button.setAttribute("aria-pressed", String(selected));
+      button.setAttribute("aria-label", `${label}をお気に入り${selected ? "から解除" : "に追加"}`);
+      button.textContent = selected ? "★" : "☆";
+      return button;
+    }
+
+    function fixtureTeam(name, logo, score = "", teamId = null) {
       const team = document.createElement("span");
       team.className = "fixture-team";
       const clubName = document.createElement("span");
@@ -183,7 +248,12 @@
       teamScore.className = "fixture-team-score";
       teamScore.textContent = score;
       teamScore.hidden = !score;
-      team.append(teamLogo(name, logo), clubName, teamScore);
+      team.append(
+        teamLogo(name, logo),
+        favoriteButton("clubs", favoriteTeamId(teamId, name), name, "fixture-favorite-button--team"),
+        clubName,
+        teamScore,
+      );
       return team;
     }
 
@@ -317,7 +387,6 @@
         fixtureMode,
         selectedDailyDate,
         activeFixtureFilter || "",
-        fixtureScope,
         fixtureStatus,
         competition,
       ].join("|");
@@ -340,8 +409,17 @@
         }
         groups.get(groupId).fixtures.push(fixture);
       });
-      const prioritizeMajorLeagues = activeFixtureLeague === ALL_COMPETITIONS
-        && fixtureScope === "all";
+      const favoriteFixtures = selectFavoriteFixtures(items, AM4Favorites.read(localStorage));
+      if (favoriteFixtures.length) {
+        groups.set("favorites", {
+          groupId: "favorites",
+          competition: "お気に入り",
+          competitionId: null,
+          competitionCountry: null,
+          fixtures: favoriteFixtures,
+        });
+      }
+      const prioritizeMajorLeagues = true;
       const showMajorLeagueEmptyStates = prioritizeMajorLeagues && fixtureStatus === "all";
       if (showMajorLeagueEmptyStates) {
         const majorLeaguesForEmptyStates = fixtureMode === "round" && Array.isArray(activeFixtureData?.availableLeagues)
@@ -369,6 +447,8 @@
         });
       }
       const orderedGroups = [...groups.values()].sort((left, right) => {
+        if (left.groupId === "favorites") return -1;
+        if (right.groupId === "favorites") return 1;
         const leftFixture = left.fixtures[0] || left;
         const rightFixture = right.fixtures[0] || right;
         if (prioritizeMajorLeagues) {
@@ -381,8 +461,9 @@
         const rightLabel = `${competitionCountryLabel(rightFixture)} ${right.competition}`;
         return leftLabel.localeCompare(rightLabel, "ja");
       });
-      const canPageLeagueGroups = prioritizeMajorLeagues
-        && orderedGroups.length > LEAGUE_GROUP_PREVIEW_LIMIT;
+      // League sections are deliberately one continuous directory. This keeps
+      // the round selector independent from league visibility.
+      const canPageLeagueGroups = false;
       const directoryKey = leagueGroupKey("_directory");
       const visibleGroupLimit = canPageLeagueGroups
         ? Math.min(orderedGroups.length, expandedLeagueGroupCounts.get(directoryKey) || LEAGUE_GROUP_PREVIEW_LIMIT)
@@ -394,9 +475,7 @@
         const groupFixture = fixtures[0] || { competition, competitionId, competitionCountry };
         const isEmpty = fixtures.length === 0;
         if (isEmpty) group.classList.add("fixture-league-group--empty");
-        const canCompact = fixtureMode === "date"
-          && activeFixtureLeague === ALL_COMPETITIONS
-          && fixtures.length > LEAGUE_PREVIEW_LIMIT;
+        const canCompact = fixtureMode === "date" && fixtures.length > LEAGUE_PREVIEW_LIMIT;
         const groupKey = leagueGroupKey(groupId);
         const isExpanded = !canCompact || expandedLeagueGroups.has(groupKey);
         const heading = document.createElement("h3");
@@ -420,8 +499,18 @@
         count.className = "fixture-league-count";
         count.textContent = isEmpty ? "試合なし" : `${fixtures.length}試合`;
         if (isEmpty) count.classList.add("fixture-league-empty-status");
-        if (logo) heading.append(logo, headingCopy, count);
-        else heading.append(headingCopy, count);
+        if (logo) heading.append(logo, headingCopy);
+        else heading.append(headingCopy);
+        if (competition === "お気に入り") {
+          const favoriteMark = document.createElement("span");
+          favoriteMark.className = "fixture-favorite-heading-mark";
+          favoriteMark.setAttribute("aria-hidden", "true");
+          favoriteMark.textContent = "★";
+          heading.append(favoriteMark);
+        } else {
+          heading.append(favoriteButton("leagues", favoriteLeagueId(groupFixture), competition, "fixture-favorite-button--league"));
+        }
+        heading.append(count);
         if (isEmpty) {
           group.append(heading);
           fixturesNode.append(group);
@@ -457,8 +546,8 @@
           teams.className = "fixture-teams";
           const scores = resultPresentation.hidden ? { home: "", away: "" } : fixtureTeamScores(fixture);
           teams.append(
-            fixtureTeam(fixture.home, fixture.homeLogo, scores.home),
-            fixtureTeam(fixture.away, fixture.awayLogo, scores.away),
+            fixtureTeam(fixture.home, fixture.homeLogo, scores.home, fixture.homeId),
+            fixtureTeam(fixture.away, fixture.awayLogo, scores.away, fixture.awayId),
           );
           const scoreboard = document.createElement("div");
           scoreboard.className = "fixture-scoreboard";
@@ -571,35 +660,16 @@
         });
         fixturesNode.append(showMoreGroups);
       }
+      document.dispatchEvent(new CustomEvent("am4:favorites-catalog-updated"));
       requestContentAvailability(items);
     }
 
-    function savedClubFilters() {
-      const saved = AM4Favorites.read(localStorage).clubs;
-      const legacyNames = {
-        "manchester-united": "Manchester United", liverpool: "Liverpool", arsenal: "Arsenal",
-        chelsea: "Chelsea", "manchester-city": "Manchester City", newcastle: "Newcastle United",
-      };
-      return {
-        favoriteClubIds: saved.filter((id) => id.startsWith("team-")),
-        favoriteClubNames: saved.map((id) => legacyNames[id]).filter(Boolean),
-        hasFavorites: saved.length > 0,
-      };
-    }
-
     function visibleFixtures(data) {
-      const saved = savedClubFilters();
-      if (fixtureScope === "favorites" && !saved.hasFavorites) return [];
       const statusFiltered = AM4FootballData.filterFixtures(data.fixtures || [], {
         status: fixtureStatus,
-        favoriteClubIds: fixtureScope === "favorites" ? saved.favoriteClubIds : [],
-        favoriteClubNames: fixtureScope === "favorites" ? saved.favoriteClubNames : [],
         focusOnly: false,
       });
-      const competitionFiltered = fixtureMode === "date" && activeFixtureLeague !== ALL_COMPETITIONS
-        ? statusFiltered.filter((fixture) => fixture.competition === activeFixtureLeague)
-        : statusFiltered;
-      return AM4FootballData.sortDailyFixtures(competitionFiltered);
+      return AM4FootballData.sortDailyFixtures(statusFiltered);
     }
 
     function shiftDate(dateKey, days) {
@@ -643,12 +713,6 @@
       return Boolean(roundKey) && (data?.rounds || []).some((round) => round.key === roundKey);
     }
 
-    function setLeagueButtons() {
-      document.querySelectorAll(".league-tab").forEach((button) => {
-        button.setAttribute("aria-pressed", String(button.dataset.league === activeFixtureLeague));
-      });
-    }
-
     function renderFilterTabs(options) {
       fixtureFilters.replaceChildren(...options.map((option) => {
         const button = document.createElement("button");
@@ -680,10 +744,7 @@
         : allVisible;
       renderFixtures(fixtures);
       const statusLabel = { upcoming: "今後", live: "ライブ", finished: "終了", all: "全試合" }[fixtureStatus];
-      const scopeLabel = fixtureScope === "favorites" ? "お気に入り" : "すべて";
-      const competitionLabel = activeFixtureLeague === ALL_COMPETITIONS
-        ? (fixtureMode === "round" ? "5大リーグ" : "全大会")
-        : activeFixtureLeague;
+      const competitionLabel = fixtureMode === "round" ? "5大リーグ" : "全大会";
       const unavailableRoundLeagues = fixtureMode === "round"
         ? activeFixtureData?.unavailableLeagues || []
         : [];
@@ -691,19 +752,15 @@
         ? ` · ${unavailableRoundLeagues.join(" / ")}は取得できません`
         : "";
       const dateLabel = new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", month: "long", day: "numeric", weekday: "short" }).format(new Date(`${selectedDailyDate}T12:00:00Z`));
-      const displayOrderLabel = activeFixtureLeague === ALL_COMPETITIONS && fixtureScope === "all"
-        ? "5大リーグ優先・リーグ内は時間順"
-        : "リーグごとに時間順";
+      const displayOrderLabel = "5大リーグ優先・リーグ内は時間順";
       if (fixtureOrderLabel) fixtureOrderLabel.textContent = displayOrderLabel;
       fixturesStatus.textContent = fixtures.length
         ? fixtureMode === "date"
-          ? `${dateLabel} · ${competitionLabel} · ${statusLabel} · ${scopeLabel} · ${fixtures.length}試合 · ${displayOrderLabel} · ${updatedAt()}更新`
+          ? `${dateLabel} · ${competitionLabel} · ${statusLabel} · ${fixtures.length}試合 · ${displayOrderLabel} · ${updatedAt()}更新`
           : `${competitionLabel} · ${activeFixtureFilter || "節未選択"} · ${statusLabel} · ${fixtures.length}試合${unavailableLabel}`
-        : fixtureScope === "favorites" && !savedClubFilters().hasFavorites
-          ? "試合詳細からクラブを保存すると、該当試合だけを表示できます"
-          : fixtureMode === "date"
-            ? `${dateLabel}は、選択条件に該当する試合がありません`
-            : `${competitionLabel}の選択条件に該当する試合はありません${unavailableLabel}`;
+        : fixtureMode === "date"
+          ? `${dateLabel}は、選択条件に該当する試合がありません`
+          : `${competitionLabel}の選択条件に該当する試合はありません${unavailableLabel}`;
     }
 
     function clearLiveDailyRefresh() {
@@ -771,7 +828,6 @@
       activeFixtureFilter = date;
       activeFixtureData = data;
       fixturesSource.hidden = true;
-      setLeagueButtons();
       renderFixtureView();
       if (typeof onDailyData === "function") onDailyData({ date, data });
       scheduleLiveDailyRefresh();
@@ -811,44 +867,18 @@
       fixturesStatus.textContent = `${date}の${message}。架空の試合は表示していません。`;
     }
 
-    function useFixtureData(league, data) {
+    function useFixtureData(data) {
       clearLiveDailyRefresh();
-      if (league !== ALL_COMPETITIONS) leagueCache.set(league, data);
       fixtureMode = "round";
-      activeFixtureLeague = league;
       activeFixtureData = data;
       if (!hasRound(data, activeFixtureFilter)) activeFixtureFilter = defaultRoundFilter(data);
       fixturesSource.hidden = true;
-      setLeagueButtons();
       renderFixtureView();
-    }
-
-    async function loadFixtureLeague(league) {
-      clearLiveDailyRefresh();
-      activeFixtureLeague = league;
-      activeFixtureData = null;
-      setLeagueButtons();
-      fixtureFilters.replaceChildren();
-      fixturesNode.replaceChildren();
-      fixturesStatus.textContent = `${league}の節別日程を読み込んでいます`;
-      try {
-        const data = leagueCache.get(league) || await client.fixtures(league);
-        if (data.errors && Object.keys(data.errors).length) throw new Error("provider returned errors");
-        if (!Array.isArray(data.fixtures)) throw new Error("invalid fixture response");
-        if (fixtureMode === "round" && activeFixtureLeague === league) useFixtureData(league, data);
-      } catch (error) {
-        if (fixtureMode === "round" && activeFixtureLeague === league) {
-          showFallback(`${league}を取得できないため、画面確認用サンプルを表示しています`);
-        }
-        console.warn("Fixture league unavailable.", error);
-      }
     }
 
     async function loadAllRoundFixtures() {
       clearLiveDailyRefresh();
-      activeFixtureLeague = ALL_COMPETITIONS;
       activeFixtureData = null;
-      setLeagueButtons();
       fixtureFilters.replaceChildren();
       fixturesNode.replaceChildren();
       fixturesSource.hidden = true;
@@ -860,7 +890,7 @@
         leagueCache.set(league, data);
         return { league, data };
       }));
-      if (fixtureMode !== "round" || activeFixtureLeague !== ALL_COMPETITIONS) return;
+      if (fixtureMode !== "round") return;
       const availableData = results
         .filter((result) => result.status === "fulfilled")
         .map((result) => result.value);
@@ -869,7 +899,7 @@
         roundData.unavailableLeagues = results
           .map((result, index) => result.status === "rejected" ? ROUND_LEAGUES[index] : null)
           .filter(Boolean);
-        useFixtureData(ALL_COMPETITIONS, roundData);
+        useFixtureData(roundData);
       } else {
         showFallback("5大リーグの節別日程を取得できないため、画面確認用サンプルを表示しています");
       }
@@ -886,18 +916,6 @@
       renderFixtures(fallbackFixtures, "SAMPLE");
     }
 
-    document.querySelectorAll(".league-tab").forEach((button) => button.addEventListener("click", () => {
-      activeFixtureLeague = button.dataset.league;
-      setLeagueButtons();
-      if (fixtureMode === "date") {
-        renderFixtureView();
-      } else if (activeFixtureLeague === ALL_COMPETITIONS) {
-        loadAllRoundFixtures();
-      } else {
-        loadFixtureLeague(activeFixtureLeague);
-      }
-    }));
-
     document.querySelectorAll(".fixture-mode-tab").forEach((button) => button.addEventListener("click", () => {
       fixtureMode = button.dataset.fixtureMode;
       clearLiveDailyRefresh();
@@ -905,8 +923,7 @@
       if (fixtureMode === "date") {
         loadFixtureDate(selectedDailyDate);
       } else {
-        if (activeFixtureLeague === ALL_COMPETITIONS) loadAllRoundFixtures();
-        else loadFixtureLeague(activeFixtureLeague);
+        loadAllRoundFixtures();
       }
     }));
 
@@ -928,12 +945,6 @@
       }
     }));
 
-    document.querySelectorAll(".fixture-scope-tab").forEach((button) => button.addEventListener("click", () => {
-      fixtureScope = button.dataset.fixtureScope;
-      document.querySelectorAll(".fixture-scope-tab").forEach((item) => item.setAttribute("aria-pressed", String(item === button)));
-      if (activeFixtureData) renderFixtureView();
-    }));
-
     spoilerToggle?.addEventListener("click", () => {
       spoilersRevealed = !spoilersRevealed;
       spoilerToggle.setAttribute("aria-pressed", String(spoilersRevealed));
@@ -953,7 +964,7 @@
     });
 
     document.addEventListener("am4:favorites-changed", () => {
-      if (activeFixtureData && fixtureScope === "favorites") renderFixtureView();
+      if (activeFixtureData) renderFixtureView();
     });
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState !== "visible") {
@@ -971,5 +982,5 @@
     return { renderFixtures, useDailyData, loadFixtureDate, showDailyUnavailable, useFixtureData, showFallback };
   }
 
-  return { create, mergeRoundFixtureData, roundLeagueNames: ROUND_LEAGUES };
+  return { create, mergeRoundFixtureData, roundLeagueNames: ROUND_LEAGUES, selectFavoriteFixtures };
 });

@@ -30,9 +30,18 @@ test("provider club references remain stable when saved locally", () => {
 
 test("normalisation removes duplicates and unsupported values", () => {
   assert.deepEqual(
-    favorites.normalize({ clubs: ["arsenal", "arsenal", null], players: "bad" }),
-    { clubs: ["arsenal"], players: [], articles: [] },
+    favorites.normalize({ leagues: ["league-39", "league-39", null], clubs: ["arsenal", "arsenal", null], players: "bad" }),
+    { leagues: ["league-39"], clubs: ["arsenal"], players: [], articles: [] },
   );
+});
+
+test("league favourites persist separately from club favourites", () => {
+  const storage = memoryStorage();
+  favorites.toggle(storage, "leagues", "league-39");
+  favorites.toggle(storage, "clubs", "team-40");
+  assert.deepEqual(favorites.read(storage), {
+    leagues: ["league-39"], clubs: ["team-40"], players: [], articles: [],
+  });
 });
 
 test("count includes all supported favourite types", () => {
