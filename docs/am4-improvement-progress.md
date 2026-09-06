@@ -129,9 +129,23 @@ Work began only after the Phase 1 suite above passed.
 - `node --check match-detail.js match-detail-loader.js match-archive.js editorial-list.js lib/article-store.js lib/notion-content-sync.js api/articles.js` — passed.
 - `git diff --check` — passed.
 - Independent code review passed after correcting the archive description to say that current match data is unavailable, rather than assuming every case is outside the provider date window.
-- Local Chromium viewport check at `390×844` and full-page check against the public Ipswich archive article route confirmed the archive header, both published editorial sections, and semantic list rendering. Screenshots: `/tmp/am4-local-ipswich-390-correct.png`, `/tmp/am4-local-ipswich-390-full.png`. This is Chromium viewport evidence, not iPhone Safari verification.
+- Local Chromium viewport check at `390×844` against the public Ipswich archive article route confirmed the archive header, both published editorial sections, and semantic list rendering. Screenshot: `docs/screenshots/am4-local-ipswich-archive-390.png`. This is Chromium viewport evidence, not iPhone Safari verification.
 
 ### Release state
 
 - Commits prepared: `959ba5d Restore public archived match editorials`; `337399c Normalize editorial list numbering`.
 - Production fast-forward/deployment and post-deploy browser confirmation remain pending at the time of this entry.
+
+### Production release verification
+
+- `am4-production` was fast-forwarded from `cb182d7` to `1a2d079` and pushed to `origin/am4-production`. The Vercel commit status for `1a2d079` completed with `success` in the Production environment.
+- Production `match.html` now references the cache-busting `20260907-archive-match-v2` and `20260907-editorial-list-v2` assets.
+- Read-only production API checks:
+  - `GET /api/fixtures?date=2026-09-04` returned 215 current fixtures and zero Ipswich–Liverpool matches.
+  - Public Match Key lookup returned exactly one `published` / `public: true` Ipswich Town v Liverpool prediction and exactly one `published` / `public: true` report, despite that missing fixture response.
+- Chromium production viewport checks, with screenshots opened and inspected:
+  - `390×844`: Getafe v Celta Vigo rendered its normal provider fixture and the existing AM4 prediction; Ipswich Town v Liverpool rendered `AM4 ARCHIVE` with its prediction and report.
+  - `390×4000`: the Ipswich report's affected legacy lists rendered as semantic local sequences (`1.`, `2.`), not stale `35.`, `36.`, or concatenated `35.36` values.
+  - `1440×1100`: the Ipswich archive card, archive-only navigation, and editorial layout rendered without a desktop regression.
+  - Screenshots: `docs/screenshots/am4-production-getafe-celta-390.png`, `docs/screenshots/am4-production-ipswich-archive-390.png`, `docs/screenshots/am4-production-ipswich-archive-full.png`, `docs/screenshots/am4-production-ipswich-archive-1440.png`.
+- This confirms Chrome/Chromium rendering only; it is not an iPhone Safari or physical-device claim.
