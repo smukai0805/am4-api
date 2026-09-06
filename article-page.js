@@ -252,6 +252,21 @@
     const saveStatus = document.createElement("p");
     saveStatus.className = "article-save-status";
     saveStatus.setAttribute("aria-live", "polite");
+    const archiveKey = window.AM4MatchArchive?.isPublishedMatchEditorial(article)
+      ? window.AM4MatchArchive.canonicalMatchKey(article.match)
+      : null;
+    const archiveLink = archiveKey ? document.createElement("a") : null;
+    if (archiveLink) {
+      const params = new URLSearchParams({
+        article: article.id,
+        matchKey: archiveKey,
+      });
+      const fixtureId = Number(article.match?.fixtureId);
+      if (Number.isInteger(fixtureId) && fixtureId > 0) params.set("id", String(fixtureId));
+      archiveLink.className = "brand-button article-match-link";
+      archiveLink.href = `/match.html?${params}#overview`;
+      archiveLink.textContent = "試合アーカイブを開く";
+    }
 
     const body = document.createElement("div");
     body.className = "article-body";
@@ -261,6 +276,7 @@
     renderArticleTags(body, article);
     const actions = document.createElement("div");
     actions.className = "article-actions article-footer-actions";
+    if (archiveLink) actions.append(archiveLink);
     actions.append(save, saveStatus);
     body.append(actions);
     const related = document.createElement("section");

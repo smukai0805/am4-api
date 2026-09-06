@@ -2,7 +2,10 @@
   "use strict";
 
   const page = document.getElementById("match-page");
-  const fixtureId = new URLSearchParams(window.location.search).get("id");
+  const query = new URLSearchParams(window.location.search);
+  const fixtureId = query.get("id");
+  const archiveArticleQueryId = query.get("article");
+  const archiveMatchKey = query.get("matchKey");
   const locale = document.documentElement.lang.toLowerCase().startsWith("en") ? "en" : "ja";
   const text = (value, fallback = "—") => value == null || value === "" ? fallback : String(value);
   const UI = {
@@ -11,9 +14,9 @@
       eventDescription: "試合終了からキックオフへ遡って表示", lineupDescription: "フォーメーション、監督、登録選手", statsDescription: "チーム比較", standingsDescription: "この対戦のリーグ内での現在地",
       home: "ホーム", away: "アウェイ", assist: "アシスト", goal: "ゴール", yellow_card: "イエローカード", red_card: "レッドカード", substitution: "選手交代",
       penalty: "PK", penalty_missed: "PK失敗", own_goal: "オウンゴール", var: "VAR", other: "イベント", second_yellow: "2枚目のイエローカード",
-      preview: "MATCH PREVIEW", live: "LIVE MATCH", summary: "MATCH SUMMARY", prediction: "AM4 PREDICTION", matchSummary: "AM4 MATCH SUMMARY",
+      preview: "MATCH PREVIEW", live: "LIVE MATCH", summary: "MATCH SUMMARY", archive: "AM4 ARCHIVE", prediction: "AM4 PREDICTION", matchSummary: "AM4 MATCH SUMMARY",
       score: "SCORE", goals: "GOALS", cards: "CARDS", predictionPending: "AM4の試合予想は公開準備中です。", reportPending: "AM4の試合解説は公開準備中です。",
-      priorPrediction: "試合前のAM4予想を読む", previewDescription: "AM4の予想と、試合の見どころをまとめています。", liveDescription: "現在の試合状況と、試合前の見立てを確認できます。", summaryDescription: "結果と試合の要点を短時間で確認できます。",
+      priorPrediction: "試合前のAM4予想を読む", previewDescription: "AM4の予想と、試合の見どころをまとめています。", liveDescription: "現在の試合状況と、試合前の見立てを確認できます。", summaryDescription: "結果と試合の要点を短時間で確認できます。", archiveDescription: "現在の試合データを取得できないため、公開済みAM4記事のみを表示しています。試合結果・イベント・ラインナップはこのアーカイブには保存されていません。",
       threeLine: "3行要約", previousReview: "前節レビュー", adjustments: "前節からの修正", tacticalMatchup: "戦術的な噛み合わせ", keyPlayers: "キープレイヤー", absences: "欠場情報", matchOutlook: "予想される試合展開", rationale: "予想の根拠",
       turningPoints: "試合を分けたポイント", firstHalf: "前半レビュー", secondHalf: "後半レビュー", tactics: "戦術分析", individualPerformance: "個人パフォーマンス", resultMeaning: "結果の意味", nextMatchFocus: "次戦への課題",
       pick: "本命", confidence: "確信度", kickoff: "KICK OFF", fullTime: "試合終了", halfTime: "前半終了", firstHalfFlow: "前半の流れ", secondHalfFlow: "後半の流れ", liveUpdate: "15秒ごとに更新", halftime: "前半", venue: "会場", referee: "主審", noEvents: "この試合では記録されたイベントはありません。", noLineups: "ラインナップはまだ発表されていません。", noStats: "比較できるチームスタッツはありません。", standingsLoading: "順位表を読み込んでいます。", noStandings: "この大会には順位表がありません。", standingsUnavailable: "順位表を取得できませんでした。", champions_league: "チャンピオンズリーグ", europa_league: "ヨーロッパリーグ", conference_league: "カンファレンスリーグ", relegation: "降格",
@@ -23,16 +26,16 @@
       eventDescription: "Follow the match from full-time back to kick-off", lineupDescription: "Formation, coach and squad", statsDescription: "Team comparison", standingsDescription: "Where these two teams sit in this competition",
       home: "Home", away: "Away", assist: "ASSIST", goal: "Goal", yellow_card: "Yellow Card", red_card: "Red Card", substitution: "Substitution",
       penalty: "Penalty", penalty_missed: "Penalty Missed", own_goal: "Own Goal", var: "VAR", other: "Event", second_yellow: "Second Yellow",
-      preview: "MATCH PREVIEW", live: "LIVE MATCH", summary: "MATCH SUMMARY", prediction: "AM4 PREDICTION", matchSummary: "AM4 MATCH SUMMARY",
+      preview: "MATCH PREVIEW", live: "LIVE MATCH", summary: "MATCH SUMMARY", archive: "AM4 ARCHIVE", prediction: "AM4 PREDICTION", matchSummary: "AM4 MATCH SUMMARY",
       score: "SCORE", goals: "GOALS", cards: "CARDS", predictionPending: "AM4 prediction is being prepared.", reportPending: "AM4 match analysis is being prepared.",
-      priorPrediction: "Read the pre-match AM4 prediction", previewDescription: "AM4 prediction and the key matchups.", liveDescription: "Follow the score and revisit the pre-match view.", summaryDescription: "The result and decisive moments, at a glance.",
+      priorPrediction: "Read the pre-match AM4 prediction", previewDescription: "AM4 prediction and the key matchups.", liveDescription: "Follow the score and revisit the pre-match view.", summaryDescription: "The result and decisive moments, at a glance.", archiveDescription: "Current match data is unavailable. Showing only published AM4 editorial; scores, events, and line-ups were not retained in this archive.",
       threeLine: "Three-line summary", previousReview: "Previous-match review", adjustments: "Expected adjustments", tacticalMatchup: "Tactical matchup", keyPlayers: "Key players", absences: "Absences", matchOutlook: "Expected match flow", rationale: "Why AM4 sees it this way",
       turningPoints: "Decisive moments", firstHalf: "First-half review", secondHalf: "Second-half review", tactics: "Tactical analysis", individualPerformance: "Individual performances", resultMeaning: "What the result means", nextMatchFocus: "Next-match focus",
       pick: "Pick", confidence: "Confidence", kickoff: "KICK OFF", fullTime: "FULL TIME", halfTime: "HALF TIME", firstHalfFlow: "FIRST-HALF FLOW", secondHalfFlow: "SECOND-HALF FLOW", liveUpdate: "updates every 15 seconds", halftime: "Half-time", venue: "Venue", referee: "Referee", noEvents: "No recorded events for this match.", noLineups: "Line-ups have not been announced.", noStats: "Comparable team stats are not available.", standingsLoading: "Loading standings.", noStandings: "This competition does not have a standings table.", standingsUnavailable: "Standings could not be loaded.", champions_league: "Champions League", europa_league: "Europa League", conference_league: "Conference League", relegation: "Relegation",
     },
   };
   const t = (key) => UI[locale][key] || key;
-  const statusLabels = { NS: ["開催予定", "Scheduled"], TBD: ["日時未定", "Date TBD"], FT: ["試合終了", "Full-time"], AET: ["延長終了", "After extra time"], PEN: ["PK戦終了", "Penalties"], HT: ["ハーフタイム", "Half-time"], "1H": ["前半", "First half"], "2H": ["後半", "Second half"], ET: ["延長戦", "Extra time"], BT: ["休憩", "Break"], P: ["PK戦", "Penalties"], LIVE: ["試合中", "Live"], INT: ["中断", "Interrupted"], PST: ["延期", "Postponed"], CANC: ["中止", "Cancelled"], ABD: ["中断", "Abandoned"], SUSP: ["中断", "Suspended"], AWD: ["没収試合", "Awarded"], WO: ["不戦勝", "Walkover"] };
+  const statusLabels = { NS: ["開催予定", "Scheduled"], TBD: ["日時未定", "Date TBD"], FT: ["試合終了", "Full-time"], AET: ["延長終了", "After extra time"], PEN: ["PK戦終了", "Penalties"], HT: ["ハーフタイム", "Half-time"], "1H": ["前半", "First half"], "2H": ["後半", "Second half"], ET: ["延長戦", "Extra time"], BT: ["休憩", "Break"], P: ["PK戦", "Penalties"], LIVE: ["試合中", "Live"], INT: ["中断", "Interrupted"], PST: ["延期", "Postponed"], CANC: ["中止", "Cancelled"], ABD: ["中断", "Abandoned"], SUSP: ["中断", "Suspended"], AWD: ["没収試合", "Awarded"], WO: ["不戦勝", "Walkover"], ARCHIVE: ["公開済みアーカイブ", "Published archive"] };
   const statLabels = {
     "Shots on Goal": "枠内シュート", "Shots off Goal": "枠外シュート", "Total Shots": "シュート数", "Blocked Shots": "ブロックされたシュート",
     "Shots insidebox": "ペナルティエリア内", "Shots outsidebox": "ペナルティエリア外", Fouls: "ファウル", "Corner Kicks": "コーナーキック",
@@ -644,9 +647,13 @@
   }
 
   function kickoffLabel(fixture) {
-    return fixture.kickoff
-      ? new Intl.DateTimeFormat(locale === "ja" ? "ja-JP" : "en-GB", { timeZone: "Asia/Tokyo", year: "numeric", month: "long", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(fixture.kickoff))
-      : "—";
+    if (fixture.kickoff) {
+      return new Intl.DateTimeFormat(locale === "ja" ? "ja-JP" : "en-GB", { timeZone: "Asia/Tokyo", year: "numeric", month: "long", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(fixture.kickoff));
+    }
+    if (/^\d{4}-\d{2}-\d{2}$/.test(String(fixture?.date || ""))) {
+      return new Intl.DateTimeFormat(locale === "ja" ? "ja-JP" : "en-GB", { timeZone: "Asia/Tokyo", year: "numeric", month: "long", day: "numeric", weekday: "short" }).format(new Date(`${fixture.date}T12:00:00Z`));
+    }
+    return "—";
   }
 
   function isLiveFixture(fixture) {
@@ -701,7 +708,10 @@
   function renderNavigation() {
     const nav = node("nav", "match-anchor-nav");
     nav.setAttribute("aria-label", locale === "ja" ? "試合詳細のセクション" : "Match detail sections");
-    [["overview", t("overview")], ["events", t("events")], ["lineups", t("lineups")], ["statistics", t("statistics")], ["standings", t("standings")]].forEach(([id, label]) => {
+    const panels = currentDetail?.archive
+      ? [["overview", t("overview")]]
+      : [["overview", t("overview")], ["events", t("events")], ["lineups", t("lineups")], ["statistics", t("statistics")], ["standings", t("standings")]];
+    panels.forEach(([id, label]) => {
       const button = node("button", "", label);
       button.type = "button";
       button.dataset.matchPanel = id;
@@ -713,6 +723,7 @@
   }
 
   function renderActivePanel(detail) {
+    if (detail.archive) return renderArchiveOverview(detail, currentEditorial);
     if (activePanel === "overview") return renderOverview(detail, currentEditorial);
     if (activePanel === "lineups") return renderLineups(detail);
     if (activePanel === "statistics") return renderStatistics(detail);
@@ -788,6 +799,141 @@
 
   function isNotionEditorial(article, type) {
     return article?.contentKind === `notion_${type}` && Boolean(article?.notion?.pageId);
+  }
+
+  const ARCHIVE_FIXTURE_STORAGE_PREFIX = "am4:fixture-identity:";
+  const ARCHIVE_FIXTURE_MAX_AGE_MS = 180 * 24 * 60 * 60 * 1000;
+
+  function validFixtureId(value) {
+    const id = Number(value);
+    return Number.isInteger(id) && id > 0 ? id : null;
+  }
+
+  function archiveCanonicalKey(value) {
+    return window.AM4MatchArchive?.canonicalMatchKey(value) || null;
+  }
+
+  function parsedArchiveArticleId() {
+    const id = String(archiveArticleQueryId || "").trim();
+    return /^[a-z0-9][a-z0-9._-]{0,180}$/i.test(id) ? id : null;
+  }
+
+  function rememberFixtureIdentity(fixture) {
+    const id = validFixtureId(fixture?.id);
+    const canonicalKey = archiveCanonicalKey(fixture);
+    if (!id || !canonicalKey) return;
+    try {
+      localStorage.setItem(`${ARCHIVE_FIXTURE_STORAGE_PREFIX}${id}`, JSON.stringify({
+        fixtureId: id,
+        canonicalKey,
+        savedAt: Date.now(),
+      }));
+    } catch (_error) {
+      // Archive recovery is an enhancement. A storage restriction must never
+      // affect the normal provider-backed detail page.
+    }
+  }
+
+  function savedFixtureCanonicalKey(id) {
+    const fixtureId = validFixtureId(id);
+    if (!fixtureId) return null;
+    try {
+      const value = JSON.parse(localStorage.getItem(`${ARCHIVE_FIXTURE_STORAGE_PREFIX}${fixtureId}`) || "null");
+      if (value?.fixtureId !== fixtureId || !Number.isFinite(value?.savedAt) || Date.now() - value.savedAt > ARCHIVE_FIXTURE_MAX_AGE_MS) return null;
+      return archiveCanonicalKey(value.canonicalKey);
+    } catch (_error) {
+      return null;
+    }
+  }
+
+  async function publicArchiveItems(criteria) {
+    const fixture = validFixtureId(criteria?.fixtureId);
+    const canonicalKey = archiveCanonicalKey(criteria?.canonicalKey || criteria?.matchKey);
+    if (!fixture && !canonicalKey) return [];
+    const types = ["match_prediction", "match_report"];
+    const results = await Promise.allSettled(types.map((type) => client.articles({
+      type,
+      ...(fixture ? { fixtureId: fixture } : { matchKey: canonicalKey }),
+      pageSize: 100,
+    })));
+    const archive = window.AM4MatchArchive.archiveArticlesFromSettled(results, types);
+    if (archive.unavailable) throw new Error("Published AM4 match archive unavailable");
+    return archive;
+  }
+
+  function hasArchiveEditorial(editorials) {
+    return Boolean(editorials?.prediction || editorials?.report);
+  }
+
+  async function archiveResolutionFor(criteria) {
+    const requestedArticleId = criteria?.articleId || null;
+    let anchor = null;
+    if (requestedArticleId) {
+      try {
+        const response = await client.article(requestedArticleId);
+        anchor = response?.article || null;
+      } catch (error) {
+        if (responseWasMissing(error)) return { state: "absent" };
+        throw error;
+      }
+      if (!window.AM4MatchArchive.isPublishedMatchEditorial(anchor)) return { state: "absent" };
+    }
+    const anchorKey = anchor ? archiveCanonicalKey(anchor.match) : null;
+    const canonicalKey = anchorKey || archiveCanonicalKey(criteria?.canonicalKey || criteria?.matchKey);
+    if (anchor && criteria?.canonicalKey && canonicalKey !== archiveCanonicalKey(criteria.canonicalKey)) return { state: "absent" };
+    const fixture = validFixtureId(criteria?.fixtureId);
+    if (!anchor && !fixture && !canonicalKey) return { state: "absent" };
+
+    let archiveItems = anchor ? [anchor] : [];
+    let unavailableTypes = [];
+    try {
+      const archive = await publicArchiveItems(fixture && !canonicalKey ? { fixtureId: fixture } : { canonicalKey });
+      archiveItems.push(...archive.items);
+      unavailableTypes = archive.unavailableTypes || [];
+    } catch (error) {
+      unavailableTypes = ["match_prediction", "match_report"];
+      if (!anchor) throw error;
+    }
+    const editorials = window.AM4MatchArchive.resolveArchiveEditorials(archiveItems, {
+      ...(fixture && !canonicalKey ? { fixtureId: fixture } : { canonicalKey }),
+      ...(anchor ? { articleId: anchor.id } : {}),
+    });
+    if (editorials.ambiguous || editorials.anchorMismatch) return { state: "unavailable" };
+    const archiveErrors = Object.fromEntries(unavailableTypes
+      .filter((type) => !(type === "match_prediction" ? editorials.prediction : editorials.report))
+      .map((type) => [type, "unavailable"]));
+    if (!hasArchiveEditorial(editorials)) return Object.keys(archiveErrors).length ? { state: "unavailable" } : { state: "absent" };
+    return {
+      state: "ready",
+      editorials,
+      errors: archiveErrors,
+    };
+  }
+
+  async function archivedDetailFallback() {
+    const attempts = [];
+    const id = validFixtureId(fixtureId);
+    // Preserve the provider-first path. These fallback locators are only used
+    // after it cannot return a fixture, and all archive reads remain public.
+    if (id) attempts.push({ fixtureId: id });
+    const savedKey = savedFixtureCanonicalKey(id);
+    if (savedKey) attempts.push({ canonicalKey: savedKey });
+    const urlKey = archiveCanonicalKey(archiveMatchKey);
+    if (urlKey && urlKey !== savedKey) attempts.push({ canonicalKey: urlKey });
+    const articleId = parsedArchiveArticleId();
+    if (articleId) attempts.push({ articleId, ...(urlKey ? { canonicalKey: urlKey } : {}) });
+
+    let unavailable = false;
+    for (const criteria of attempts) {
+      try {
+        const result = await archiveResolutionFor(criteria);
+        if (result.state === "ready") return result;
+        if (result.state === "unavailable") unavailable = true;
+      } catch (_error) {
+        unavailable = true;
+      }
+    }
+    return { state: unavailable ? "unavailable" : "absent" };
   }
 
   async function fullEditorialArticle(type, fixture) {
@@ -1075,6 +1221,30 @@
     return content;
   }
 
+  function renderArchiveOverview(detail, editorial = currentEditorial) {
+    const overview = section("overview", t("archive"), t("archiveDescription"));
+    if (editorial.prediction) overview.append(predictionPanel(editorial.prediction));
+    if (editorial.report) overview.append(reportPanel(editorial.report));
+    ["match_prediction", "match_report"].forEach((type) => {
+      const property = type === "match_prediction" ? "prediction" : "report";
+      if (!editorial[property] && editorial.errors?.[type]) {
+        const pending = node("div", "match-editorial-pending");
+        pending.append(node("p", "", locale === "ja"
+          ? "公開済み記事の照合が一時的に完了していません。未公開とは限りません。"
+          : "Published editorial matching is temporarily incomplete; this does not mean it is unpublished."));
+        const retry = node("button", "lineup-retry", t("retry"));
+        retry.type = "button";
+        retry.addEventListener("click", () => { void load(); });
+        pending.append(retry);
+        overview.append(pending);
+      }
+    });
+    if (!editorial.prediction && !editorial.report) {
+      overview.append(node("p", "match-editorial-pending", locale === "ja" ? "公開済みのAM4記事は見つかりませんでした。" : "No published AM4 editorial was found."));
+    }
+    return overview;
+  }
+
   function renderOverview(detail, editorial = currentEditorial) {
     const fixture = detail.fixture;
     const group = matchGroup(fixture);
@@ -1234,14 +1404,59 @@
     }
   }
 
+  function showArchiveDetail(result) {
+    const archive = window.AM4MatchArchive.fixtureFromArchiveEditorials(result.editorials);
+    if (!archive?.fixture) return false;
+    currentDetail = {
+      ...archive,
+      events: null,
+      lineups: null,
+      statistics: null,
+      eventIntegrity: { teamAssociation: null, goalScore: "unavailable" },
+      availability: { events: false, lineups: false, statistics: false },
+    };
+    currentEditorial = {
+      prediction: result.editorials.prediction,
+      report: result.editorials.report,
+      loading: false,
+      errors: result.errors || {},
+    };
+    currentStandings = { state: "idle", data: null };
+    activePanel = "overview";
+    render(currentDetail);
+    return true;
+  }
+
   async function load() {
-    if (!/^[1-9]\d*$/.test(fixtureId || "")) { state(locale === "ja" ? "試合が指定されていません" : "No match selected", locale === "ja" ? "試合一覧から試合を選んでください。" : "Choose a match from the match list."); return; }
-    state(locale === "ja" ? "試合情報を読み込み中" : "Loading match", locale === "ja" ? "イベント、ラインナップ、スタッツを準備しています。" : "Preparing events, line-ups and stats.");
-    try {
-      client = AM4FootballData.createClient(fetch, AM4SiteConfig.resolveApiBase(window.location.hostname));
-      const detail = await client.fixtureDetail(fixtureId);
-      if (!detail || !detail.fixture) { state(locale === "ja" ? "試合が見つかりません" : "Match not found", locale === "ja" ? "指定された試合は見つかりませんでした。" : "The requested match could not be found."); return; }
-      currentDetail = detail;
+    const requestedFixtureId = validFixtureId(fixtureId);
+    const archiveLocator = Boolean(parsedArchiveArticleId() || archiveCanonicalKey(archiveMatchKey));
+    if (!requestedFixtureId && !archiveLocator) {
+      state(locale === "ja" ? "試合が指定されていません" : "No match selected", locale === "ja" ? "試合一覧または公開済み記事から試合を選んでください。" : "Choose a match from the match list or a published article.");
+      return;
+    }
+    const loader = window.AM4MatchDetailLoader?.loadMatchWithArchiveFallback;
+    if (!loader) {
+      state(locale === "ja" ? "試合情報を取得できませんでした" : "Could not load match", locale === "ja" ? "必要な表示モジュールを読み込めませんでした。時間をおいて、もう一度お試しください。" : "A required display module could not load. Please try again shortly.", true);
+      return;
+    }
+    state(locale === "ja" ? "試合情報を読み込み中" : "Loading match", locale === "ja" ? "試合情報と公開済みAM4記事を確認しています。" : "Checking match data and published AM4 editorial.");
+    client = AM4FootballData.createClient(fetch, AM4SiteConfig.resolveApiBase(window.location.hostname));
+    const result = await loader({
+      fixtureId: requestedFixtureId,
+      hasArchiveLocator: archiveLocator,
+      readFixture: async (id) => {
+        try {
+          return await client.fixtureDetail(id);
+        } catch (error) {
+          console.warn("Fixture detail unavailable; checking the public AM4 archive.", error);
+          throw error;
+        }
+      },
+      readArchive: archivedDetailFallback,
+    });
+    if (result.state === "fixture") {
+      currentDetail = result.detail;
+      rememberFixtureIdentity(result.detail.fixture);
       currentEditorial = { prediction: null, report: null, loading: true };
       currentStandings = { state: "loading", data: null };
       render(currentDetail);
@@ -1251,10 +1466,18 @@
       // can never hide the API-FOOTBALL facts already rendered above.
       void refreshEditorialForFixture(currentDetail.fixture);
       void refreshStandingsForFixture(currentDetail.fixture);
-    } catch (error) {
-      console.warn("Fixture detail unavailable.", error);
-      state(locale === "ja" ? "試合情報を取得できませんでした" : "Could not load match", locale === "ja" ? "時間をおいて、もう一度お試しください。" : "Please try again shortly.", true);
+      return;
     }
+    if (result.state === "archive" && showArchiveDetail(result.archive)) return;
+    if (result.state === "archive-unavailable") {
+      state(locale === "ja" ? "公開済み記事を照合できませんでした" : "Could not verify published editorial", locale === "ja" ? "一時的な取得障害の可能性があります。時間をおいて、もう一度お試しください。" : "This may be a temporary retrieval problem. Please try again shortly.", true);
+      return;
+    }
+    if (result.state === "absent") {
+      state(locale === "ja" ? "試合が見つかりません" : "Match not found", locale === "ja" ? "指定された試合、または一致する公開済み記事は見つかりませんでした。" : "The requested match or matching published editorial was not found.");
+      return;
+    }
+    state(locale === "ja" ? "試合情報を取得できませんでした" : "Could not load match", locale === "ja" ? "時間をおいて、もう一度お試しください。" : "Please try again shortly.", true);
   }
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState !== "visible") {

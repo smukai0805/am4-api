@@ -8,6 +8,7 @@
 //
 // GET /api/articles?type=match_report&fixtureId=123&page=1&pageSize=10
 //   … 一覧(新着順、種別・fixture ID絞り込み可)
+// GET /api/articles?type=match_report&matchKey=...          … 公開済み試合アーカイブをMatch Keyで照合
 // GET /api/articles?id=<slug>                              … 個別記事
 // GET /api/articles?trending=1                             … 急上昇選手ランキング(表示用、軽量)
 // GET /api/articles?trendingRefresh=1                       … 急上昇選手ランキングの再計算(Cron用)
@@ -25,6 +26,7 @@ import { getTrendingPlayersForDisplay, computeAndSaveTrendingPlayers } from '../
 import { fetchNotionMatchContent, syncNotionContent } from '../lib/notion-content-sync.js';
 import { isAuthorizedCronRequest } from '../lib/cron-auth.js';
 import { getFixtureIdentity } from './fixtures.js';
+import matchArchive from '../match-archive.js';
 
 const VALID_TYPES = ['match_report', 'match_prediction', 'am4_story', 'player_intro', 'transfer_news'];
 
@@ -284,9 +286,13 @@ export default async function handler(req, res) {
     if (fixtureIdParam !== undefined && (!Number.isInteger(fixtureIdParam) || fixtureIdParam <= 0)) {
       return res.status(400).json({ error: 'fixtureId は有効な試合IDで指定してください' });
     }
+    const matchKey = req.query.matchKey ? String(req.query.matchKey).trim().slice(0, 320) : undefined;
+    if (matchKey && !matchArchive.canonicalMatchKey(matchKey)) {
+      return res.status(400).json({ error: 'matchKey は大会・日付・ホーム・アウェイを含む有効な試合キーで指定してください' });
+    }
     const search = req.query.search ? String(req.query.search).trim().slice(0, 120) : undefined;
 
-    const result = await listArticles({ type: typeParam, matchDate, fixtureId: fixtureIdParam, search, page, pageSize, publishedOnly: true });
+    const result = await listArticles({ type: typeParam, matchDate, fixtureId: fixtureIdParam, matchKey, search, page, pageSize, publishedOnly: true });
     return res.status(200).json(result);
   } catch (err) {
     console.error('articles API error:', err);

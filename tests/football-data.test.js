@@ -110,6 +110,20 @@ test("editorial articles can be queried by fixture ID without exposing Notion de
   assert.equal(requested, "https://am4-api.vercel.app/api/articles?type=match_prediction&fixtureId=123456&page=1&pageSize=12");
 });
 
+test("published match archives can be queried by a durable Match Key", async () => {
+  let requested;
+  const client = createClient(async (url) => {
+    requested = url;
+    return { ok: true, json: async () => ({ items: [] }) };
+  });
+  await client.articles({
+    type: "match_report",
+    matchKey: "premierleague|2026-09-04|ipswichtown|liverpool",
+    pageSize: 100,
+  });
+  assert.equal(requested, "https://am4-api.vercel.app/api/articles?type=match_report&matchKey=premierleague%7C2026-09-04%7Cipswichtown%7Cliverpool&page=1&pageSize=100");
+});
+
 test("match editorial content is requested through the server-side Notion bridge", async () => {
   let requested;
   const client = createClient(async (url) => {

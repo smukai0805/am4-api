@@ -19,11 +19,12 @@
       // can change during a match. This keeps the paid provider quota focused on
       // score, timeline, and team-stat changes.
       fixtureLiveDetail: (fixtureId) => request(`/fixtures?liveDetail=${encodeURIComponent(fixtureId)}`),
-      articles: ({ type, fixtureId, matchDate, page = 1, pageSize = 10 } = {}) => {
+      articles: ({ type, fixtureId, matchDate, matchKey, page = 1, pageSize = 10 } = {}) => {
         const params = new URLSearchParams();
         if (type) params.set("type", type);
         if (fixtureId) params.set("fixtureId", fixtureId);
         if (matchDate) params.set("matchDate", matchDate);
+        if (matchKey) params.set("matchKey", matchKey);
         params.set("page", page);
         params.set("pageSize", pageSize);
         return request(`/articles?${params}`);
