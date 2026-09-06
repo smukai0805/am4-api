@@ -173,6 +173,18 @@
       return true;
     });
   }
+
+  function contentAvailabilityBatches(fixtures, batchSize = 50) {
+    const safeBatchSize = Number.isInteger(batchSize) && batchSize > 0 ? batchSize : 50;
+    const fixtureIds = [...new Set((fixtures || [])
+      .map((fixture) => Number(typeof fixture === "object" ? fixture?.id : fixture))
+      .filter((fixtureId) => Number.isInteger(fixtureId) && fixtureId > 0))];
+    const batches = [];
+    for (let offset = 0; offset < fixtureIds.length; offset += safeBatchSize) {
+      batches.push(fixtureIds.slice(offset, offset + safeBatchSize));
+    }
+    return batches;
+  }
   // These are deliberately neutral UI accents, not inferred club colours. They keep
   // unlisted teams distinguishable while the provider name remains the source of truth.
   function neutralTeamAccent(normalizedName) {
@@ -280,28 +292,36 @@
 
     function requestContentAvailability(fixtures) {
       if (typeof client.contentAvailability !== "function") return;
-      const fixtureIds = [...new Set((fixtures || [])
-        .map((fixture) => Number(fixture?.id))
-        .filter((fixtureId) => Number.isInteger(fixtureId) && fixtureId > 0))]
-        .slice(0, 50);
-      if (!fixtureIds.length) return;
+      const batches = contentAvailabilityBatches(fixtures);
+      if (!batches.length) return;
 
-      const requestKey = fixtureIds.join(",");
+      const requestKey = batches.map((fixtureIds) => fixtureIds.join(",")).join(";");
       if (requestKey === contentAvailabilityRequestKey) return;
       contentAvailabilityRequestKey = requestKey;
       const requestId = ++contentAvailabilityRequestId;
 
-      client.contentAvailability(fixtureIds)
-        .then((payload) => {
+      Promise.allSettled(batches.map((fixtureIds) => client.contentAvailability(fixtureIds)))
+        .then((results) => {
           if (requestId !== contentAvailabilityRequestId) return;
-          fixtureIds.forEach((fixtureId) => contentAvailability.delete(String(fixtureId)));
-          Object.entries(payload?.availability || {}).forEach(([fixtureId, types]) => {
-            if (!Array.isArray(types) || !types.length) return;
-            contentAvailability.set(String(fixtureId), types);
+          let hasSuccessfulBatch = false;
+          let hasFailedBatch = false;
+          results.forEach((result, index) => {
+            if (result.status !== "fulfilled") {
+              hasFailedBatch = true;
+              console.warn("Editorial content availability unavailable.", result.reason);
+              return;
+            }
+            hasSuccessfulBatch = true;
+            batches[index].forEach((fixtureId) => contentAvailability.delete(String(fixtureId)));
+            Object.entries(result.value?.availability || {}).forEach(([fixtureId, types]) => {
+              if (!Array.isArray(types) || !types.length) return;
+              contentAvailability.set(String(fixtureId), types);
+            });
           });
           // Only the schedule cards are redrawn: fixture state, filters, and
           // the selected date remain untouched when availability arrives.
-          if (activeFixtureData) renderFixtureView();
+          if (hasFailedBatch) contentAvailabilityRequestKey = "";
+          if (hasSuccessfulBatch && activeFixtureData) renderFixtureView({ preserveScroll: true });
         })
         .catch((error) => {
           if (requestId !== contentAvailabilityRequestId) return;
@@ -734,8 +754,9 @@
       });
     }
 
-    function renderFixtureView() {
+    function renderFixtureView({ preserveScroll = false } = {}) {
       if (!activeFixtureData) return;
+      const scrollY = preserveScroll ? window.scrollY : null;
       const options = fixtureMode === "date" ? dateOptions() : roundOptions(activeFixtureData);
       renderFilterTabs(options);
       const allVisible = visibleFixtures(activeFixtureData);
@@ -761,6 +782,9 @@
         : fixtureMode === "date"
           ? `${dateLabel}は、選択条件に該当する試合がありません`
           : `${competitionLabel}の選択条件に該当する試合はありません${unavailableLabel}`;
+      if (scrollY != null) {
+        window.requestAnimationFrame(() => window.scrollTo({ top: scrollY, behavior: "auto" }));
+      }
     }
 
     function clearLiveDailyRefresh() {
@@ -982,5 +1006,5 @@
     return { renderFixtures, useDailyData, loadFixtureDate, showDailyUnavailable, useFixtureData, showFallback };
   }
 
-  return { create, mergeRoundFixtureData, roundLeagueNames: ROUND_LEAGUES, selectFavoriteFixtures };
+  return { create, contentAvailabilityBatches, mergeRoundFixtureData, roundLeagueNames: ROUND_LEAGUES, selectFavoriteFixtures };
 });

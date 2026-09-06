@@ -1,16 +1,57 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { canonicalMatchKey, fetchNotionMatchContent, isPublishableNotionState, markdownExcerpt, notionPageToArticle, syncNotionContent } from '../lib/notion-content-sync.js';
+import { canonicalMatchKey, fetchNotionMatchContent, isPublishableNotionState, markdownExcerpt, normalizeNotionContent, notionPageToArticle, syncNotionContent } from '../lib/notion-content-sync.js';
 
 function textProperty(type, text) {
   return { type, [type]: [{ plain_text: text }] };
 }
 
 test('Notion publish states keep review-only content out of the public feed', () => {
-  assert.equal(isPublishableNotionState('自動生成'), true);
+  assert.equal(isPublishableNotionState('自動生成'), false);
   assert.equal(isPublishableNotionState('公開準備'), true);
   assert.equal(isPublishableNotionState('公開済'), true);
   assert.equal(isPublishableNotionState('要確認'), false);
+});
+
+test('Notion confidence keeps an explicit zero but never coerces empty values into zero', () => {
+  const page = {
+    id: 'confidence-page',
+    properties: {
+      '記事タイトル': textProperty('title', 'Confidence'),
+      '記事状態': { type: 'select', select: { name: '公開済' } },
+      '確信度': { type: 'number', number: 0 },
+    },
+  };
+  assert.equal(notionPageToArticle({ type: 'match_prediction', page, markdown: '本文' }).prediction.confidence, 0);
+
+  for (const value of [null, undefined, '', '0', 101, -1]) {
+    page.properties['確信度'] = { type: 'number', number: value };
+    assert.equal(notionPageToArticle({ type: 'match_prediction', page, markdown: '本文' }).prediction.confidence, null, String(value));
+  }
+});
+
+test('Notion source blocks become safe structured sources without duplicating valid references in the body', () => {
+  const normalized = normalizeNotionContent([
+    '本文の導入です。',
+    '',
+    '## 出典',
+    '- [BBC Sport](https://www.bbc.co.uk/sport/football/example)',
+    '- The Guardian https://www.theguardian.com/football/example',
+    '- 不正な参照 javascript:alert(1)',
+  ].join('\n'));
+
+  assert.deepEqual(normalized.sources, [
+    { title: 'BBC Sport', url: 'https://www.bbc.co.uk/sport/football/example' },
+    { title: 'The Guardian', url: 'https://www.theguardian.com/football/example' },
+  ]);
+  assert.equal(normalized.body.includes('BBC Sport'), false);
+  assert.equal(normalized.body.includes('The Guardian'), false);
+  assert.match(normalized.body, /不正な参照/);
+});
+
+test('excerpt normalization rejects numbered contents while keeping a bullet summary', () => {
+  assert.equal(markdownExcerpt('## 目次\n1. 序章\n2. 戦術\n3. 結論'), '');
+  assert.equal(markdownExcerpt('- 守備の安定\n- 速攻への対応'), '守備の安定 速攻への対応');
 });
 
 test('Notion prediction entries preserve an exact match identity and prediction fields', () => {
@@ -89,7 +130,7 @@ test('Notion story entries retain the editorial taxonomy and produce a compact e
     last_edited_time: '2026-09-01T10:00:00.000Z',
     properties: {
       '記事タイトル': textProperty('title', 'クラシコはなぜ特別なのか'),
-      '記事状態': { type: 'select', select: { name: '自動生成' } },
+      '記事状態': { type: 'select', select: { name: '公開済' } },
       'カテゴリ': { type: 'select', select: { name: 'ライバル・ダービー' } },
       '主題': textProperty('rich_text', 'エル・クラシコの歴史'),
       '関連クラブ': textProperty('rich_text', 'Real Madrid / FC Barcelona'),
@@ -181,7 +222,7 @@ function matchPage({ id, type, matchKey, home, away, date, competition = 'Premie
     last_edited_time: '2026-09-03T10:00:00.000Z',
     properties: {
       '記事タイトル': textProperty('title', `${home} vs ${away}｜${type === 'match_prediction' ? '試合予想' : '試合解説'}`),
-      '記事状態': { type: 'select', select: { name: '自動生成' } },
+      '記事状態': { type: 'select', select: { name: '公開済' } },
       'Match Key': textProperty('rich_text', matchKey),
       'ホーム': textProperty('rich_text', home),
       'アウェイ': textProperty('rich_text', away),

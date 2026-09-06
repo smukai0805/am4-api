@@ -208,7 +208,21 @@ export default async function handler(req, res) {
     const seenKeys = new Set(seenEntries.map(e => e.key));
 
     const debugMode = req.query.debug === '1';
-    const { items, rejected, searchSources } = await checkTransferNews();
+    const { items, rejected, searchSources, researchStatus } = await checkTransferNews();
+
+    // The transfer pipeline is source-led. Do not turn a temporary research
+    // outage (including a provider credit or timeout failure) into an apparently
+    // researched public update. A later scheduled run can retry normally.
+    if (researchStatus !== 'available') {
+      console.error('transfer news: 調査結果を取得できなかったため、速報の生成・保存を見送りました');
+      return res.status(503).json({
+        error: '調査結果を取得できなかったため、速報は生成していません。後続の定期実行で再試行します。',
+        detectedCount: 0,
+        generatedCount: 0,
+        searchSourcesCount: searchSources.length,
+        ...(debugMode ? { debug: { rejected } } : {}),
+      });
+    }
 
     // 【デバッグ用】本人確認基準を満たさず却下された候補を理由付きでログ出力する。
     // 条件が厳しすぎるのか、そもそも検索がヒットしていないのかを切り分けるための情報

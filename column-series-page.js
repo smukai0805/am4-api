@@ -26,12 +26,7 @@
   }
 
   function dateLabel(value) {
-    const date = new Date(String(value || ''));
-    if (Number.isNaN(date.getTime())) return '';
-    const year = date.getUTCFullYear();
-    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-    const day = String(date.getUTCDate()).padStart(2, '0');
-    return `${year}.${month}.${day}`;
+    return window.AM4ArticlePresentation?.formatTokyoDate(value) || '';
   }
 
   function categoryLabel(article) {
@@ -40,8 +35,7 @@
   }
 
   function excerpt(article) {
-    const value = String(article?.summary || article?.deck || '').replace(/\s+/g, ' ').trim();
-    return /(?:^|\s)(?:3行要約|アジェンダ)(?:\s|$)/u.test(value) ? '' : value;
+    return window.AM4ArticlePresentation?.articleExcerpt(article?.summary || article?.deck || '') || '';
   }
 
   function arrow() {

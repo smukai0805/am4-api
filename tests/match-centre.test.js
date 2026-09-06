@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { mergeRoundFixtureData, roundLeagueNames, selectFavoriteFixtures } = require("../match-centre.js");
+const { contentAvailabilityBatches, mergeRoundFixtureData, roundLeagueNames, selectFavoriteFixtures } = require("../match-centre.js");
 
 test("round view combines the five major leagues without selecting one of them", () => {
   assert.deepEqual(roundLeagueNames, [
@@ -56,4 +56,12 @@ test("legacy club favourite IDs still select their provider fixture", () => {
     selectFavoriteFixtures(fixtures, { leagues: [], clubs: ["newcastle"], players: [], articles: [] }).map((fixture) => fixture.id),
     [3],
   );
+});
+
+test("article availability covers every fixture in bounded API batches", () => {
+  const fixtures = Array.from({ length: 61 }, (_, index) => ({ id: index + 1 }));
+  assert.deepEqual(contentAvailabilityBatches(fixtures), [
+    Array.from({ length: 50 }, (_, index) => index + 1),
+    Array.from({ length: 11 }, (_, index) => index + 51),
+  ]);
 });

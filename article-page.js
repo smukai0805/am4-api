@@ -123,8 +123,7 @@
   }
 
   function formatArticleDate(value) {
-    if (!value) return "公開日未設定";
-    return new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", year: "numeric", month: "long", day: "numeric" }).format(new Date(value));
+    return AM4ArticlePresentation.formatTokyoDate(value) || "公開日未設定";
   }
 
   function renderArticleTags(container, article) {
@@ -243,7 +242,13 @@
     save.className = "favorite-btn";
     save.dataset.favoriteType = "articles";
     save.dataset.favoriteId = article.id;
+    save.dataset.favoriteLabel = article.title || "AM4記事";
+    save.dataset.favoriteDetail = articleTypeLabel(article.type);
+    save.dataset.favoriteHref = `/article.html?id=${encodeURIComponent(article.id)}`;
     save.textContent = "記事を保存";
+    const saveStatus = document.createElement("p");
+    saveStatus.className = "article-save-status";
+    saveStatus.setAttribute("aria-live", "polite");
 
     const body = document.createElement("div");
     body.className = "article-body";
@@ -253,7 +258,7 @@
     renderArticleTags(body, article);
     const actions = document.createElement("div");
     actions.className = "article-actions article-footer-actions";
-    actions.append(save);
+    actions.append(save, saveStatus);
     body.append(actions);
     const related = document.createElement("section");
     related.className = "article-related";
@@ -266,7 +271,20 @@
       save.setAttribute("aria-pressed", String(selected));
       save.textContent = selected ? "記事を保存済み" : "記事を保存";
     }
-    save.addEventListener("click", () => { AM4Favorites.toggle(localStorage, "articles", article.id); syncFavorite(); });
+    save.addEventListener("click", () => {
+      const saved = AM4Favorites.toggleWithItem(localStorage, "articles", article.id, {
+        label: article.title || "AM4記事",
+        detail: articleTypeLabel(article.type),
+        href: `/article.html?id=${encodeURIComponent(article.id)}`,
+      });
+      if (!saved) {
+        saveStatus.textContent = "この端末に保存できませんでした。ブラウザーの保存容量または設定を確認してください。";
+        return;
+      }
+      saveStatus.textContent = "";
+      syncFavorite();
+      document.dispatchEvent(new CustomEvent("am4:favorites-changed"));
+    });
     syncFavorite();
     renderRecommendedArticles(article, related);
   }
@@ -276,17 +294,29 @@
     document.title = "記事が見つかりません｜AM4 Football";
   }
 
-  (async function loadArticle() {
+  function renderUnavailable() {
+    paper.innerHTML = '<div class="article-state"><h1>記事を取得できませんでした</h1><p>一時的な通信障害の可能性があります。時間をおいてもう一度お試しください。</p><button class="brand-button" type="button">もう一度試す</button></div>';
+    paper.querySelector("button").addEventListener("click", loadArticle);
+    document.title = "記事を取得できませんでした｜AM4 Football";
+  }
+
+  async function loadArticle() {
     if (!id) return renderMissing();
     try {
       const response = await fetch(`${apiBase}/articles?id=${encodeURIComponent(id)}`, { headers: { Accept: "application/json" } });
       if (response.ok) {
         const data = await response.json();
-        if (data.article) return renderArticle(data.article);
+        const state = AM4ArticleLoadState.articleLoadState({ status: response.status, hasArticle: Boolean(data.article) });
+        if (state === "ready") return renderArticle(data.article);
+        return renderUnavailable();
       }
-    } catch (_error) {
-      // Article data is published only from the server-side archive.
+      const state = AM4ArticleLoadState.articleLoadState({ status: response.status, hasArticle: false });
+      return state === "missing" ? renderMissing() : renderUnavailable();
+    } catch (error) {
+      AM4ArticleLoadState.articleLoadState({ error });
+      return renderUnavailable();
     }
-    renderMissing();
-  })();
+  }
+
+  loadArticle();
 })();

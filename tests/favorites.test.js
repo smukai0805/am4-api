@@ -10,6 +10,14 @@ function memoryStorage(initial = {}) {
   };
 }
 
+function failingStorage(initial = {}) {
+  const storage = memoryStorage(initial);
+  return {
+    ...storage,
+    setItem: () => { throw new Error("storage unavailable"); },
+  };
+}
+
 test("invalid saved data is treated as an empty favourites collection", () => {
   const storage = memoryStorage({ [favorites.STORAGE_KEY]: "not-json" });
   assert.deepEqual(favorites.read(storage), favorites.emptyFavorites());
@@ -49,4 +57,50 @@ test("count includes all supported favourite types", () => {
     favorites.count({ clubs: ["arsenal"], players: ["j-hato"], articles: ["mainoo"] }),
     3,
   );
+});
+
+test("a failed storage write does not report a favourite as saved", () => {
+  const storage = failingStorage();
+  assert.equal(favorites.toggle(storage, "articles", "saved-story"), null);
+  assert.deepEqual(favorites.read(storage), favorites.emptyFavorites());
+});
+
+test("saved item metadata is stored independently from the homepage catalog", () => {
+  const storage = memoryStorage();
+  const item = favorites.remember(storage, {
+    type: "articles",
+    id: "article-from-detail",
+    label: "詳細ページで保存した記事",
+    detail: "あとで読む",
+    href: "/article.html?id=article-from-detail",
+  });
+
+  assert.deepEqual(item, {
+    type: "articles",
+    id: "article-from-detail",
+    label: "詳細ページで保存した記事",
+    detail: "あとで読む",
+    href: "/article.html?id=article-from-detail",
+  });
+  assert.deepEqual(favorites.readCatalog(storage), {
+    "articles:article-from-detail": item,
+  });
+});
+
+test("a favourite is not added when its restoration metadata cannot be stored", () => {
+  const storage = failingStorage();
+  assert.equal(favorites.toggleWithItem(storage, "articles", "story", { label: "Story" }), null);
+  assert.deepEqual(favorites.read(storage), favorites.emptyFavorites());
+});
+
+test("legacy saved IDs without metadata remain resolvable placeholders", () => {
+  const resolved = favorites.resolveSavedItems(
+    { leagues: [], clubs: ["team-40"], players: [], articles: ["older-article"] },
+    {},
+  );
+
+  assert.deepEqual(resolved.map((item) => [item.type, item.id, item.href]), [
+    ["clubs", "team-40", "/#fixtures"],
+    ["articles", "older-article", "/article.html?id=older-article"],
+  ]);
 });

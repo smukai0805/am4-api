@@ -761,6 +761,7 @@
     <span class="see-all" id="favorite-count"></span>
   </div>
   <div class="for-you-grid" id="for-you-grid"></div>
+  <p class="for-you-status" id="for-you-status" aria-live="polite"></p>
 </section>
 
 <div class="tagnav-wrap">
@@ -916,6 +917,7 @@
 
 <script src="favorites.js"></script>
 <script src="site-config.js"></script>
+<script src="article-presentation.js"></script>
 <script src="football-data.js?v=20260905-match-ui-v1"></script>
 <script src="sample-football-data.js"></script>
 <script src="match-centre.js?v=20260906-round-view-v2"></script>
@@ -1061,11 +1063,7 @@
     }
 
     function storySummary(article){
-      const summary = String(article.summary || article.deck || '').replace(/\s+/g, ' ').trim();
-      if (!summary || /(?:^|\s)(?:3行要約|アジェンダ)(?:\s|$)/.test(summary)) {
-        return '試合の背景、クラブの歴史、街とカルチャーをAM4の視点で読み解きます。';
-      }
-      return summary;
+      return AM4ArticlePresentation.articleExcerpt(article?.summary || article?.deck || '');
     }
 
     const columnUrlParams = new URLSearchParams(location.search);
@@ -1076,6 +1074,7 @@
     let selectedColumnTag = columnUrlParams.get('columnTag') || '';
     let columnSearchTimer = 0;
     let columnSearchRequest = 0;
+    let columnSearchError = false;
     const COLUMN_LATEST_PAGE_SIZE = 6;
     let visibleColumnStoryCount = COLUMN_LATEST_PAGE_SIZE;
 
@@ -1137,10 +1136,7 @@
     }
 
     function articleDate(article){
-      const value = String(article?.publishedAt || '');
-      const date = new Date(value);
-      if (!value || Number.isNaN(date.getTime())) return '';
-      return new Intl.DateTimeFormat('ja-JP', { year:'numeric', month:'short', day:'numeric' }).format(date);
+      return AM4ArticlePresentation.formatTokyoDate(article?.publishedAt);
     }
 
     function articleTimestamp(article){
@@ -1289,7 +1285,11 @@
       const category = document.getElementById('lead-story-category');
       const date = document.getElementById('lead-story-date');
       if (title) title.textContent = article.title || 'AM4独自の読みもの';
-      if (summary) summary.textContent = storySummary(article);
+      if (summary) {
+        const excerpt = storySummary(article);
+        summary.textContent = excerpt;
+        summary.hidden = !excerpt;
+      }
       if (category) category.textContent = `FEATURED · ${columnCategory(article)}`;
       if (date) {
         date.dateTime = article.publishedAt || '';
@@ -1334,7 +1334,9 @@
         title.textContent = article.title || 'AM4独自の読みもの';
         const summary = document.createElement('p');
         summary.className = 'column-latest-summary';
-        summary.textContent = storySummary(article);
+        const excerpt = storySummary(article);
+        summary.textContent = excerpt;
+        summary.hidden = !excerpt;
         topline.append(category, date);
         copy.append(topline, title, summary);
         const meta = document.createElement('span');
@@ -1436,13 +1438,14 @@
       const visibleStories = renderStoryList(listStories);
       syncColumnLatestControls(listStories.length, visibleStories);
       renderPopularStories(columnStories, { hidden: filtering });
-      if (empty) empty.hidden = !filtering || listStories.length > 0;
+      if (empty) empty.hidden = !filtering || listStories.length > 0 || columnSearchError;
     }
 
     async function runColumnSearch(){
       const request = ++columnSearchRequest;
       const query = columnSearchValue;
       if (!query) {
+        columnSearchError = false;
         columnSearchResults = columnStories;
         renderColumnStories(columnStories);
         return;
@@ -1450,13 +1453,20 @@
       try {
         const results = await loadArticleType('am4_story', { search: query, pageSize: 100, allPages: true });
         if (request !== columnSearchRequest) return;
+        columnSearchError = false;
         columnSearchResults = sortColumnStories(results);
         renderColumnStories(columnSearchResults);
+        document.getElementById('column-feed-retry').hidden = true;
+        document.getElementById('column-feed-status').textContent = '';
       } catch (error) {
         if (request !== columnSearchRequest) return;
         console.warn('Column search unavailable.', error);
-        columnSearchResults = [];
-        renderColumnStories([]);
+        // A transport failure is not a zero-result search. Retain the last
+        // visible public data and give the reader a retry path instead.
+        columnSearchError = true;
+        renderColumnStories(columnSearchResults.length ? columnSearchResults : columnStories);
+        document.getElementById('column-feed-status').textContent = '検索結果を取得できませんでした。公開状況は確認できていません。';
+        document.getElementById('column-feed-retry').hidden = false;
       }
     }
 
@@ -1520,7 +1530,10 @@
 
     enhanceStaticCrests();
     bindColumnDiscovery();
-    document.getElementById('column-feed-retry').addEventListener('click',loadStoryContent);
+    document.getElementById('column-feed-retry').addEventListener('click', () => {
+      if (columnSearchError && columnSearchValue) runColumnSearch();
+      else loadStoryContent();
+    });
     restoreColumnHashPosition();
     loadStoryContent();
     const todayKey = AM4FootballData.tokyoDateKey(new Date());
@@ -1545,35 +1558,38 @@
 
   // local favourites and the returning-visitor For You area
   (function(){
-    const catalog = {};
-    const catalogStorageKey = 'am4:favorites:catalog:v1';
+    const catalog = AM4Favorites.readCatalog(localStorage);
+    const unavailableArticleIds = new Set();
+    const pendingArticleIds = new Set();
     const favoritePresentation = {
       leagues: { noun: 'リーグ', kind: 'Favourite league' },
       clubs: { noun: 'クラブ', kind: 'Favourite club' },
       players: { noun: '選手', kind: 'Favourite player' },
       articles: { noun: '記事', kind: 'Saved story' },
     };
-    try {
-      Object.assign(catalog, JSON.parse(localStorage.getItem(catalogStorageKey) || '{}'));
-    } catch (_error) {}
-    function rememberFavorite(button, persist = false){
-      if (button.closest('[hidden]')) return;
+    function itemFromButton(button){
       const type = button.dataset.favoriteType;
       const id = button.dataset.favoriteId;
-      catalog[`${type}:${id}`] = {
+      if (!type || !id) return null;
+      return {
         type,
         id,
         label: button.dataset.favoriteLabel || id,
         detail: button.dataset.favoriteDetail || '最新情報を見る',
         href: button.dataset.favoriteHref || '#fixtures',
       };
-      if (persist) localStorage.setItem(catalogStorageKey, JSON.stringify(catalog));
+    }
+    function rememberFavorite(button){
+      if (button.closest('[hidden]')) return;
+      const item = itemFromButton(button);
+      if (item) catalog[`${item.type}:${item.id}`] = item;
     }
     document.querySelectorAll('[data-favorite-type]').forEach(rememberFavorite);
 
     const section = document.getElementById('for-you');
     const grid = document.getElementById('for-you-grid');
     const countLabel = document.getElementById('favorite-count');
+    const status = document.getElementById('for-you-status');
 
     function liveDetail(item){
       if (item.type === 'clubs') {
@@ -1591,9 +1607,8 @@
 
     function render(){
       const saved = AM4Favorites.read(localStorage);
-      const validItems = ['leagues', 'clubs', 'players', 'articles'].flatMap((type) =>
-        saved[type].map((id) => catalog[`${type}:${id}`]).filter(Boolean)
-      );
+      const validItems = AM4Favorites.resolveSavedItems(saved, catalog)
+        .filter((item) => !(item.type === 'articles' && (unavailableArticleIds.has(item.id) || pendingArticleIds.has(item.id))));
       const count = validItems.length;
       document.querySelectorAll('[data-favorite-type]').forEach((button) => {
         const aliases = (button.dataset.favoriteAliases || '').split(',').filter(Boolean);
@@ -1610,8 +1625,13 @@
         }
       });
 
-      section.classList.toggle('visible', count > 0);
+      section.classList.toggle('visible', count > 0 || unavailableArticleIds.size > 0);
       countLabel.textContent = count ? `${count}件のお気に入り` : '';
+      if (status) {
+        status.textContent = unavailableArticleIds.size
+          ? '保存した記事の一部は現在公開されていません。保存IDはこの端末に保持しています。'
+          : '';
+      }
       grid.replaceChildren();
       validItems.forEach((item) => {
           const card = document.createElement('a');
@@ -1628,20 +1648,25 @@
     document.addEventListener('click', (event) => {
       const button = event.target.closest('[data-favorite-type]');
       if (!button) return;
-      rememberFavorite(button, true);
       const saved = AM4Favorites.read(localStorage);
       const type = button.dataset.favoriteType;
       const id = button.dataset.favoriteId;
       const aliases = (button.dataset.favoriteAliases || '').split(',').filter(Boolean);
       const selectedByLegacyId = aliases.some((alias) => saved[type].includes(alias));
+      let result;
       if (selectedByLegacyId) {
-        AM4Favorites.write(localStorage, {
+        result = AM4Favorites.write(localStorage, {
           ...saved,
           [type]: saved[type].filter((current) => current !== id && !aliases.includes(current)),
         });
       } else {
-        AM4Favorites.toggle(localStorage, type, id);
+        result = AM4Favorites.toggleWithItem(localStorage, type, id, itemFromButton(button));
       }
+      if (!result) {
+        if (status) status.textContent = 'この端末に保存できませんでした。ブラウザーの保存容量または設定を確認してください。';
+        return;
+      }
+      rememberFavorite(button);
       render();
       document.dispatchEvent(new CustomEvent('am4:favorites-changed'));
     });
@@ -1651,7 +1676,44 @@
     });
     document.addEventListener('am4:favorites-changed', render);
     document.addEventListener('am4:data-ready', render);
+
+    async function restoreSavedArticles(){
+      const ids = AM4Favorites.read(localStorage).articles;
+      if (!ids.length) return;
+      ids.forEach((id) => pendingArticleIds.add(id));
+      render();
+      const apiBase = AM4SiteConfig.resolveApiBase(location.hostname);
+      await Promise.all(ids.map(async (articleId) => {
+        try {
+          const response = await fetch(`${apiBase}/articles?id=${encodeURIComponent(articleId)}`, { headers:{ Accept:'application/json' } });
+          if (response.status === 404) {
+            unavailableArticleIds.add(articleId);
+            return;
+          }
+          if (!response.ok) return;
+          const payload = await response.json();
+          const article = payload?.article;
+          if (!article?.id) return;
+          const item = {
+            type: 'articles',
+            id: String(article.id),
+            label: article.title || 'AM4記事',
+            detail: article.type === 'am4_story' ? 'AM4 COLUMN' : article.type || 'AM4記事',
+            href: `/article.html?id=${encodeURIComponent(article.id)}`,
+          };
+          catalog[`articles:${item.id}`] = item;
+          AM4Favorites.remember(localStorage, item);
+        } catch (_error) {
+          // A transient failure never removes a saved ID or marks it unavailable.
+        } finally {
+          pendingArticleIds.delete(articleId);
+        }
+      }));
+      render();
+    }
+
     render();
+    restoreSavedArticles();
   })();
 
   // scroll-reveal

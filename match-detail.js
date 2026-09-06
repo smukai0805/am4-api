@@ -939,9 +939,10 @@
       pick.append(node("small", "", t("pick")), node("b", "", prediction.prediction.pick));
       values.append(pick);
     }
-    if (Number.isFinite(Number(prediction.prediction?.confidence))) {
+    const confidenceValue = window.AM4ArticlePresentation?.normalizeConfidence(prediction.prediction?.confidence);
+    if (confidenceValue !== null && confidenceValue !== undefined) {
       const confidence = node("span", "match-prediction-pick");
-      confidence.append(node("small", "", t("confidence")), node("b", "", `${Math.round(Number(prediction.prediction.confidence))}%`));
+      confidence.append(node("small", "", t("confidence")), node("b", "", `${Math.round(confidenceValue)}%`));
       values.append(confidence);
     }
     if (values.childElementCount) hero.append(values);
