@@ -6,6 +6,8 @@ const {
   canonicalMatchKey,
   filterPublishedArchiveMatches,
   fixtureFromArchiveEditorials,
+  matchesPublishedFixtureEditorial,
+  publishedArchiveQueriesForFixture,
   resolveArchiveEditorials,
 } = require("../match-archive.js");
 
@@ -89,6 +91,37 @@ test("Ipswich aliases resolve the exact public archive Match Key when the fixtur
       timezone: null,
     },
   });
+});
+
+test("a normal provider fixture restores Ipswich editorial content through its aliased Match Key", () => {
+  // The user-facing completed-fixture route is still provider-backed. Its team
+  // label is `Ipswich`, whereas the real public editorial uses `Ipswich Town`
+  // and has no stored fixtureId. This was the missing normal-page path.
+  const providerFixture = {
+    id: 1557393,
+    date: "2026-09-04",
+    competition: "プレミアリーグ",
+    home: { name: "Ipswich" },
+    away: { name: "Liverpool" },
+  };
+  const prediction = editorial({
+    id: "notion-match_prediction-3ceb49a367ef81dabee4ef9087aaa651",
+    type: "match_prediction",
+    fixtureId: null,
+  });
+  const report = editorial({
+    id: "notion-match_report-3d1b49a367ef81fd9395f3b88addf64a",
+    type: "match_report",
+    fixtureId: null,
+  });
+
+  assert.deepEqual(publishedArchiveQueriesForFixture(providerFixture), [
+    { fixtureId: 1557393 },
+    { matchKey: "premierleague|2026-09-04|ipswichtown|liverpool" },
+  ]);
+  assert.equal(matchesPublishedFixtureEditorial(prediction, providerFixture), true);
+  assert.equal(matchesPublishedFixtureEditorial(report, providerFixture), true);
+  assert.equal(matchesPublishedFixtureEditorial({ ...report, status: "draft" }, providerFixture), false);
 });
 
 test("a public article ID anchors its Match Key and keeps seasons with the same clubs separate", () => {

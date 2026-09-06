@@ -756,47 +756,6 @@
     return String(value || "").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").normalize("NFC").replace(/[^a-z0-9ぁ-んァ-ヶー一-龯]/gi, "").toLowerCase();
   }
 
-  function normalizedCompetition(value) {
-    const normalized = normalizedIdentityPart(value);
-    return {
-      "プレミアリーグ": "premierleague", premierleague: "premierleague", "ラリーガ": "laliga", laliga: "laliga",
-      "セリエa": "seriea", seriea: "seriea", "ブンデスリーガ": "bundesliga", bundesliga: "bundesliga", "リーグアン": "ligue1", ligue1: "ligue1",
-    }[normalized] || normalized;
-  }
-
-  function fixtureDateKey(fixture) {
-    // AM4's Notion Match Key uses API-FOOTBALL's fixture date (the competition
-    // date), not the Japanese display date. A Premier League evening fixture is
-    // often the following day in JST, so converting kickoff to Tokyo first
-    // would join the wrong editorial record or miss the right one.
-    if (/^\d{4}-\d{2}-\d{2}$/.test(String(fixture?.date || ""))) return fixture.date;
-    const value = fixture?.kickoff || fixture?.date;
-    if (!value) return null;
-    const parsed = Date.parse(value);
-    return Number.isFinite(parsed) ? AM4FootballData.tokyoDateKey(value) : String(value).slice(0, 10) || null;
-  }
-
-  function canonicalFixtureKey(fixture) {
-    const parts = [normalizedCompetition(fixture?.competition), fixtureDateKey(fixture), normalizedIdentityPart(fixture?.home?.name), normalizedIdentityPart(fixture?.away?.name)];
-    return parts.every(Boolean) ? parts.join("|") : null;
-  }
-
-  function editorialMatchesFixture(article, fixture) {
-    const match = article?.match;
-    if (!match) return false;
-    const articleFixtureId = Number(match.fixtureId);
-    if (Number.isInteger(articleFixtureId) && articleFixtureId > 0) return articleFixtureId === Number(fixture.id);
-    const expectedKey = canonicalFixtureKey(fixture);
-    if (match.canonicalKey && expectedKey) return match.canonicalKey === expectedKey;
-    const articleDate = String(match.date || "").slice(0, 10);
-    return Boolean(
-      articleDate && articleDate === fixtureDateKey(fixture)
-      && normalizedIdentityPart(match.homeTeam) === normalizedIdentityPart(fixture.home?.name)
-      && normalizedIdentityPart(match.awayTeam) === normalizedIdentityPart(fixture.away?.name)
-      && (!match.competition || normalizedCompetition(match.competition) === normalizedCompetition(fixture.competition))
-    );
-  }
-
   function isNotionEditorial(article, type) {
     return article?.contentKind === `notion_${type}` && Boolean(article?.notion?.pageId);
   }
@@ -937,17 +896,22 @@
   }
 
   async function fullEditorialArticle(type, fixture) {
-    const fallbackDate = fixtureDateKey(fixture);
-    const requests = [client.articles({ type, fixtureId: fixture.id, pageSize: 12 })];
-    if (fallbackDate) requests.push(client.articles({ type, matchDate: fallbackDate, pageSize: 100 }));
+    const archiveQueries = window.AM4MatchArchive?.publishedArchiveQueriesForFixture(fixture) || [];
+    if (!archiveQueries.length) return null;
+    const requests = archiveQueries.map((criteria) => client.articles({ type, ...criteria, pageSize: 100 }));
     const results = await Promise.allSettled(requests);
     const candidates = new Map();
     window.AM4MatchEditorialFallback.publishedArchiveCandidates(results)
       .forEach((article) => candidates.set(article.id, article));
-    const selected = [...candidates.values()].find((article) => isNotionEditorial(article, type) && editorialMatchesFixture(article, fixture));
+    const selected = [...candidates.values()].find((article) => (
+      isNotionEditorial(article, type)
+      && window.AM4MatchArchive.matchesPublishedFixtureEditorial(article, fixture)
+    ));
     if (!selected?.id) return null;
     const response = await client.article(selected.id);
-    return response?.article && isNotionEditorial(response.article, type) && editorialMatchesFixture(response.article, fixture)
+    return response?.article
+      && isNotionEditorial(response.article, type)
+      && window.AM4MatchArchive.matchesPublishedFixtureEditorial(response.article, fixture)
       ? response.article
       : null;
   }

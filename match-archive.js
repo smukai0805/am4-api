@@ -113,6 +113,30 @@
     return Number.isInteger(fixtureId) && fixtureId > 0 ? fixtureId : null;
   }
 
+  // Normal detail pages still have a provider fixture, but an older public
+  // editorial may only have a Match Key. Keep this identity logic here so the
+  // normal and provider-missing archive paths use the same explicit aliases.
+  function publishedArchiveQueriesForFixture(fixture) {
+    const fixtureId = validFixtureId(fixture?.id ?? fixture?.fixtureId);
+    const matchKey = canonicalMatchKey(fixture);
+    const queries = [];
+    if (fixtureId) queries.push({ fixtureId });
+    if (matchKey) queries.push({ matchKey });
+    return queries;
+  }
+
+  function matchesPublishedFixtureEditorial(article, fixture) {
+    if (!isPublishedMatchEditorial(article)) return false;
+    const match = articleMatch(article);
+    const fixtureId = validFixtureId(fixture?.id ?? fixture?.fixtureId);
+    const articleFixtureId = validFixtureId(match?.fixtureId);
+    // An explicit fixture ID is the strongest identity. Only records without
+    // one can be restored through the complete, aliased Match Key.
+    if (articleFixtureId) return Boolean(fixtureId && articleFixtureId === fixtureId);
+    const fixtureKey = canonicalMatchKey(fixture);
+    return Boolean(fixtureKey && match?.canonicalKey === fixtureKey);
+  }
+
   function criteriaKey(criteria = {}) {
     return canonicalMatchKey(criteria.canonicalKey || criteria.matchKey);
   }
@@ -220,9 +244,11 @@
     filterPublishedArchiveMatches,
     fixtureFromArchiveEditorials,
     isPublishedMatchEditorial,
+    matchesPublishedFixtureEditorial,
     normalizedCompetition,
     normalizedPart,
     normalizedTeam,
+    publishedArchiveQueriesForFixture,
     resolveArchiveEditorials,
   };
 });
