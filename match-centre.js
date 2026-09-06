@@ -4,7 +4,6 @@
   if (root) root.AM4MatchCentre = api;
 })(typeof window !== "undefined" ? window : globalThis, function () {
   const ALL_COMPETITIONS = "すべて";
-  const DEFAULT_LEAGUE = "プレミアリーグ";
   const LEAGUE_PREVIEW_LIMIT = 4;
   const LEAGUE_GROUP_PREVIEW_LIMIT = 6;
   const LEAGUE_GROUP_BATCH_SIZE = 6;
@@ -17,6 +16,9 @@
     { providerId: 78, rank: 4, competition: "ブンデスリーガ", country: "Germany", names: ["ブンデスリーガ", "Bundesliga"] },
     { providerId: 61, rank: 5, competition: "リーグ・アン", country: "France", names: ["リーグ・アン", "Ligue 1"] },
   ];
+  // 節別の「すべて」は、日別の全大会とは異なり5大リーグだけを同じ節で
+  // 横断する。並び順もここを唯一の定義にして、リーグ選択の状態とは分離する。
+  const ROUND_LEAGUES = MAJOR_LEAGUES.map(({ competition }) => competition);
   // 日別の「すべて」はクラブではなく大会単位で案内する。まず5大リーグを
   // 固定し、その後は主要国内リーグの編集順を使う。未登録の大会は開始時刻順。
   const COMPETITION_DISPLAY_ORDER = new Map([
@@ -56,6 +58,23 @@
     ["Brazil", "ブラジル"], ["Argentina", "アルゼンチン"], ["Mexico", "メキシコ"],
     ["Japan", "日本"], ["South-Korea", "韓国"], ["Australia", "オーストラリア"],
   ]);
+
+  function mergeRoundFixtureData(leagueData) {
+    const roundsByKey = new Map();
+    const availableLeagues = [];
+    const fixtures = [];
+    (leagueData || []).forEach((entry) => {
+      const data = entry?.data || entry;
+      if (!Array.isArray(data?.fixtures)) return;
+      const league = entry?.league || data.league;
+      if (league && !availableLeagues.includes(league)) availableLeagues.push(league);
+      fixtures.push(...data.fixtures);
+      (data.rounds || []).forEach((round) => {
+        if (round?.key && !roundsByKey.has(round.key)) roundsByKey.set(round.key, round);
+      });
+    });
+    return { fixtures, rounds: [...roundsByKey.values()], availableLeagues };
+  }
   const TEAM_ACCENTS = new Map([
     // Premier League
     ["Arsenal", "#ef0107"], ["Aston Villa", "#95bfe5"], ["Bournemouth", "#da291c"], ["Brentford", "#e30613"],
@@ -321,12 +340,14 @@
         }
         groups.get(groupId).fixtures.push(fixture);
       });
-      const prioritizeMajorLeagues = fixtureMode === "date"
-        && activeFixtureLeague === ALL_COMPETITIONS
+      const prioritizeMajorLeagues = activeFixtureLeague === ALL_COMPETITIONS
         && fixtureScope === "all";
       const showMajorLeagueEmptyStates = prioritizeMajorLeagues && fixtureStatus === "all";
       if (showMajorLeagueEmptyStates) {
-        MAJOR_LEAGUES.forEach(({ providerId, competition, country, names }) => {
+        const majorLeaguesForEmptyStates = fixtureMode === "round" && Array.isArray(activeFixtureData?.availableLeagues)
+          ? MAJOR_LEAGUES.filter(({ competition }) => activeFixtureData.availableLeagues.includes(competition))
+          : MAJOR_LEAGUES;
+        majorLeaguesForEmptyStates.forEach(({ providerId, competition, country, names }) => {
           const groupId = `id:${providerId}`;
           const isAlreadyRepresented = [...groups.values()].some((group) => (
             group.fixtures.some((fixture) => (
@@ -607,16 +628,19 @@
     }
 
     function roundOptions(data) {
-      const visibleRounds = new Set(visibleFixtures(data).map((fixture) => fixture.roundKey).filter(Boolean));
-      const rounds = (data.rounds || []).filter((round) => visibleRounds.has(round.key));
+      const rounds = data.rounds || [];
       const selectedIndex = Math.max(0, rounds.findIndex((round) => round.key === activeFixtureFilter));
       const start = Math.max(0, Math.min(selectedIndex - 2, rounds.length - 6));
       return rounds.slice(start, start + 6).map((round) => ({ value: round.key, label: round.label, small: "節別" }));
     }
 
     function defaultRoundFilter(data) {
-      const ordered = visibleFixtures(data).filter((fixture) => fixture.roundKey).sort((a, b) => Date.parse(a.kickoff) - Date.parse(b.kickoff));
+      const ordered = (data.fixtures || []).filter((fixture) => fixture.roundKey).sort((a, b) => Date.parse(a.kickoff) - Date.parse(b.kickoff));
       return ordered.find((fixture) => Date.parse(fixture.kickoff) >= Date.now())?.roundKey || ordered.at(-1)?.roundKey || null;
+    }
+
+    function hasRound(data, roundKey) {
+      return Boolean(roundKey) && (data?.rounds || []).some((round) => round.key === roundKey);
     }
 
     function setLeagueButtons() {
@@ -657,21 +681,29 @@
       renderFixtures(fixtures);
       const statusLabel = { upcoming: "今後", live: "ライブ", finished: "終了", all: "全試合" }[fixtureStatus];
       const scopeLabel = fixtureScope === "favorites" ? "お気に入り" : "すべて";
-      const competitionLabel = activeFixtureLeague === ALL_COMPETITIONS ? "全大会" : activeFixtureLeague;
+      const competitionLabel = activeFixtureLeague === ALL_COMPETITIONS
+        ? (fixtureMode === "round" ? "5大リーグ" : "全大会")
+        : activeFixtureLeague;
+      const unavailableRoundLeagues = fixtureMode === "round"
+        ? activeFixtureData?.unavailableLeagues || []
+        : [];
+      const unavailableLabel = unavailableRoundLeagues.length
+        ? ` · ${unavailableRoundLeagues.join(" / ")}は取得できません`
+        : "";
       const dateLabel = new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", month: "long", day: "numeric", weekday: "short" }).format(new Date(`${selectedDailyDate}T12:00:00Z`));
-      const displayOrderLabel = fixtureMode === "date" && activeFixtureLeague === ALL_COMPETITIONS && fixtureScope === "all"
+      const displayOrderLabel = activeFixtureLeague === ALL_COMPETITIONS && fixtureScope === "all"
         ? "5大リーグ優先・リーグ内は時間順"
         : "リーグごとに時間順";
       if (fixtureOrderLabel) fixtureOrderLabel.textContent = displayOrderLabel;
       fixturesStatus.textContent = fixtures.length
         ? fixtureMode === "date"
           ? `${dateLabel} · ${competitionLabel} · ${statusLabel} · ${scopeLabel} · ${fixtures.length}試合 · ${displayOrderLabel} · ${updatedAt()}更新`
-          : `${activeFixtureLeague} · ${activeFixtureFilter || "節未選択"} · ${statusLabel} · ${fixtures.length}試合`
+          : `${competitionLabel} · ${activeFixtureFilter || "節未選択"} · ${statusLabel} · ${fixtures.length}試合${unavailableLabel}`
         : fixtureScope === "favorites" && !savedClubFilters().hasFavorites
           ? "試合詳細からクラブを保存すると、該当試合だけを表示できます"
           : fixtureMode === "date"
             ? `${dateLabel}は、選択条件に該当する試合がありません`
-            : `${activeFixtureLeague}の選択条件に該当する試合はありません`;
+            : `${competitionLabel}の選択条件に該当する試合はありません${unavailableLabel}`;
     }
 
     function clearLiveDailyRefresh() {
@@ -781,11 +813,11 @@
 
     function useFixtureData(league, data) {
       clearLiveDailyRefresh();
-      leagueCache.set(league, data);
+      if (league !== ALL_COMPETITIONS) leagueCache.set(league, data);
       fixtureMode = "round";
       activeFixtureLeague = league;
       activeFixtureData = data;
-      activeFixtureFilter = defaultRoundFilter(data);
+      if (!hasRound(data, activeFixtureFilter)) activeFixtureFilter = defaultRoundFilter(data);
       fixturesSource.hidden = true;
       setLeagueButtons();
       renderFixtureView();
@@ -795,7 +827,6 @@
       clearLiveDailyRefresh();
       activeFixtureLeague = league;
       activeFixtureData = null;
-      activeFixtureFilter = null;
       setLeagueButtons();
       fixtureFilters.replaceChildren();
       fixturesNode.replaceChildren();
@@ -813,6 +844,40 @@
       }
     }
 
+    async function loadAllRoundFixtures() {
+      clearLiveDailyRefresh();
+      activeFixtureLeague = ALL_COMPETITIONS;
+      activeFixtureData = null;
+      setLeagueButtons();
+      fixtureFilters.replaceChildren();
+      fixturesNode.replaceChildren();
+      fixturesSource.hidden = true;
+      fixturesStatus.textContent = "5大リーグの節別日程を読み込んでいます";
+      const results = await Promise.allSettled(ROUND_LEAGUES.map(async (league) => {
+        const data = leagueCache.get(league) || await client.fixtures(league);
+        if (data.errors && Object.keys(data.errors).length) throw new Error("provider returned errors");
+        if (!Array.isArray(data.fixtures)) throw new Error("invalid fixture response");
+        leagueCache.set(league, data);
+        return { league, data };
+      }));
+      if (fixtureMode !== "round" || activeFixtureLeague !== ALL_COMPETITIONS) return;
+      const availableData = results
+        .filter((result) => result.status === "fulfilled")
+        .map((result) => result.value);
+      if (availableData.length) {
+        const roundData = mergeRoundFixtureData(availableData);
+        roundData.unavailableLeagues = results
+          .map((result, index) => result.status === "rejected" ? ROUND_LEAGUES[index] : null)
+          .filter(Boolean);
+        useFixtureData(ALL_COMPETITIONS, roundData);
+      } else {
+        showFallback("5大リーグの節別日程を取得できないため、画面確認用サンプルを表示しています");
+      }
+      results.forEach((result, index) => {
+        if (result.status === "rejected") console.warn("Fixture league unavailable.", ROUND_LEAGUES[index], result.reason);
+      });
+    }
+
     function showFallback(message) {
       clearLiveDailyRefresh();
       fixturesSource.hidden = false;
@@ -827,7 +892,7 @@
       if (fixtureMode === "date") {
         renderFixtureView();
       } else if (activeFixtureLeague === ALL_COMPETITIONS) {
-        document.querySelector('[data-fixture-mode="date"]').click();
+        loadAllRoundFixtures();
       } else {
         loadFixtureLeague(activeFixtureLeague);
       }
@@ -840,8 +905,8 @@
       if (fixtureMode === "date") {
         loadFixtureDate(selectedDailyDate);
       } else {
-        if (activeFixtureLeague === ALL_COMPETITIONS) activeFixtureLeague = DEFAULT_LEAGUE;
-        loadFixtureLeague(activeFixtureLeague);
+        if (activeFixtureLeague === ALL_COMPETITIONS) loadAllRoundFixtures();
+        else loadFixtureLeague(activeFixtureLeague);
       }
     }));
 
@@ -859,7 +924,6 @@
       fixtureStatus = button.dataset.fixtureStatus;
       document.querySelectorAll(".fixture-status-tab").forEach((item) => item.setAttribute("aria-pressed", String(item === button)));
       if (activeFixtureData) {
-        if (fixtureMode === "round") activeFixtureFilter = defaultRoundFilter(activeFixtureData);
         renderFixtureView();
       }
     }));
@@ -907,5 +971,5 @@
     return { renderFixtures, useDailyData, loadFixtureDate, showDailyUnavailable, useFixtureData, showFallback };
   }
 
-  return { create };
+  return { create, mergeRoundFixtureData, roundLeagueNames: ROUND_LEAGUES };
 });
