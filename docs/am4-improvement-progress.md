@@ -162,3 +162,41 @@ Work began only after the Phase 1 suite above passed.
 - **Production release:** `am4-production` was fast-forwarded from `d537e3e` to `b0221f2` (`Restore archive editorials on normal fixtures`) and pushed to `origin/am4-production`. Vercel reported `success` for that commit.
 - **Production browser confirmation:** at a measured `390×844` viewport, `match.html?id=1557393#overview` rendered the normal Ipswich v Liverpool fixture and its `AM4 MATCH SUMMARY` body, including the match-summary lead and “試合を分けたポイント”; the report-preparing placeholder was absent and there were no captured console errors. The existing Getafe v Celta Vigo route still rendered its `AM4 PREDICTION` body without its placeholder or console errors.
 - **Production screenshots opened and inspected:** `docs/screenshots/am4-production-normal-ipswich-summary-390.png`, `docs/screenshots/am4-production-normal-getafe-preview-390.png`. This is browser viewport evidence, not iPhone Safari or physical-device verification.
+
+## 2026-09-07 completion pass — evidence gate and motion-safe content
+
+### Start state and safety record
+
+- Working branch: `codex/normal-fixture-match-key-fallback-20260907`; base and production head before this pass: `4f1b52b` (`Document normal fixture editorial verification`). The supplied historical audit commit was not restored, checked out, or used as a reset point.
+- The worktree was clean before this pass. No Notion page, Blob data, environment value, cron configuration, provider balance, or paid generation request was changed.
+- A read-only production runtime review found current failed generation attempts caused by the external AI provider's insufficient credit balance. The active paths include transfer research, match-report research/write, and academy research/write. This was not inferred from old audit text; it was observed in current runtime errors.
+- Current cron configuration remains unchanged: academy twice daily, match reports three times daily, transfer monitoring four times daily, Notion sync three times daily, and trending once daily. The former daily-digest / AI-column schedules are not active.
+
+### Completed code changes
+
+| Item | Status | Change |
+| --- | --- | --- |
+| 4-8 Automatic generation safety | Fixed in code; provider balance needs external action | `match-report` and `academy` now stop before the writer when research gets a 5xx, network interruption, timeout, empty response, text-only response, source-only response, or unsafe source URL. A valid non-empty research note and at least one structured `http(s)` source are both required. The existing transfer-publication research gate remains in place. Match and academy outputs were already drafts only; this eliminates source-less draft creation and redundant paid writer attempts too. |
+| 5-5 Motion resilience | Fixed in code | Homepage and 20 Seasons content no longer starts hidden behind an optional IntersectionObserver reveal. Removing this decorative dependency guarantees that a script error or disabled motion cannot leave real content transparent. The 20 Seasons CSS and script URLs have new cache keys together. |
+
+### Regression coverage and verification before release
+
+- `tests/generation-research-gate.test.js`: both match-report and academy paths require research before writing. Covers 5xx, network interruption, timeout, empty, text-only, source-only, and `javascript:` source cases; successful research calls `research → write` and returns only the safe structured source.
+- `tests/home-motion-safety.test.js`: homepage and 20 Seasons do not emit hiding reveal classes/observers; reduced-motion styling remains explicit.
+- Red/green sequence completed: research-failure and incomplete-research cases initially showed an unwanted writer call, then passed after the gate was added.
+- `npm test` — **160 passed, 0 failed**. Existing Node module-type warnings were retained; no package configuration was changed.
+- `node --check lib/match-report-core.js lib/academy-core.js column-series-page.js` — passed.
+- `git diff --check` — passed.
+- Independent code review found and required the empty/text-only/source-only/unsafe-URL research guard; the corrected diff was re-reviewed with no blocker.
+
+### Commits and production verification
+
+- `3532d7b Gate draft generation on research evidence`
+- `3e09fff Keep homepage content visible without reveal scripts`
+- Production: `am4-production` was fast-forwarded from `4f1b52b` to `3e09fff` and pushed. Vercel production deployment `dpl_EXt6WyMu78nBNTYfjpavVzW3yPnL` reported `READY` for commit `3e09fff` with the `am4football.com` alias.
+- Production browser checks, screenshots opened and inspected:
+  - At a measured `390×844` viewport, the home page had no `.reveal` / `.column-stagger` nodes, no horizontal overflow, and no transparent transfer, match, player, or COLUMN cards after data load. The top navigation, favourite controls, date controls, and results control remained exposed through the accessibility tree. Screenshot: `docs/screenshots/am4-production-home-motion-safe-390.jpg`.
+  - At the same measured viewport, 20 Seasons loaded all 20 cards (11 published), with zero transparent cards and no console errors. Published card screenshots: `docs/screenshots/am4-production-20-seasons-cards-motion-safe-390.jpg`.
+  - Responsive viewport checks at `360`, `375`, `390`, `430`, `1280`, and `1440` CSS pixels each found no reveal nodes, transparent target content, or horizontal overflow. These are browser viewport overrides, not physical-device validation.
+  - Keyboard focus was exercised through the accessible match controls. Browser zoom could not be changed in this in-app browser (`Control++` left the viewport unchanged), so an actual 200% browser-zoom check remains unverified. iPhone Safari remains unverified as well.
+- External operational follow-up: restoring the AI provider balance is required to resume successful scheduled generation. That is a billing/configuration decision and was intentionally not changed under this task. The code is now fail-safe while the balance remains unavailable.
