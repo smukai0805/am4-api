@@ -98,3 +98,40 @@ Work began only after the Phase 1 suite above passed.
 - **Regression coverage:** `tests/match-editorial-fallback.test.js` covers a successful empty live result, preserving live content, a truly absent archive item, transient archive retrieval failure, and a total archive-list failure that remains retryable.
 - **Validation:** targeted tests passed (24); full `npm test` passed (**123 passed, 0 failed**); `node --check` and `git diff --check` passed. The local browser surface could not connect to the localhost Vite server in this environment, so visual confirmation remains pending a permitted preview or production deployment.
 - **Required approval:** commit, fast-forward/push to `am4-production`, and production deployment verification. No Notion content, Blob data, cron configuration, or paid-generation job is changed by this patch.
+
+## 2026-09-07 archived-match recovery and editorial-numbering follow-up
+
+### Start state and scope
+
+- Current production branch and base verified before this follow-up: `am4-production` at `cb182d70ec59c53b47abc0805350dc14f0dd2fbc` (`Restore published match editorials`). The older audit commit `5e398f58c4313ed658407b91d49d4e458c88e334` was not restored or checked out.
+- Work branch: `codex/archive-match-recovery-and-list-numbering-20260907` in a separate worktree. No existing user change was reset, deleted, or overwritten.
+- Scope is limited to public match-editorial recovery and stale editorial-list numbering. No Notion source data, Blob data, environment variable, cron configuration, paid generation, or publishing status was changed.
+
+### Findings and fixes
+
+| Issue | Root cause and reproducing condition | Status |
+| --- | --- | --- |
+| Past public editorial disappears with an expired provider fixture | The detail page began with the current fixture API. When that API no longer returned a fixture, it exited before its existing public editorial path could run. Production data for Ipswich Town v Liverpool on 2026-09-04 still has a public/published match report keyed as `Premier League|2026-09-04|Ipswich Town|Liverpool`, while the current date fixture API does not return that fixture. | Fixed in code; production verification pending this release. |
+| Unsafe archive recovery risk | Fixture names and legacy IDs alone can collide across seasons or be stale. | Fixed: provider fixture remains first; fallbacks use a saved fixture ID identity, an exact canonical Match Key (competition/date/home/away with explicit aliases), then a public article anchor. Only `published` and public match prediction/report records are eligible. Ambiguous, draft, private, non-editorial, missing, and temporarily unavailable archive states stay distinct. |
+| `35`, `36`, `35.36` style values in editorial UI | `lib/notion-content-sync.js` generated numbered-list Markdown from the Notion page-wide block index (`index + 1`). A list after 34 unrelated blocks became `35.`, `36.` etc.; a following numerical sentence could visually read as `35.36`. | Fixed: synchronizer numbers each contiguous Notion ordered-list run locally from 1. A renderer also normalizes already-published legacy, non-one consecutive ordinal runs into semantic ordered-list DOM, while preserving meaningful minutes, scores, dates, and percentages as prose. |
+
+### Changed files
+
+- `match-archive.js`, `match-detail-loader.js`, `match-detail.js`, `match.html`: public archive resolution, provider-first loading, honest unavailable/absent states, article/archive entry route, and archive-only overview.
+- `api/articles.js`, `lib/article-store.js`, `football-data.js`, `article-page.js`, `article.html`: bounded public Match Key lookup and a durable article-to-match archive link. Alias/canonical-key logic is shared so API and client cannot drift.
+- `lib/notion-content-sync.js`, `editorial-list.js`, `brand.css`: local ordered-list numbering at sync time and semantic legacy-list rendering without rendering stale ordinal text.
+- `tests/article-store.test.js`, `tests/football-data.test.js`, `tests/match-archive.test.js`, `tests/match-detail-loader.test.js`, `tests/notion-content-sync.test.js`, `tests/editorial-list.test.js`: archive and numbering regression coverage.
+
+### Validation before production
+
+- Regression tests cover: provider fixture present; provider fixture absent; saved fixture-ID lookup; Match Key recovery; public article-anchor-only recovery; Ipswich aliases; published vs draft/private/non-editorial candidates; no matching article; partial and complete archive outage; stale list ordinals; meaningful numerical prose; surrounding intro/outro prose.
+- `npm test` — **140 passed, 0 failed**.
+- `node --check match-detail.js match-detail-loader.js match-archive.js editorial-list.js lib/article-store.js lib/notion-content-sync.js api/articles.js` — passed.
+- `git diff --check` — passed.
+- Independent code review passed after correcting the archive description to say that current match data is unavailable, rather than assuming every case is outside the provider date window.
+- Local Chromium viewport check at `390×844` and full-page check against the public Ipswich archive article route confirmed the archive header, both published editorial sections, and semantic list rendering. Screenshots: `/tmp/am4-local-ipswich-390-correct.png`, `/tmp/am4-local-ipswich-390-full.png`. This is Chromium viewport evidence, not iPhone Safari verification.
+
+### Release state
+
+- Commits prepared: `959ba5d Restore public archived match editorials`; `337399c Normalize editorial list numbering`.
+- Production fast-forward/deployment and post-deploy browser confirmation remain pending at the time of this entry.
