@@ -796,9 +796,8 @@
     if (fallbackDate) requests.push(client.articles({ type, matchDate: fallbackDate, pageSize: 100 }));
     const results = await Promise.allSettled(requests);
     const candidates = new Map();
-    results.forEach((result) => {
-      if (result.status === "fulfilled") (result.value.items || []).forEach((article) => candidates.set(article.id, article));
-    });
+    window.AM4MatchEditorialFallback.publishedArchiveCandidates(results)
+      .forEach((article) => candidates.set(article.id, article));
     const selected = [...candidates.values()].find((article) => isNotionEditorial(article, type) && editorialMatchesFixture(article, fixture));
     if (!selected?.id) return null;
     const response = await client.article(selected.id);
@@ -826,15 +825,14 @@
       // for this exact fixture, so new AM4 analysis does not wait for the
       // archive's scheduled mirror sync.
       editorial = await currentNotionEditorial(fixture);
-      const unavailableTypes = Object.keys(editorial.errors || {});
-      if (unavailableTypes.length) {
-        const fallbackResults = await Promise.allSettled(unavailableTypes.map((type) => fullEditorialArticle(type, fixture)));
-        unavailableTypes.forEach((type, index) => {
-          if (fallbackResults[index].status !== "fulfilled") return;
-          if (type === "match_prediction") editorial.prediction = fallbackResults[index].value;
-          if (type === "match_report") editorial.report = fallbackResults[index].value;
-        });
-      }
+      // A legacy Notion page can be marked as generated provenance even though
+      // its already-published Blob mirror is safe to show. A successful empty
+      // live lookup is therefore not enough to conclude that no public
+      // editorial exists; restore only missing types from the public archive.
+      editorial = await window.AM4MatchEditorialFallback.withPublishedFallback(
+        editorial,
+        (type) => fullEditorialArticle(type, fixture),
+      );
     } catch (error) {
       // Keep the previously published Blob mirror as a resilience fallback.
       // It is never presented as newly fetched Notion content, and an absence
