@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { canonicalMatchKey, fetchNotionMatchContent, isPublishableNotionState, markdownExcerpt, normalizeNotionContent, notionPageToArticle, syncNotionContent } from '../lib/notion-content-sync.js';
+import { canonicalMatchKey, fetchNotionMatchContent, isPublishableNotionState, markdownExcerpt, normalizeNotionContent, notionBlocksToMarkdown, notionPageToArticle, syncNotionContent } from '../lib/notion-content-sync.js';
 
 function textProperty(type, text) {
   return { type, [type]: [{ plain_text: text }] };
@@ -52,6 +52,23 @@ test('Notion source blocks become safe structured sources without duplicating va
 test('excerpt normalization rejects numbered contents while keeping a bullet summary', () => {
   assert.equal(markdownExcerpt('## 目次\n1. 序章\n2. 戦術\n3. 結論'), '');
   assert.equal(markdownExcerpt('- 守備の安定\n- 速攻への対応'), '守備の安定 速攻への対応');
+});
+
+test('Notion numbered lists restart at one instead of leaking page-wide block indexes into editorial UI', () => {
+  const leadingParagraphs = Array.from({ length: 34 }, (_, index) => ({
+    type: 'paragraph',
+    paragraph: { rich_text: [{ plain_text: `前置き ${index + 1}` }] },
+    has_children: false,
+  }));
+  const markdown = notionBlocksToMarkdown([
+    ...leadingParagraphs,
+    { type: 'numbered_list_item', numbered_list_item: { rich_text: [{ plain_text: '最初の要点' }] }, has_children: false },
+    { type: 'numbered_list_item', numbered_list_item: { rich_text: [{ plain_text: '次の要点' }] }, has_children: false },
+  ]);
+
+  assert.match(markdown, /1\. 最初の要点/);
+  assert.match(markdown, /2\. 次の要点/);
+  assert.doesNotMatch(markdown, /35\. 最初の要点|36\. 次の要点/);
 });
 
 test('Notion prediction entries preserve an exact match identity and prediction fields', () => {

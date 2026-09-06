@@ -1057,7 +1057,21 @@
   function editorialBlock(label, value) {
     if (!value) return null;
     const block = node("article", "match-editorial-block");
-    block.append(node("h3", "", label), node("p", "", value));
+    block.append(node("h3", "", label));
+    const contentBlocks = window.AM4EditorialList?.editorialBlocksWithLocalNumbering(value);
+    if (contentBlocks) {
+      contentBlocks.forEach((content) => {
+        if (content.type === "ordered-list") {
+          const list = node("ol", "match-editorial-list");
+          content.items.forEach((item) => list.append(node("li", "", item)));
+          block.append(list);
+        } else {
+          block.append(node("p", "", content.text));
+        }
+      });
+    } else {
+      block.append(node("p", "", value));
+    }
     return block;
   }
 
