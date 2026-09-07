@@ -557,6 +557,42 @@ test('legacy provider club names resolve the real Newcastle and Ipswich editoria
   assert.equal(timezoneResult.report.notion.pageId, 'ipswich-report');
 });
 
+test('provider shorthand Alaves resolves the published Deportivo Alavés editorial identity', async () => {
+  // API-FOOTBALL abbreviates this club to `Alaves`, while the editorial
+  // workflow records its formal name. Match identity must remain exact on
+  // competition, date and opponent after applying the shared club alias.
+  const prediction = matchPage({
+    id: 'alaves-prediction', type: 'match_prediction',
+    matchKey: 'La Liga|2026-09-06|Deportivo Alavés|Osasuna',
+    home: 'Deportivo Alavés', away: 'Osasuna', date: '2026-09-06', competition: 'La Liga',
+  });
+  const report = matchPage({
+    id: 'alaves-report', type: 'match_report',
+    matchKey: 'La Liga|2026-09-06|Deportivo Alavés|Osasuna',
+    home: 'Deportivo Alavés', away: 'Osasuna', date: '2026-09-06', competition: 'La Liga',
+  });
+  prediction.properties['記事状態'] = { type: 'select', select: { name: '自動生成' } };
+  report.properties['記事状態'] = { type: 'select', select: { name: '自動生成' } };
+
+  const result = await fetchNotionMatchContent({
+    match: {
+      fixtureId: 1570363,
+      competition: 'La Liga',
+      date: '2026-09-06',
+      homeTeam: 'Alaves',
+      awayTeam: 'Osasuna',
+    },
+    apiKey: 'test-key',
+    fetcher: matchContentFetcher({ prediction, report }),
+    sourceIds: { match_prediction: 'predictions', match_report: 'reports' },
+    logger: { info: () => {}, error: () => {} },
+  });
+
+  assert.equal(canonicalMatchKey({ competition: 'La Liga', date: '2026-09-06', homeTeam: 'Alaves', awayTeam: 'Osasuna' }), 'laliga|2026-09-06|deportivoalaves|osasuna');
+  assert.equal(result.prediction?.notion.pageId, 'alaves-prediction');
+  assert.equal(result.report?.notion.pageId, 'alaves-report');
+});
+
 test('explicit provider team IDs win before stale legacy team names', async () => {
   const prediction = matchPage({
     id: 'team-id-prediction', type: 'match_prediction',

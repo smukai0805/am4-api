@@ -23,6 +23,7 @@
     leeds: "leedsunited", leedsunited: "leedsunited",
     ipswich: "ipswichtown", ipswichtown: "ipswichtown",
     celta: "celtavigo", celtavigo: "celtavigo",
+    alaves: "deportivoalaves", deportivoalaves: "deportivoalaves",
     coventry: "coventrycity", coventrycity: "coventrycity",
     tottenham: "tottenhamhotspur", tottenhamhotspur: "tottenhamhotspur",
     stuttgart: "vfbstuttgart", vfbstuttgart: "vfbstuttgart",
