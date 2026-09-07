@@ -39,6 +39,9 @@
     "ブンデスリーガ": "bundesliga", bundesliga: "bundesliga",
     "リーグアン": "ligue1", ligue1: "ligue1",
     "チャンピオンズリーグ": "championsleague", championsleague: "championsleague",
+    uefachampionsleague: "championsleague", ucl: "championsleague", cl: "championsleague",
+    "ヨーロッパリーグ": "europaleague", europaleague: "europaleague",
+    uefaeuropaleague: "europaleague", uel: "europaleague", el: "europaleague",
   };
   const EDITORIAL_TYPES = new Set(["match_prediction", "match_report"]);
   // Legal/organisational suffixes are not club identities. Do not discard

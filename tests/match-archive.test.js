@@ -174,6 +174,31 @@ test("daily fixtures use the kickoff's UTC date for legacy editorial Match Keys"
   ]);
 });
 
+test("CL and EL provider labels share stable editorial competition identities", () => {
+  assert.equal(
+    canonicalMatchKey({
+      competition: "UEFA Champions League",
+      date: "2026-09-09",
+      homeTeam: "AEK Athens FC",
+      awayTeam: "LASK Linz",
+    }),
+    "championsleague|2026-09-09|aekathens|lasklinz",
+  );
+  assert.equal(
+    canonicalMatchKey({
+      competition: "UEFA Europa League",
+      date: "2026-09-09",
+      homeTeam: "Club Brugge KV",
+      awayTeam: "Aston Villa",
+    }),
+    "europaleague|2026-09-09|bruggekv|astonvilla",
+  );
+  assert.equal(
+    canonicalMatchKey("ヨーロッパリーグ|2026-09-09|Club Brugge KV|Aston Villa"),
+    "europaleague|2026-09-09|bruggekv|astonvilla",
+  );
+});
+
 test("a public article ID anchors its Match Key and keeps seasons with the same clubs separate", () => {
   const priorSeason = editorial({ id: "prior-season", type: "match_report", date: "2025-09-04" });
   const currentSeason = editorial({ id: "current-season", type: "match_report", date: "2026-09-04" });
