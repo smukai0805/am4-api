@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { canonicalMatchKey, fetchNotionMatchContent, isPublishableNotionState, markdownExcerpt, normalizeNotionContent, notionBlocksToMarkdown, notionPageToArticle, syncNotionContent } from '../lib/notion-content-sync.js';
+import { matchContentAvailabilityByMatchKey } from '../lib/article-content-availability.js';
 
 function textProperty(type, text) {
   return { type, [type]: [{ plain_text: text }] };
@@ -8,6 +9,9 @@ function textProperty(type, text) {
 
 test('Notion publish states keep review-only content out of the public feed', () => {
   assert.equal(isPublishableNotionState('自動生成'), false);
+  assert.equal(isPublishableNotionState('自動生成', 'match_prediction'), true);
+  assert.equal(isPublishableNotionState('自動生成', 'match_report'), true);
+  assert.equal(isPublishableNotionState('自動生成', 'am4_story'), false);
   assert.equal(isPublishableNotionState('公開準備'), true);
   assert.equal(isPublishableNotionState('公開済'), true);
   assert.equal(isPublishableNotionState('要確認'), false);
@@ -264,6 +268,56 @@ test('sync preserves a published legacy archive record marked only as generated 
   assert.equal(records.get(articleId).public, true);
 });
 
+test('sync mirrors automatic match editorials into public card availability', async () => {
+  const prediction = matchPage({
+    id: 'sync-automatic-prediction', type: 'match_prediction', matchKey: 'Premier League|2026-09-06|Arsenal|Chelsea', home: 'Arsenal', away: 'Chelsea', date: '2026-09-06',
+  });
+  const report = matchPage({
+    id: 'sync-automatic-report', type: 'match_report', matchKey: 'Premier League|2026-09-06|Arsenal|Chelsea', home: 'Arsenal', away: 'Chelsea', date: '2026-09-06',
+  });
+  prediction.properties['記事状態'] = { type: 'select', select: { name: '自動生成' } };
+  report.properties['記事状態'] = { type: 'select', select: { name: '自動生成' } };
+  const automaticStory = {
+    id: 'sync-automatic-story',
+    properties: {
+      '記事タイトル': textProperty('title', '公開前の自動ストーリー'),
+      '記事状態': { type: 'select', select: { name: '自動生成' } },
+    },
+  };
+  const records = new Map();
+  const store = {
+    listArticles: async () => ({ items: [...records.values()], page: 1, totalPages: 1 }),
+    getArticle: async (id) => records.get(id) || null,
+    saveArticle: async (article) => { records.set(article.id, article); return article; },
+  };
+  const pagesBySource = { predictions: [prediction], reports: [report], stories: [automaticStory] };
+  const blocksByPage = {
+    [prediction.id]: [{ type: 'paragraph', paragraph: { rich_text: [{ plain_text: '予想本文' }] }, has_children: false }],
+    [report.id]: [{ type: 'paragraph', paragraph: { rich_text: [{ plain_text: '解説本文' }] }, has_children: false }],
+  };
+  const fetcher = async (url) => {
+    const parsed = new URL(url);
+    const sourceMatch = parsed.pathname.match(/\/data_sources\/([^/]+)\/query$/);
+    if (sourceMatch) return notionResponse({ results: pagesBySource[sourceMatch[1]] || [], has_more: false, next_cursor: null });
+    const blockMatch = parsed.pathname.match(/\/blocks\/([^/]+)\/children$/);
+    if (blockMatch) return notionResponse({ results: blocksByPage[blockMatch[1]] || [], has_more: false, next_cursor: null });
+    return notionResponse({ message: 'not found' }, 404);
+  };
+
+  const result = await syncNotionContent({
+    apiKey: 'test-key', fetcher, articleStore: store,
+    sourceIds: { match_prediction: 'predictions', match_report: 'reports', am4_story: 'stories' },
+  });
+
+  const key = 'premierleague|2026-09-06|arsenal|chelsea';
+  assert.equal(result.created, 2);
+  assert.equal([...records.values()].some((article) => article.notion?.pageId === automaticStory.id), false);
+  assert.deepEqual(
+    matchContentAvailabilityByMatchKey([...records.values()], [key])[key].sort(),
+    ['prediction', 'report'],
+  );
+});
+
 function notionResponse(payload, status = 200) {
   return { ok: status >= 200 && status < 300, status, json: async () => payload };
 }
@@ -396,6 +450,29 @@ test('live match-content lookup reads both real Notion content shapes without a 
   assert.match(result.report.report.tactics, /左サイド/);
   assert.equal(Object.keys(result.errors).length, 0);
   assert.ok(logs.some((entry) => entry[0] === '[match-content] article matched'));
+});
+
+test('the active match-editorial workflow restores an automatic report while new automatic stories stay ineligible', async () => {
+  const prediction = matchPage({
+    id: 'automatic-prediction', type: 'match_prediction', matchKey: 'Premier League|2026-09-06|Arsenal|Chelsea', home: 'Arsenal', away: 'Chelsea', date: '2026-09-06',
+  });
+  const report = matchPage({
+    id: 'automatic-report', type: 'match_report', matchKey: 'Premier League|2026-09-06|Arsenal|Chelsea', home: 'Arsenal', away: 'Chelsea', date: '2026-09-06',
+  });
+  prediction.properties['記事状態'] = { type: 'select', select: { name: '自動生成' } };
+  report.properties['記事状態'] = { type: 'select', select: { name: '自動生成' } };
+
+  const result = await fetchNotionMatchContent({
+    match: { fixtureId: 1557387, competition: 'Premier League', date: '2026-09-06', homeTeam: 'Arsenal', awayTeam: 'Chelsea' },
+    apiKey: 'test-key',
+    fetcher: matchContentFetcher({ prediction, report }),
+    sourceIds: { match_prediction: 'predictions', match_report: 'reports' },
+    logger: { info: () => {}, error: () => {} },
+  });
+
+  assert.equal(result.prediction?.notion.pageId, 'automatic-prediction');
+  assert.equal(result.report?.notion.pageId, 'automatic-report');
+  assert.equal(isPublishableNotionState('自動生成', 'am4_story'), false);
 });
 
 test('Match Key alias fallback requires the full competition, date, home and away identity', async () => {
