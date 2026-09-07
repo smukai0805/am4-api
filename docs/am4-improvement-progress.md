@@ -339,3 +339,23 @@ Work began only after the Phase 1 suite above passed.
   - On `/football-hub.html`, the visible tabs were `Champions League`, `Europa League`, then the five domestic leagues in order. Selecting Europa League made it active and showed live 2025-season fixtures and standings (`5` visible standing rows in the collapsed table); a screenshot was opened and inspected.
 - The legacy Football Hub emitted an existing ticker initialisation error (`AM4_API_BASE` referenced before its declaration). It predates and is independent of the competition-tab change, did not block fixtures or the EL standings tab, and is left for a separately scoped repair rather than mixed into this release.
 - Screenshots were inspected in the browser but not saved as filesystem artifacts. These are Chromium viewport checks, not iPhone Safari or physical-device validation.
+
+## 2026-09-07 generic league-name priority hotfix
+
+### Reported production symptom and root cause
+
+- The reported mobile list showed several different countries' competitions named `Premier League` directly below the favourite group, each incorrectly labelled `イングランド` and treated as AM4's English Premier League priority.
+- A deterministic regression test first reproduced the fault: an unknown provider ID with `{ competition: "Premier League", competitionCountry: "Ghana" }` received priority rank `4` (the English Premier League rank) solely because its display name matched. This was a site-side classification defect, not a provider/Notion editorial update issue.
+
+### Fix and guardrail
+
+- `match-centre.js` now treats provider competition IDs as authoritative. For generic domestic labels reused internationally (`Premier League`, `Serie A`, `Bundesliga`, `La Liga`, `Ligue 1`), name fallback requires the matching canonical country. An explicit Japanese AM4 label remains a safe compatibility fallback only when the provider country is unavailable.
+- European competition aliases retain their existing ID/exact-name priority. Unknown-country fixtures no longer borrow a five-major-league fallback logo either.
+- `index.html` advances the `match-centre.js` cache key to `20260907-competition-priority-v2`, so existing clients load the correction rather than retaining the prior JavaScript asset.
+
+### Tests and production verification
+
+- `tests/match-centre.test.js` now proves Ghana `Premier League` cannot receive English rank/country, while England `Premier League` retains rank `4`; Brazilian `Serie A` and Austrian `Bundesliga` likewise remain below the five-major-league priority range and retain their own country labels. The test was red before the fix and green afterward.
+- Full `npm test` — **185 passed, 0 failed**. `node --check match-centre.js` and `git diff --check` passed.
+- Production release: `5d3a100` (`Keep generic league names out of major league priority`) was pushed to `am4-production`; Vercel reported `success` for the expected commit.
+- Fresh production Chromium verification at measured `390×844`: after the favourite Arsenal v Chelsea fixture, the list rendered `ラ・リーガ → セリエA → ブンデスリーガ → リーグ・アン`; Brazilian `Serie A` appeared later with the label `ブラジル`, not `イタリア`. Browser console errors were empty. A browser screenshot was opened and inspected but not written as a filesystem artifact. This is Chromium viewport evidence, not iPhone Safari or physical-device validation.
