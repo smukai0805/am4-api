@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { canonicalMatchKey, fetchNotionMatchContent, isPublishableNotionState, markdownExcerpt, normalizeNotionContent, notionBlocksToMarkdown, notionPageToArticle, syncNotionContent } from '../lib/notion-content-sync.js';
+import { canonicalMatchKey, fetchNotionMatchContent, isPublishableNotionState, markdownExcerpt, matchKeyForMatch, normalizeNotionContent, notionBlocksToMarkdown, notionPageToArticle, syncNotionContent } from '../lib/notion-content-sync.js';
 import { matchContentAvailabilityByMatchKey } from '../lib/article-content-availability.js';
 
 function textProperty(type, text) {
@@ -115,6 +115,22 @@ test('Notion prediction entries preserve an exact match identity and prediction 
   assert.deepEqual(article.prediction, { score: '2-1', pick: 'Arsenal', confidence: 82 });
   assert.match(article.summary, /前節で見えた/);
   assert.equal(article.public, true);
+});
+
+test('Notion Match Keys canonicalize every CL and EL club regardless of domestic league', () => {
+  const match = {
+    date: '2026-09-09',
+    homeTeam: 'AEK Athens FC',
+    awayTeam: 'LASK Linz',
+  };
+  assert.equal(
+    matchKeyForMatch({ ...match, competition: 'UEFA Champions League' }),
+    'Champions League|2026-09-09|AEK Athens FC|LASK Linz',
+  );
+  assert.equal(
+    matchKeyForMatch({ ...match, competition: 'UEFA Europa League' }),
+    'Europa League|2026-09-09|AEK Athens FC|LASK Linz',
+  );
 });
 
 test('Notion uses an explicit fixture ID before a legacy Match Key and retains structured editorial fields', () => {
