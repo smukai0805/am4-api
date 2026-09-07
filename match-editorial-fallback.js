@@ -30,6 +30,23 @@
       && article?.contentKind === `notion_${type}`;
   }
 
+  function uniqueNewestArticle(entries) {
+    const identityKeys = new Set(entries.map((entry) => (
+      entry.article?.match?.canonicalKey || entry.article?.match?.matchKey || ""
+    )));
+    if (identityKeys.size !== 1 || identityKeys.has("")) return null;
+    const dated = entries
+      .map((entry) => ({
+        ...entry,
+        editedAt: Date.parse(entry.article?.notion?.updatedAt || entry.article?.updatedAt || ""),
+      }))
+      .filter((entry) => Number.isFinite(entry.editedAt));
+    if (!dated.length) return null;
+    const newestTime = Math.max(...dated.map((entry) => entry.editedAt));
+    const newest = dated.filter((entry) => entry.editedAt === newestTime);
+    return newest.length === 1 ? newest[0].article : null;
+  }
+
   function selectPublishedArchiveEditorial(results, type, matchesFixture) {
     const candidates = new Map();
     publishedArchiveCandidates(results).forEach((article) => {
@@ -48,7 +65,7 @@
     if (!matches.length) return null;
     const strongestScore = Math.max(...matches.map((entry) => entry.score));
     const strongest = matches.filter((entry) => entry.score === strongestScore);
-    return strongest.length === 1 ? strongest[0].article : null;
+    return strongest.length === 1 ? strongest[0].article : uniqueNewestArticle(strongest);
   }
 
   async function withPublishedFallback(editorial, readPublished) {

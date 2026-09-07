@@ -28,6 +28,7 @@
     stuttgart: "vfbstuttgart", vfbstuttgart: "vfbstuttgart",
     cologne: "1fckoln", koln: "1fckoln", "1fckoln": "1fckoln",
     mainz: "mainz05", mainz05: "mainz05",
+    lask: "lasklinz", lasklinz: "lasklinz",
     paderborn: "scpaderborn", scpaderborn: "scpaderborn",
     freiburg: "scfreiburg", scfreiburg: "scfreiburg",
     deportivo: "deportivolacoruna", rcdeportivo: "deportivolacoruna", deportivolacoruna: "deportivolacoruna",
