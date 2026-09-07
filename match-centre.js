@@ -8,24 +8,35 @@
   const LEAGUE_GROUP_BATCH_SIZE = 6;
   const LIVE_DAILY_REFRESH_MS = 30_000;
   const KICKOFF_RECHECK_BUFFER_MS = 30_000;
-  const MAJOR_LEAGUES = [
-    { providerId: 39, rank: 1, competition: "プレミアリーグ", country: "England", names: ["プレミアリーグ", "Premier League"] },
-    { providerId: 140, rank: 2, competition: "ラ・リーガ", country: "Spain", names: ["ラ・リーガ", "La Liga"] },
-    { providerId: 135, rank: 3, competition: "セリエA", country: "Italy", names: ["セリエA", "Serie A"] },
-    { providerId: 78, rank: 4, competition: "ブンデスリーガ", country: "Germany", names: ["ブンデスリーガ", "Bundesliga"] },
-    { providerId: 61, rank: 5, competition: "リーグ・アン", country: "France", names: ["リーグ・アン", "Ligue 1"] },
+  // Date view keeps European club competitions ahead of domestic leagues.
+  // Conference League is matched by its canonical public names instead of an
+  // unverified provider ID, so an ID change cannot quietly move it down.
+  const EUROPEAN_COMPETITIONS = [
+    { providerId: 2, rank: 1, country: "Europe", names: ["チャンピオンズリーグ", "UEFA Champions League", "Champions League"] },
+    { providerId: 3, rank: 2, country: "Europe", names: ["ヨーロッパリーグ", "UEFA Europa League", "Europa League"] },
+    { providerId: null, rank: 3, country: "Europe", names: ["カンファレンスリーグ", "ヨーロッパカンファレンスリーグ", "UEFA Europa Conference League", "UEFA Conference League", "Europa Conference League", "Conference League"] },
   ];
+  const MAJOR_LEAGUES = [
+    { providerId: 39, rank: 4, competition: "プレミアリーグ", country: "England", names: ["プレミアリーグ", "Premier League"] },
+    { providerId: 140, rank: 5, competition: "ラ・リーガ", country: "Spain", names: ["ラ・リーガ", "La Liga"] },
+    { providerId: 135, rank: 6, competition: "セリエA", country: "Italy", names: ["セリエA", "Serie A"] },
+    { providerId: 78, rank: 7, competition: "ブンデスリーガ", country: "Germany", names: ["ブンデスリーガ", "Bundesliga"] },
+    { providerId: 61, rank: 8, competition: "リーグ・アン", country: "France", names: ["リーグ・アン", "Ligue 1"] },
+  ];
+  const PRIORITY_COMPETITIONS = [...EUROPEAN_COMPETITIONS, ...MAJOR_LEAGUES];
   // 節別の「すべて」は、日別の全大会とは異なり5大リーグだけを同じ節で
   // 横断する。並び順もここを唯一の定義にして、リーグ選択の状態とは分離する。
   const ROUND_LEAGUES = MAJOR_LEAGUES.map(({ competition }) => competition);
-  // 日別の「すべて」はクラブではなく大会単位で案内する。まず5大リーグを
-  // 固定し、その後は主要国内リーグの編集順を使う。未登録の大会は開始時刻順。
+  // 日別の「すべて」はクラブではなく大会単位で案内する。お気に入りの次に
+  // 欧州大会、5大リーグ、主要国内リーグの順で置き、未登録の大会は開始時刻順。
   const COMPETITION_DISPLAY_ORDER = new Map([
-    ...MAJOR_LEAGUES.map(({ providerId, rank }) => [providerId, rank]),
-    [88, 6], [94, 7], [144, 8], [179, 9], [203, 10],
-    [218, 11], [207, 12], [119, 13], [113, 14], [103, 15],
-    [106, 16], [332, 17], [345, 18], [71, 19], [128, 20],
-    [253, 21], [262, 22], [98, 23], [292, 24],
+    ...PRIORITY_COMPETITIONS
+      .filter(({ providerId }) => Number.isInteger(providerId) && providerId > 0)
+      .map(({ providerId, rank }) => [providerId, rank]),
+    [88, 9], [94, 10], [144, 11], [179, 12], [203, 13],
+    [218, 14], [207, 15], [119, 16], [113, 17], [103, 18],
+    [106, 19], [332, 20], [345, 21], [71, 22], [128, 23],
+    [253, 24], [262, 25], [98, 26], [292, 27],
   ]);
   const COMPETITION_LOGOS = new Map([
     ["プレミアリーグ", 39], ["Premier League", 39],
@@ -33,7 +44,8 @@
     ["セリエA", 135], ["Serie A", 135],
     ["ブンデスリーガ", 78], ["Bundesliga", 78],
     ["リーグ・アン", 61], ["Ligue 1", 61],
-    ["チャンピオンズリーグ", 2], ["UEFA Champions League", 2],
+    ["チャンピオンズリーグ", 2], ["UEFA Champions League", 2], ["Champions League", 2],
+    ["ヨーロッパリーグ", 3], ["UEFA Europa League", 3], ["Europa League", 3],
     ["クラブ親善試合", 667], ["Club Friendlies", 667],
   ]);
   const COMPETITION_COUNTRIES = new Map([
@@ -43,6 +55,8 @@
     ["ブンデスリーガ", "Germany"], ["Bundesliga", "Germany"],
     ["リーグ・アン", "France"], ["Ligue 1", "France"],
     ["チャンピオンズリーグ", "Europe"], ["UEFA Champions League", "Europe"],
+    ["ヨーロッパリーグ", "Europe"], ["UEFA Europa League", "Europe"],
+    ["カンファレンスリーグ", "Europe"], ["UEFA Europa Conference League", "Europe"],
   ]);
   const COUNTRY_LABELS = new Map([
     ["England", "イングランド"], ["Spain", "スペイン"], ["Italy", "イタリア"],
@@ -57,6 +71,26 @@
     ["Brazil", "ブラジル"], ["Argentina", "アルゼンチン"], ["Mexico", "メキシコ"],
     ["Japan", "日本"], ["South-Korea", "韓国"], ["Australia", "オーストラリア"],
   ]);
+
+  function normalizedCompetitionLabel(value) {
+    return String(value || "").trim().toLocaleLowerCase("en-US");
+  }
+
+  function priorityCompetitionForFixture(fixture) {
+    const providerLeagueId = Number(fixture?.competitionId);
+    const byProviderId = PRIORITY_COMPETITIONS.find(({ providerId }) => providerId === providerLeagueId);
+    if (byProviderId) return byProviderId;
+    const label = normalizedCompetitionLabel(fixture?.competition);
+    return PRIORITY_COMPETITIONS.find(({ names }) =>
+      names.some((name) => normalizedCompetitionLabel(name) === label),
+    ) || null;
+  }
+
+  function competitionDisplayRank(fixture) {
+    const providerLeagueId = Number(fixture?.competitionId);
+    if (COMPETITION_DISPLAY_ORDER.has(providerLeagueId)) return COMPETITION_DISPLAY_ORDER.get(providerLeagueId);
+    return priorityCompetitionForFixture(fixture)?.rank || Number.MAX_SAFE_INTEGER;
+  }
 
   function mergeRoundFixtureData(leagueData) {
     const roundsByKey = new Map();
@@ -460,7 +494,8 @@
     }
 
     function competitionCountryLabel(fixture) {
-      const country = fixture?.competitionCountry || (!fixture?.competitionId && COMPETITION_COUNTRIES.get(fixture?.competition));
+      const priorityCompetition = priorityCompetitionForFixture(fixture);
+      const country = priorityCompetition?.country || fixture?.competitionCountry || (!fixture?.competitionId && COMPETITION_COUNTRIES.get(fixture?.competition));
       return COUNTRY_LABELS.get(country) || country || "";
     }
 
@@ -469,15 +504,6 @@
       if (Number.isInteger(providerLeagueId) && providerLeagueId > 0) return `id:${providerLeagueId}`;
       const competition = fixture?.competition || fixture?.roundLabel || "大会情報確認中";
       return `name:${competition}|country:${fixture?.competitionCountry || ""}`;
-    }
-
-    function competitionDisplayRank(fixture) {
-      const providerLeagueId = Number(fixture?.competitionId);
-      if (COMPETITION_DISPLAY_ORDER.has(providerLeagueId)) return COMPETITION_DISPLAY_ORDER.get(providerLeagueId);
-      const fallback = MAJOR_LEAGUES.find((entry) =>
-        entry.country === fixture?.competitionCountry && entry.names.includes(fixture?.competition),
-      );
-      return fallback?.rank || Number.MAX_SAFE_INTEGER;
     }
 
     function fixtureKickoffTime(fixture) {
@@ -853,7 +879,7 @@
         ? ` · ${unavailableRoundLeagues.join(" / ")}は取得できません`
         : "";
       const dateLabel = new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", month: "long", day: "numeric", weekday: "short" }).format(new Date(`${selectedDailyDate}T12:00:00Z`));
-      const displayOrderLabel = "5大リーグ優先・リーグ内は時間順";
+      const displayOrderLabel = "欧州大会・5大リーグ優先・大会内は時間順";
       if (fixtureOrderLabel) fixtureOrderLabel.textContent = displayOrderLabel;
       fixturesStatus.textContent = fixtures.length
         ? fixtureMode === "date"
@@ -1111,6 +1137,7 @@
 
   return {
     create,
+    competitionDisplayRank,
     contentBadgeLabels,
     contentAvailabilityBatches,
     contentAvailabilityForFixture,

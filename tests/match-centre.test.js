@@ -1,6 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
+  competitionDisplayRank,
   contentAvailabilityBatches,
   contentBadgeLabels,
   contentAvailabilityForFixture,
@@ -9,6 +10,40 @@ const {
   roundLeagueNames,
   selectFavoriteFixtures,
 } = require("../match-centre.js");
+
+test("European club competitions lead the five major leagues in date view", () => {
+  const fixtures = [
+    { id: "other", competition: "League Cup", competitionId: 48 },
+    { id: "ligue-1", competition: "リーグ・アン", competitionId: 61 },
+    { id: "bundesliga", competition: "ブンデスリーガ", competitionId: 78 },
+    { id: "serie-a", competition: "セリエA", competitionId: 135 },
+    { id: "la-liga", competition: "ラ・リーガ", competitionId: 140 },
+    { id: "premier-league", competition: "プレミアリーグ", competitionId: 39 },
+    // The provider ID for Conference League is deliberately not assumed here.
+    // The public competition name must still keep it with the European group.
+    { id: "conference", competition: "UEFA Europa Conference League", competitionId: 9000 },
+    { id: "europa", competition: "UEFA Europa League", competitionId: 3 },
+    { id: "champions", competition: "UEFA Champions League", competitionId: 2 },
+  ];
+
+  assert.deepEqual(
+    [...fixtures]
+      .sort((left, right) => competitionDisplayRank(left) - competitionDisplayRank(right))
+      .map((fixture) => fixture.id),
+    ["champions", "europa", "conference", "premier-league", "la-liga", "serie-a", "bundesliga", "ligue-1", "other"],
+  );
+});
+
+test("European competition aliases stay above domestic leagues when provider labels vary", () => {
+  assert.ok(
+    competitionDisplayRank({ competition: "Europa League", competitionCountry: "World" })
+      < competitionDisplayRank({ competition: "Premier League", competitionCountry: "England" }),
+  );
+  assert.ok(
+    competitionDisplayRank({ competition: "Conference League", competitionCountry: "World" })
+      < competitionDisplayRank({ competition: "Premier League", competitionCountry: "England" }),
+  );
+});
 
 test("round view combines the five major leagues without selecting one of them", () => {
   assert.deepEqual(roundLeagueNames, [
