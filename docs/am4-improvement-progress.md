@@ -274,3 +274,33 @@ Work began only after the Phase 1 suite above passed.
   - `matchContent=1&fixtureId=1570363` returns both a published prediction and a published report with non-empty bodies and no source errors.
   - The availability request using the provider form `laliga|2026-09-06|alaves|osasuna` normalizes to `laliga|2026-09-06|deportivoalaves|osasuna` and returns both `report` and `prediction`.
 - Production in-app Chromium confirmation at a temporary `390×844` browser viewport: the refreshed 9/7 fixture list exposed `解説あり` and `予想あり` for Alaves v Osasuna; `match.html?id=1570363#overview` rendered the `MATCH SUMMARY` report body and did not show the report-preparing placeholder. The captured browser image was opened and inspected in the session but was not persisted as a filesystem artifact. This is Chromium viewport evidence, not iPhone Safari or physical-device verification.
+
+## 2026-09-07 relative editorial identity and freshness recovery
+
+### Starting point and diagnosis
+
+- Production and this work branch started at `3e4e7bd` (`Document editorial alias recovery`). The supplied historical audit commit was not restored, checked out, or used as a reset point. The worktree was clean before this change.
+- The observed failure mode is treated as a site-side matching/cache failure first, not as evidence that a Notion editor failed to update a page. Read-only production inspection during this pass found both a published prediction and report for Arsenal v Chelsea (fixture `1557387`) through the live endpoint.
+- The prior resolver still depended on an ordered, exact canonical Match Key after fixture-ID lookup. A published entry whose labels used a safe formal suffix (`Chelsea FC`) or whose home/away order was reversed could be missed even when its competition, date, and both clubs identified the same fixture.
+- The live endpoint also allowed a complete or partial Notion response to stay at the CDN for up to five minutes. A response captured before the second editorial was available could therefore continue to make the UI look stale after the Notion page changed.
+
+### Fix and safety boundary
+
+- `match-archive.js` now compares a whole fixture with ranked, bounded evidence: explicit fixture ID first; provider team IDs; full ordered identity; a fully identified reversed pair; then narrowly normalised formal/short labels. A relative label is never sufficient on its own: the competition, actual candidate date, and both teams are required.
+- Legal suffixes such as `FC` are normalised, while discriminating words such as `City` and `United` are retained. Thus `Chelsea FC` and `Chelsea` can resolve, but `Manchester City` cannot impersonate `Manchester United` merely through the shared word `Manchester`.
+- A persisted fixture ID is authoritative on every archive route. If it conflicts with the requested fixture, the record is rejected rather than rebound by a Match Key or similar names. Equal-strength candidates are returned as an explicit retryable ambiguity; the UI never selects the first arbitrary candidate.
+- The same public-only identity matcher is used by live Notion lookup, archive fallback, and card availability. Draft, private, non-editorial, and conflicting records remain ineligible.
+- `api/articles.js` now uses `no-store` for empty, partial, or failed live editorial responses. Only a complete prediction/report pair may be CDN-cached, for at most 60 seconds, so a Notion correction cannot remain stale for the former five-minute window.
+- No Notion page, publication state, archive/Blob data, secret, environment value, generation job, paid provider request, or cron configuration was changed.
+
+### Regression coverage and validation before release
+
+- `tests/notion-content-sync.test.js`: reversed `Chelsea FC`/`Arsenal`, ambiguous candidates, explicit fixture-ID conflict, public-only availability, and normal matching remain covered.
+- `tests/match-archive.test.js`: Match Key recovery rejects a conflicting stored fixture ID; a complete reversed pair wins while `Manchester City`/`Manchester United` near-name data cannot impersonate it.
+- `tests/articles-api.test.js`: empty, partial, and error responses are non-cacheable; a complete pair expires in 60 seconds.
+- Focused suite: `node --test tests/articles-api.test.js tests/match-archive.test.js tests/notion-content-sync.test.js tests/match-editorial-fallback.test.js tests/article-store.test.js` — **50 passed, 0 failed**.
+- Full suite: `npm test` — **181 passed, 0 failed**. Existing Node module-type warnings were retained; no package configuration was changed. Syntax checks and `git diff --check` passed. An independent re-review found no P0/P1 issue after the fixture-ID and near-name regressions were added.
+
+### Release and production verification
+
+- Pending at the time of this entry: commit, push to `am4-production`, deployment readiness, and live browser/API confirmation. A production release is authorised by the operator, but this document does not claim deployment until those checks finish.
