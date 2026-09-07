@@ -312,3 +312,30 @@ Work began only after the Phase 1 suite above passed.
   - Ipswich v Liverpool rendered its completed provider fixture plus the published report body; the former preparation placeholder was absent after loading.
   - The 9/7 daily list exposed `解説あり 予想あり` for both Arsenal v Chelsea and Alaves v Osasuna. No browser-console errors were captured.
 - Captured browser screenshots were inspected during this session but were not persisted as filesystem artifacts. This is Chromium viewport evidence, not iPhone Safari or physical-device verification.
+
+## 2026-09-07 European competition priority and results tabs
+
+### Starting point and scope
+
+- Working branch: `codex/normal-fixture-match-key-fallback-20260907`. The production starting point for this follow-up was `2d1c389` (`Prioritize European competitions in match centre`); no historical audit commit was restored, checked out, or used as a reset point.
+- The operator requested that Champions League, Europa League, and the five domestic major leagues appear before ordinary competitions, including in the existing public results-page competition tabs. No Notion data, editorial archive, environment value, paid service, or automatic generation schedule was changed.
+
+### Completed changes
+
+- `match-centre.js` and `index.html` (release `2d1c389`): normal date-view ordering is now favourites first, then Champions League, Europa League, recognised Conference League labels, Premier League, La Liga, Serie A, Bundesliga, Ligue 1, and the remaining competitions. Provider IDs are used where verified; Conference League is recognised only by exact public competition labels rather than an assumed provider ID. Domestic round view remains limited to the five domestic leagues, avoiding the false implication that European league-phase rounds are equivalent.
+- `football-hub.html` (release `1bbc1ad`): the existing public competition tabs now explicitly render `Champions League → Europa League → Premier League → La Liga → Serie A → Bundesliga → Ligue 1`. The section heading and translations identify the expanded coverage.
+- `api/fixtures.js` and `api/standings.js`: Europa League uses provider ID `3`, normalises the provider label `UEFA Europa League`, and supplies its fixture/standing data when explicitly selected. It is deliberately excluded from the automatic featured-fixture fan-out; the legacy aggregate standings response keeps its existing six provider calls (five domestic leagues plus Champions League).
+- `football-hub.html`: both fixture and on-demand Europa League standings requests have request-version guards, so a late response from a prior tab or season cannot overwrite the currently visible competition.
+
+### Regression coverage and release verification
+
+- `tests/featured-fixtures.test.js` verifies provider ID `3` normalises to `ヨーロッパリーグ` and remains an AM4-priority daily fixture.
+- `tests/standings.test.js` verifies both the Japanese and `UEFA Europa League` labels resolve to provider ID `3`.
+- Focused tests: `node --test tests/featured-fixtures.test.js tests/standings.test.js` — **15 passed, 0 failed**.
+- Full suite: `npm test` — **184 passed, 0 failed**. Inline `football-hub.html` JavaScript parsing and `git diff --check` also passed. Independent review found no blocker; its identified fixture tab/season race was fixed and re-reviewed.
+- Production release: `1bbc1ad` (`Prioritize European competition results tabs`) was pushed to `am4-production`; Vercel reported `success` for the expected production commit.
+- Production in-app Chromium checks at a measured `390×844` viewport:
+  - On the main date view for 2026-09-17, Champions League had no fixtures and Europa League was the first ordinary competition, followed by Premier League and the domestic priority groups. The priority copy was visible and the main page had no console errors.
+  - On `/football-hub.html`, the visible tabs were `Champions League`, `Europa League`, then the five domestic leagues in order. Selecting Europa League made it active and showed live 2025-season fixtures and standings (`5` visible standing rows in the collapsed table); a screenshot was opened and inspected.
+- The legacy Football Hub emitted an existing ticker initialisation error (`AM4_API_BASE` referenced before its declaration). It predates and is independent of the competition-tab change, did not block fixtures or the EL standings tab, and is left for a separately scoped repair rather than mixed into this release.
+- Screenshots were inspected in the browser but not saved as filesystem artifacts. These are Chromium viewport checks, not iPhone Safari or physical-device validation.
