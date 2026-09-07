@@ -8,6 +8,7 @@ const {
   fixtureMatchKey,
   fixtureFromArchiveEditorials,
   matchesPublishedFixtureEditorial,
+  publishedFixtureEditorialMatch,
   publishedArchiveQueriesForFixture,
   resolveArchiveEditorials,
 } = require("../match-archive.js");
@@ -125,6 +126,36 @@ test("a normal provider fixture restores Ipswich editorial content through its a
   assert.equal(matchesPublishedFixtureEditorial({ ...report, status: "draft" }, providerFixture), false);
 });
 
+test("a reversed formal club name restores a unique public archive editorial without weakening fixture-ID conflicts", () => {
+  const providerFixture = {
+    id: 1557387,
+    date: "2026-09-06",
+    competition: "Premier League",
+    home: { name: "Arsenal" },
+    away: { name: "Chelsea" },
+  };
+  const report = editorial({
+    id: "chelsea-arsenal-report",
+    type: "match_report",
+    fixtureId: null,
+    homeTeam: "Chelsea FC",
+    awayTeam: "Arsenal",
+    date: "2026-09-06",
+  });
+  const requestedKey = canonicalMatchKey({
+    competition: "Premier League",
+    date: "2026-09-06",
+    homeTeam: "Arsenal",
+    awayTeam: "Chelsea",
+  });
+  const resolved = resolveArchiveEditorials([report], { canonicalKey: requestedKey });
+
+  assert.equal(publishedFixtureEditorialMatch(report, providerFixture)?.method, "reversed_canonical_match_key");
+  assert.equal(matchesPublishedFixtureEditorial(report, providerFixture), true);
+  assert.equal(resolved.report?.id, "chelsea-arsenal-report");
+  assert.equal(matchesPublishedFixtureEditorial({ ...report, match: { ...report.match, fixtureId: 999999 } }, providerFixture), false);
+});
+
 test("daily fixtures use the kickoff's UTC date for legacy editorial Match Keys", () => {
   // The schedule is grouped by Japan time (September 5), while the archived
   // provider identity was stored on its UTC date (September 4).
@@ -170,6 +201,50 @@ test("public archive filtering never restores draft, private, non-editorial, or 
   assert.equal(resolveArchiveEditorials([draft, privateArticle], criteria).report, null);
   assert.equal(resolveArchiveEditorials([published, { ...published, id: "duplicate" }], criteria).report, null);
   assert.equal(resolveArchiveEditorials([published, { ...published, id: "duplicate" }], criteria).ambiguous, true);
+});
+
+test("Match Key archive recovery never rebinds an editorial with a conflicting stored fixture ID", () => {
+  const staleFixture = editorial({ id: "stale-fixture", type: "match_report", fixtureId: 999999 });
+  const legacy = editorial({ id: "legacy", type: "match_report" });
+  const criteria = { canonicalKey: staleFixture.match.canonicalKey };
+
+  assert.deepEqual(
+    filterPublishedArchiveMatches([staleFixture, legacy], criteria).map((article) => article.id),
+    ["legacy"],
+  );
+  assert.equal(resolveArchiveEditorials([staleFixture], criteria).report, null);
+  assert.equal(resolveArchiveEditorials([staleFixture], {
+    fixtureId: 1557393,
+    canonicalKey: staleFixture.match.canonicalKey,
+  }).report, null);
+});
+
+test("a complete reversed pair outranks and a near-name direct pair cannot impersonate it", () => {
+  const requestedKey = canonicalMatchKey({
+    competition: "Premier League",
+    date: "2026-09-06",
+    homeTeam: "Manchester United",
+    awayTeam: "Liverpool",
+  });
+  const correctReversed = editorial({
+    id: "correct-reversed",
+    type: "match_report",
+    homeTeam: "Liverpool",
+    awayTeam: "Manchester United",
+    date: "2026-09-06",
+  });
+  const nearNameDirect = editorial({
+    id: "near-name-direct",
+    type: "match_report",
+    homeTeam: "Manchester City",
+    awayTeam: "Liverpool",
+    date: "2026-09-06",
+  });
+
+  const result = resolveArchiveEditorials([correctReversed, nearNameDirect], { canonicalKey: requestedKey });
+
+  assert.equal(result.report?.id, "correct-reversed");
+  assert.equal(result.ambiguous, false);
 });
 
 test("an archive match with no public editorial stays absent instead of fabricating a fixture", () => {

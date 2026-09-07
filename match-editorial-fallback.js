@@ -35,11 +35,20 @@
     publishedArchiveCandidates(results).forEach((article) => {
       if (article?.id) candidates.set(article.id, article);
     });
-    return [...candidates.values()].find((article) => (
-      isPublishedNotionListItem(article, type)
-      && typeof matchesFixture === "function"
-      && matchesFixture(article)
-    )) || null;
+    const matches = [...candidates.values()]
+      .filter((article) => isPublishedNotionListItem(article, type) && typeof matchesFixture === "function")
+      .map((article) => {
+        const match = matchesFixture(article);
+        const score = typeof match === "object" && Number.isFinite(match?.score)
+          ? match.score
+          : match ? 1 : 0;
+        return score > 0 ? { article, score } : null;
+      })
+      .filter(Boolean);
+    if (!matches.length) return null;
+    const strongestScore = Math.max(...matches.map((entry) => entry.score));
+    const strongest = matches.filter((entry) => entry.score === strongestScore);
+    return strongest.length === 1 ? strongest[0].article : null;
   }
 
   async function withPublishedFallback(editorial, readPublished) {

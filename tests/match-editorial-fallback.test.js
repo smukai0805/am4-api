@@ -112,3 +112,22 @@ test("published list metadata without a Notion page ID remains eligible for deta
     () => true,
   ), null);
 });
+
+test("archive fallback rejects equal-strength candidates and chooses a unique stronger identity", () => {
+  const first = {
+    id: "first-report",
+    type: "match_report",
+    status: "published",
+    public: true,
+    contentKind: "notion_match_report",
+  };
+  const second = { ...first, id: "second-report" };
+  const results = [{ status: "fulfilled", value: { items: [first, second] } }];
+
+  assert.equal(selectPublishedArchiveEditorial(results, "match_report", () => ({ score: 50 })), null);
+  assert.equal(selectPublishedArchiveEditorial(
+    results,
+    "match_report",
+    (article) => ({ score: article.id === "first-report" ? 80 : 50 }),
+  )?.id, "first-report");
+});

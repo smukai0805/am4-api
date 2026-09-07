@@ -374,10 +374,10 @@ function editorialBlocks(type) {
 }
 
 function matchContentFetcher({ prediction, report, exactMatchKeys = {}, sourceSchemas = {}, unavailableSources = [], predictionSourceId = 'predictions' }) {
-  const blocks = {
-    [prediction.id]: editorialBlocks('match_prediction'),
-    [report.id]: editorialBlocks('match_report'),
-  };
+  const predictionPages = Array.isArray(prediction) ? prediction : [prediction];
+  const reportPages = Array.isArray(report) ? report : [report];
+  const allPages = [...predictionPages, ...reportPages];
+  const blocks = Object.fromEntries(allPages.map((page) => [page.id, editorialBlocks(page.properties['予想スコア'] ? 'match_prediction' : 'match_report')]));
   return async (url, init = {}) => {
     const parsedUrl = new URL(url);
     const sourceSchemaMatch = parsedUrl.pathname.match(/\/data_sources\/([^/]+)$/);
@@ -392,7 +392,7 @@ function matchContentFetcher({ prediction, report, exactMatchKeys = {}, sourceSc
     if (sourceMatch) {
       const sourceId = sourceMatch[1];
       if (unavailableSources.includes(sourceId)) return notionResponse({ message: 'unavailable' }, 503);
-      const page = sourceId === predictionSourceId ? prediction : report;
+      const pagesForSource = sourceId === predictionSourceId ? predictionPages : reportPages;
       const body = JSON.parse(init.body || '{}');
       const exact = body.filter?.rich_text?.equals;
       const date = body.filter?.date?.equals;
@@ -400,14 +400,15 @@ function matchContentFetcher({ prediction, report, exactMatchKeys = {}, sourceSc
       const teamFilters = Array.isArray(body.filter?.and) ? body.filter.and : [];
       const homeTeamId = teamFilters.find((filter) => /Home Team ID/i.test(filter.property || ''))?.number?.equals;
       const awayTeamId = teamFilters.find((filter) => /Away Team ID/i.test(filter.property || ''))?.number?.equals;
-      const pages = fixtureId != null
-        ? (Number(page.properties['Fixture ID']?.number) === Number(fixtureId) ? [page] : [])
-        : homeTeamId != null && awayTeamId != null
-          ? (Number(page.properties['Home Team ID']?.number) === Number(homeTeamId)
-            && Number(page.properties['Away Team ID']?.number) === Number(awayTeamId) ? [page] : [])
-        : exact
-        ? (exact === (exactMatchKeys[sourceId] || page.properties['Match Key'].rich_text[0].plain_text) ? [page] : [])
-        : (date === page.properties['試合日'].date.start ? [page] : []);
+      const pages = pagesForSource.filter((page) => {
+        if (fixtureId != null) return Number(page.properties['Fixture ID']?.number) === Number(fixtureId);
+        if (homeTeamId != null && awayTeamId != null) {
+          return Number(page.properties['Home Team ID']?.number) === Number(homeTeamId)
+            && Number(page.properties['Away Team ID']?.number) === Number(awayTeamId);
+        }
+        if (exact) return exact === (exactMatchKeys[sourceId] || page.properties['Match Key'].rich_text[0].plain_text);
+        return date === page.properties['試合日'].date.start;
+      });
       return notionResponse({ results: pages, has_more: false, next_cursor: null });
     }
     const blockMatch = parsedUrl.pathname.match(/\/blocks\/([^/]+)\/children$/);
@@ -591,6 +592,121 @@ test('provider shorthand Alaves resolves the published Deportivo Alavés editori
   assert.equal(canonicalMatchKey({ competition: 'La Liga', date: '2026-09-06', homeTeam: 'Alaves', awayTeam: 'Osasuna' }), 'laliga|2026-09-06|deportivoalaves|osasuna');
   assert.equal(result.prediction?.notion.pageId, 'alaves-prediction');
   assert.equal(result.report?.notion.pageId, 'alaves-report');
+});
+
+test('a unique reversed Chelsea FC and Arsenal identity restores both published match editorials', async () => {
+  const prediction = matchPage({
+    id: 'chelsea-reversed-prediction', type: 'match_prediction',
+    matchKey: 'Premier League|2026-09-06|Chelsea FC|Arsenal',
+    home: 'Chelsea FC', away: 'Arsenal', date: '2026-09-06',
+  });
+  const report = matchPage({
+    id: 'chelsea-reversed-report', type: 'match_report',
+    matchKey: 'Premier League|2026-09-06|Chelsea FC|Arsenal',
+    home: 'Chelsea FC', away: 'Arsenal', date: '2026-09-06',
+  });
+
+  const result = await fetchNotionMatchContent({
+    match: {
+      fixtureId: 1557387,
+      competition: 'Premier League',
+      date: '2026-09-06',
+      homeTeam: 'Arsenal',
+      awayTeam: 'Chelsea',
+    },
+    apiKey: 'test-key',
+    fetcher: matchContentFetcher({ prediction, report }),
+    sourceIds: { match_prediction: 'predictions', match_report: 'reports' },
+    logger: { info: () => {}, error: () => {} },
+  });
+
+  assert.equal(result.prediction?.notion.pageId, 'chelsea-reversed-prediction');
+  assert.equal(result.report?.notion.pageId, 'chelsea-reversed-report');
+});
+
+test('ambiguous relative match candidates remain retryable instead of selecting an arbitrary public report', async () => {
+  const prediction = matchPage({
+    id: 'arsenal-prediction', type: 'match_prediction',
+    matchKey: 'Premier League|2026-09-06|Arsenal|Chelsea',
+    home: 'Arsenal', away: 'Chelsea', date: '2026-09-06',
+  });
+  const reports = ['a', 'b'].map((suffix) => matchPage({
+    id: `chelsea-reversed-report-${suffix}`, type: 'match_report',
+    matchKey: 'Premier League|2026-09-06|Chelsea FC|Arsenal',
+    home: 'Chelsea FC', away: 'Arsenal', date: '2026-09-06',
+  }));
+
+  const result = await fetchNotionMatchContent({
+    match: {
+      fixtureId: 1557387,
+      competition: 'Premier League',
+      date: '2026-09-06',
+      homeTeam: 'Arsenal',
+      awayTeam: 'Chelsea',
+    },
+    apiKey: 'test-key',
+    fetcher: matchContentFetcher({ prediction, report: reports }),
+    sourceIds: { match_prediction: 'predictions', match_report: 'reports' },
+    logger: { info: () => {}, error: () => {} },
+  });
+
+  assert.equal(result.prediction?.notion.pageId, 'arsenal-prediction');
+  assert.equal(result.report, null);
+  assert.equal(result.errors.match_report, 'ambiguous');
+});
+
+test('a mismatched explicit fixture ID cannot fall back to matching team names or Match Key', async () => {
+  const prediction = matchPage({
+    id: 'stale-fixture-prediction', type: 'match_prediction',
+    matchKey: 'Premier League|2026-09-06|Arsenal|Chelsea',
+    home: 'Arsenal', away: 'Chelsea', date: '2026-09-06',
+  });
+  const report = matchPage({
+    id: 'stale-fixture-report', type: 'match_report',
+    matchKey: 'Premier League|2026-09-06|Arsenal|Chelsea',
+    home: 'Arsenal', away: 'Chelsea', date: '2026-09-06',
+  });
+  prediction.properties['Fixture ID'] = { type: 'number', number: 999999 };
+  report.properties['Fixture ID'] = { type: 'number', number: 999999 };
+
+  const result = await fetchNotionMatchContent({
+    match: {
+      fixtureId: 1557387,
+      competition: 'Premier League',
+      date: '2026-09-06',
+      homeTeam: 'Arsenal',
+      awayTeam: 'Chelsea',
+    },
+    apiKey: 'test-key',
+    fetcher: matchContentFetcher({ prediction, report }),
+    sourceIds: { match_prediction: 'predictions', match_report: 'reports' },
+    logger: { info: () => {}, error: () => {} },
+  });
+
+  assert.equal(result.prediction, null);
+  assert.equal(result.report, null);
+});
+
+test('public card availability accepts a unique reversed formal club identity', () => {
+  const availability = matchContentAvailabilityByMatchKey([{
+    id: 'chelsea-arsenal-report',
+    type: 'match_report',
+    status: 'published',
+    public: true,
+    contentKind: 'notion_match_report',
+    match: {
+      fixtureId: null,
+      matchKey: 'Premier League|2026-09-06|Chelsea FC|Arsenal',
+      competition: 'Premier League',
+      date: '2026-09-06',
+      homeTeam: 'Chelsea FC',
+      awayTeam: 'Arsenal',
+    },
+  }], ['Premier League|2026-09-06|Arsenal|Chelsea']);
+
+  assert.deepEqual(availability, {
+    'premierleague|2026-09-06|arsenal|chelsea': ['report'],
+  });
 });
 
 test('explicit provider team IDs win before stale legacy team names', async () => {

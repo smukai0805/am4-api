@@ -903,7 +903,7 @@
     const selected = window.AM4MatchEditorialFallback.selectPublishedArchiveEditorial(
       results,
       type,
-      (article) => window.AM4MatchArchive.matchesPublishedFixtureEditorial(article, fixture),
+      (article) => window.AM4MatchArchive.publishedFixtureEditorialMatch(article, fixture),
     );
     if (!selected?.id) return null;
     const response = await client.article(selected.id);
