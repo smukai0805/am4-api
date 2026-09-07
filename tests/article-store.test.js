@@ -58,6 +58,30 @@ test('match content availability restores published legacy editorials by exact c
   });
 });
 
+test('match card availability recognizes provider and Notion club-name variants in CL fixtures', () => {
+  const publishedPrediction = (match) => ({
+    type: 'match_prediction', status: 'published', public: true, match,
+  });
+  const availability = matchContentAvailabilityByMatchKey([
+    publishedPrediction({
+      competition: 'Champions League', date: '2026-09-08',
+      homeTeam: 'Club Brugge', awayTeam: 'Aston Villa',
+    }),
+    publishedPrediction({
+      competition: 'Champions League', date: '2026-09-09',
+      homeTeam: 'Liverpool', awayTeam: 'Atlético de Madrid',
+    }),
+  ], [
+    'チャンピオンズリーグ|2026-09-08|Club Brugge KV|Aston Villa',
+    'チャンピオンズリーグ|2026-09-09|Liverpool|Atletico Madrid',
+  ]);
+
+  assert.deepEqual(availability, {
+    'championsleague|2026-09-08|brugge|astonvilla': ['prediction'],
+    'championsleague|2026-09-09|liverpool|atleticomadrid': ['prediction'],
+  });
+});
+
 test('public Match Key lookup restores only the exact published archive editorial', () => {
   const matching = {
     id: 'published-ipswich-report', type: 'match_report', status: 'published', public: true, contentKind: 'notion_match_report',
