@@ -247,3 +247,30 @@ Work began only after the Phase 1 suite above passed.
 
 - The broader Phase 1/2/3 roadmap remains separate from this urgent restoration; this entry does not mark the whole AM4 improvement program complete.
 - The retired automatic AI generation schedules remain disabled. Re-enabling any generation path, changing provider balance, or modifying Notion publication state requires separate approval.
+
+## 2026-09-07 completed-fixture editorial alias recovery
+
+### Start state, reproduction, and root cause
+
+- Working branch: `codex/normal-fixture-match-key-fallback-20260907`; production head before this follow-up: `70c131e` (`Restore automatic match editorials`). No historical audit commit was restored or used as a reset point.
+- The live completed fixture `1570363` was reproduced as the reported case. The provider calls the home club `Alaves`, while the public Notion-derived report records `Deportivo Alavés`. Before this change, the live editorial bridge returned the published prediction but `report: null`; the card therefore showed only `予想あり`.
+- Read-only archive inspection confirmed that the report already existed, was public, and had the Match Key `La Liga|2026-09-06|Deportivo Alavés|Osasuna`. This was not a Notion-update outage or a missing report.
+- Root cause: the shared explicit club-alias registry had aliases for several provider/editorial naming differences but lacked `Alaves` ⇔ `Deportivo Alavés`. The strict canonical Match Key consequently differed even though competition, date, and opponent matched.
+
+### Fix and safety boundary
+
+- `match-archive.js` adds the explicit two-way identity alias `alaves` ⇔ `deportivoalaves`. It is a shared normalizer for the server-side Notion bridge, public archive lookup, and browser fallback.
+- The alias does not add fuzzy club matching. A candidate is still accepted only when the normalized competition, valid date, home club, and away club form one exact canonical Match Key. Explicit fixture IDs retain their higher priority.
+- `index.html`, `match.html`, and `article.html` use a new cache key for `match-archive.js`, so retained browser caches cannot keep the prior identity registry.
+- No Notion page/state, public archive record, environment variable, cron schedule, provider balance, or paid generation route was modified.
+
+### Regression tests and release verification
+
+- `tests/notion-content-sync.test.js` adds the real regression shape: provider `Alaves` versus Notion `Deportivo Alavés`, both automatic match prediction/report sources, and confirms both records are restored only through the complete match identity. The test was first run red (canonical keys differed), then green after the alias was added.
+- Focused test: `node --test tests/notion-content-sync.test.js tests/match-archive.test.js` — **30 passed, 0 failed**.
+- Full suite: `npm test` — **171 passed, 0 failed**. `node --check match-archive.js` and `git diff --check` also passed. Independent review found no P0/P1 issue and confirmed there is no partial/ambiguous matching path.
+- Production release: commit `0e16df7` (`Resolve editorial aliases for Alaves`) was pushed to `am4-production`.
+- Production API confirmation after deployment:
+  - `matchContent=1&fixtureId=1570363` returns both a published prediction and a published report with non-empty bodies and no source errors.
+  - The availability request using the provider form `laliga|2026-09-06|alaves|osasuna` normalizes to `laliga|2026-09-06|deportivoalaves|osasuna` and returns both `report` and `prediction`.
+- Production in-app Chromium confirmation at a temporary `390×844` browser viewport: the refreshed 9/7 fixture list exposed `解説あり` and `予想あり` for Alaves v Osasuna; `match.html?id=1570363#overview` rendered the `MATCH SUMMARY` report body and did not show the report-preparing placeholder. The captured browser image was opened and inspected in the session but was not persisted as a filesystem artifact. This is Chromium viewport evidence, not iPhone Safari or physical-device verification.
