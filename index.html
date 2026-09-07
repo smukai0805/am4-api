@@ -19,11 +19,17 @@
 <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;700;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/brand.css?v=20260906-am4-improvements-v1">
 <style>
+  :root{
+    --home-topbar-height:70px;
+    --home-primary-nav-height:63px;
+    --home-sticky-controls-offset:calc(var(--home-topbar-height) + var(--home-primary-nav-height));
+  }
+  body{padding-top:var(--home-sticky-controls-offset);}
   main{display:flex;flex-direction:column;}
 
   /* ---------- top bar ---------- */
   .topbar{
-    position:sticky; top:0; z-index:40;
+    position:fixed; inset:0 0 auto; z-index:40;
     display:flex; align-items:center; justify-content:space-between;
     padding:18px clamp(20px,5vw,64px);
     background:rgba(10,16,28,0.72);
@@ -53,7 +59,7 @@
 
   /* ---------- tag nav ---------- */
   .tagnav-wrap{
-    position:sticky; top:65px; z-index:30;
+    position:fixed; top:var(--home-topbar-height); left:0; right:0; z-index:30;
     background:rgba(6,10,23,0.78);
     backdrop-filter:blur(16px);
     border-bottom:1px solid var(--line);
@@ -279,7 +285,7 @@
   .for-you-card small{display:block;color:var(--floodlight);font-family:var(--mono);font-size:10px;text-transform:uppercase;margin-bottom:8px;}
   .for-you-card strong{display:block;font-size:15px;margin-bottom:5px;}
   .for-you-card span{font-size:12px;color:var(--steel-dim);}
-  .for-you-favorite-toggle{position:absolute;top:28px;right:10px;display:grid;place-items:center;width:40px;height:40px;border:0;border-radius:50%;background:transparent;color:#a9c5ff;cursor:pointer;font:500 21px/1 var(--body);text-shadow:0 0 12px rgba(78,132,255,.36);}
+  .for-you-favorite-toggle{position:absolute;z-index:2;top:28px;right:10px;display:grid;place-items:center;width:40px;height:40px;border:0;border-radius:50%;background:transparent;color:#a9c5ff;cursor:pointer;font:500 21px/1 var(--body);text-shadow:0 0 12px rgba(78,132,255,.36);touch-action:manipulation;}
   .for-you-favorite-toggle:hover{color:#d4e2ff;transform:scale(1.07);}
   .for-you-favorite-toggle:focus-visible{color:#d4e2ff;outline:2px solid #8bb1ff;outline-offset:1px;}
   .for-you-empty{grid-column:1/-1;margin:0;padding:18px;border:1px dashed rgba(148,176,227,.4);border-radius:var(--radius);color:var(--steel);font-size:13px;line-height:1.7;}
@@ -532,7 +538,7 @@
   .matchday-intro h1{margin:0;font:900 clamp(42px,7vw,76px)/.94 var(--display);letter-spacing:-.045em;text-transform:uppercase;}
   .matchday-intro p{max-width:600px;margin:14px 0 0;color:#96a6c5;font-size:13px;line-height:1.7;}
   .matchday-intro .sample-label{align-self:flex-start;margin-top:4px;}
-  .matchday-board{overflow:hidden;border:1px solid rgba(121,151,218,.2);border-radius:28px;background:rgba(8,15,32,.84);box-shadow:0 34px 100px rgba(0,0,0,.38),inset 0 1px rgba(255,255,255,.035);backdrop-filter:blur(18px);}
+  .matchday-board{overflow:clip;border:1px solid rgba(121,151,218,.2);border-radius:28px;background:rgba(8,15,32,.84);box-shadow:0 34px 100px rgba(0,0,0,.38),inset 0 1px rgba(255,255,255,.035);backdrop-filter:blur(18px);}
   .matchday-toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 20px 14px;}
   .matchday-toolbar .fixture-mode-tabs{padding:4px;background:#050a16;border:1px solid rgba(123,150,211,.16);border-radius:999px;}
   .matchday-toolbar .fixture-mode-tab{min-width:74px;border:0;padding:9px 16px;background:transparent;box-shadow:none;}
@@ -541,7 +547,7 @@
   .spoiler-toggle svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.6;}
   .spoiler-toggle:hover{color:#fff;border-color:#5c89f5;background:rgba(42,94,255,.1);}
   .spoiler-toggle[aria-pressed="true"]{color:#fff;background:#174fd2;border-color:#3474ff;box-shadow:0 8px 26px rgba(23,79,210,.32);}
-  .matchday-dates{display:flex;overflow-x:auto;overflow-y:hidden;gap:0;padding:0 8px;border-block:1px solid rgba(121,151,218,.14);scrollbar-width:none;scroll-snap-type:x proximity;scroll-padding-inline:calc(50% - 38px);overscroll-behavior-x:contain;overscroll-behavior-y:auto;touch-action:pan-x pan-y;-webkit-overflow-scrolling:touch;}
+  .matchday-dates{position:sticky;top:var(--home-sticky-controls-offset);z-index:20;display:flex;overflow-x:auto;overflow-y:hidden;gap:0;padding:0 8px;border-block:1px solid rgba(121,151,218,.14);background:rgba(8,15,32,.96);box-shadow:0 8px 18px rgba(0,0,0,.18);scrollbar-width:none;scroll-snap-type:x proximity;scroll-padding-inline:calc(50% - 38px);overscroll-behavior-x:contain;overscroll-behavior-y:auto;touch-action:pan-x pan-y;-webkit-overflow-scrolling:touch;}
   .matchday-dates::-webkit-scrollbar{display:none;}
   .matchday-dates .fixture-filter-tab{position:relative;flex:0 0 76px;min-width:76px;padding:15px 8px 16px;border:0;border-radius:0;background:transparent;box-shadow:none;color:#687894;scroll-snap-align:center;scroll-snap-stop:normal;}
   .matchday-dates .fixture-filter-tab::after{content:"";position:absolute;left:26%;right:26%;bottom:-1px;height:2px;border-radius:4px;background:transparent;}
@@ -1639,6 +1645,7 @@
 
     const section = document.getElementById('for-you');
     const grid = document.getElementById('for-you-grid');
+    let keepForYouVisible = location.hash === '#for-you';
     const countLabel = document.getElementById('favorite-count');
     const status = document.getElementById('for-you-status');
 
@@ -1676,7 +1683,7 @@
         }
       });
 
-      const savedDestinationOpen = location.hash === '#for-you';
+      const savedDestinationOpen = location.hash === '#for-you' || keepForYouVisible;
       section.classList.toggle('visible', count > 0 || unavailableArticleIds.size > 0 || savedDestinationOpen);
       countLabel.textContent = count ? `${count}件のお気に入り` : '';
       if (status) {
@@ -1688,9 +1695,9 @@
       validItems.forEach((item) => {
           const card = document.createElement('article');
           card.className = `for-you-card${item.type === 'leagues' ? ' for-you-card--league' : ''}`;
-          const link = document.createElement('a');
+          const link = document.createElement(item.type === 'leagues' ? 'div' : 'a');
           link.className = 'for-you-card-link';
-          link.href = item.href;
+          if (item.type !== 'leagues') link.href = item.href;
           const kind = favoritePresentation[item.type].kind;
           link.innerHTML = `<small>${kind}</small><strong></strong><span></span>`;
           link.querySelector('strong').textContent = item.label;
@@ -1735,8 +1742,13 @@
     }
 
     document.addEventListener('click', (event) => {
-      const button = event.target.closest('[data-favorite-type]');
+      const button = event.target.closest('button[data-favorite-type]');
       if (!button) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const retainsForYouPosition = button.classList.contains('for-you-favorite-toggle');
+      const scrollPosition = retainsForYouPosition ? window.scrollY : null;
+      if (retainsForYouPosition) keepForYouVisible = true;
       const saved = AM4Favorites.read(localStorage);
       const type = button.dataset.favoriteType;
       const id = button.dataset.favoriteId;
@@ -1757,6 +1769,9 @@
       }
       rememberFavorite(button);
       render();
+      if (scrollPosition !== null) {
+        window.requestAnimationFrame(() => window.scrollTo({ top: scrollPosition, behavior: 'auto' }));
+      }
       document.dispatchEvent(new CustomEvent('am4:favorites-changed'));
     });
     document.addEventListener('am4:favorites-catalog-updated', () => {
@@ -1765,7 +1780,10 @@
     });
     document.addEventListener('am4:favorites-changed', render);
     document.addEventListener('am4:data-ready', render);
-    window.addEventListener('hashchange', render);
+    window.addEventListener('hashchange', () => {
+      keepForYouVisible = location.hash === '#for-you';
+      render();
+    });
 
     grid.addEventListener('click', (event) => {
       const button = event.target.closest('[data-remove-unavailable-article]');
