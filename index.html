@@ -271,11 +271,17 @@
   .for-you{display:none;background:linear-gradient(135deg,rgba(42,94,255,.12),rgba(255,79,216,.05));}
   .for-you.visible{display:block;}
   .for-you-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;}
-  .for-you-card{padding:18px;border:1px solid var(--line);border-radius:var(--radius);background:rgba(255,255,255,.03);}
+  .for-you-card{position:relative;padding:18px;border:1px solid var(--line);border-radius:var(--radius);background:rgba(255,255,255,.03);}
   .for-you-card:hover{border-color:var(--steel-dim);}
+  .for-you-card-link{display:block;color:inherit;text-decoration:none;}
+  .for-you-card-link:focus-visible{outline:2px solid #8bb1ff;outline-offset:4px;}
+  .for-you-card--league .for-you-card-link{padding-right:44px;}
   .for-you-card small{display:block;color:var(--floodlight);font-family:var(--mono);font-size:10px;text-transform:uppercase;margin-bottom:8px;}
   .for-you-card strong{display:block;font-size:15px;margin-bottom:5px;}
   .for-you-card span{font-size:12px;color:var(--steel-dim);}
+  .for-you-favorite-toggle{position:absolute;top:28px;right:10px;display:grid;place-items:center;width:40px;height:40px;border:0;border-radius:50%;background:transparent;color:#a9c5ff;cursor:pointer;font:500 21px/1 var(--body);text-shadow:0 0 12px rgba(78,132,255,.36);}
+  .for-you-favorite-toggle:hover{color:#d4e2ff;transform:scale(1.07);}
+  .for-you-favorite-toggle:focus-visible{color:#d4e2ff;outline:2px solid #8bb1ff;outline-offset:1px;}
   .for-you-empty{grid-column:1/-1;margin:0;padding:18px;border:1px dashed rgba(148,176,227,.4);border-radius:var(--radius);color:var(--steel);font-size:13px;line-height:1.7;}
   .for-you-unavailable{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border:1px solid rgba(178,194,222,.28);border-radius:var(--radius);background:rgba(4,11,25,.34);color:var(--steel);font-size:13px;}
   .for-you-unavailable-remove{min-height:40px;padding:8px 12px;border:1px solid rgba(143,175,236,.52);border-radius:999px;background:transparent;color:#e1ebff;cursor:pointer;font:600 10px/1 var(--mono);letter-spacing:.04em;white-space:nowrap;}
@@ -566,7 +572,6 @@
   .fixture-favorite-button:focus-visible{color:#d4e2ff;outline:2px solid #8bb1ff;outline-offset:-3px;}
   .fixture-favorite-button[aria-pressed="true"]{color:#a9c5ff;text-shadow:0 0 12px rgba(78,132,255,.36);}
   .fixture-favorite-button--league{margin-left:3px;}
-  .fixture-favorite-button--team{margin:0 -8px;pointer-events:auto;font-size:18px;}
   .fixture-favorite-heading-mark{color:#a9c5ff;font-size:16px;text-shadow:0 0 12px rgba(78,132,255,.3);}
   .fixture-league-heading .fixture-league-count{margin-left:auto;color:#8293b2;font:600 9px var(--mono);letter-spacing:.08em;}
   .fixture-league-heading .fixture-league-empty-status{padding:5px 8px;border:1px solid rgba(126,157,220,.2);border-radius:999px;background:rgba(91,120,181,.08);color:#bfceeb;font-weight:700;}
@@ -581,7 +586,6 @@
   .fixture-card-tap-target{position:absolute;z-index:2;inset:0;display:block;margin:0;padding:0;border:0;border-radius:inherit;background:transparent;cursor:pointer;}
   .fixture-card-tap-target:focus-visible{outline:2px solid #8bb1ff;outline-offset:3px;}
   .matchday-board .fixture-league-group .fixture-row--interactive > :not(.fixture-card-tap-target){position:relative;z-index:3;pointer-events:none;}
-  .matchday-board .fixture-league-group .fixture-row--interactive .fixture-favorite-button{pointer-events:auto;}
   .matchday-board .fixture-league-group .fixture-row:hover,.matchday-board .fixture-league-group .fixture-row:focus-within{background:linear-gradient(110deg,#0d1c35,#080f20) padding-box,linear-gradient(100deg,var(--home-team-color,#6588b8),#d3e0fb 50%,var(--away-team-color,#8a73bd)) border-box;box-shadow:inset 0 1px rgba(255,255,255,.08),0 10px 24px rgba(0,0,0,.24);}
   @supports (color:color-mix(in srgb,#fff,#000)){
     .matchday-board .fixture-league-group .fixture-row{box-shadow:inset 0 1px rgba(255,255,255,.05),0 7px 18px rgba(0,0,0,.14),0 0 20px color-mix(in srgb,var(--home-team-color,#6588b8) 14%,transparent);}
@@ -589,7 +593,7 @@
   }
   .matchday-board .fixture-league-group .fixture-meta{grid-area:meta;justify-self:center;align-self:start;color:#7788a5;text-align:center;}
   .matchday-board .fixture-league-group .fixture-meta .fixture-date{color:#8d9db9;font:600 9px var(--mono);letter-spacing:.02em;}
-  .fixture-content-badges{display:flex;flex-wrap:wrap;justify-content:center;gap:4px;max-width:168px;margin-top:6px;}
+  .fixture-content-badges{display:flex;flex-wrap:nowrap;justify-content:center;gap:4px;max-width:none;margin-top:6px;white-space:nowrap;}
   .fixture-content-badge{display:inline-flex;align-items:center;min-height:22px;padding:3px 6px;border:1px solid rgba(116,151,233,.36);border-radius:999px;background:rgba(39,72,140,.17);color:#d7e5ff;font:700 11px/1 var(--mono);letter-spacing:.02em;white-space:nowrap;}
   .fixture-content-badge--report{border-color:rgba(154,187,226,.3);background:rgba(56,83,122,.16);color:#d0def7;}
   .matchday-board .fixture-league-group .fixture-teams{display:contents;}
@@ -633,7 +637,6 @@
     .fixture-league-group{border-radius:16px;}
     .fixture-league-heading{gap:8px;padding:12px;font-size:12px;}
     .fixture-favorite-button--league{margin-left:0;}
-    .fixture-favorite-button--team{flex-basis:40px;width:40px;height:40px;margin:0 -9px;font-size:17px;}
     .fixture-league-group--empty .fixture-league-heading{min-height:52px;}
     .fixture-league-logo{width:25px;height:25px;}
     .fixture-league-list{padding:8px;}
@@ -647,7 +650,7 @@
     .fixture-scoreboard{min-width:0;min-height:50px;font-size:26px;}
     .fixture-scoreboard[data-result-hidden="true"]{min-height:58px;padding:3px 4px;}
     .fixture-result-cover{min-width:84px;}
-    .fixture-content-badges{max-width:112px;margin-top:5px;gap:3px;}
+    .fixture-content-badges{max-width:none;margin-top:5px;gap:3px;}
     .fixture-content-badge{min-height:22px;padding:3px 5px;font-size:11px;letter-spacing:0;}
     .editorial-issue{margin-bottom:22px;}
     section.block.editorial-section{padding:42px 20px 54px;}
@@ -666,8 +669,7 @@
     .matchday-board #fixture-list{padding-inline:3px;}
     .matchday-board .fixture-league-group .fixture-row{grid-template-columns:minmax(0,1fr) 76px;grid-template-areas:"meta score" "home score" "away score";gap:5px;min-height:144px;padding:9px 6px;}
     .matchday-board .fixture-league-group .fixture-meta{justify-self:start;align-self:center;text-align:left;}
-    .fixture-content-badges{justify-content:flex-start;max-width:70px;}
-    .fixture-favorite-button--team{flex:0 0 32px;width:32px;height:32px;margin:0 -4px;font-size:16px;}
+    .fixture-content-badges{justify-content:flex-start;max-width:none;}
     .matchday-board .fixture-league-group .team-logo,.matchday-board .fixture-league-group .team-logo-fallback{display:none;}
     .matchday-board .fixture-league-group .fixture-team{gap:3px;font-size:10px;}
     .fixture-scoreboard{font-size:20px;}
@@ -932,7 +934,7 @@
 <script src="match-archive.js?v=20260907-editorial-availability-v4"></script>
 <script src="football-data.js?v=20260907-editorial-availability-v2"></script>
 <script src="navigation-state.js?v=20260906-navigation-v2"></script>
-<script src="match-centre.js?v=20260907-competition-priority-v2"></script>
+<script src="match-centre.js?v=20260907-fixture-controls-v1"></script>
 <script src="column-series.js?v=20260904-20-seasons"></script>
 <script>
   // Public AM4 API clients. Failed provider reads remain explicit rather than
@@ -1664,7 +1666,7 @@
         const selected = AM4Favorites.has(saved, button.dataset.favoriteType, button.dataset.favoriteId)
           || aliases.some((id) => AM4Favorites.has(saved, button.dataset.favoriteType, id));
         button.setAttribute('aria-pressed', String(selected));
-        if (button.classList.contains('fixture-favorite-button')) {
+        if (button.classList.contains('fixture-favorite-button') || button.classList.contains('for-you-favorite-toggle')) {
           button.textContent = selected ? '★' : '☆';
           const label = button.dataset.favoriteLabel || favoritePresentation[button.dataset.favoriteType].noun;
           button.setAttribute('aria-label', `${label}をお気に入り${selected ? 'から解除' : 'に追加'}`);
@@ -1684,13 +1686,30 @@
       }
       grid.replaceChildren();
       validItems.forEach((item) => {
-          const card = document.createElement('a');
-          card.className = 'for-you-card';
-          card.href = item.href;
+          const card = document.createElement('article');
+          card.className = `for-you-card${item.type === 'leagues' ? ' for-you-card--league' : ''}`;
+          const link = document.createElement('a');
+          link.className = 'for-you-card-link';
+          link.href = item.href;
           const kind = favoritePresentation[item.type].kind;
-          card.innerHTML = `<small>${kind}</small><strong></strong><span></span>`;
-          card.querySelector('strong').textContent = item.label;
-          card.querySelector('span').textContent = liveDetail(item);
+          link.innerHTML = `<small>${kind}</small><strong></strong><span></span>`;
+          link.querySelector('strong').textContent = item.label;
+          link.querySelector('span').textContent = liveDetail(item);
+          card.append(link);
+          if (item.type === 'leagues') {
+            const toggle = document.createElement('button');
+            toggle.type = 'button';
+            toggle.className = 'for-you-favorite-toggle';
+            toggle.setAttribute('data-favorite-type', 'leagues');
+            toggle.setAttribute('data-favorite-id', item.id);
+            toggle.setAttribute('data-favorite-label', item.label);
+            toggle.setAttribute('data-favorite-detail', item.detail);
+            toggle.setAttribute('data-favorite-href', item.href);
+            toggle.setAttribute('aria-pressed', 'true');
+            toggle.setAttribute('aria-label', `${item.label}をお気に入りから解除`);
+            toggle.textContent = '★';
+            card.append(toggle);
+          }
           grid.append(card);
       });
       unavailableArticleIds.forEach((articleId) => {

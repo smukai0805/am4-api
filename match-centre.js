@@ -376,7 +376,7 @@
       return button;
     }
 
-    function fixtureTeam(name, logo, score = "", teamId = null) {
+    function fixtureTeam(name, logo, score = "") {
       const team = document.createElement("span");
       team.className = "fixture-team";
       const clubName = document.createElement("span");
@@ -388,7 +388,6 @@
       teamScore.hidden = !score;
       team.append(
         teamLogo(name, logo),
-        favoriteButton("clubs", favoriteTeamId(teamId, name), name, "fixture-favorite-button--team"),
         clubName,
         teamScore,
       );
@@ -679,8 +678,8 @@
           teams.className = "fixture-teams";
           const scores = resultPresentation.hidden ? { home: "", away: "" } : fixtureTeamScores(fixture);
           teams.append(
-            fixtureTeam(fixture.home, fixture.homeLogo, scores.home, fixture.homeId),
-            fixtureTeam(fixture.away, fixture.awayLogo, scores.away, fixture.awayId),
+            fixtureTeam(fixture.home, fixture.homeLogo, scores.home),
+            fixtureTeam(fixture.away, fixture.awayLogo, scores.away),
           );
           const scoreboard = document.createElement("div");
           scoreboard.className = "fixture-scoreboard";
