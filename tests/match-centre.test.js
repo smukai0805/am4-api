@@ -114,3 +114,22 @@ test("match card availability merges the exact public Match Key with its fixture
     globalThis.AM4MatchArchive = previousArchive;
   }
 });
+
+test("malformed Match Key availability cannot erase the fixture-ID badges", () => {
+  const previousArchive = globalThis.AM4MatchArchive;
+  globalThis.AM4MatchArchive = require("../match-archive.js");
+  try {
+    assert.deepEqual(contentAvailabilityForFixture({
+      availability: { 1557393: ['report'] },
+      matchAvailability: { 'premierleague|2026-09-04|ipswichtown|liverpool': 'not-an-array' },
+    }, {
+      id: 1557393,
+      date: '2026-09-04',
+      competition: 'プレミアリーグ',
+      home: 'Ipswich',
+      away: 'Liverpool',
+    }), ['report']);
+  } finally {
+    globalThis.AM4MatchArchive = previousArchive;
+  }
+});
