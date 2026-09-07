@@ -135,6 +135,17 @@ async function matchInputFromFixtureId(fixtureId) {
   };
 }
 
+// The live match-detail route reads Notion directly. A cached response which
+// predates an editor publishing the second article is worse than a cache miss:
+// it tells a reader that the article is still absent. Keep a complete pair
+// briefly cacheable, but require a fresh server-side check for partial/empty
+// or error responses so the site catches up as soon as Notion is updated.
+export function matchContentCacheControl(content = {}) {
+  const errorCount = Object.keys(content?.errors || {}).length;
+  if (errorCount || !content?.prediction || !content?.report) return 'no-store';
+  return 'public, s-maxage=60, stale-while-revalidate=0';
+}
+
 async function respondWithMatchContent(req, res) {
   const fixtureId = fixtureIdFromQuery(req.query.fixtureId);
   if (!fixtureId) {
@@ -168,11 +179,7 @@ async function respondWithMatchContent(req, res) {
       res.setHeader('Cache-Control', 'no-store');
       return res.status(502).json({ error: 'AM4編集コンテンツを取得できませんでした', matchKey: content.matchKey });
     }
-    // A five-minute CDN cache keeps Notion usage bounded while a state change
-    // (including a retraction) cannot remain public for up to an hour.
-    res.setHeader('Cache-Control', errorCount
-      ? 'public, s-maxage=60, stale-while-revalidate=0'
-      : 'public, s-maxage=300, stale-while-revalidate=0');
+    res.setHeader('Cache-Control', matchContentCacheControl(content));
     return res.status(200).json({ ...content, partial: errorCount > 0 });
   } catch (error) {
     console.error('[match-content] request failed', {
