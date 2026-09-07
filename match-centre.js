@@ -335,6 +335,7 @@
     // deliberately separate from fixture data so a missing article can never
     // affect the schedule itself.
     const contentAvailability = new Map();
+    const revealedFixtureResults = new Set();
     let contentAvailabilityRequestKey = "";
     let contentAvailabilityRequestId = 0;
     const restoredState = initialState && typeof initialState === "object" ? initialState : {};
@@ -719,10 +720,13 @@
           row.style.setProperty("--league-accent", competitionAccent(fixture));
           row.hidden = canCompact && !isExpanded && fixtureIndex >= LEAGUE_PREVIEW_LIMIT;
           const statusGroup = AM4FootballData.classifyFixtureStatus(fixture.status);
+          const fixtureRevealKey = String(fixture.id || [fixture.date, fixture.competition, fixture.home, fixture.away].join("|"));
+          const locallyRevealed = revealedFixtureResults.has(fixtureRevealKey);
           const resultPresentation = AM4FootballData.fixtureResultPresentation(
             fixture,
-            spoilersRevealed,
+            spoilersRevealed || locallyRevealed,
           );
+          const isPerFixtureResultControl = !spoilersRevealed && ["live", "finished"].includes(statusGroup);
           const homeAccent = teamAccent(fixture.home);
           const awayAccent = teamAccent(fixture.away);
           if (homeAccent) row.style.setProperty("--home-team-color", homeAccent);
@@ -757,17 +761,23 @@
             fixtureTeam(fixture.home, fixture.homeLogo, scores.home),
             fixtureTeam(fixture.away, fixture.awayLogo, scores.away),
           );
-          const scoreboard = document.createElement("div");
+          const scoreboard = document.createElement(isPerFixtureResultControl ? "button" : "div");
           scoreboard.className = "fixture-scoreboard";
+          if (isPerFixtureResultControl) {
+            scoreboard.type = "button";
+            scoreboard.classList.add("fixture-scoreboard--result-control");
+            scoreboard.setAttribute("aria-pressed", String(locallyRevealed));
+            scoreboard.setAttribute("aria-label", locallyRevealed
+              ? `${fixture.home}対${fixture.away}、結果を隠す`
+              : `${fixture.home}対${fixture.away}の試合結果を表示`);
+          }
           const fullScores = fixtureTeamScores(fixture);
           const scoreText = fullScores.home && fullScores.away ? `${fullScores.home} – ${fullScores.away}` : "";
           const scoreValue = document.createElement("span");
           scoreValue.className = "fixture-scoreboard-value";
           const scoreCaption = document.createElement("small");
-          if (resultPresentation.hidden || (scoreText && ["live", "finished"].includes(statusGroup))) {
-            scoreValue.classList.add("fixture-scoreboard-value--digits");
-            if (resultPresentation.hidden) scoreboard.setAttribute("aria-hidden", "true");
-            const parts = scoreDisplayParts(fullScores.home, fullScores.away, resultPresentation.hidden);
+          const replaceScoreParts = (parts) => {
+            scoreValue.replaceChildren();
             parts.forEach((part, index) => {
               if (index) {
                 const separator = document.createElement("span");
@@ -780,6 +790,19 @@
               digit.textContent = part;
               scoreValue.append(digit);
             });
+          };
+          if (resultPresentation.hidden || (scoreText && ["live", "finished"].includes(statusGroup))) {
+            scoreValue.classList.add("fixture-scoreboard-value--digits");
+            replaceScoreParts(scoreDisplayParts(fullScores.home, fullScores.away, resultPresentation.hidden));
+            if (resultPresentation.hidden) {
+              scoreValue.setAttribute("aria-hidden", "true");
+              scoreCaption.className = "fixture-score-reveal-hint";
+              scoreCaption.textContent = "タップしたら試合結果を表示";
+            } else if (isPerFixtureResultControl) {
+              scoreCaption.className = "fixture-score-reveal-hint";
+              scoreCaption.textContent = "タップしたら試合結果を表示";
+              scoreCaption.hidden = true;
+            }
           } else {
             if (statusGroup === "upcoming") {
               scoreValue.textContent = fixture.kickoff
@@ -800,6 +823,30 @@
           scoreboard.append(scoreValue);
           if (scoreCaption.textContent) scoreboard.append(scoreCaption);
           scoreboard.dataset.resultHidden = String(resultPresentation.hidden);
+          if (isPerFixtureResultControl) {
+            scoreboard.addEventListener("click", (event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              const isHidden = scoreboard.dataset.resultHidden === "true";
+              if (isHidden) {
+                revealedFixtureResults.add(fixtureRevealKey);
+                replaceScoreParts(scoreDisplayParts(fullScores.home, fullScores.away, false));
+                scoreboard.dataset.resultHidden = "false";
+                scoreboard.setAttribute("aria-pressed", "true");
+                scoreboard.setAttribute("aria-label", `${fixture.home}対${fixture.away}、${scoreText}。結果を隠す`);
+                scoreValue.removeAttribute("aria-hidden");
+                scoreCaption.hidden = true;
+              } else {
+                revealedFixtureResults.delete(fixtureRevealKey);
+                replaceScoreParts(scoreDisplayParts(fullScores.home, fullScores.away, true));
+                scoreboard.dataset.resultHidden = "true";
+                scoreboard.setAttribute("aria-pressed", "false");
+                scoreboard.setAttribute("aria-label", `${fixture.home}対${fixture.away}の試合結果を表示`);
+                scoreValue.setAttribute("aria-hidden", "true");
+                scoreCaption.hidden = false;
+              }
+            });
+          }
 
           const cardTarget = document.createElement(fixture.id ? "a" : "span");
           cardTarget.className = "fixture-card-tap-target";
@@ -810,7 +857,7 @@
           cardTarget.setAttribute(
             "aria-label",
             resultPresentation.hidden
-              ? `${fixture.competition || "大会"}、${fixture.home}対${fixture.away}。試合詳細で結果を表示`
+              ? `${fixture.competition || "大会"}、${fixture.home}対${fixture.away}。${fixture.id ? "試合詳細へ移動" : "試合情報を開く"}`
               : `${fixture.home}対${fixture.away}${scoreText ? `、${scoreText}` : ""}。${fixture.id ? "試合詳細へ移動" : "試合情報を開く"}`,
           );
           row.append(cardTarget, meta, teams, scoreboard);
@@ -1139,6 +1186,7 @@
 
     spoilerToggle?.addEventListener("click", () => {
       spoilersRevealed = !spoilersRevealed;
+      if (!spoilersRevealed) revealedFixtureResults.clear();
       spoilerToggle.setAttribute("aria-pressed", String(spoilersRevealed));
       spoilerToggle.querySelector("span").textContent = spoilersRevealed ? "結果を隠す" : "結果を表示";
       if (activeFixtureData) renderFixtureView();

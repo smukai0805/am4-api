@@ -15,8 +15,20 @@ test("saved league cards provide a real star toggle while fixture rows do not re
   assert.doesNotMatch(matchCentre, /fixture-favorite-button--team/);
 });
 
-test("prediction and report badges stay on one line", () => {
-  assert.match(home, /\.fixture-content-badges\{[^}]*flex-wrap:nowrap/);
+test("prediction and report badges remain individually compact", () => {
+  assert.match(home, /\.fixture-content-badge\{[^}]*white-space:nowrap/);
+});
+
+test("a concealed score reveals in place without opening the match detail", () => {
+  assert.match(home, /\.fixture-scoreboard--result-control\{[^}]*pointer-events:auto/);
+  assert.match(matchCentre, /scoreCaption\.textContent = "タップしたら試合結果を表示"/);
+  assert.match(matchCentre, /scoreboard\.addEventListener\("click", \(event\) => \{/);
+  assert.match(matchCentre, /event\.stopPropagation\(\);/);
+  assert.match(matchCentre, /revealedFixtureResults\.add\(fixtureRevealKey\);/);
+  assert.match(matchCentre, /scoreValue\.replaceChildren\(\);/);
+  assert.match(matchCentre, /scoreDisplayParts\(fullScores\.home, fullScores\.away, false\)/);
+  assert.match(matchCentre, /revealedFixtureResults\.delete\(fixtureRevealKey\);/);
+  assert.match(matchCentre, /if \(!spoilersRevealed\) revealedFixtureResults\.clear\(\);/);
 });
 
 test("primary navigation and selected date stay available while fixtures scroll", () => {

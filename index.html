@@ -614,10 +614,13 @@
   .matchday-board .fixture-league-group .team-logo,.matchday-board .fixture-league-group .team-logo-fallback{display:inline-flex;width:60px;height:60px;object-fit:contain;flex:0 0 60px;filter:drop-shadow(0 3px 6px #0006);}
   .fixture-team-score{display:none;}
   .fixture-scoreboard{position:relative;isolation:isolate;grid-area:score;display:flex;flex-direction:column;align-items:center;justify-content:center;justify-self:stretch;min-width:0;min-height:64px;padding:0;border:0;color:#f5f8ff;background:transparent;font:750 36px/1.1 var(--body);letter-spacing:0;font-variant-numeric:tabular-nums;}
+  .fixture-scoreboard--result-control{z-index:4!important;pointer-events:auto!important;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+  .fixture-scoreboard--result-control:focus-visible{outline:2px solid #8bb1ff;outline-offset:3px;border-radius:8px;}
   .fixture-scoreboard-value--digits{display:grid;grid-template-columns:1.4em .5em 1.4em;align-items:center;justify-content:center;text-align:center;}
   .fixture-score-digit{display:inline-block;}
   .fixture-score-separator{font-size:.65em;font-weight:500;color:#edf3ff;}
   .fixture-scoreboard small{margin-top:7px;color:#a7b8d0;font:600 12px/1.3 var(--mono);letter-spacing:.04em;}
+  .fixture-scoreboard .fixture-score-reveal-hint{max-width:100%;margin-top:4px;color:#9aabc4;font:600 clamp(7px,1.8vw,9px)/1.15 var(--body);letter-spacing:-.04em;text-align:center;}
   .fixture-scoreboard[data-result-hidden="true"] .fixture-score-digit{filter:blur(10px);opacity:.65;user-select:none;-webkit-user-select:none;}
 
 
