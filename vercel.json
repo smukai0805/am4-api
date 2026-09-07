@@ -1,6 +1,6 @@
 {
   "framework": null,
-  "buildCommand": "npm test",
+  "buildCommand": "npm test && git diff --check 50cf8ae87e6c428a0f289a3d5f363e643e7c498b..HEAD",
   "rewrites": [
     { "source": "/column/20-seasons", "destination": "/column-20-seasons.html" }
   ],
