@@ -186,6 +186,15 @@ test("CL and EL provider labels share stable editorial competition identities", 
   );
   assert.equal(
     canonicalMatchKey({
+      competition: "Champions League",
+      date: "2026-09-09",
+      homeTeam: "AEK Athens",
+      awayTeam: "LASK",
+    }),
+    "championsleague|2026-09-09|aekathens|lasklinz",
+  );
+  assert.equal(
+    canonicalMatchKey({
       competition: "UEFA Europa League",
       date: "2026-09-09",
       homeTeam: "Club Brugge KV",

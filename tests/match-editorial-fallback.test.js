@@ -131,3 +131,51 @@ test("archive fallback rejects equal-strength candidates and chooses a unique st
     (article) => ({ score: article.id === "first-report" ? 80 : 50 }),
   )?.id, "first-report");
 });
+
+test("duplicate published pages for one exact match use the most recently edited article", () => {
+  const older = {
+    id: "aek-lask-older",
+    type: "match_prediction",
+    status: "published",
+    public: true,
+    contentKind: "notion_match_prediction",
+    notion: { updatedAt: "2026-09-07T18:22:00.000Z" },
+    match: { canonicalKey: "championsleague|2026-09-08|aekathens|lasklinz" },
+  };
+
+  const newer = {
+    ...older,
+    id: "aek-lask-newer",
+    notion: { updatedAt: "2026-09-07T18:23:00.000Z" },
+  };
+
+  const selected = selectPublishedArchiveEditorial(
+    [{ status: "fulfilled", value: { items: [older, newer] } }],
+    "match_prediction",
+    () => ({ score: 80 }),
+  );
+
+  assert.equal(selected?.id, "aek-lask-newer");
+});
+
+test("edit time never breaks a tie between different match identities", () => {
+  const article = (id, canonicalKey, updatedAt) => ({
+    id,
+    type: "match_prediction",
+    status: "published",
+    public: true,
+    contentKind: "notion_match_prediction",
+    notion: { updatedAt },
+    match: { canonicalKey },
+  });
+  const selected = selectPublishedArchiveEditorial(
+    [{ status: "fulfilled", value: { items: [
+      article("older", "premierleague|2026-09-08|teama|teamb", "2026-09-07T18:22:00.000Z"),
+      article("newer", "premierleague|2026-09-08|teamc|teamd", "2026-09-07T18:23:00.000Z"),
+    ] } }],
+    "match_prediction",
+    () => ({ score: 80 }),
+  );
+
+  assert.equal(selected, null);
+});
