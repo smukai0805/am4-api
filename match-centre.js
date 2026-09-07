@@ -4,8 +4,6 @@
   if (root) root.AM4MatchCentre = api;
 })(typeof window !== "undefined" ? window : globalThis, function () {
   const LEAGUE_PREVIEW_LIMIT = 4;
-  const LEAGUE_GROUP_PREVIEW_LIMIT = 6;
-  const LEAGUE_GROUP_BATCH_SIZE = 6;
   const LIVE_DAILY_REFRESH_MS = 30_000;
   const KICKOFF_RECHECK_BUFFER_MS = 30_000;
   // Date view keeps European club competitions ahead of domestic leagues.
@@ -24,6 +22,15 @@
     { providerId: 61, rank: 8, competition: "リーグ・アン", country: "France", names: ["リーグ・アン", "Ligue 1"], requiresCountryMatch: true },
   ];
   const PRIORITY_COMPETITIONS = [...EUROPEAN_COMPETITIONS, ...MAJOR_LEAGUES];
+  // Match exact cup names together with the provider country. Lower divisions,
+  // youth/women's cups and identically named cups elsewhere stay in the drawer.
+  const MAJOR_DOMESTIC_CUPS = new Map([
+    ["england", ["FA Cup", "FAカップ", "League Cup", "EFL Cup", "Carabao Cup", "カラバオカップ", "Community Shield", "コミュニティシールド"]],
+    ["spain", ["Copa del Rey", "コパ・デル・レイ", "国王杯", "Super Cup", "Supercopa de España", "スーペルコパ"]],
+    ["italy", ["Coppa Italia", "コッパ・イタリア", "Super Cup", "Supercoppa Italiana", "スーペルコッパ"]],
+    ["germany", ["DFB Pokal", "DFB-Pokal", "DFBポカール", "Super Cup", "DFL-Supercup", "Franz Beckenbauer Supercup"]],
+    ["france", ["Coupe de France", "クープ・ドゥ・フランス", "Trophée des Champions", "Trophee des Champions", "Super Cup"]],
+  ]);
   // 節別の「すべて」は、日別の全大会とは異なり5大リーグだけを同じ節で
   // 横断する。並び順もここを唯一の定義にして、リーグ選択の状態とは分離する。
   const ROUND_LEAGUES = MAJOR_LEAGUES.map(({ competition }) => competition);
@@ -104,6 +111,22 @@
     const priorityCompetition = priorityCompetitionForFixture(fixture);
     const country = priorityCompetition?.country || fixture?.competitionCountry || (!fixture?.competitionId && COMPETITION_COUNTRIES.get(fixture?.competition));
     return COUNTRY_LABELS.get(country) || country || "";
+  }
+
+  function isPrimaryCompetition(fixture) {
+    if (priorityCompetitionForFixture(fixture)) return true;
+    const names = MAJOR_DOMESTIC_CUPS.get(normalizedCompetitionLabel(fixture?.competitionCountry)) || [];
+    const label = normalizedCompetitionLabel(fixture?.competition);
+    return names.some((name) => normalizedCompetitionLabel(name) === label);
+  }
+
+  function partitionCompetitionGroups(groups) {
+    const result = { primary: [], other: [] };
+    (groups || []).forEach((group) => {
+      const fixture = group.fixtures?.[0] || group;
+      result[group.isFavoriteGroup || isPrimaryCompetition(fixture) ? "primary" : "other"].push(group);
+    });
+    return result;
   }
 
   function competitionAccent(fixture) {
@@ -317,7 +340,6 @@
     const restoredState = initialState && typeof initialState === "object" ? initialState : {};
     const validInitialDate = /^\d{4}-\d{2}-\d{2}$/.test(restoredState.date || "") ? restoredState.date : "";
     const expandedLeagueGroups = new Set(Array.isArray(restoredState.expandedGroups) ? restoredState.expandedGroups : []);
-    const expandedLeagueGroupCounts = new Map();
     let fixtureMode = restoredState.mode === "round" ? "round" : "date";
     let fixtureStatus = ["all", "upcoming", "live", "finished"].includes(restoredState.status) ? restoredState.status : "all";
     let activeFixtureData = null;
@@ -606,15 +628,40 @@
         const rightLabel = `${competitionCountryLabel(rightFixture)} ${right.competition}`;
         return leftLabel.localeCompare(rightLabel, "ja");
       });
-      // League sections are deliberately one continuous directory. This keeps
-      // the round selector independent from league visibility.
-      const canPageLeagueGroups = false;
-      const directoryKey = leagueGroupKey("_directory");
-      const visibleGroupLimit = canPageLeagueGroups
-        ? Math.min(orderedGroups.length, expandedLeagueGroupCounts.get(directoryKey) || LEAGUE_GROUP_PREVIEW_LIMIT)
-        : orderedGroups.length;
-      orderedGroups.forEach(({ groupId, competition, competitionId, competitionCountry, fixtures, isFavoriteGroup = false }, currentGroupIndex) => {
-        if (currentGroupIndex >= visibleGroupLimit) return;
+      const grouped = partitionCompetitionGroups(orderedGroups);
+      const otherGroups = new Set(grouped.other);
+      const otherKey = leagueGroupKey("_other-competitions");
+      let otherSection = null;
+      let otherList = null;
+      if (grouped.other.length) {
+        otherSection = document.createElement("details");
+        otherSection.className = "fixture-other-competitions";
+        otherSection.open = expandedLeagueGroups.has(otherKey);
+        const summary = document.createElement("summary");
+        summary.className = "fixture-directory-toggle";
+        const label = document.createElement("span");
+        const count = document.createElement("small");
+        count.textContent = `${grouped.other.length}大会`;
+        const updateLabel = () => {
+          label.textContent = otherSection.open ? "その他の大会を閉じる" : "その他の大会を開く";
+        };
+        updateLabel();
+        summary.append(label, count);
+        otherList = document.createElement("div");
+        otherList.className = "fixture-other-list";
+        otherSection.append(summary, otherList);
+        otherSection.addEventListener("toggle", () => {
+          // Ignore detached nodes left behind by an article/live-data refresh.
+          if (!otherSection.isConnected) return;
+          if (otherSection.open) expandedLeagueGroups.add(otherKey);
+          else expandedLeagueGroups.delete(otherKey);
+          updateLabel();
+          persistState();
+        });
+      }
+      [...grouped.primary, ...grouped.other].forEach((groupInfo, currentGroupIndex) => {
+        const { groupId, competition, competitionId, competitionCountry, fixtures, isFavoriteGroup = false } = groupInfo;
+        const groupContainer = otherGroups.has(groupInfo) ? otherList : fixturesNode;
         const group = document.createElement("section");
         group.className = "fixture-league-group";
         const groupFixture = fixtures[0] || { competition, competitionId, competitionCountry };
@@ -659,7 +706,7 @@
         heading.append(count);
         if (isEmpty) {
           group.append(heading);
-          fixturesNode.append(group);
+          groupContainer.append(group);
           return;
         }
         const list = document.createElement("div");
@@ -788,30 +835,9 @@
           });
           group.append(showMore);
         }
-        fixturesNode.append(group);
+        groupContainer.append(group);
       });
-      if (visibleGroupLimit < orderedGroups.length) {
-        const showMoreGroups = document.createElement("button");
-        const remaining = orderedGroups.length - visibleGroupLimit;
-        const nextBatch = Math.min(LEAGUE_GROUP_BATCH_SIZE, remaining);
-        showMoreGroups.type = "button";
-        showMoreGroups.className = "fixture-directory-toggle";
-        showMoreGroups.textContent = "さらに" + nextBatch + "リーグを表示 · 残り" + remaining;
-        showMoreGroups.setAttribute("aria-label", "次の" + nextBatch + "リーグを表示");
-        showMoreGroups.setAttribute("aria-controls", "fixture-list");
-        showMoreGroups.setAttribute("aria-expanded", "false");
-        showMoreGroups.addEventListener("click", () => {
-          const nextLimit = Math.min(orderedGroups.length, visibleGroupLimit + LEAGUE_GROUP_BATCH_SIZE);
-          expandedLeagueGroupCounts.set(directoryKey, nextLimit);
-          renderFixtures(items, sourceLabel);
-          const firstNewHeading = document
-            .getElementById("fixture-league-" + visibleGroupLimit)
-            ?.closest(".fixture-league-group")
-            ?.querySelector(".fixture-league-heading");
-          firstNewHeading?.focus();
-        });
-        fixturesNode.append(showMoreGroups);
-      }
+      if (otherSection) fixturesNode.append(otherSection);
       document.dispatchEvent(new CustomEvent("am4:favorites-catalog-updated"));
       requestContentAvailability(items);
     }
@@ -1166,6 +1192,8 @@
     competitionCountryLabel,
     competitionAccent,
     competitionDisplayRank,
+    isPrimaryCompetition,
+    partitionCompetitionGroups,
     contentBadgeLabels,
     contentAvailabilityBatches,
     contentAvailabilityForFixture,
