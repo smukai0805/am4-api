@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { isPublicArticle } from '../lib/article-visibility.js';
-import { matchContentAvailability } from '../lib/article-content-availability.js';
+import { matchContentAvailability, matchContentAvailabilityByMatchKey } from '../lib/article-content-availability.js';
 import { filterArticleIndex } from '../lib/article-store.js';
 
 test('only explicitly published and public articles are eligible for the public API', () => {
@@ -26,6 +26,35 @@ test('match content availability exposes only published prediction and report ty
     123: ['prediction', 'report'],
     456: [],
     789: [],
+  });
+});
+
+test('match content availability restores published legacy editorials by exact canonical Match Key', () => {
+  const availability = matchContentAvailabilityByMatchKey([
+    {
+      type: 'match_prediction', status: 'published', public: true,
+      match: { competition: 'Premier League', date: '2026-09-04', homeTeam: 'Ipswich Town', awayTeam: 'Liverpool' },
+    },
+    {
+      type: 'match_report', status: 'published', public: true,
+      match: { competition: 'Premier League', date: '2025-09-04', homeTeam: 'Ipswich Town', awayTeam: 'Liverpool' },
+    },
+    {
+      type: 'match_report', status: 'draft', public: true,
+      match: { competition: 'Premier League', date: '2026-09-04', homeTeam: 'Ipswich Town', awayTeam: 'Liverpool' },
+    },
+    {
+      type: 'match_report', status: 'published', public: false,
+      match: { competition: 'Premier League', date: '2026-09-04', homeTeam: 'Ipswich Town', awayTeam: 'Liverpool' },
+    },
+    {
+      type: 'match_report', status: 'published', public: true,
+      match: { fixtureId: 999999, competition: 'Premier League', date: '2026-09-04', homeTeam: 'Ipswich Town', awayTeam: 'Liverpool' },
+    },
+  ], ['プレミアリーグ|2026-09-04|Ipswich|Liverpool']);
+
+  assert.deepEqual(availability, {
+    'premierleague|2026-09-04|ipswichtown|liverpool': ['prediction'],
   });
 });
 

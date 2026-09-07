@@ -56,6 +56,16 @@ function fixtureIdsFromQuery(value) {
   return [...new Set(fixtureIds)];
 }
 
+function matchKeysFromQuery(value) {
+  if (value == null || value === '') return [];
+  if (typeof value !== 'string') return null;
+  const rawKeys = value.split(',').map((matchKey) => matchKey.trim());
+  if (!rawKeys.length || rawKeys.length > AVAILABILITY_FIXTURE_LIMIT || rawKeys.some((matchKey) => !matchKey || matchKey.length > 240)) return null;
+  const matchKeys = rawKeys.map((matchKey) => matchArchive.canonicalMatchKey(matchKey));
+  if (matchKeys.some((matchKey) => !matchKey)) return null;
+  return [...new Set(matchKeys)];
+}
+
 function requestAddress(req) {
   return String(req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown')
     .split(',')[0]
@@ -180,15 +190,16 @@ async function respondWithMatchContent(req, res) {
 
 async function respondWithContentAvailability(req, res) {
   const fixtureIds = fixtureIdsFromQuery(req.query.fixtureIds);
-  if (!fixtureIds) {
-    return res.status(400).json({ error: `fixtureIds は有効な試合IDを最大${AVAILABILITY_FIXTURE_LIMIT}件、カンマ区切りで指定してください` });
+  const matchKeys = matchKeysFromQuery(req.query.matchKeys);
+  if (!fixtureIds || !matchKeys) {
+    return res.status(400).json({ error: `fixtureIds と matchKeys は有効な試合IDまたは完全なMatch Keyを最大${AVAILABILITY_FIXTURE_LIMIT}件、カンマ区切りで指定してください` });
   }
   try {
     // The article index is the public archive's single batched data source;
     // do not call the private Notion bridge or issue per-fixture queries.
-    const availability = await getMatchContentAvailability(fixtureIds);
+    const availability = await getMatchContentAvailability(fixtureIds, matchKeys);
     res.setHeader('Cache-Control', 'no-store');
-    return res.status(200).json({ availability });
+    return res.status(200).json(availability);
   } catch (err) {
     console.error('article availability API error:', err);
     return res.status(500).json({ error: 'コンテンツの取得に失敗しました' });

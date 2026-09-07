@@ -3,6 +3,7 @@ const assert = require("node:assert/strict");
 const {
   contentAvailabilityBatches,
   contentBadgeLabels,
+  contentAvailabilityForFixture,
   mergeRoundFixtureData,
   partitionFavoriteFixtures,
   roundLeagueNames,
@@ -93,4 +94,23 @@ test("article availability covers every fixture in bounded API batches", () => {
 test("editorial badges use compact Japanese labels unless the page is English", () => {
   assert.deepEqual(contentBadgeLabels('ja'), { prediction: '予想あり', report: '解説あり' });
   assert.deepEqual(contentBadgeLabels('en-GB'), { prediction: 'PREDICTION', report: 'MATCH REPORT' });
+});
+
+test("match card availability merges the exact public Match Key with its fixture ID", () => {
+  const previousArchive = globalThis.AM4MatchArchive;
+  globalThis.AM4MatchArchive = require("../match-archive.js");
+  try {
+    assert.deepEqual(contentAvailabilityForFixture({
+      availability: { 1557393: [] },
+      matchAvailability: { 'premierleague|2026-09-04|ipswichtown|liverpool': ['prediction', 'report'] },
+    }, {
+      id: 1557393,
+      date: '2026-09-04',
+      competition: 'プレミアリーグ',
+      home: 'Ipswich',
+      away: 'Liverpool',
+    }), ['prediction', 'report']);
+  } finally {
+    globalThis.AM4MatchArchive = previousArchive;
+  }
 });

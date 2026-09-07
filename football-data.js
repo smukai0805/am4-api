@@ -3,6 +3,11 @@
   if (typeof module === "object" && module.exports) module.exports = api;
   if (root) root.AM4FootballData = api;
 })(typeof window !== "undefined" ? window : globalThis, function () {
+  function archiveMatchKeyForFixture(fixture) {
+    const archive = typeof globalThis !== "undefined" ? globalThis.AM4MatchArchive : null;
+    return typeof archive?.canonicalMatchKey === "function" ? archive.canonicalMatchKey(fixture) : null;
+  }
+
   function createClient(fetcher, baseUrl = "https://am4-api.vercel.app/api") {
     async function request(path) {
       const response = await fetcher(`${baseUrl}${path}`, { headers: { Accept: "application/json" } });
@@ -38,11 +43,19 @@
         params.set("matchContent", "1");
         return request(`/articles?${params}`);
       },
-      contentAvailability: (fixtureIds) => {
-        const ids = Array.isArray(fixtureIds) ? fixtureIds : [];
+      contentAvailability: (fixtureInputs) => {
+        const inputs = Array.isArray(fixtureInputs) ? fixtureInputs : [];
+        const ids = [...new Set(inputs
+          .map((fixture) => Number(typeof fixture === "object" ? fixture?.id : fixture))
+          .filter((fixtureId) => Number.isInteger(fixtureId) && fixtureId > 0))];
+        const matchKeys = [...new Set(inputs
+          .filter((fixture) => fixture && typeof fixture === "object")
+          .map(archiveMatchKeyForFixture)
+          .filter(Boolean))];
         const params = new URLSearchParams();
         params.set("availability", "1");
         params.set("fixtureIds", ids.join(","));
+        if (matchKeys.length) params.set("matchKeys", matchKeys.join(","));
         return request(`/articles?${params}`);
       },
       featuredFixtures: () => request('/fixtures?featured=1'),

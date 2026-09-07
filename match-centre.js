@@ -207,6 +207,15 @@
       ? { prediction: "PREDICTION", report: "MATCH REPORT" }
       : { prediction: "予想あり", report: "解説あり" };
   }
+
+  function contentAvailabilityForFixture(response, fixture) {
+    const fixtureId = Number(fixture?.id);
+    const types = new Set(Array.isArray(response?.availability?.[fixtureId]) ? response.availability[fixtureId] : []);
+    const archive = typeof globalThis !== "undefined" ? globalThis.AM4MatchArchive : null;
+    const matchKey = typeof archive?.canonicalMatchKey === "function" ? archive.canonicalMatchKey(fixture) : null;
+    (response?.matchAvailability?.[matchKey] || []).forEach((type) => types.add(type));
+    return [...types];
+  }
   // These are deliberately neutral UI accents, not inferred club colours. They keep
   // unlisted teams distinguishable while the provider name remains the source of truth.
   function neutralTeamAccent(normalizedName) {
@@ -357,13 +366,19 @@
       if (typeof client.contentAvailability !== "function") return;
       const batches = contentAvailabilityBatches(fixtures);
       if (!batches.length) return;
+      const fixturesById = new Map((fixtures || [])
+        .map((fixture) => [Number(fixture?.id), fixture])
+        .filter(([fixtureId]) => Number.isInteger(fixtureId) && fixtureId > 0));
+      const fixtureBatches = batches.map((fixtureIds) => fixtureIds
+        .map((fixtureId) => fixturesById.get(fixtureId))
+        .filter(Boolean));
 
       const requestKey = batches.map((fixtureIds) => fixtureIds.join(",")).join(";");
       if (requestKey === contentAvailabilityRequestKey) return;
       contentAvailabilityRequestKey = requestKey;
       const requestId = ++contentAvailabilityRequestId;
 
-      Promise.allSettled(batches.map((fixtureIds) => client.contentAvailability(fixtureIds)))
+      Promise.allSettled(fixtureBatches.map((fixturesForBatch) => client.contentAvailability(fixturesForBatch)))
         .then((results) => {
           if (requestId !== contentAvailabilityRequestId) return;
           let hasSuccessfulBatch = false;
@@ -375,10 +390,12 @@
               return;
             }
             hasSuccessfulBatch = true;
-            batches[index].forEach((fixtureId) => contentAvailability.delete(String(fixtureId)));
-            Object.entries(result.value?.availability || {}).forEach(([fixtureId, types]) => {
+            fixtureBatches[index].forEach((fixture) => {
+              const fixtureId = String(fixture.id);
+              contentAvailability.delete(fixtureId);
+              const types = contentAvailabilityForFixture(result.value, fixture);
               if (!Array.isArray(types) || !types.length) return;
-              contentAvailability.set(String(fixtureId), types);
+              contentAvailability.set(fixtureId, types);
             });
           });
           // Only the schedule cards are redrawn: fixture state, filters, and
@@ -1093,6 +1110,7 @@
     create,
     contentBadgeLabels,
     contentAvailabilityBatches,
+    contentAvailabilityForFixture,
     mergeRoundFixtureData,
     partitionFavoriteFixtures,
     roundLeagueNames: ROUND_LEAGUES,

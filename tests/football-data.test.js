@@ -146,6 +146,28 @@ test("match card content availability is fetched in one bounded archive request"
   assert.equal(requested.includes("NOTION_API_KEY"), false);
 });
 
+test("match card availability includes a canonical Match Key for legacy archive records", async () => {
+  const previousArchive = globalThis.AM4MatchArchive;
+  globalThis.AM4MatchArchive = require("../match-archive.js");
+  try {
+    let requested;
+    const client = createClient(async (url) => {
+      requested = url;
+      return { ok: true, json: async () => ({ availability: {}, matchAvailability: {} }) };
+    });
+    await client.contentAvailability([{
+      id: 1557393,
+      date: "2026-09-04",
+      competition: "プレミアリーグ",
+      home: "Ipswich",
+      away: "Liverpool",
+    }]);
+    assert.equal(requested, "https://am4-api.vercel.app/api/articles?availability=1&fixtureIds=1557393&matchKeys=premierleague%7C2026-09-04%7Cipswichtown%7Cliverpool");
+  } finally {
+    globalThis.AM4MatchArchive = previousArchive;
+  }
+});
+
 test("player photos can use a validated API-Football player reference", async () => {
   let requested;
   const client = createClient(async (url) => {
