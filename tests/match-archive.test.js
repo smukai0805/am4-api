@@ -200,11 +200,15 @@ test("CL and EL provider labels share stable editorial competition identities", 
       homeTeam: "Club Brugge KV",
       awayTeam: "Aston Villa",
     }),
-    "europaleague|2026-09-09|bruggekv|astonvilla",
+    "europaleague|2026-09-09|brugge|astonvilla",
   );
   assert.equal(
     canonicalMatchKey("ヨーロッパリーグ|2026-09-09|Club Brugge KV|Aston Villa"),
-    "europaleague|2026-09-09|bruggekv|astonvilla",
+    "europaleague|2026-09-09|brugge|astonvilla",
+  );
+  assert.equal(
+    canonicalMatchKey("Champions League|2026-09-09|Liverpool|Atlético de Madrid"),
+    "championsleague|2026-09-09|liverpool|atleticomadrid",
   );
 });
 
