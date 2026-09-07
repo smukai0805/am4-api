@@ -22,6 +22,6 @@ test("prediction and report badges stay on one line", () => {
 test("primary navigation and selected date stay available while fixtures scroll", () => {
   assert.match(home, /\.topbar\{[^}]*position:fixed/);
   assert.match(home, /\.tagnav-wrap\{[^}]*position:fixed/);
-  assert.match(home, /\.matchday-dates\{[^}]*position:sticky/);
+  assert.match(home, /\.matchday-dates-sticky\{[^}]*position:sticky/);
   assert.match(home, /\.matchday-home\{[^}]*overflow:clip/);
 });
