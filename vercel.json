@@ -1,6 +1,5 @@
 {
   "framework": null,
-  "buildCommand": "npm test",
   "rewrites": [
     { "source": "/column/20-seasons", "destination": "/column-20-seasons.html" }
   ],
