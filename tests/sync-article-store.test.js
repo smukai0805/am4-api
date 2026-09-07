@@ -51,7 +51,7 @@ test('sync index metadata keeps list fields but drops long editorial bodies', ()
   assert.doesNotMatch(entry.searchText, /body-sentinel|report-sentinel|prediction-sentinel/i);
 });
 
-test('scheduled sync reads the index once and writes it once for multiple article updates', async () => {
+test('scheduled sync uses bounded index reads, one index write, and preserves a concurrent article', async () => {
   const initialIndex = [{
     id: 'legacy-report',
     type: 'match_report',
@@ -62,12 +62,26 @@ test('scheduled sync reads the index once and writes it once for multiple articl
     report: { tactics: 'legacy long field' },
     notion: { pageId: 'legacy-page', updatedAt: '2026-09-01T00:00:00.000Z' },
   }];
+  const concurrentEntry = compactArticleIndexEntry({
+    id: 'transfer-concurrent',
+    type: 'transfer_news',
+    title: 'Concurrent transfer',
+    publishedAt: '2026-09-08T01:30:00.000Z',
+    status: 'published',
+    public: true,
+    body: 'short transfer body',
+  });
   const gets = [];
   const puts = [];
+  let indexReadCount = 0;
   const blob = {
     get: async (pathname, options) => {
       gets.push({ pathname, options });
-      if (pathname === 'articles/index.json') return { stream: streamJson(initialIndex) };
+      if (pathname === 'articles/index.json') {
+        indexReadCount += 1;
+        const value = indexReadCount === 1 ? initialIndex : [...initialIndex, concurrentEntry];
+        return { stream: streamJson(value) };
+      }
       return null;
     },
     put: async (pathname, value, options) => {
@@ -89,18 +103,19 @@ test('scheduled sync reads the index once and writes it once for multiple articl
   });
 
   const stats = await store.flush();
-  assert.equal(gets.filter((entry) => entry.pathname === 'articles/index.json').length, 1);
-  assert.equal(gets[0].options.useCache, false);
+  assert.equal(gets.filter((entry) => entry.pathname === 'articles/index.json').length, 2);
+  assert.ok(gets.every((entry) => entry.options.useCache === false));
   assert.equal(puts.filter((entry) => entry.pathname === 'articles/index.json').length, 1);
   assert.equal(puts.filter((entry) => entry.pathname !== 'articles/index.json').length, 2);
-  assert.equal(stats.indexReads, 1);
+  assert.equal(stats.indexReads, 2);
   assert.equal(stats.indexWrites, 1);
   assert.equal(stats.articleWrites, 2);
   assert.equal(stats.compactedEntries, 1);
 
   const indexWrite = puts.find((entry) => entry.pathname === 'articles/index.json');
   const storedIndex = JSON.parse(indexWrite.value);
-  assert.equal(storedIndex.length, 3);
+  assert.equal(storedIndex.length, 4);
   assert.equal('report' in storedIndex.find((entry) => entry.id === 'legacy-report'), false);
   assert.equal('body' in storedIndex.find((entry) => entry.id === 'report-a'), false);
+  assert.equal(storedIndex.some((entry) => entry.id === 'transfer-concurrent'), true);
 });
