@@ -221,9 +221,13 @@ test("finished scores stay hidden until the visitor chooses to reveal results", 
   assert.deepEqual(fixtureResultPresentation(fixture, true), { hidden: false, label: "3-1" });
 });
 
-test("live scores remain visible while spoiler protection hides completed results", () => {
-  const fixture = { status: "2H", homeGoals: 2, awayGoals: 2 };
-  assert.deepEqual(fixtureResultPresentation(fixture, false), { hidden: false, label: "LIVE · 2-2" });
+test("live scores follow the result visibility choice throughout the match", () => {
+  for (const status of ["1H", "HT", "2H", "ET", "P"]) {
+    const fixture = { status, homeGoals: 2, awayGoals: 2 };
+    assert.deepEqual(fixtureResultPresentation(fixture, false), { hidden: true, label: "試合中" });
+    assert.deepEqual(fixtureResultPresentation(fixture, true), { hidden: false, label: "LIVE · 2-2" });
+  }
+  assert.deepEqual(fixtureResultPresentation({ status: "NS" }, false), { hidden: false, label: "" });
 });
 
 test("fixtures can be limited to upcoming matches involving saved clubs", () => {

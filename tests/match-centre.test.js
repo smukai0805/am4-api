@@ -2,6 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
   competitionCountryLabel,
+  competitionAccent,
   competitionDisplayRank,
   contentAvailabilityBatches,
   contentBadgeLabels,
@@ -10,7 +11,22 @@ const {
   partitionFavoriteFixtures,
   roundLeagueNames,
   selectFavoriteFixtures,
+  scoreDisplayParts,
 } = require("../match-centre.js");
+
+test("hidden scores have identical silhouettes regardless of digit shape or length", () => {
+  const concealed = scoreDisplayParts(0, 0, true);
+  for (const [home, away] of [[1, 0], [2, 1], [8, 8], [10, 0], [0, 12]]) {
+    assert.deepEqual(scoreDisplayParts(home, away, true), concealed);
+  }
+  assert.deepEqual(scoreDisplayParts(0, 12, false), ["0", "12"]);
+});
+
+test("league accents follow verified competition identity across names", () => {
+  assert.equal(competitionAccent({ competitionId: 39 }), competitionAccent({ competition: "プレミアリーグ" }));
+  assert.notEqual(competitionAccent({ competitionId: 39 }), competitionAccent({ competitionId: 140 }));
+  assert.notEqual(competitionAccent({ competitionId: 39 }), competitionAccent({ competition: "Premier League", competitionCountry: "Ghana" }));
+});
 
 test("European club competitions lead the five major leagues in date view", () => {
   const fixtures = [

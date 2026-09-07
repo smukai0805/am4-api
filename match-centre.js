@@ -106,6 +106,19 @@
     return COUNTRY_LABELS.get(country) || country || "";
   }
 
+  function competitionAccent(fixture) {
+    const competition = priorityCompetitionForFixture(fixture);
+    // Restrained wayfinding accents; competition identity always remains in text.
+    return ({ 1: "#8dbaff", 2: "#f3a44a", 3: "#67c995", 4: "#b69ae8",
+      5: "#ff5968", 6: "#4b9dff", 7: "#ed6472", 8: "#b4ca68" })[competition?.rank] || "#93a6c5";
+  }
+
+  function scoreDisplayParts(home, away, hidden) {
+    // Use the same blurred silhouette for every hidden result: neither the
+    // original digit shape nor a two-digit score may give the result away.
+    return hidden ? ["8", "8"] : [String(home), String(away)];
+  }
+
   function mergeRoundFixtureData(leagueData) {
     const roundsByKey = new Map();
     const availableLeagues = [];
@@ -406,7 +419,11 @@
         if (!label) return;
         const badge = document.createElement("span");
         badge.className = `fixture-content-badge fixture-content-badge--${type}`;
-        badge.textContent = label;
+        const icon = document.createElement("span");
+        icon.className = `fixture-content-icon fixture-content-icon--${type}`;
+        icon.setAttribute("aria-hidden", "true");
+        icon.textContent = type === "prediction" ? "▂▅▇" : "≡";
+        badge.append(icon, document.createTextNode(label));
         badges.append(badge);
       });
       if (badges.childElementCount) meta.append(badges);
@@ -605,6 +622,7 @@
         const group = document.createElement("section");
         group.className = "fixture-league-group";
         const groupFixture = fixtures[0] || { competition, competitionId, competitionCountry };
+        group.style.setProperty("--league-accent", isFavoriteGroup ? "#a9c5ff" : competitionAccent(groupFixture));
         const isEmpty = fixtures.length === 0;
         if (isEmpty) group.classList.add("fixture-league-group--empty");
         const canCompact = fixtureMode === "date" && fixtures.length > LEAGUE_PREVIEW_LIMIT;
@@ -655,6 +673,7 @@
         fixtures.forEach((fixture, fixtureIndex) => {
           const row = document.createElement("article");
           row.className = "fixture-row fixture-row--interactive";
+          row.style.setProperty("--league-accent", competitionAccent(fixture));
           row.hidden = canCompact && !isExpanded && fixtureIndex >= LEAGUE_PREVIEW_LIMIT;
           const statusGroup = AM4FootballData.classifyFixtureStatus(fixture.status);
           const resultPresentation = AM4FootballData.fixtureResultPresentation(
@@ -673,6 +692,20 @@
             ? `${new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", hour: "2-digit", minute: "2-digit" }).format(new Date(fixture.kickoff))} JST`
             : fixture.date || "日時確認中";
           meta.append(date);
+          const status = document.createElement("span");
+          status.className = `fixture-status fixture-status--${statusGroup}`;
+          const phaseLabel = { "1H": "前半", HT: "前半終了", "2H": "後半", ET: "延長", BT: "延長前半終了", P: "PK戦", SUSP: "一時中断", INT: "中断" }[fixture.status];
+          status.textContent = phaseLabel || fixtureStatusLabel(fixture.status);
+          if (["1H", "2H", "ET", "LIVE"].includes(fixture.status) && fixture.elapsed != null) {
+            status.textContent += ` ${fixture.elapsed}′`;
+          }
+          meta.append(status);
+          if (isFavoriteGroup) {
+            const competitionLabel = document.createElement("span");
+            competitionLabel.className = "fixture-card-competition";
+            competitionLabel.textContent = fixture.competition || "大会情報確認中";
+            meta.prepend(competitionLabel);
+          }
           appendContentBadges(meta, fixture);
           const teams = document.createElement("div");
           teams.className = "fixture-teams";
@@ -683,37 +716,27 @@
           );
           const scoreboard = document.createElement("div");
           scoreboard.className = "fixture-scoreboard";
-          if (resultPresentation.hidden) {
-            scoreboard.classList.add("fixture-reveal-action");
-          }
           const fullScores = fixtureTeamScores(fixture);
           const scoreText = fullScores.home && fullScores.away ? `${fullScores.home} – ${fullScores.away}` : "";
           const scoreValue = document.createElement("span");
           scoreValue.className = "fixture-scoreboard-value";
           const scoreCaption = document.createElement("small");
-          let resultCover = null;
-          if (resultPresentation.hidden) {
-            scoreboard.setAttribute("aria-hidden", "true");
-            scoreValue.textContent = scoreText || "–";
-            resultCover = document.createElement("span");
-            resultCover.className = "fixture-result-cover";
-            const leagueLogo = competitionLogo(fixture, "fixture-result-cover-logo");
-            if (leagueLogo) {
-              resultCover.append(leagueLogo);
-            } else {
-              const fallback = document.createElement("span");
-              fallback.className = "fixture-result-cover-fallback";
-              fallback.textContent = String(fixture.competition || "AM4").slice(0, 2).toUpperCase();
-              resultCover.append(fallback);
-            }
-            const copy = document.createElement("span");
-            copy.className = "fixture-result-cover-copy";
-            const hint = document.createElement("span");
-            hint.textContent = "詳細で";
-            const label = document.createElement("strong");
-            label.textContent = "試合結果を表示";
-            copy.append(hint, label);
-            resultCover.append(copy);
+          if (resultPresentation.hidden || (scoreText && ["live", "finished"].includes(statusGroup))) {
+            scoreValue.classList.add("fixture-scoreboard-value--digits");
+            if (resultPresentation.hidden) scoreboard.setAttribute("aria-hidden", "true");
+            const parts = scoreDisplayParts(fullScores.home, fullScores.away, resultPresentation.hidden);
+            parts.forEach((part, index) => {
+              if (index) {
+                const separator = document.createElement("span");
+                separator.className = "fixture-score-separator";
+                separator.textContent = "−";
+                scoreValue.append(separator);
+              }
+              const digit = document.createElement("span");
+              digit.className = "fixture-score-digit";
+              digit.textContent = part;
+              scoreValue.append(digit);
+            });
           } else {
             if (statusGroup === "upcoming") {
               scoreValue.textContent = fixture.kickoff
@@ -732,7 +755,6 @@
             }
           }
           scoreboard.append(scoreValue);
-          if (resultCover) scoreboard.append(resultCover);
           if (scoreCaption.textContent) scoreboard.append(scoreCaption);
           scoreboard.dataset.resultHidden = String(resultPresentation.hidden);
 
@@ -1146,6 +1168,7 @@
   return {
     create,
     competitionCountryLabel,
+    competitionAccent,
     competitionDisplayRank,
     contentBadgeLabels,
     contentAvailabilityBatches,
@@ -1154,5 +1177,6 @@
     partitionFavoriteFixtures,
     roundLeagueNames: ROUND_LEAGUES,
     selectFavoriteFixtures,
+    scoreDisplayParts,
   };
 });
