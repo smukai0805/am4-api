@@ -303,4 +303,12 @@ Work began only after the Phase 1 suite above passed.
 
 ### Release and production verification
 
-- Pending at the time of this entry: commit, push to `am4-production`, deployment readiness, and live browser/API confirmation. A production release is authorised by the operator, but this document does not claim deployment until those checks finish.
+- Production release: `441d461` (`Rank published match editorials by identity`), `6f036d9` (`Refresh partial live match editorials`), and `59c57e2` (`Document editorial identity recovery`) were pushed to `am4-production`. Vercel reported `success` for the production deployment.
+- The deployed `match.html` serves `match-archive.js?v=20260907-editorial-availability-v4`, `match-editorial-fallback.js?v=20260907-editorial-restore-v2`, and `match-detail.js?v=20260907-editorial-restore-v2`.
+- Read-only production API checks returned a published prediction and report, with no partial source errors, for Arsenal v Chelsea (`1557387`), Alaves v Osasuna (`1570363`), and Ipswich v Liverpool (`1557393`). The corresponding legacy Match Key availability entries each returned both `report` and `prediction`.
+- Freshness confirmation: a complete Arsenal v Chelsea response was initially a CDN hit at age 40 seconds; after crossing the 60-second window the same endpoint was a cache miss at age 0. Empty/partial/error cases are covered as `no-store` by the unit test rather than fabricated in production.
+- In-app Chromium browser checks at a measured `390×844` viewport, with screenshots opened and inspected:
+  - Arsenal v Chelsea and Alaves v Osasuna each rendered a completed fixture plus the published `AM4 MATCH SUMMARY` body.
+  - Ipswich v Liverpool rendered its completed provider fixture plus the published report body; the former preparation placeholder was absent after loading.
+  - The 9/7 daily list exposed `解説あり 予想あり` for both Arsenal v Chelsea and Alaves v Osasuna. No browser-console errors were captured.
+- Captured browser screenshots were inspected during this session but were not persisted as filesystem artifacts. This is Chromium viewport evidence, not iPhone Safari or physical-device verification.
