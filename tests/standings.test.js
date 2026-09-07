@@ -50,6 +50,8 @@ test('standings do not guess qualification zones when the provider omits verifie
 
 test('standing requests preserve a fixture competition ID outside the primary league map', () => {
   assert.deepEqual(resolveStandingCompetition({ competitionId: 39 }), { name: 'プレミアリーグ', providerId: 39 });
+  assert.deepEqual(resolveStandingCompetition({ competition: 'ヨーロッパリーグ' }), { name: 'ヨーロッパリーグ', providerId: 3 });
+  assert.deepEqual(resolveStandingCompetition({ competition: 'UEFA Europa League' }), { name: 'ヨーロッパリーグ', providerId: 3 });
   assert.deepEqual(resolveStandingCompetition({ competition: 'Jupiler Pro League', competitionId: 144 }), { name: 'Jupiler Pro League', providerId: 144 });
   assert.equal(resolveStandingCompetition({ competition: 'クラブ親善試合' }), null);
   assert.equal(resolveStandingSeason(undefined, new Date('2026-09-03T00:00:00Z')), 2026);

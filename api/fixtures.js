@@ -26,6 +26,10 @@ const COMPETITIONS = {
   'ブンデスリーガ': { providerId: 78, featured: true, editorialBonus: 6 },
   'リーグ・アン': { providerId: 61, featured: true, editorialBonus: 6 },
   'チャンピオンズリーグ': { providerId: 2, featured: true, editorialBonus: 16 },
+  // EL is available on demand from the existing competition tab. It remains
+  // out of the automatic featured fetch fan-out, so this support does not add
+  // a provider request to an ordinary homepage visit.
+  'ヨーロッパリーグ': { providerId: 3, featured: false, editorialBonus: 0 },
   // 2026-08-12追加(EL BLANCO連携作業時): クラブの「次節試合カード」的な用途では、
   // 国内リーグ・CL戦だけでなくプレシーズンの親善試合も対象に含めたいという要望があった。
   // API-Footballの/leagues?search=Friendliesで実際に検索したところ、"Friendlies"

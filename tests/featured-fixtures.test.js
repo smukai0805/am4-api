@@ -138,3 +138,16 @@ test('daily fixtures combine every provider competition and club friendlies in k
   assert.deepEqual(selected.map((item) => item.competitionId), [667, 999, 140]);
   assert.deepEqual(selected.map((item) => item.am4Focus), [true, false, true]);
 });
+
+test('daily fixtures preserve Europa League as an AM4 priority competition', () => {
+  const [fixture] = selectDailyFixtures([{
+    fixture: { id: 4, date: '2026-09-17T01:45:00+09:00', status: { short: 'NS' }, venue: { name: 'Stadium D' } },
+    league: { id: 3, name: 'UEFA Europa League', round: 'League Stage - 1' },
+    teams: { home: { id: 40, name: 'Liverpool', logo: 'liverpool.png' }, away: { id: 49, name: 'Chelsea', logo: 'chelsea.png' } },
+    goals: { home: null, away: null },
+  }]);
+
+  assert.equal(fixture.competition, 'ヨーロッパリーグ');
+  assert.equal(fixture.competitionId, 3);
+  assert.equal(fixture.am4Focus, true);
+});

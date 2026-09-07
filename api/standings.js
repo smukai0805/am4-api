@@ -31,6 +31,7 @@ export const STANDING_COMPETITIONS = {
   'ブンデスリーガ': 78,
   'リーグ・アン': 61,
   'チャンピオンズリーグ': 2,
+  'ヨーロッパリーグ': 3,
 };
 
 const COMPETITION_ALIASES = {
@@ -41,7 +42,16 @@ const COMPETITION_ALIASES = {
   'Ligue 1': 'リーグ・アン',
   'UEFA Champions League': 'チャンピオンズリーグ',
   'Champions League': 'チャンピオンズリーグ',
+  'UEFA Europa League': 'ヨーロッパリーグ',
+  'Europa League': 'ヨーロッパリーグ',
 };
+
+// The long-standing aggregate response is used by the legacy results page on
+// load. Keep its existing six provider calls; Europa League is fetched only
+// after its tab is explicitly selected.
+const AGGREGATE_STANDING_COMPETITIONS = Object.fromEntries(
+  Object.entries(STANDING_COMPETITIONS).filter(([name]) => name !== 'ヨーロッパリーグ'),
+);
 
 function tokyoSeason(now = new Date()) {
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -172,7 +182,7 @@ export default async function handler(req, res) {
 
     // Preserve the aggregate response for external callers. Each row now has
     // a provider team ID and a normalized qualification-zone key as well.
-    const results = await Promise.all(Object.entries(STANDING_COMPETITIONS).map(async ([name, providerId]) =>
+    const results = await Promise.all(Object.entries(AGGREGATE_STANDING_COMPETITIONS).map(async ([name, providerId]) =>
       fetchCompetitionStandings({ name, providerId }, SEASON),
     ));
     const leagues = Object.fromEntries(results.map((result) => [result.name, result.standings]));

@@ -1385,8 +1385,8 @@
 <div class="page" data-page="matches">
 <section id="leagues">
   <div class="section-head">
-    <h2 data-i18n="leagues_title">5大リーグ結果・順位表</h2>
-    <span class="sub">PL / LIGA / SERIE A / BUNDESLIGA / LIGUE 1</span>
+    <h2 data-i18n="leagues_title">欧州大会・5大リーグ結果・順位表</h2>
+    <span class="sub">CL / EL / PL / LIGA / SERIE A / BUNDESLIGA / LIGUE 1</span>
   </div>
   <div class="standings-controls">
     <label for="standingsSeasonSelect" class="standings-season-label">シーズン(実データ):</label>
@@ -1648,7 +1648,7 @@ const i18n = {
     wc_semis:'準決勝', wc_quarters:'準々決勝 結果', wc_remaining:'今後の日程',
     players_title:'選手個別成績', players_sub:'今季スタッツ — サンプルデータ / タップで詳細',
     transfers_title:'移籍情報', transfers_sub:'TRANSFER TRACKER — サンプルデータ',
-    leagues_title:'5大リーグ結果・順位表',
+    leagues_title:'欧州大会・5大リーグ結果・順位表',
     th_club:'クラブ', th_played:'試合', th_win:'勝', th_draw:'分', th_loss:'負', th_gd:'得失', th_pts:'勝点',
     ucl_title:'UEFAチャンピオンズリーグ', ucl_sub:'2025-26シーズン結果 / 2026-27シーズンに向けて — 実データ',
     footer_text:'AM4 prototype — サンプルデータ表示中。実データ連携(API/スクレイピング)は別途構築が必要です。',
@@ -1675,7 +1675,7 @@ const i18n = {
     wc_semis:'Semifinals', wc_quarters:'Quarterfinal Results', wc_remaining:'Upcoming Matches',
     players_title:'Player Stats', players_sub:'This season — sample data / tap for details',
     transfers_title:'Transfer News', transfers_sub:'TRANSFER TRACKER — sample data',
-    leagues_title:'Top 5 Leagues — Results & Standings',
+    leagues_title:'European Competitions & Top 5 Leagues — Results & Standings',
     th_club:'Club', th_played:'P', th_win:'W', th_draw:'D', th_loss:'L', th_gd:'GD', th_pts:'Pts',
     ucl_title:'UEFA Champions League', ucl_sub:'2025-26 season results / looking ahead to 2026-27 — sample data',
     footer_text:'AM4 prototype — showing sample data. Real data integration (API/scraping) would need separate setup.',
@@ -1702,7 +1702,7 @@ const i18n = {
     wc_semis:'Semifinales', wc_quarters:'Resultados de Cuartos de Final', wc_remaining:'Próximos Partidos',
     players_title:'Estadísticas de Jugadores', players_sub:'Esta temporada — datos de muestra / toca para más detalles',
     transfers_title:'Noticias de Fichajes', transfers_sub:'SEGUIMIENTO DE FICHAJES — datos de muestra',
-    leagues_title:'Top 5 Ligas — Resultados y Clasificación',
+    leagues_title:'Competiciones Europeas y Top 5 Ligas — Resultados y Clasificación',
     th_club:'Club', th_played:'PJ', th_win:'G', th_draw:'E', th_loss:'P', th_gd:'DG', th_pts:'Pts',
     ucl_title:'Liga de Campeones de la UEFA', ucl_sub:'Resultados 2025-26 / de cara a 2026-27 — datos de muestra',
     footer_text:'AM4 prototype — mostrando datos de muestra. La integración de datos reales (API/scraping) requeriría una configuración aparte.',
@@ -5409,6 +5409,9 @@ const leaguesData = {
   // 表示される(空配列のままにしている)。
   'チャンピオンズリーグ': {
     standings:[]
+  },
+  'ヨーロッパリーグ': {
+    standings:[]
   }
 };
 
@@ -5623,7 +5626,10 @@ const fixtureRoundTabs = document.getElementById('fixtureRoundTabs');
 const fixturesStatus = document.getElementById('fixturesStatus');
 const standingsBody = document.getElementById('standingsBody');
 const standingsExpandToggle = document.getElementById('standingsExpandToggle');
-const leagueNames = Object.keys(leaguesData);
+const leagueNames = [
+  'チャンピオンズリーグ', 'ヨーロッパリーグ',
+  'プレミアリーグ', 'ラ・リーガ', 'セリエA', 'ブンデスリーガ', 'リーグ・アン',
+].filter(name => Object.prototype.hasOwnProperty.call(leaguesData, name));
 const AM4_API_BASE = 'https://am4-api.vercel.app';
 const standingsSeasonSelect = document.getElementById('standingsSeasonSelect');
 const standingsStatus = document.getElementById('standingsStatus');
@@ -5640,6 +5646,7 @@ let currentSeasonRounds = [];
 let currentSeasonDates = [];
 let selectedFixtureDate = null;
 let selectedFixtureRoundKey = null;
+let fixtureRequestId = 0;
 
 // チーム名から簡易バッジ(先頭2文字)を生成する。クラブロゴの取得に失敗した場合の
 // フォールバック表示に使う。
@@ -5789,6 +5796,7 @@ fixtureViewToggle.querySelectorAll('.fixture-view-btn').forEach(btn=>{
 });
 
 async function loadFixturesFromAPI(name, season){
+  const requestId = ++fixtureRequestId;
   fixturesStatus.textContent = '読み込み中...';
   fixturesStatus.className = 'standings-status';
   try{
@@ -5796,6 +5804,9 @@ async function loadFixturesFromAPI(name, season){
     if(!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     if(data.error) throw new Error(data.error);
+    // Tabs and seasons can change before a provider response returns. Only
+    // the latest request for the visible competition may update the grid.
+    if(requestId !== fixtureRequestId || currentActiveLeagueName !== name) return;
     currentSeasonFixtures = data.fixtures || [];
     currentSeasonRounds = data.rounds || [];
     currentSeasonDates = data.dates || [];
@@ -5807,6 +5818,7 @@ async function loadFixturesFromAPI(name, season){
     fixturesStatus.className = currentSeasonFixtures.length > 0 ? 'standings-status live' : 'standings-status';
   } catch(err){
     console.error('fixtures fetch error:', err);
+    if(requestId !== fixtureRequestId || currentActiveLeagueName !== name) return;
     currentSeasonFixtures = []; currentSeasonRounds = []; currentSeasonDates = [];
     fixtureGrid.innerHTML = '<div class="archive-empty">試合結果の取得に失敗しました</div>';
     fixturesStatus.textContent = '取得失敗';
@@ -5820,6 +5832,10 @@ async function loadFixturesFromAPI(name, season){
 // デフォルトの折りたたみ状態に戻す。
 const STANDINGS_COLLAPSED_COUNT = 5;
 let standingsExpanded = false;
+// Europa League is loaded only when its tab is selected. The aggregate
+// standings request keeps its historic six-competition fan-out on page load.
+const ON_DEMAND_STANDING_LEAGUES = new Set(['ヨーロッパリーグ']);
+let onDemandStandingsRequestId = 0;
 
 function renderStandingsTable(rows){
   standingsBody.innerHTML = '';
@@ -5840,15 +5856,52 @@ function renderStandingsTable(rows){
   }
 }
 
+async function loadOnDemandStandings(name, season){
+  if(!ON_DEMAND_STANDING_LEAGUES.has(name)) return;
+  const requestId = ++onDemandStandingsRequestId;
+  standingsStatus.textContent = '読み込み中...';
+  standingsStatus.className = 'standings-status';
+  try{
+    const params = new URLSearchParams({ competition: name, season: String(season) });
+    const res = await fetch(`${AM4_API_BASE}/api/standings?${params.toString()}`);
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if(data.error || !Array.isArray(data.standings)) throw new Error(data.error || '順位表データがありません');
+    // A season change or a second tab selection can finish before this
+    // request. Never let that older response replace the active table.
+    if(requestId !== onDemandStandingsRequestId || currentActiveLeagueName !== name) return;
+    leaguesData[name].standings = data.standings.map(row => [
+      row.club, row.played, row.win, row.draw, row.lose,
+      (row.goalsDiff >= 0 ? '+' : '') + row.goalsDiff,
+      row.points, row.logo
+    ]);
+    standingsExpanded = false;
+    renderStandingsTable(leaguesData[name].standings);
+    standingsStatus.textContent = leaguesData[name].standings.length
+      ? `● 実データ反映済み(${season}シーズン)`
+      : 'この大会の順位表はまだありません';
+    standingsStatus.className = 'standings-status live';
+  } catch(err){
+    console.error('on-demand standings fetch error:', err);
+    if(requestId !== onDemandStandingsRequestId || currentActiveLeagueName !== name) return;
+    standingsStatus.textContent = '順位表の取得に失敗しました';
+    standingsStatus.className = 'standings-status error';
+  }
+}
+
 standingsExpandToggle.addEventListener('click', ()=>{
   standingsExpanded = !standingsExpanded;
   renderStandingsTable(leaguesData[currentActiveLeagueName]?.standings || []);
 });
 
 function renderLeague(name){
+  // Selecting a normal competition invalidates an in-flight Europa League
+  // request so an old response cannot update shared state after navigation.
+  if(!ON_DEMAND_STANDING_LEAGUES.has(name)) onDemandStandingsRequestId += 1;
   loadFixturesFromAPI(name, standingsSeasonSelect.value);
   standingsExpanded = false;
   renderStandingsTable(leaguesData[name].standings);
+  loadOnDemandStandings(name, standingsSeasonSelect.value);
   [...leagueTabs.children].forEach(btn=>{
     btn.classList.toggle('active', btn.dataset.league===name);
   });
@@ -5863,6 +5916,7 @@ const LEAGUE_LOGOS = {
   'ブンデスリーガ': 'https://media.api-sports.io/football/leagues/78.png',
   'リーグ・アン': 'https://media.api-sports.io/football/leagues/61.png',
   'チャンピオンズリーグ': 'https://media.api-sports.io/football/leagues/2.png',
+  'ヨーロッパリーグ': 'https://media.api-sports.io/football/leagues/3.png',
 };
 
 // 2026-07-31: ボタン表記を英語表記に変更(内部的な識別子(leaguesDataのキー・
@@ -5876,6 +5930,7 @@ const LEAGUE_LABEL_EN = {
   'ブンデスリーガ': 'Bundesliga',
   'リーグ・アン': 'Ligue 1',
   'チャンピオンズリーグ': 'Champions League',
+  'ヨーロッパリーグ': 'Europa League',
 };
 
 leagueNames.forEach(name=>{
@@ -5911,14 +5966,18 @@ async function loadStandingsFromAPI(season){
       ]);
     });
 
-    standingsExpanded = false;
-    renderStandingsTable(leaguesData[currentActiveLeagueName]?.standings || []);
-    standingsStatus.textContent = `● 実データ反映済み(${season}シーズン)`;
-    standingsStatus.className = 'standings-status live';
+    if(!ON_DEMAND_STANDING_LEAGUES.has(currentActiveLeagueName)){
+      standingsExpanded = false;
+      renderStandingsTable(leaguesData[currentActiveLeagueName]?.standings || []);
+      standingsStatus.textContent = `● 実データ反映済み(${season}シーズン)`;
+      standingsStatus.className = 'standings-status live';
+    }
   } catch(err){
     console.error('standings fetch error:', err);
-    standingsStatus.textContent = '取得失敗(サンプルデータのまま表示中)';
-    standingsStatus.className = 'standings-status error';
+    if(!ON_DEMAND_STANDING_LEAGUES.has(currentActiveLeagueName)){
+      standingsStatus.textContent = '取得失敗(サンプルデータのまま表示中)';
+      standingsStatus.className = 'standings-status error';
+    }
   }
 }
 
@@ -5927,6 +5986,7 @@ async function loadStandingsFromAPI(season){
 standingsSeasonSelect.addEventListener('change', ()=>{
   loadStandingsFromAPI(standingsSeasonSelect.value);
   loadFixturesFromAPI(currentActiveLeagueName, standingsSeasonSelect.value);
+  loadOnDemandStandings(currentActiveLeagueName, standingsSeasonSelect.value);
 });
 loadStandingsFromAPI(standingsSeasonSelect.value);
 
