@@ -157,7 +157,8 @@ test("match card availability includes a canonical Match Key for legacy archive 
     });
     await client.contentAvailability([{
       id: 1557393,
-      date: "2026-09-04",
+      date: "2026-09-05",
+      kickoff: "2026-09-05T04:00:00+09:00",
       competition: "プレミアリーグ",
       home: "Ipswich",
       away: "Liverpool",

@@ -5,6 +5,7 @@ const {
   archiveArticlesFromSettled,
   canonicalMatchKey,
   filterPublishedArchiveMatches,
+  fixtureMatchKey,
   fixtureFromArchiveEditorials,
   matchesPublishedFixtureEditorial,
   publishedArchiveQueriesForFixture,
@@ -122,6 +123,24 @@ test("a normal provider fixture restores Ipswich editorial content through its a
   assert.equal(matchesPublishedFixtureEditorial(prediction, providerFixture), true);
   assert.equal(matchesPublishedFixtureEditorial(report, providerFixture), true);
   assert.equal(matchesPublishedFixtureEditorial({ ...report, status: "draft" }, providerFixture), false);
+});
+
+test("daily fixtures use the kickoff's UTC date for legacy editorial Match Keys", () => {
+  // The schedule is grouped by Japan time (September 5), while the archived
+  // provider identity was stored on its UTC date (September 4).
+  const dailyFixture = {
+    id: 1557393,
+    date: "2026-09-05",
+    kickoff: "2026-09-05T04:00:00+09:00",
+    competition: "プレミアリーグ",
+    home: "Ipswich",
+    away: "Liverpool",
+  };
+  assert.equal(fixtureMatchKey(dailyFixture), "premierleague|2026-09-04|ipswichtown|liverpool");
+  assert.deepEqual(publishedArchiveQueriesForFixture(dailyFixture), [
+    { fixtureId: 1557393 },
+    { matchKey: "premierleague|2026-09-04|ipswichtown|liverpool" },
+  ]);
 });
 
 test("a public article ID anchors its Match Key and keeps seasons with the same clubs separate", () => {

@@ -5,6 +5,7 @@
 })(typeof window !== "undefined" ? window : globalThis, function () {
   function archiveMatchKeyForFixture(fixture) {
     const archive = typeof globalThis !== "undefined" ? globalThis.AM4MatchArchive : null;
+    if (typeof archive?.fixtureMatchKey === "function") return archive.fixtureMatchKey(fixture);
     return typeof archive?.canonicalMatchKey === "function" ? archive.canonicalMatchKey(fixture) : null;
   }
 

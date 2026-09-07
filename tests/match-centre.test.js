@@ -105,7 +105,8 @@ test("match card availability merges the exact public Match Key with its fixture
       matchAvailability: { 'premierleague|2026-09-04|ipswichtown|liverpool': ['prediction', 'report'] },
     }, {
       id: 1557393,
-      date: '2026-09-04',
+      date: '2026-09-05',
+      kickoff: '2026-09-05T04:00:00+09:00',
       competition: 'プレミアリーグ',
       home: 'Ipswich',
       away: 'Liverpool',

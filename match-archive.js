@@ -113,12 +113,23 @@
     return Number.isInteger(fixtureId) && fixtureId > 0 ? fixtureId : null;
   }
 
+  // Schedules are grouped by the reader's local timezone, whereas historic
+  // Match Keys retain the provider's UTC fixture date. Use the instant itself
+  // when it is available so a late-night Japan kickoff remains discoverable.
+  function fixtureMatchKey(fixture) {
+    const kickoff = Date.parse(fixture?.kickoff);
+    const date = Number.isFinite(kickoff)
+      ? new Date(kickoff).toISOString().slice(0, 10)
+      : fixture?.date;
+    return canonicalMatchKey({ ...fixture, date });
+  }
+
   // Normal detail pages still have a provider fixture, but an older public
   // editorial may only have a Match Key. Keep this identity logic here so the
   // normal and provider-missing archive paths use the same explicit aliases.
   function publishedArchiveQueriesForFixture(fixture) {
     const fixtureId = validFixtureId(fixture?.id ?? fixture?.fixtureId);
-    const matchKey = canonicalMatchKey(fixture);
+    const matchKey = fixtureMatchKey(fixture);
     const queries = [];
     if (fixtureId) queries.push({ fixtureId });
     if (matchKey) queries.push({ matchKey });
@@ -133,7 +144,7 @@
     // An explicit fixture ID is the strongest identity. Only records without
     // one can be restored through the complete, aliased Match Key.
     if (articleFixtureId) return Boolean(fixtureId && articleFixtureId === fixtureId);
-    const fixtureKey = canonicalMatchKey(fixture);
+    const fixtureKey = fixtureMatchKey(fixture);
     return Boolean(fixtureKey && match?.canonicalKey === fixtureKey);
   }
 
@@ -242,6 +253,7 @@
     archiveArticlesFromSettled,
     canonicalMatchKey,
     filterPublishedArchiveMatches,
+    fixtureMatchKey,
     fixtureFromArchiveEditorials,
     isPublishedMatchEditorial,
     matchesPublishedFixtureEditorial,

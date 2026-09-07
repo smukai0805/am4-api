@@ -212,7 +212,9 @@
     const fixtureId = Number(fixture?.id);
     const types = new Set(Array.isArray(response?.availability?.[fixtureId]) ? response.availability[fixtureId] : []);
     const archive = typeof globalThis !== "undefined" ? globalThis.AM4MatchArchive : null;
-    const matchKey = typeof archive?.canonicalMatchKey === "function" ? archive.canonicalMatchKey(fixture) : null;
+    const matchKey = typeof archive?.fixtureMatchKey === "function"
+      ? archive.fixtureMatchKey(fixture)
+      : typeof archive?.canonicalMatchKey === "function" ? archive.canonicalMatchKey(fixture) : null;
     const matchedTypes = response?.matchAvailability?.[matchKey];
     if (Array.isArray(matchedTypes)) matchedTypes.forEach((type) => types.add(type));
     return [...types];
