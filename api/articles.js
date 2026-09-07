@@ -24,6 +24,7 @@
 import { listArticles, getArticle, getMatchContentAvailability } from '../lib/article-store.js';
 import { getTrendingPlayersForDisplay, computeAndSaveTrendingPlayers } from '../lib/trending-players.js';
 import { fetchNotionMatchContent, syncNotionContent } from '../lib/notion-content-sync.js';
+import { createSyncArticleStore } from '../lib/sync-article-store.js';
 import { isAuthorizedCronRequest } from '../lib/cron-auth.js';
 import { getFixtureIdentity } from './fixtures.js';
 import matchArchive from '../match-archive.js';
@@ -36,6 +37,11 @@ const MATCH_CONTENT_RATE_WINDOW_MS = 60_000;
 const MATCH_CONTENT_RATE_LIMIT = 12;
 const matchContentRateWindows = new Map();
 const AVAILABILITY_FIXTURE_LIMIT = 50;
+const PUBLIC_ARTICLE_CACHE_CONTROL = 'public, max-age=0, s-maxage=60, stale-while-revalidate=0';
+
+export function publicArticlesCacheControl() {
+  return PUBLIC_ARTICLE_CACHE_CONTROL;
+}
 
 function validMatchDate(value) {
   return /^\d{4}-\d{2}-\d{2}$/.test(String(value || ''));
@@ -205,7 +211,7 @@ async function respondWithContentAvailability(req, res) {
     // The article index is the public archive's single batched data source;
     // do not call the private Notion bridge or issue per-fixture queries.
     const availability = await getMatchContentAvailability(fixtureIds, matchKeys);
-    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Cache-Control', publicArticlesCacheControl());
     return res.status(200).json(availability);
   } catch (err) {
     console.error('article availability API error:', err);
@@ -240,12 +246,14 @@ export default async function handler(req, res) {
       return res.status(503).json({ error: 'Notion同期の設定が未完了です' });
     }
     try {
-      const result = await syncNotionContent();
+      const articleStore = createSyncArticleStore();
+      const result = await syncNotionContent({ articleStore });
+      const storage = await articleStore.flush();
       const hasSourceFailure = Object.keys(result.errors || {}).length > 0;
       // Make a partial source failure visible to Vercel Cron monitoring rather
       // than silently reporting a successful editorial refresh.
       res.setHeader('Cache-Control', 'no-store');
-      return res.status(hasSourceFailure ? 503 : 200).json({ ok: !hasSourceFailure, ...result });
+      return res.status(hasSourceFailure ? 503 : 200).json({ ok: !hasSourceFailure, ...result, storage });
     } catch (err) {
       console.error('notion content sync error:', err);
       return res.status(500).json({ error: 'Notionコンテンツの同期に失敗しました' });
@@ -277,13 +285,11 @@ export default async function handler(req, res) {
     }
   }
 
-  // 公開可否が変わった記事をすぐに取り下げられるよう、公開本文・一覧はCDNに残さない。
-  res.setHeader('Cache-Control', 'no-store');
-
   try {
     if (req.query.id) {
       const article = await getArticle(String(req.query.id), { publishedOnly: true });
       if (!article) return res.status(404).json({ error: '記事が見つかりません' });
+      res.setHeader('Cache-Control', publicArticlesCacheControl());
       return res.status(200).json({ article });
     }
 
@@ -311,6 +317,7 @@ export default async function handler(req, res) {
     const search = req.query.search ? String(req.query.search).trim().slice(0, 120) : undefined;
 
     const result = await listArticles({ type: typeParam, matchDate, fixtureId: fixtureIdParam, matchKey, search, page, pageSize, publishedOnly: true });
+    res.setHeader('Cache-Control', publicArticlesCacheControl());
     return res.status(200).json(result);
   } catch (err) {
     console.error('articles API error:', err);
