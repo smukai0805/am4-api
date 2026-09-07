@@ -10,9 +10,7 @@ const RETIRED_GENERATION_ROUTES = new Set([
 
 const ACTIVE_CONTENT_CRONS = [
   { path: '/api/articles?trendingRefresh=1', schedule: '45 8 * * *' },
-  { path: '/api/articles?notionSync=1', schedule: '10 21 * * *' },
-  { path: '/api/articles?notionSync=1', schedule: '10 3 * * *' },
-  { path: '/api/articles?notionSync=1', schedule: '10 9 * * *' },
+  { path: '/api/articles?notionSync=1', schedule: '30 * * * *' },
 ];
 
 test('retired AI generation routes are not scheduled', () => {
