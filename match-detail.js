@@ -900,13 +900,11 @@
     if (!archiveQueries.length) return null;
     const requests = archiveQueries.map((criteria) => client.articles({ type, ...criteria, pageSize: 100 }));
     const results = await Promise.allSettled(requests);
-    const candidates = new Map();
-    window.AM4MatchEditorialFallback.publishedArchiveCandidates(results)
-      .forEach((article) => candidates.set(article.id, article));
-    const selected = [...candidates.values()].find((article) => (
-      isNotionEditorial(article, type)
-      && window.AM4MatchArchive.matchesPublishedFixtureEditorial(article, fixture)
-    ));
+    const selected = window.AM4MatchEditorialFallback.selectPublishedArchiveEditorial(
+      results,
+      type,
+      (article) => window.AM4MatchArchive.matchesPublishedFixtureEditorial(article, fixture),
+    );
     if (!selected?.id) return null;
     const response = await client.article(selected.id);
     return response?.article

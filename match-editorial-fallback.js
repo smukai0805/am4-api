@@ -20,6 +20,28 @@
     return successful.flatMap((result) => Array.isArray(result.value?.items) ? result.value.items : []);
   }
 
+  // Archive lists deliberately contain public metadata only. `notion.pageId`
+  // belongs to the single-article response, so it must not be required while
+  // choosing which public record to fetch next.
+  function isPublishedNotionListItem(article, type) {
+    return article?.type === type
+      && article?.status === "published"
+      && article?.public !== false
+      && article?.contentKind === `notion_${type}`;
+  }
+
+  function selectPublishedArchiveEditorial(results, type, matchesFixture) {
+    const candidates = new Map();
+    publishedArchiveCandidates(results).forEach((article) => {
+      if (article?.id) candidates.set(article.id, article);
+    });
+    return [...candidates.values()].find((article) => (
+      isPublishedNotionListItem(article, type)
+      && typeof matchesFixture === "function"
+      && matchesFixture(article)
+    )) || null;
+  }
+
   async function withPublishedFallback(editorial, readPublished) {
     const current = editorial && typeof editorial === "object" ? editorial : {};
     const result = {
@@ -45,5 +67,10 @@
     return result;
   }
 
-  return { missingEditorialTypes, publishedArchiveCandidates, withPublishedFallback };
+  return {
+    missingEditorialTypes,
+    publishedArchiveCandidates,
+    selectPublishedArchiveEditorial,
+    withPublishedFallback,
+  };
 });

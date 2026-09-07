@@ -1,6 +1,10 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { publishedArchiveCandidates, withPublishedFallback } = require("../match-editorial-fallback.js");
+const {
+  publishedArchiveCandidates,
+  selectPublishedArchiveEditorial,
+  withPublishedFallback,
+} = require("../match-editorial-fallback.js");
 
 test("a successful but empty live lookup restores both published editorial types", async () => {
   const calls = [];
@@ -80,4 +84,31 @@ test("a complete public archive-list failure is surfaced to the retry path", asy
     match_prediction: "unavailable",
     match_report: "unavailable",
   });
+});
+
+test("published list metadata without a Notion page ID remains eligible for detail restoration", () => {
+  // The public archive index intentionally omits `notion.pageId`; it is only
+  // present on the subsequent single-article response. Requiring it here
+  // makes every legacy published editorial look absent before that read.
+  const listItem = {
+    id: "notion-match_report-ipswich-liverpool",
+    type: "match_report",
+    status: "published",
+    public: true,
+    contentKind: "notion_match_report",
+    match: { canonicalKey: "premierleague|2026-09-04|ipswichtown|liverpool" },
+  };
+
+  const selected = selectPublishedArchiveEditorial(
+    [{ status: "fulfilled", value: { items: [listItem] } }],
+    "match_report",
+    (article) => article.match?.canonicalKey === "premierleague|2026-09-04|ipswichtown|liverpool",
+  );
+
+  assert.equal(selected?.id, listItem.id);
+  assert.equal(selectPublishedArchiveEditorial(
+    [{ status: "fulfilled", value: { items: [{ ...listItem, public: false }] } }],
+    "match_report",
+    () => true,
+  ), null);
 });
