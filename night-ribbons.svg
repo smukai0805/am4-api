@@ -1,35 +1,22 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 840 600" fill="none">
   <defs>
-    <linearGradient id="light" x1="610" y1="0" x2="490" y2="580" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#4266ff" stop-opacity="0"/>
-      <stop offset=".18" stop-color="#5484ff"/>
-      <stop offset=".4" stop-color="#b4b6ff"/>
-      <stop offset=".53" stop-color="#80eeff"/>
-      <stop offset=".72" stop-color="#2475ff"/>
-      <stop offset="1" stop-color="#3359ff" stop-opacity="0"/>
-    </linearGradient>
-    <linearGradient id="violet" x1="440" y1="50" x2="720" y2="520" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#4967ff" stop-opacity="0"/>
-      <stop offset=".35" stop-color="#aa8dff"/>
-      <stop offset=".52" stop-color="#a9dfff"/>
-      <stop offset=".8" stop-color="#376cff"/>
-      <stop offset="1" stop-color="#376cff" stop-opacity="0"/>
-    </linearGradient>
     <path id="turn" d="M652-80 331 157Q300 181 330 207L902 691"/>
+    <!-- Parallel colour bands: purple on the inside, then red, yellow, blue. -->
+    <g id="ribbon" stroke-linecap="round" stroke-linejoin="round">
+      <use href="#turn" stroke="#426cff" stroke-width="14" opacity=".08"/>
+      <use href="#turn" stroke="#6984ff" stroke-width="9" opacity=".12"/>
+      <use href="#turn" x="-2.4" stroke="#3485ff" stroke-width="2.6"/>
+      <use href="#turn" x="-.8" stroke="#ffe582" stroke-width="2.1"/>
+      <use href="#turn" x=".8" stroke="#ff626f" stroke-width="2.1"/>
+      <use href="#turn" x="2.4" stroke="#b491ff" stroke-width="2.4"/>
+    </g>
+    <linearGradient id="fade" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="white" stop-opacity=".12"/>
+      <stop offset=".18" stop-color="white"/>
+      <stop offset=".68" stop-color="white"/>
+      <stop offset="1" stop-color="white" stop-opacity="0"/>
+    </linearGradient>
+    <mask id="fade-mask"><rect width="100%" height="100%" fill="url(#fade)"/></mask>
   </defs>
-  <g stroke="url(#light)" stroke-linecap="round" stroke-linejoin="round">
-    <g stroke-width="10" opacity=".07">
-      <use href="#turn"/><use href="#turn" x="27" y="-8"/><use href="#turn" x="54" y="-16"/><use href="#turn" x="81" y="-24"/><use href="#turn" x="108" y="-32"/>
-    </g>
-    <g stroke-width="4" opacity=".15">
-      <use href="#turn"/><use href="#turn" x="27" y="-8"/><use href="#turn" x="54" y="-16"/><use href="#turn" x="81" y="-24"/><use href="#turn" x="108" y="-32"/>
-    </g>
-    <g stroke-width="1.6">
-      <use href="#turn" stroke="url(#violet)"/>
-      <use href="#turn" x="27" y="-8" opacity=".95"/>
-      <use href="#turn" x="54" y="-16" opacity=".8"/>
-      <use href="#turn" x="81" y="-24" opacity=".6"/>
-      <use href="#turn" x="108" y="-32" opacity=".38"/>
-    </g>
-  </g>
+  <g mask="url(#fade-mask)" opacity="1"><use href="#ribbon" x="0" y="0" opacity="1"/><use href="#ribbon" x="29" y="-8" opacity="0.92"/><use href="#ribbon" x="58" y="-16" opacity="0.78"/><use href="#ribbon" x="87" y="-24" opacity="0.62"/><use href="#ribbon" x="116" y="-32" opacity="0.42"/></g>
 </svg>

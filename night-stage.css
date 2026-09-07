@@ -1,5 +1,5 @@
 /* AM4 night stage: shared visual treatment; match density stays in brand.css. */
-:root{--night-edge:#789ccc;--night-light:#d8e9ff;--night-blue:#689bff;--night-ribbons:url('/night-ribbons.svg?v=20260908');}
+:root{--night-edge:#789ccc;--night-light:#d8e9ff;--night-blue:#689bff;--night-ribbons:url('/night-ribbons.svg?v=20260908-v2');--night-ribbons-left:url('/night-ribbons-left.svg?v=20260908-v2');}
 body{background-color:#03051b;}
 .topbar,.brand-topbar,.match-page .brand-topbar{background:linear-gradient(110deg,#03051b,#0a1240 65%,#070c29);border-bottom-color:#7197d337;}
 .topbar::after,.brand-topbar::after{content:"";position:absolute;bottom:-1px;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent 4%,#526aff80 30%,#a3edffb3 57%,#8275ff80 78%,transparent);pointer-events:none;}
@@ -9,7 +9,7 @@ body{background-color:#03051b;}
 section.block.matchday-home{background:radial-gradient(ellipse 75% 510px at 100% 0,#183ab875,transparent 75%),radial-gradient(ellipse 60% 520px at 0 470px,#25208035,transparent 75%),linear-gradient(165deg,#040620,#050b25 570px,#040914 1100px);padding-top:30px;}
 /* Bounded background paint preserves the sticky date controls and tap targets. */
 .matchday-home::before{inset:0 0 auto;height:640px;opacity:.72;background-image:var(--night-ribbons);background-position:right -100px top -95px;background-size:800px auto;background-repeat:no-repeat;mask-image:linear-gradient(90deg,transparent 15%,#000 78%);}
-.matchday-home::after{display:none;}
+.matchday-home::after{display:block;content:"";position:absolute;z-index:-1;inset:0 0 auto;width:auto;height:680px;border:0;border-radius:0;box-shadow:none;background:var(--night-ribbons-left) left -180px top 95px / 600px auto no-repeat;opacity:.42;mask-image:linear-gradient(90deg,#000,transparent 40%);pointer-events:none;}
 .matchday-intro{margin-bottom:16px;}
 .matchday-eyebrow{color:#a8c6ec;font-size:10px;letter-spacing:.22em;margin-bottom:12px;}
 .matchday-eyebrow i{width:18px;height:2px;border-radius:0;box-shadow:none;background:#a4caff;}
@@ -29,12 +29,12 @@ section.block.matchday-home{background:radial-gradient(ellipse 75% 510px at 100%
 
 /* Editorial hierarchy: the series is the signature; individual stories follow. */
 section.block.editorial-section.column-page{background:radial-gradient(ellipse 80% 650px at 100% 0,#1d2e9b50,transparent 75%),linear-gradient(160deg,#050820,#080e25);border-top:1px solid #6789b637;}
-.column-page::before{inset:0 0 auto;height:600px;opacity:.35;background:var(--night-ribbons) right -180px top -130px / 800px auto no-repeat;mask-image:linear-gradient(90deg,transparent 30%,#000);}
+.column-page::before{inset:0 0 auto;height:700px;opacity:.35;background:var(--night-ribbons) right -180px top -130px / 800px auto no-repeat,var(--night-ribbons-left) left -175px top 160px / 560px auto no-repeat;mask-image:linear-gradient(90deg,#000,transparent 40%,transparent 55%,#000);}
 .column-page-head{margin-bottom:24px;border-bottom-color:#7599ca38;}
 .column-page-eyebrow{color:#9dbce6;}
 .column-page-title{letter-spacing:.015em;}
 .column-series-feature{isolation:isolate;grid-template-columns:minmax(0,1fr) minmax(130px,180px);align-items:end;min-height:0;padding:30px;margin-bottom:28px;border:1px solid #7c9bc957;border-top:2px solid #b4d2ff;border-radius:12px;background:linear-gradient(122deg,#1a315485,#0a1326 57%,#12294780);box-shadow:0 16px 38px #0003;}
-.column-series-feature::before{inset:0;z-index:-1;background:var(--night-ribbons) right -150px top -90px / 630px auto no-repeat;opacity:.5;filter:none;mask-image:linear-gradient(90deg,transparent 20%,#000);}
+.column-series-feature::before{inset:0;z-index:-1;background:var(--night-ribbons) right -150px top -90px / 630px auto no-repeat,var(--night-ribbons-left) left -160px bottom -300px / 420px auto no-repeat;opacity:.5;filter:none;mask-image:linear-gradient(90deg,#0008,transparent 35%,#000);}
 .column-series-feature:hover{transform:translateY(-2px);background:linear-gradient(122deg,#213c6485,#0a1326 57%,#17346380);}
 .series-edition{position:absolute;z-index:-1;right:5%;top:5%;font:900 clamp(200px,26vw,350px)/1 var(--display);letter-spacing:-.07em;color:#82b1f50b;pointer-events:none;user-select:none;}
 .column-series-feature-copy{gap:14px;}
@@ -51,9 +51,9 @@ section.block.editorial-section.column-page{background:radial-gradient(ellipse 8
 .column-article-category{color:#aec9ed;}
 
 /* Scoreboard and tabs use the same restrained broadcast vocabulary. */
-.match-page,.article-page,.twenty-seasons-page{background:var(--night-ribbons) right -200px top -80px / 850px auto no-repeat,radial-gradient(ellipse 90% 650px at 90% 0,#152ca366,transparent 75%),linear-gradient(160deg,#03051c,#060c26 650px,#040914 1200px);}
+.match-page,.article-page,.twenty-seasons-page{background:var(--night-ribbons) right -200px top -80px / 850px auto no-repeat,var(--night-ribbons-left) left -235px top 240px / 590px auto no-repeat,radial-gradient(ellipse 90% 650px at 90% 0,#152ca366,transparent 75%),linear-gradient(160deg,#03051c,#060c26 650px,#040914 1200px);}
 .match-board{position:relative;isolation:isolate;border-radius:14px;border-color:#7ca4d454;border-top:2px solid #bfdcff;background:linear-gradient(115deg,#101e52,#060c29 50%,#102557);box-shadow:0 18px 40px #0004;}
-.match-board::before{content:"";position:absolute;z-index:-1;inset:0;background:var(--night-ribbons) right -130px top -125px / 610px auto no-repeat;opacity:.28;pointer-events:none;}
+.match-board::before{content:"";position:absolute;z-index:-1;inset:0;background:var(--night-ribbons) right -130px top -125px / 610px auto no-repeat,var(--night-ribbons-left) left -165px bottom -265px / 430px auto no-repeat;opacity:.28;pointer-events:none;}
 .match-competition{background:#040b17a6;border-bottom-color:#89add02e;}
 .match-meta{color:#b6c8e0;}
 .match-score-grid{background:radial-gradient(ellipse at 50% 45%,#3a6ea926,transparent 65%);}
@@ -85,7 +85,7 @@ section.block.editorial-section.column-page{background:radial-gradient(ellipse 8
 .pitch-icons{color:#d8eaff;}
 
 .twenty-seasons-hero{border-radius:12px;border-color:#86a4d14d;border-top:2px solid #bad4fa;background:linear-gradient(125deg,#152458,#070c2a 60%,#101e53);box-shadow:0 18px 40px #0003;}
-.twenty-seasons-hero::before{inset:0;background:var(--night-ribbons) right -120px top -100px / 780px auto no-repeat;opacity:.65;filter:none;pointer-events:none;mask-image:linear-gradient(90deg,transparent 20%,#000);}
+.twenty-seasons-hero::before{inset:0;background:var(--night-ribbons) right -120px top -100px / 780px auto no-repeat,var(--night-ribbons-left) left -165px bottom -290px / 460px auto no-repeat;opacity:.65;filter:none;pointer-events:none;mask-image:linear-gradient(90deg,#0008,transparent 32%,#000);}
 .twenty-seasons-hero h1{font-weight:700;}
 .twenty-seasons-hero::after{background:linear-gradient(90deg,#b6d7ff,transparent);}
 .twenty-seasons-hero h1 span:last-child{color:#a5c8fa;}
@@ -97,11 +97,12 @@ section.block.editorial-section.column-page{background:radial-gradient(ellipse 8
 @media(max-width:680px){
   section.block.matchday-home{padding:24px 14px 32px;}
   .matchday-home::before{height:420px;background-size:560px auto;background-position:right -190px top -65px;opacity:.62;mask-image:linear-gradient(90deg,transparent 10%,#000 90%);}
-  .column-page::before{background-size:560px auto;background-position:right -220px top -85px;opacity:.28;}
-  .match-page,.article-page,.twenty-seasons-page{background-size:580px auto,auto,auto;background-position:right -250px top -20px,0 0,0 0;}
-  .match-board::before{background-size:490px auto;background-position:right -195px top -60px;opacity:.2;}
-  .column-series-feature::before{background-size:530px auto;background-position:right -220px top -65px;opacity:.4;}
-  .twenty-seasons-hero::before{background-size:600px auto;background-position:right -275px top -55px;opacity:.55;}
+  .matchday-home::after{height:530px;background-size:380px auto;background-position:left -130px top 45px;opacity:.44;mask-image:linear-gradient(90deg,#000,transparent 42%);}
+  .column-page::before{background-size:560px auto,370px auto;background-position:right -220px top -85px,left -150px top 170px;opacity:.28;}
+  .match-page,.article-page,.twenty-seasons-page{background-size:580px auto,390px auto,auto,auto;background-position:right -250px top -20px,left -165px top 265px,0 0,0 0;}
+  .match-board::before{background-size:490px auto,310px auto;background-position:right -195px top -60px,left -135px bottom -215px;opacity:.2;}
+  .column-series-feature::before{background-size:530px auto,310px auto;background-position:right -220px top -65px,left -120px bottom -205px;opacity:.4;}
+  .twenty-seasons-hero::before{background-size:600px auto,340px auto;background-position:right -275px top -55px,left -130px bottom -190px;opacity:.55;}
   .matchday-intro{display:block;}
   .matchday-intro h1{font-size:clamp(52px,13.8vw,76px);text-wrap:balance;}
   .matchday-intro p{font-size:13px;max-width:32em;}

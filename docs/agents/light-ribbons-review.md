@@ -14,3 +14,9 @@ Validation:
 - Independent source review passed with no P1/P2 findings. The review checked background stacking, sticky dates, mobile rules, loaded font weights, focus/tap targets and score concealment.
 
 Browser verification was not run: the active Sites workflow permits browser/visual QA only when the user explicitly requests it. Source checks cannot confirm the final rendered appearance; provide the Vercel preview for visual review. Production release is not part of this change.
+
+## Preview revision 2
+
+The user requested a slightly thicker line, purple → red → yellow → blue bands within it, and a modest left accent to break the repeated right-only composition. The main ribbon now has 2.1–2.6-unit colour strokes with a soft halo and an end fade. A separate three-line left sweep uses a different bend, size and vertical placement. Desktop and mobile backgrounds use both assets; left-side colour is dimmer and masked away from central text. The home pseudo-element resets the old circle's border, radius, shadow and offscreen geometry without changing the sticky container.
+
+Verification: seven existing control/motion tests passed, PostCSS parsed the updated stylesheet, both SVG assets parsed as XML, four cache-version references matched, and `git diff --check` passed. Independent source review found no P1/P2. The review identified a colour-direction ambiguity on the left curve; its four offsets were reversed so both bends run from purple on their inside through red and yellow to blue outside. Browser appearance remains for user preview review.
