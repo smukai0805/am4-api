@@ -386,3 +386,26 @@ Work began only after the Phase 1 suite above passed.
   - The live 503-fixture list contained **0** fixture-row club favourite controls and retained **503** match-detail links.
   - All observed editorial badge pairs had `flex-wrap: nowrap`; nine visible pairs rendered `解説あり 予想あり` horizontally at 112px.
   - Browser console errors were empty. The screenshot was inspected but not written as a filesystem artifact. The saved ★ was not clicked in production, so the pre-existing local favourite was not deleted; persisted removal is covered by the focused regression test. This is Chromium viewport evidence, not iPhone Safari or physical-device verification.
+
+## 2026-09-07 persistent match navigation and star-only saved-league control
+
+### Starting point, reproduction, and cause
+
+- Started from the clean work branch `codex/normal-fixture-match-key-fallback-20260907`, with production at `d222d91`; no historical audit commit was restored.
+- On the 390px Chromium viewport, a deep match-list scroll moved both the `sticky` top bar and primary navigation out of the viewport. The date rail also scrolled away: it was simultaneously the horizontal scroll container, while its ancestors clipped overflow, so its sticky offset could not be resolved against the page scroll.
+- A saved league in For You still used its card link (`#fixtures`). Rendering after a ★ toggle could therefore collapse/reflow the section and leave the visitor at the top of the match list rather than at the control they touched.
+
+### Completed changes
+
+- `index.html`: the top bar and `試合 / COLUMN / 20 Seasons / 保存` navigation are now fixed as one 133px header region. The page reserves the same amount of space, so the initial layout and anchor targets are not covered.
+- `index.html`: date selection now has a dedicated sticky wrapper, while the inner date rail remains horizontally swipeable. The surrounding match shell is not an overflow container, allowing the date wrapper to use the page scroll position.
+- `index.html`: saved league cards in For You use non-link display content; their labelled 40px ★ button is the sole interactive control. The favourite handler accepts only actual buttons, prevents link/default propagation, keeps the For You section mounted after the final removal, and restores the pre-toggle scroll position on the next frame.
+- No saved item was deleted during browser verification. No Notion data, fixture data, environment value, schedule, external service, or paid operation was changed.
+
+### Regression coverage and verification
+
+- `tests/fixture-card-controls.test.js` verifies fixed primary navigation, a sticky date wrapper without clipping match ancestors, the league-card non-link, and prevention of the star event's default/propagated action.
+- Targeted: `node --test tests/fixture-card-controls.test.js` — **3 passed, 0 failed**.
+- Full: `npm test` — **189 passed, 0 failed**. Existing Node module-type warnings were retained. `git diff --check` passed.
+- Production commits `92f7681`, `afacd8b`, `3a7eaba`, and final `0247cd4` were pushed to `am4-production`; Vercel reported `success` for each final deployment. A fresh `am4football.com` response confirmed the final fixed-header, visible-overflow match shell, and sticky date-wrapper CSS.
+- Browser inspection used the in-app Chromium 390×844 viewport. It confirmed the fixed header dimensions and that saved league content renders as `DIV` with no `href`, alongside a separate `BUTTON` ★. Browser console errors were empty. Browser screenshots were inspected in-session but were not persisted as filesystem artifacts. This is Chromium evidence only, not iPhone Safari or a physical-device test.
