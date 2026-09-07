@@ -52,6 +52,24 @@ test("league favourites persist separately from club favourites", () => {
   });
 });
 
+test("a saved league can be removed without discarding its restoration metadata", () => {
+  const storage = memoryStorage();
+  const league = {
+    type: "leagues",
+    id: "league-39",
+    label: "プレミアリーグ",
+    detail: "プレミアリーグの試合を優先表示",
+    href: "#fixtures",
+  };
+
+  favorites.toggleWithItem(storage, "leagues", league.id, league);
+  assert.deepEqual(favorites.read(storage).leagues, ["league-39"]);
+
+  favorites.toggleWithItem(storage, "leagues", league.id, league);
+  assert.deepEqual(favorites.read(storage).leagues, []);
+  assert.deepEqual(favorites.readCatalog(storage)["leagues:league-39"], league);
+});
+
 test("count includes all supported favourite types", () => {
   assert.equal(
     favorites.count({ clubs: ["arsenal"], players: ["j-hato"], articles: ["mainoo"] }),
