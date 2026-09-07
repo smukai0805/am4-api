@@ -209,3 +209,41 @@ Work began only after the Phase 1 suite above passed.
 - Validation: the new test failed before the entries were removed, then passed after the change. Full `npm test` passed with **162 passed, 0 failed**; JSON parsing and `git diff --check` also passed. Independent review found no blocker after the retained Cron expressions were added to the regression assertion.
 - Production release: `87e9936 Disable retired AI generation crons` was pushed to `am4-production`. Vercel production deployment `dpl_AXRpC1mJGai5ZE5zWXkvFq2nC6RZ` reached `READY` with the `am4football.com` alias. The production home returned `200`; the targeted runtime-error scan found no new errors in these retired routes after deployment.
 - Deliberately out of scope: the protected endpoint files and their generation logic remain in the repository for reversible historical reference, but have no configured scheduled invocation. The user-facing Football Hub “特集記事をリクエスト” feature and `/api/feature` are separate on-demand Anthropic functionality and were not changed by this approval.
+
+## 2026-09-07 public match-editorial restoration completion
+
+### Production starting point and scope
+
+- Work branch: `codex/normal-fixture-match-key-fallback-20260907`. The production branch was at the already-deployed availability hardening commit `daea185`; no historical audit commit was restored, checked out, or used as a reset point.
+- Scope: restore access to already-public match predictions/reports and their match-card availability. No Notion page, archive record, environment value, provider balance, or paid generation job was modified.
+
+### Root causes and fixes
+
+| Symptom | Root cause | Fix |
+| --- | --- | --- |
+| A detail page showed the preparation placeholder although its public archive article existed | Archive-list metadata intentionally omits `notion.pageId`, but the first fallback selector treated that list-shaped record as ineligible before its individual, strict fetch could run. | `fb4b57f` selects only `published`, public, correctly typed list candidates without requiring unavailable list metadata; the individual article fetch still requires the strict Notion identity and full fixture/Match Key verification. |
+| Legacy match cards did not show `予想あり` / `解説あり` | Older public archive articles have no stored fixture ID, so fixture-ID-only availability could not find them. | `d5b36ad` adds bounded exact canonical Match Key availability for published/public legacy editorials; `daea185` keeps a malformed Match Key response from erasing otherwise valid fixture-ID badges. |
+| The Ipswich v Liverpool card still lacked badges on the Japanese daily list | The daily schedule groups fixtures by Asia/Tokyo date (`2026-09-05`), while the provider/archive Match Key for its `04:00 JST` kickoff uses the UTC fixture date (`2026-09-04`). The same public article could therefore be found on a detail page but not from the daily card. | `e2efb5a` adds `fixtureMatchKey()`: when a valid kickoff instant exists it uses its UTC date for the archive identity, while retaining `fixture.date` as a safe fallback. Detail lookup, availability request, and card response matching now share it. |
+
+### Files and regression coverage
+
+- `match-archive.js`, `football-data.js`, `match-centre.js`: shared kickoff-based archive identity for public editorial lookup and card availability.
+- `index.html`, `match.html`, `article.html`: updated versioned asset references so cached clients receive the same identity implementation.
+- `tests/match-archive.test.js`, `tests/football-data.test.js`, `tests/match-centre.test.js`: real regression shape for fixture `1557393`, including its Tokyo/UTC date boundary, exact public Match Key, request query, and both badges.
+- Full `npm test` — **168 passed, 0 failed**. Focused archive/card suite — **46 passed, 0 failed**. `git diff --check` and JavaScript syntax checks passed. An independent focused review found no P0/P1 issue.
+
+### Production verification
+
+- Production `am4-production` was fast-forwarded from `daea185` to `e2efb5a` (`Align editorial Match Keys with fixture kickoff`). The deployed home page serves the `20260907-editorial-availability-v2` assets.
+- Read-only production availability response for the exact Ipswich Match Key returns both `report` and `prediction`; the Getafe Match Key returns `prediction`.
+- In-app Chromium browser checks at a measured `390×844` viewport:
+  - `match.html?id=1557393#overview` rendered `MATCH SUMMARY` body and did not contain the report-preparing placeholder.
+  - `match.html?id=1570368#overview` rendered `MATCH PREVIEW` body and did not contain the prediction-preparing placeholder.
+  - `/?matchDate=2026-09-05#fixtures` exposed the Ipswich v Liverpool card with both `解説あり` and `予想あり` in the accessibility tree.
+  - No browser-console errors were captured on those three pages.
+- Screenshots were opened and inspected through the in-app browser during this verification. They were not persisted as filesystem artifacts, so no new screenshot path is claimed. This is Chromium viewport evidence only, not iPhone Safari or physical-device verification.
+
+### Remaining follow-up
+
+- The broader Phase 1/2/3 roadmap remains separate from this urgent restoration; this entry does not mark the whole AM4 improvement program complete.
+- The retired automatic AI generation schedules remain disabled. Re-enabling any generation path, changing provider balance, or modifying Notion publication state requires separate approval.
