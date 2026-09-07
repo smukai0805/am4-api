@@ -23,5 +23,6 @@ test("primary navigation and selected date stay available while fixtures scroll"
   assert.match(home, /\.topbar\{[^}]*position:fixed/);
   assert.match(home, /\.tagnav-wrap\{[^}]*position:fixed/);
   assert.match(home, /\.matchday-dates-sticky\{[^}]*position:sticky/);
-  assert.match(home, /\.matchday-home\{[^}]*overflow:clip/);
+  assert.match(home, /\.matchday-home\{[^}]*overflow:visible/);
+  assert.match(home, /\.matchday-board\{[^}]*overflow:visible/);
 });
