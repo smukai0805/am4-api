@@ -419,11 +419,7 @@
         if (!label) return;
         const badge = document.createElement("span");
         badge.className = `fixture-content-badge fixture-content-badge--${type}`;
-        const icon = document.createElement("span");
-        icon.className = `fixture-content-icon fixture-content-icon--${type}`;
-        icon.setAttribute("aria-hidden", "true");
-        icon.textContent = type === "prediction" ? "▂▅▇" : "≡";
-        badge.append(icon, document.createTextNode(label));
+        badge.textContent = label;
         badges.append(badge);
       });
       if (badges.childElementCount) meta.append(badges);
