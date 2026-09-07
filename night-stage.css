@@ -33,10 +33,11 @@ section.block.editorial-section.column-page{background:radial-gradient(ellipse 8
 .column-page-head{margin-bottom:24px;border-bottom-color:#7599ca38;}
 .column-page-eyebrow{color:#9dbce6;}
 .column-page-title{letter-spacing:.015em;}
-.column-series-feature{isolation:isolate;grid-template-columns:minmax(0,1fr) minmax(130px,180px);align-items:end;min-height:0;padding:30px;margin-bottom:28px;border:1px solid #7c9bc957;border-top:2px solid #b4d2ff;border-radius:12px;background:linear-gradient(122deg,#1a315485,#0a1326 57%,#12294780);box-shadow:0 16px 38px #0003;}
-.column-series-feature::before{inset:0;z-index:-1;background:var(--night-ribbons) right -150px top -90px / 630px auto no-repeat,var(--night-ribbons-left) left -160px bottom -300px / 420px auto no-repeat;opacity:.5;filter:none;mask-image:linear-gradient(90deg,#0008,transparent 35%,#000);}
-.column-series-feature:hover{transform:translateY(-2px);background:linear-gradient(122deg,#213c6485,#0a1326 57%,#17346380);}
-.series-edition{position:absolute;z-index:-1;right:5%;top:5%;font:900 clamp(200px,26vw,350px)/1 var(--display);letter-spacing:-.07em;color:#82b1f50b;pointer-events:none;user-select:none;}
+/* The series has its own typographic cover; the section carries the ribbons. */
+.column-series-feature{isolation:isolate;grid-template-columns:minmax(0,1fr) minmax(130px,180px);align-items:end;min-height:0;padding:30px;margin-bottom:28px;border:1px solid #7c9bc957;border-top:2px solid #b4d2ff;border-radius:12px;background:linear-gradient(135deg,#14203b,#090f20 64%,#111a30);box-shadow:0 16px 38px #0003;}
+.column-series-feature::before{inset:0;z-index:-1;background:radial-gradient(ellipse at 0% 100%,#799fd026,transparent 63%);opacity:1;filter:none;mask-image:none;}
+.column-series-feature:hover{transform:translateY(-2px);background:linear-gradient(135deg,#1a2948,#0b1327 64%,#152039);}
+.series-edition{position:absolute;z-index:-1;right:5%;top:5%;font:900 clamp(200px,26vw,350px)/1 var(--display);letter-spacing:-.07em;color:#91b5eb12;pointer-events:none;user-select:none;}
 .column-series-feature-copy{gap:14px;}
 .column-series-feature-kicker{font-size:11px;color:#b8d2f5;letter-spacing:.13em;}
 .column-series-feature-title{font-size:clamp(58px,8vw,94px);line-height:.95;letter-spacing:-.01em;}
@@ -101,7 +102,6 @@ section.block.editorial-section.column-page{background:radial-gradient(ellipse 8
   .column-page::before{background-size:560px auto,370px auto;background-position:right -220px top -85px,left -150px top 170px;opacity:.28;}
   .match-page,.article-page,.twenty-seasons-page{background-size:580px auto,390px auto,auto,auto;background-position:right -250px top -20px,left -165px top 265px,0 0,0 0;}
   .match-board::before{background-size:490px auto,310px auto;background-position:right -195px top -60px,left -135px bottom -215px;opacity:.2;}
-  .column-series-feature::before{background-size:530px auto,310px auto;background-position:right -220px top -65px,left -120px bottom -205px;opacity:.4;}
   .twenty-seasons-hero::before{background-size:600px auto,340px auto;background-position:right -275px top -55px,left -130px bottom -190px;opacity:.55;}
   .matchday-intro{display:block;}
   .matchday-intro h1{font-size:clamp(52px,13.8vw,76px);text-wrap:balance;}
