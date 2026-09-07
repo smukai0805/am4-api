@@ -1,6 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
+  competitionCountryLabel,
   competitionDisplayRank,
   contentAvailabilityBatches,
   contentBadgeLabels,
@@ -43,6 +44,22 @@ test("European competition aliases stay above domestic leagues when provider lab
     competitionDisplayRank({ competition: "Conference League", competitionCountry: "World" })
       < competitionDisplayRank({ competition: "Premier League", competitionCountry: "England" }),
   );
+});
+
+test("generic domestic league names do not impersonate the English Premier League", () => {
+  const ghanaPremierLeague = { competition: "Premier League", competitionId: 195, competitionCountry: "Ghana" };
+  const englishPremierLeague = { competition: "Premier League", competitionCountry: "England" };
+  const brazilianSerieA = { competition: "Serie A", competitionId: 71, competitionCountry: "Brazil" };
+  const austrianBundesliga = { competition: "Bundesliga", competitionId: 218, competitionCountry: "Austria" };
+
+  assert.equal(competitionDisplayRank(ghanaPremierLeague), Number.MAX_SAFE_INTEGER);
+  assert.equal(competitionCountryLabel(ghanaPremierLeague), "Ghana");
+  assert.equal(competitionDisplayRank(englishPremierLeague), 4);
+  assert.equal(competitionCountryLabel(englishPremierLeague), "イングランド");
+  assert.ok(competitionDisplayRank(brazilianSerieA) > 8);
+  assert.equal(competitionCountryLabel(brazilianSerieA), "ブラジル");
+  assert.ok(competitionDisplayRank(austrianBundesliga) > 8);
+  assert.equal(competitionCountryLabel(austrianBundesliga), "オーストリア");
 });
 
 test("round view combines the five major leagues without selecting one of them", () => {

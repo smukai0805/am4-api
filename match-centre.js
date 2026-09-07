@@ -17,11 +17,11 @@
     { providerId: null, rank: 3, country: "Europe", names: ["カンファレンスリーグ", "ヨーロッパカンファレンスリーグ", "UEFA Europa Conference League", "UEFA Conference League", "Europa Conference League", "Conference League"] },
   ];
   const MAJOR_LEAGUES = [
-    { providerId: 39, rank: 4, competition: "プレミアリーグ", country: "England", names: ["プレミアリーグ", "Premier League"] },
-    { providerId: 140, rank: 5, competition: "ラ・リーガ", country: "Spain", names: ["ラ・リーガ", "La Liga"] },
-    { providerId: 135, rank: 6, competition: "セリエA", country: "Italy", names: ["セリエA", "Serie A"] },
-    { providerId: 78, rank: 7, competition: "ブンデスリーガ", country: "Germany", names: ["ブンデスリーガ", "Bundesliga"] },
-    { providerId: 61, rank: 8, competition: "リーグ・アン", country: "France", names: ["リーグ・アン", "Ligue 1"] },
+    { providerId: 39, rank: 4, competition: "プレミアリーグ", country: "England", names: ["プレミアリーグ", "Premier League"], requiresCountryMatch: true },
+    { providerId: 140, rank: 5, competition: "ラ・リーガ", country: "Spain", names: ["ラ・リーガ", "La Liga"], requiresCountryMatch: true },
+    { providerId: 135, rank: 6, competition: "セリエA", country: "Italy", names: ["セリエA", "Serie A"], requiresCountryMatch: true },
+    { providerId: 78, rank: 7, competition: "ブンデスリーガ", country: "Germany", names: ["ブンデスリーガ", "Bundesliga"], requiresCountryMatch: true },
+    { providerId: 61, rank: 8, competition: "リーグ・アン", country: "France", names: ["リーグ・アン", "Ligue 1"], requiresCountryMatch: true },
   ];
   const PRIORITY_COMPETITIONS = [...EUROPEAN_COMPETITIONS, ...MAJOR_LEAGUES];
   // 節別の「すべて」は、日別の全大会とは異なり5大リーグだけを同じ節で
@@ -81,15 +81,29 @@
     const byProviderId = PRIORITY_COMPETITIONS.find(({ providerId }) => providerId === providerLeagueId);
     if (byProviderId) return byProviderId;
     const label = normalizedCompetitionLabel(fixture?.competition);
-    return PRIORITY_COMPETITIONS.find(({ names }) =>
-      names.some((name) => normalizedCompetitionLabel(name) === label),
-    ) || null;
+    const country = normalizedCompetitionLabel(fixture?.competitionCountry);
+    return PRIORITY_COMPETITIONS.find((competition) => {
+      const labelMatches = competition.names.some((name) => normalizedCompetitionLabel(name) === label);
+      if (!labelMatches) return false;
+      // Domestic names such as Premier League and Serie A are reused by many
+      // countries. A name-only fallback is safe only for AM4's explicit
+      // Japanese canonical label when the provider did not supply a country.
+      if (!competition.requiresCountryMatch) return true;
+      if (country) return country === normalizedCompetitionLabel(competition.country);
+      return label === normalizedCompetitionLabel(competition.competition);
+    }) || null;
   }
 
   function competitionDisplayRank(fixture) {
     const providerLeagueId = Number(fixture?.competitionId);
     if (COMPETITION_DISPLAY_ORDER.has(providerLeagueId)) return COMPETITION_DISPLAY_ORDER.get(providerLeagueId);
     return priorityCompetitionForFixture(fixture)?.rank || Number.MAX_SAFE_INTEGER;
+  }
+
+  function competitionCountryLabel(fixture) {
+    const priorityCompetition = priorityCompetitionForFixture(fixture);
+    const country = priorityCompetition?.country || fixture?.competitionCountry || (!fixture?.competitionId && COMPETITION_COUNTRIES.get(fixture?.competition));
+    return COUNTRY_LABELS.get(country) || country || "";
   }
 
   function mergeRoundFixtureData(leagueData) {
@@ -477,9 +491,10 @@
     function competitionLogo(fixture, className = "fixture-league-logo") {
       const competition = typeof fixture === "string" ? fixture : fixture?.competition;
       const providerLeagueId = Number(fixture?.competitionId);
+      const priorityCompetition = priorityCompetitionForFixture(fixture);
       const leagueId = Number.isInteger(providerLeagueId) && providerLeagueId > 0
         ? providerLeagueId
-        : COMPETITION_LOGOS.get(competition);
+        : priorityCompetition?.providerId || (typeof fixture === "string" ? COMPETITION_LOGOS.get(competition) : null);
       const source = fixture?.competitionLogo || (leagueId ? `https://media.api-sports.io/football/leagues/${leagueId}.png` : null);
       if (!source) return null;
       const logo = document.createElement("img");
@@ -491,12 +506,6 @@
       logo.decoding = "async";
       logo.addEventListener("error", () => logo.remove(), { once: true });
       return logo;
-    }
-
-    function competitionCountryLabel(fixture) {
-      const priorityCompetition = priorityCompetitionForFixture(fixture);
-      const country = priorityCompetition?.country || fixture?.competitionCountry || (!fixture?.competitionId && COMPETITION_COUNTRIES.get(fixture?.competition));
-      return COUNTRY_LABELS.get(country) || country || "";
     }
 
     function competitionGroupKey(fixture) {
@@ -1137,6 +1146,7 @@
 
   return {
     create,
+    competitionCountryLabel,
     competitionDisplayRank,
     contentBadgeLabels,
     contentAvailabilityBatches,
