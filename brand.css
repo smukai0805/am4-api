@@ -301,6 +301,7 @@ img{max-width:100%;}
 .lineup-evidence a{display:block;padding:8px 0;color:#b5d0ff;}
 .lineup-updated{font-size:12px;color:#a4b9da;}
 .lineup-details{margin-top:20px;}
+.lineup-details-title{margin:0;padding:12px 0;font-size:14px;}
 .lineup-card{padding:14px;}.lineup-card h4,.lineup-coach{font-size:14px;}.lineup-number{font-size:12px;}.lineup-player{font-size:14px;}
 .lineup-change{grid-column:2/-1;color:#adc9ef;font-size:12px;}
 .lineup-retry,.player-sheet-close{border:1px solid #6889bb;border-radius:8px;padding:12px 18px;min-height:44px;background:#162746;color:#fff;cursor:pointer;}
