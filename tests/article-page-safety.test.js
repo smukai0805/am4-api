@@ -91,6 +91,14 @@ test('COLUMN return preserves search, page and row even for a series article; ex
   }
 });
 
+test('a series story opened from Read Later returns to that list, preserving match-list URL context', async () => {
+  const from='/?matchDate=2026-09-08&matchFilter=2026-09-08#for-you';
+  const {document}=await load({from});
+  assert.equal(document.querySelector('.article-back').href,from);
+  assert.equal(document.querySelector('.article-back').textContent,'← あとで読むへ戻る');
+  assert.ok(document.querySelector('.article-series-navigation'));
+});
+
 test('an optional reading enhancement exception cannot remove the loaded article', async () => {
   const {document} = await load({enhancer:{enhanceArticle(){throw new Error('optional enhancement broke');}}});
   assert.equal(document.querySelector('.article-title').textContent, article.title);

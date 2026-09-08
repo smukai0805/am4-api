@@ -10,9 +10,14 @@
   // A list return URL is explicit and limited to this route, never an external redirect.
   const columnReturn = new URLSearchParams(location.search).get('from');
   const fromColumn = /^\/column(?:\?[^#]*)?(?:#story-[\w-]+)?$/.test(columnReturn || '') ? columnReturn : null;
+  const fromSaved = /^\/(?:\?[^#]*)?#for-you$/.test(columnReturn || '') ? columnReturn : null;
   if (articleBack && fromColumn) {
     articleBack.href = fromColumn;
     articleBack.textContent = '← COLUMN一覧へ戻る';
+  }
+  if (articleBack && fromSaved) {
+    articleBack.href = fromSaved;
+    articleBack.textContent = '← あとで読むへ戻る';
   }
 
   function articleTypeLabel(type) {
@@ -384,7 +389,7 @@
           ? (value) => window.AM4ArticlePresentation?.readerEditorialText?.(value) ?? value
           : (value) => value,
       });
-      if (articleBack && !fromColumn && window.AM4ColumnSeries?.isTwentySeasonsStory(article)) {
+      if (articleBack && !fromColumn && !fromSaved && window.AM4ColumnSeries?.isTwentySeasonsStory(article)) {
         const season = window.AM4ColumnSeries.seasonForStory(article);
         articleBack.href = `/column/20-seasons${season ? `#season-${season}` : ""}`;
         articleBack.textContent = "← 20 Seasonsの一覧へ戻る";

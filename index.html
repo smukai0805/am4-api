@@ -1717,6 +1717,11 @@
           const link = document.createElement(item.type === 'leagues' ? 'div' : 'a');
           link.className = 'for-you-card-link';
           if (item.type !== 'leagues') link.href = item.href;
+          if (item.type === 'articles' && item.href.startsWith('/article.html?')) {
+            const destination = new URL(item.href, location.origin);
+            destination.searchParams.set('from', `${location.pathname}${location.search}#for-you`);
+            link.href = `${destination.pathname}${destination.search}`;
+          }
           const kind = favoritePresentation[item.type].kind;
           link.innerHTML = `<small>${kind}</small><strong></strong><span></span>`;
           link.querySelector('strong').textContent = item.label;
