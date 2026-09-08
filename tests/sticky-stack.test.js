@@ -48,6 +48,8 @@ test('the home and 20 Seasons pages opt into the same measured stack',()=>{
   const css=fs.readFileSync(path.join(__dirname,'..','brand.css'),'utf8');
   assert.match(home,/top:var\(--am4-topbar-height\)/);
   assert.match(home,/padding-top:var\(--am4-primary-stack-height\)/);
+  assert.match(home,/\.matchday-dates-sticky\{position:sticky;top:var\(--am4-primary-stack-height\)/);
+  assert.doesNotMatch(home,/home-sticky-controls-offset|home-topbar-height|home-primary-nav-height/);
   assert.match(css,/\.twenty-seasons-page\{[^}]*overflow-x:clip/);
   assert.match(css,/\.twenty-seasons-nav\{[^}]*top:var\(--am4-topbar-height,65px\)/);
 });
