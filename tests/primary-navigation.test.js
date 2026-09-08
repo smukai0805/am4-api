@@ -49,3 +49,9 @@ test('20 Seasons keeps four full-width mobile tap targets', () => {
   assert.match(css,/\.twenty-seasons-nav a\{[^}]*min-height:44px/);
   assert.match(css,/@media\(max-width:680px\)\{\.twenty-seasons-nav\{[^}]*gap:5px[^}]*padding-inline:12px[^}]*\}\.twenty-seasons-nav a\{[^}]*flex:1 1 0[^}]*min-width:0/);
 });
+
+test('the selected 20 Seasons tab retains a distinct keyboard focus indicator', () => {
+  const css=fs.readFileSync(path.join(__dirname,'..','brand.css'),'utf8');
+  assert.match(css,/\.twenty-seasons-nav a:focus-visible\{[^}]*outline:2px solid/);
+  assert.doesNotMatch(css,/\.twenty-seasons-nav a:hover,.twenty-seasons-nav a:focus-visible\{[^}]*outline:0/);
+});
