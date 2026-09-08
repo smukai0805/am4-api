@@ -36,7 +36,7 @@
 
   function selectedMotm(value, players = []) {
     const text = String(value || "").replace(/\*\*/g, "");
-    const matches = [...text.matchAll(/(?:^|\n)\s*(?:[-*]\s+)?(?:(Sofascore|FotMob|Sports Mole|UEFA|FIFA|公式|AM4)\s*)?(?:Man of the Match|Player of the Match|MOTM|POTM)(?:\s*[（(]([^）)\n]+)[）)])?\s*[：:]\s*([^（(\n。:：]+)/giu)]
+    const matches = [...text.matchAll(/(?:^|[\n。])\s*(?:[-*]\s+)?(?:(Sofascore|FotMob|Sports Mole|UEFA|FIFA|公式|AM4)\s*)?(?:Man of the Match|Player of the Match|MOTM|POTM)(?:\s*[（(]([^）)\n]+)[）)])?\s*[：:]\s*([^（(\n。:：]+)/giu)]
       .map(match => ({ name:match[3].trim(), authority:match[1] || match[2] || "" })).filter(item => validName(item.name));
     // Legacy reports sometimes state a named player's MVP award in prose.
     const proseAward = text.match(/(?:^|\n)\s*([\p{L}\p{M} .’'\-・]+?)[（(][^）)\n]+[）)]\s*[：:]\s*(Sofascore|FotMob|UEFA|FIFA)の[^。\n]*?(?:MVP|MOTM|POTM)として(?:扱われ|選出され)/iu);
@@ -55,7 +55,7 @@
   }
 
   function withoutMotmAbstention(value) {
-    return String(value || '').replace(/(?:^|\n)(?:(?:この試合で)?公式[^。\n]*(?:MOTM|POTM)|MOTM\s*[／/]\s*POTM)[^。\n]*(?:確認できず|設定しない|見つからなかった)[^。\n]*。[ \t]*(?:推測(?:では|で)?設定しない。)?/giu,'').trim();
+    return String(value || '').replace(/(?:^|\n|(?<=。))(?:(?:この試合で)?公式[^。\n]*(?:MOTM|POTM)|MOTM\s*[／/]\s*POTM)[^。\n]*(?:確認できず|設定しない|見つからなかった|見つからない|選出は行わない)[^。\n]*。[ \t]*(?:推測(?:では|で)?設定しない。)?/giu,'').trim();
   }
 
   // Editorial choices made from the published reports below, not official awards.

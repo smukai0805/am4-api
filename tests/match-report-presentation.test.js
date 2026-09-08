@@ -27,6 +27,7 @@ test('media prefixes, later paragraphs and explicit AM4 selections are recognize
   assert.equal(selectedMotm('Sofascore Player of the Match：Tyrick Mitchell（8.7）。2得点。').name,'Tyrick Mitchell');
   assert.equal(selectedMotm('Samardžićが決勝点。\n\nSofascore Player of the Match：Marco Carnesecchi（8.3）。3セーブ。').name,'Marco Carnesecchi');
   assert.equal(selectedMotm('AM4 MOTM：Cole Palmer。1得点1アシスト。').authority,'AM4');
+  assert.equal(selectedMotm('公式の発表は未確認。AM4 MOTM：Cole Palmer。1得点1アシスト。').name,'Cole Palmer');
   assert.equal(selectedMotm('Antonio Sivera（Alavés）：Sofascoreの試合記事ではMVPとして扱われ、6セーブ。').name,'Antonio Sivera');
   assert.equal(selectedMotm('MOTM：Player One\nMOTM：Player Two'),null);
   assert.equal(hasAwardStatement('MOTM：Player One\nMOTM：Player Two'),true);
@@ -73,4 +74,5 @@ test('obsolete abstention is removed only for display while adjacent analysis su
     assert.equal(withoutMotmAbstention(prefix+'最大の活躍はOchieng。1得点2アシスト。'),'最大の活躍はOchieng。1得点2アシスト。');
   }
   assert.equal(withoutMotmAbstention('Player OneはMOTMに選出。決勝点を記録。'),'Player OneはMOTMに選出。決勝点を記録。');
+  assert.equal(withoutMotmAbstention('Lamine Yamalは2得点。公式MOTM/POTMとして統一確認できる一次情報は見つからないため、独自MOTM選出は行わない。Raphinhaも2得点。'),'Lamine Yamalは2得点。Raphinhaも2得点。');
 });
