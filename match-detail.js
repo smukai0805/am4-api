@@ -509,6 +509,7 @@
       heading.append(node('span','pitch-status',label));half.append(heading);
       const layout=AM4Formation.rows(lineup,Boolean(index));
       const field=node('div','pitch-field');
+      field.dataset.outfieldLines=String(Math.max(0,layout.rows.length-1));
       const markings=node('span','pitch-markings');markings.setAttribute('aria-hidden','true');field.append(markings);
       layout.rows.forEach(row=>{const line=node('div','pitch-row');line.style.setProperty('--players',row.players.length);line.dataset.count=row.players.length;row.players.forEach(p=>line.append(pitchPlayer(p,Boolean(lineup.predicted))));field.append(line);});
       if (!layout.rows.length) field.append(node('p','match-empty',locale==='ja'?'配置情報はまだありません。':'Positions are not available yet.'));
