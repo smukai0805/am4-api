@@ -18,6 +18,7 @@
 
 import { getLineupInsights } from '../lib/lineup-insights.js';
 import { apiFootballFetch } from '../lib/api-football-client.js';
+import { applyVerifiedLineupOverride } from '../lib/verified-lineup-overrides.js';
 
 const COMPETITIONS = {
   'プレミアリーグ': { providerId: 39, featured: true, editorialBonus: 6 },
@@ -504,7 +505,7 @@ function orderByFixtureTeam(items, fixture) {
 }
 
 function normalizeDetailLineups(lineups, fixture) {
-  const normalized = (Array.isArray(lineups) ? lineups : []).map((lineup) => ({
+  const normalized = (Array.isArray(lineups) ? lineups : []).map((lineup) => applyVerifiedLineupOverride(fixture.id, {
     team: normalizeParticipant(lineup?.team),
     formation: lineup?.formation || null,
     coach: { id: nullableNumber(lineup?.coach?.id), name: lineup?.coach?.name || null },
