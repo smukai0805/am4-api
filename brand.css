@@ -307,6 +307,7 @@ img{max-width:100%;}
 .player-sheet{box-sizing:border-box;width:min(94vw,460px);max-height:80vh;overflow:auto;border:1px solid #5879ad;border-radius:18px;background:#0c1730;color:#edf4ff;padding:24px;font-size:16px;line-height:1.7;}
 .player-sheet::backdrop{background:#000b;}.player-sheet h2{font-size:24px;overflow-wrap:anywhere;}.player-sheet-close{float:right;margin:0 0 16px 16px;}
 @media(max-width:480px){.match-section{padding:20px 10px;}.match-section-head{display:block!important;}.match-section-head h2{max-width:none;}.pitch-row[data-count="5"] .pitch-player:nth-child(even){padding-top:40px;}.pitch-row[data-count="4"] .pitch-player:nth-child(even){padding-top:18px;}}
+@media(max-width:480px){.pitch-field[data-outfield-lines="4"]{gap:16px;padding-top:20px;padding-bottom:22px;}.pitch-field[data-outfield-lines="4"] .pitch-player-button{min-height:92px;}.pitch-field[data-outfield-lines="4"] .pitch-name{font-size:12px;line-height:1.25;}}
 @media(min-width:700px){.match-section{padding:28px;}.match-summary-block{padding:20px;}.pitch-field{gap:32px;padding:30px 18px;}.pitch-portrait{width:52px;height:52px;}.pitch-name{font-size:16px;}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto;}*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;}}
 .season-choose{display:inline-flex;align-items:center;min-height:48px;margin-top:22px;padding:12px 18px;border:1px solid #7b9bcc;border-radius:8px;background:#1a3862;color:#f1f6ff;font-size:16px;}
