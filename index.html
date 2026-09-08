@@ -1847,7 +1847,7 @@
               type: 'articles',
               id: String(article.id),
               label: article.title || 'AM4記事',
-              detail: article.type === 'am4_story' ? 'AM4 COLUMN' : article.type || 'AM4記事',
+              detail: ({am4_story:'AM4 COLUMN',match_report:'試合解説',match_prediction:'試合予想',player_intro:'選手ストーリー',transfer_news:'移籍情報'})[article.type] || 'AM4記事',
               href: AM4ArticleLoadState.articleHref(article,fixtureId || article.match?.fixtureId),
             };
             catalog[`articles:${item.id}`] = item;
@@ -1878,6 +1878,14 @@
       target: document.getElementById(tab.dataset?.section || (tab.getAttribute('href') || '').slice(1)),
     })).filter((entry) => entry.target);
     let animationFrame = 0;
+    let initialDestination = location.hash;
+    // An arriving hash can move as fixtures and saved metadata load. Honour it
+    // until the reader interacts, then never pull them back from their reading.
+    const cancelInitialAlignment = () => { initialDestination = ''; };
+    window.addEventListener('wheel', cancelInitialAlignment, {passive:true});
+    window.addEventListener('touchstart', cancelInitialAlignment, {passive:true});
+    window.addEventListener('pointerdown', cancelInitialAlignment, {passive:true});
+    window.addEventListener('keydown', cancelInitialAlignment);
 
     function setActiveTab(activeTab) {
       entries.forEach(({ tab }) => {
@@ -1933,7 +1941,11 @@
     });
     window.addEventListener('scroll', scheduleUpdate, { passive:true });
     window.addEventListener('resize', scheduleUpdate);
-    document.addEventListener('am4:data-ready', scheduleUpdate);
+    document.addEventListener('am4:data-ready', () => {
+      const entry = initialDestination && entries.find(({target}) => `#${target.id}` === initialDestination);
+      if (entry && location.hash === initialDestination) alignTarget(entry);
+      scheduleUpdate();
+    });
     [document.getElementById('lead-story'), document.getElementById('column-nav-link')]
       .filter(Boolean)
       .forEach((node) => new MutationObserver(scheduleUpdate).observe(node, { attributes:true, attributeFilter:['hidden'] }));

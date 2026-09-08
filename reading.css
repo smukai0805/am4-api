@@ -1,4 +1,5 @@
 /* Additive reading controls. The night-stage brand and article paper remain. */
+.article-page,.match-page{overflow-x:clip;}
 .article-top-actions{position:relative;flex:0 0 auto;}
 .for-you-group-title{grid-column:1/-1;margin:20px 0 0;color:#b2c3e0;font:600 14px var(--body);}
 .column-index-entry{display:inline-flex;align-items:center;min-height:44px;padding:10px 16px;border:1px solid #6684b7;border-radius:8px;color:#bad5ff;font-size:13px;}
@@ -15,7 +16,7 @@
 .match-editorial-heading{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:18px;}
 .match-save-status{flex-basis:100%;color:#c5d4ed;font-size:13px;}
 .match-report-more{margin-top:20px;border-block:1px solid #435371;}
-.match-report-more>summary{padding:20px 4px;cursor:pointer;list-style:none;scroll-margin-top:100px;}
+.match-report-more>summary{padding:20px 4px;cursor:pointer;list-style:none;scroll-margin-top:calc(var(--match-header-height,74px) + 70px);}
 .match-report-more>summary::-webkit-details-marker{display:none;}
 .match-report-more>summary strong{display:block;color:#eef3ff;font-size:17px;line-height:1.6;}
 .match-report-topics{display:block;margin-top:8px;color:#aebcd4;font-size:12px;line-height:1.9;}

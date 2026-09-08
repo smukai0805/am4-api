@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const path = require('node:path');
 
-function setup() {
+function setup({hash='#for-you'}={}) {
   const source = fs.readFileSync(path.join(__dirname, '../index.html'), 'utf8');
   const navCode = source.slice(source.indexOf('  // ページ内ナビ：')).split('</script>')[0];
   const frames = [];
@@ -28,10 +28,10 @@ function setup() {
   const nav = { querySelectorAll: () => tabs, getBoundingClientRect: () => ({bottom:132}),
     addEventListener: (type, fn) => { listeners[`nav:${type}`] = fn; },
   };
-  const location = {hash:'#for-you'};
+  const location = {hash};
   const document = {
     querySelector: () => nav, getElementById: id => sections.find(s => s.id === id),
-    addEventListener: () => {},
+    addEventListener: (type,fn) => { listeners[`document:${type}`]=fn; },
     dispatchEvent: event => { prepared = true; events.push(['prepare', event.type]); },
   };
   const history = {pushState: (_state, _unused, hash) => { location.hash = hash; events.push(['history', hash]); }};
@@ -52,6 +52,23 @@ test('scrollspy excludes CSS-hidden Saved rather than stealing current section',
   flush();
   assert.equal(tabs[0].attrs['aria-current'], 'location');
   assert.equal(tabs[2].attrs['aria-current'], undefined);
+});
+
+test('an arriving section realigns after asynchronous loading, then yields to reader interaction',()=>{
+  const {listeners,events,flush}=setup({hash:'#lead-story'});
+  listeners['document:am4:data-ready']();flush();
+  assert.ok(events.some(event=>event[0]==='scroll'&&event[1]==='lead-story'));
+  events.length=0;
+  listeners.wheel();
+  listeners['document:am4:data-ready']();flush();
+  assert.deepEqual(events,[]);
+});
+
+test('a COLUMN page destination keeps native navigation while scrollspy still identifies the home section',()=>{
+  const {tabs,listeners,events}=setup();
+  tabs[1].attrs.href='/column';
+  listeners['nav:click']({target:tabs[1],button:0,preventDefault:()=>assert.fail('page link intercepted')});
+  assert.deepEqual(events,[]);
 });
 
 test('COLUMN navigation settles Saved visibility before computing the scroll destination', () => {
