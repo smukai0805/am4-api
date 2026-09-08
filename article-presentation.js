@@ -1,8 +1,11 @@
 (function (root, factory) {
-  const api = factory();
+  const motmTextPolicy = typeof module === "object" && module.exports
+    ? require("./motm-text-policy.js")
+    : root?.AM4MotmTextPolicy;
+  const api = factory(motmTextPolicy);
   if (typeof module === "object" && module.exports) module.exports = api;
   if (root) root.AM4ArticlePresentation = api;
-})(typeof window !== "undefined" ? window : globalThis, function () {
+})(typeof window !== "undefined" ? window : globalThis, function (motmTextPolicy) {
   function compact(value) {
     return String(value || "").normalize("NFKC").replace(/\s+/g, " ").trim();
   }
@@ -98,13 +101,13 @@
     return text.length <= safeLimit ? text : `${text.slice(0, Math.max(1, safeLimit - 1)).trimEnd()}…`;
   }
 
-  function readerEditorialText(value) {
-    // Presentation only: keep the source and all surrounding player analysis.
-    return String(value || "").replace(
-      /MOTM\s*\/\s*POTM[：:]公式または信頼できる統一選出を確認できず。推測で設定しない。\s*/g,
-      "",
-    ).trim();
+  function withoutMotmAbstention(value) {
+    return motmTextPolicy?.withoutAbstention?.(value) ?? String(value || "").trim();
   }
 
-  return { compact, formatTokyoDate, normalizeConfidence, normalizedLines, isNavigationExcerpt, articleExcerpt, readerEditorialText };
+  function readerEditorialText(value) {
+    return withoutMotmAbstention(value);
+  }
+
+  return { compact, formatTokyoDate, normalizeConfidence, normalizedLines, isNavigationExcerpt, articleExcerpt, readerEditorialText, withoutMotmAbstention };
 });

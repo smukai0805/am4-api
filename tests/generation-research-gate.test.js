@@ -94,3 +94,55 @@ for (const [name, makeDraft, input] of [
     });
   }
 }
+
+test('match report writer must always use the approved MOTM fallback without publishing abstention text', async () => {
+  const prompts = {};
+  await generateMatchReportDraft(matchInfo, { ratings: [], mom: { name: 'Example Player', rating: 8.2 } }, {
+    client: async ({ label, prompt }) => {
+      prompts[label] = prompt;
+      if (label === 'research') {
+        return {
+          content: [
+            { type: 'text', text: '確認済みの取材メモ' },
+            { type: 'web_search_tool_result', content: [{ title: 'Primary source', url: 'https://example.com/source' }] },
+          ],
+        };
+      }
+      return { content: [{ type: 'text', text: '# 下書き' }] };
+    },
+  });
+
+  assert.match(prompts.write, /確認できない場合は、採点データのmomがある場合はAM4独自のMOTMとして必ず選出/);
+  assert.match(prompts.write, /「AM4選出」と明記/);
+  assert.match(prompts.write, /「記載しない」「選出しない」などの不掲載説明は本文に一切書かない/);
+});
+
+test('match report strips a prohibited MOTM abstention even when the writer ignores its prompt', async () => {
+  const result = await generateMatchReportDraft(matchInfo, { ratings: [], mom: { name: 'Example Player', rating: 8.2 } }, {
+    client: async ({ label }) => label === 'research'
+      ? {
+          content: [
+            { type: 'text', text: '確認済みの取材メモ' },
+            { type: 'web_search_tool_result', content: [{ title: 'Primary source', url: 'https://example.com/source' }] },
+          ],
+        }
+      : { content: [{ type: 'text', text: '公式MOTM／POTMは確認できなかったため記載しない。Example Playerは決勝点を挙げた。' }] },
+  });
+
+  assert.equal(result.draft, 'Example Playerは決勝点を挙げた。\n\n## MOTM\n\nAM4選出MOTM：Example Player。API-FOOTBALLの評価点8.2を基に選出。');
+});
+
+test('match report deterministically adds the AM4 MOTM when the writer omits the selection', async () => {
+  const result = await generateMatchReportDraft(matchInfo, { ratings: [], mom: { name: 'Example Player', rating: 8.2 } }, {
+    client: async ({ label }) => label === 'research'
+      ? {
+          content: [
+            { type: 'text', text: '確認済みの取材メモ' },
+            { type: 'web_search_tool_result', content: [{ title: 'Primary source', url: 'https://example.com/source' }] },
+          ],
+        }
+      : { content: [{ type: 'text', text: '試合の分析本文。' }] },
+  });
+
+  assert.match(result.draft, /## MOTM\n\nAM4選出MOTM：Example Player。API-FOOTBALLの評価点8\.2を基に選出。$/);
+});

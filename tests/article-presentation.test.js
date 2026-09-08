@@ -44,6 +44,7 @@ test("truncated live series excerpts and agenda-to-prose tails stay off cards", 
 test("only the observed obsolete MOTM instruction is omitted, not player analysis or uncertainty", () => {
   const note = "MOTM / POTM：公式または信頼できる統一選出を確認できず。推測で設定しない。";
   assert.equal(presentation.readerEditorialText(`${note} Martín Satriano：21分に先制点。`), "Martín Satriano：21分に先制点。");
+  assert.equal(presentation.readerEditorialText("公式MOTM／POTMは確認できなかったため記載しない。Jacksonは1得点を挙げた。"), "Jacksonは1得点を挙げた。");
   assert.equal(presentation.readerEditorialText("負傷からの復帰日は確認できず。"), "負傷からの復帰日は確認できず。");
   assert.equal(presentation.readerEditorialText("AM4選出MOTM：Satriano。"), "AM4選出MOTM：Satriano。");
 });

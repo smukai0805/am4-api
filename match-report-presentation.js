@@ -1,8 +1,11 @@
 (function (root, factory) {
-  const api = factory();
+  const motmTextPolicy = typeof module === "object" && module.exports
+    ? require("./motm-text-policy.js")
+    : root?.AM4MotmTextPolicy;
+  const api = factory(motmTextPolicy);
   if (typeof module === "object" && module.exports) module.exports = api;
   if (root) root.AM4MatchReportPresentation = api;
-})(typeof window !== "undefined" ? window : globalThis, function () {
+})(typeof window !== "undefined" ? window : globalThis, function (motmTextPolicy) {
   "use strict";
 
   const nameKey = value => String(value || "").normalize("NFKD")
@@ -37,7 +40,7 @@
   function selectedMotm(value, players = []) {
     const text = String(value || "").replace(/\*\*/g, "");
     const matches = [...text.matchAll(/(?:^|[\n。])\s*(?:[-*]\s+)?(?:(Sofascore|FotMob|Sports Mole|UEFA|FIFA|公式|AM4)\s*)?(?:Man of the Match|Player of the Match|MOTM|POTM)(?:\s*[（(]([^）)\n]+)[）)])?\s*[：:]\s*([^（(\n。:：]+)/giu)]
-      .map(match => ({ name:match[3].trim(), authority:match[1] || match[2] || "" })).filter(item => validName(item.name));
+      .map(match => ({ name:match[3].trim(), authority:match[1] || match[2] || "AM4" })).filter(item => validName(item.name));
     // Legacy reports sometimes state a named player's MVP award in prose.
     const proseAward = text.match(/(?:^|\n)\s*([\p{L}\p{M} .’'\-・]+?)[（(][^）)\n]+[）)]\s*[：:]\s*(Sofascore|FotMob|UEFA|FIFA)の[^。\n]*?(?:MVP|MOTM|POTM)として(?:扱われ|選出され)/iu);
     if (proseAward && validName(proseAward[1].trim())) matches.push({name:proseAward[1].trim(),authority:proseAward[2]});
@@ -49,13 +52,11 @@
 
   function hasAwardStatement(value) {
     // Protect unparsed positive awards from a competing automatic selection.
-    return String(value || "").split(/\n|。/u).some(line =>
-      /MOTM|POTM|MVP|(?:Man|Player) of the Match/iu.test(line)
-      && !/未|確認でき|設定しない|見つから|不明|なし|候補|not |unknown|unavailable|unconfirmed/iu.test(line));
+    return motmTextPolicy?.hasPositiveSelection?.(value) ?? false;
   }
 
   function withoutMotmAbstention(value) {
-    return String(value || '').replace(/(?:^|\n|(?<=。))(?:(?:この試合で)?公式[^。\n]*(?:MOTM|POTM)|MOTM\s*[／/]\s*POTM)[^。\n]*(?:確認できず|設定しない|見つからなかった|見つからない|選出は行わない)[^。\n]*。[ \t]*(?:推測(?:では|で)?設定しない。)?/giu,'').trim();
+    return motmTextPolicy?.withoutAbstention?.(value) ?? String(value || '').trim();
   }
 
   // Editorial choices made from the published reports below, not official awards.
