@@ -17,6 +17,12 @@
     'natan bernardo de souza': 'Natan', 'rodrigo riquelme reche': 'Riquelme',
     'alvaro fernandez carreras': 'Álvaro Carreras'
   }));
+  const jerseyAliases = new Map(Object.entries({
+    'trent alexander arnold': 'Trent', 't alexander arnold': 'Trent',
+    'vinicius jose paixao de oliveira junior': 'Vini Jr.', 'vinicius junior': 'Vini Jr.',
+    'brahim diaz': 'Brahim', 'b diaz': 'Brahim',
+    'kylian mbappe': 'Mbappé', 'k mbappe': 'Mbappé'
+  }));
   const clean = value => typeof value === 'string' ? value.replace(/\s+/g, ' ').trim() : '';
   function preferred(p) {
     const name = clean(p.name);
@@ -29,6 +35,11 @@
     if (parts.length === 2 && !/^(van|de|del|di|da|mac|al)$/i.test(parts[0])) return parts[1];
     return name;
   }
+  function jersey(p) {
+    const supplied = [p.jerseyName, p.jersey_name, p.shirtName, p.shirt_name].map(clean).find(Boolean);
+    if (supplied) return supplied;
+    return jerseyAliases.get(key(p.name)) || jerseyAliases.get(key(preferred(p))) || preferred(p);
+  }
   function createRegistry(players = []) {
     const records = new Map();
     players.filter(p => p && p.id != null).forEach(p => {
@@ -36,7 +47,9 @@
       records.set(id, { ...prior, ...p, name: (prior.name || '').length > (p.name || '').length ? prior.name : p.name });
     });
     const names = new Map();
+    const jerseyNames = new Map();
     records.forEach((p, id) => names.set(id, preferred(p)));
+    records.forEach((p, id) => jerseyNames.set(id, jersey(p)));
     const groups = new Map();
     names.forEach((name, id) => groups.set(key(name), [...(groups.get(key(name)) || []), id]));
     groups.forEach(ids => {
@@ -54,8 +67,9 @@
     });
     return {
       name(p = {}) { return names.get(String(p.id)) || preferred(p); },
+      jersey(p = {}) { return jerseyNames.get(String(p.id)) || jersey(p); },
       full(p = {}) { return records.get(String(p.id))?.name || p.name || ''; }
     };
   }
-  return { createRegistry, preferred };
+  return { createRegistry, preferred, jersey };
 });
