@@ -13,7 +13,12 @@
       groups.set(row, [...(groups.get(row) || []), { player, col }]);
     });
     const placed = [...groups].sort((a,b) => a[0]-b[0]).map(([row, members]) => ({row, players: members.sort((a,b) => a.col-b.col).map(m => m.player)}));
-    if (reverse) { placed.reverse(); placed.forEach(row => row.players.reverse()); }
+    // Provider columns are expressed from each team's own attacking viewpoint.
+    // The home half attacks down the screen, so its left/right columns must be
+    // mirrored. The away half attacks up the screen and only needs its rows
+    // reversed to put the goalkeeper at the bottom of the full pitch.
+    if (reverse) placed.reverse();
+    else placed.forEach(row => row.players.reverse());
     return { rows: placed, unplaced };
   }
   function contributions(id, events = []) {
