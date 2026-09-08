@@ -10,6 +10,17 @@ test('ID registry preserves compound names, aliases, full names and duplicate su
  assert.deepEqual(people.map(p=>r.name(p)),['Mac Allister','Isak','Vinícius Jr.','L. Hernández','T. Hernández','Jean Pierre de la Roche']);
  assert.equal(r.full({id:1}),'Alexis Mac Allister');assert.equal(people[1].name,'Alexander Isak');
 });
+test('formation labels use compact jersey names while full names remain available',()=>{
+ const people=[
+  {id:1,name:'T. Alexander-Arnold'},
+  {id:2,name:'Vinícius Júnior'},
+  {id:3,name:'Brahim Díaz'},
+  {id:4,name:'Kylian Mbappé'},
+ ];
+ const r=display.createRegistry(people);
+ assert.deepEqual(people.map(p=>r.jersey(p)),['Trent','Vini Jr.','Brahim','Mbappé']);
+ assert.equal(r.full({id:1}),'T. Alexander-Arnold');
+});
 test('grid follows provider coordinates, reverses away orientation and keeps missing positions separate',()=>{
  for(const f of [[4,3,3],[4,2,3,1],[3,5,2]]){
  const xi=[1,...f].flatMap((n,row)=>Array.from({length:n},(_,i)=>({id:row*10+i,grid:`${row+1}:${i+1}`})));
