@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {predictTeam,playerStats,createCachedReader,getLineupInsights} from '../lib/lineup-insights.js';
 import display from '../player-display.js';
 import formation from '../formation-layout.js';
+import {applyVerifiedLineupOverride} from '../lib/verified-lineup-overrides.js';
 
 test('ID registry preserves compound names, aliases, full names and duplicate surnames',()=>{
  const people=[{id:1,name:'Alexis Mac Allister'},{id:2,name:'Alexander Isak'},{id:3,name:'Vinícius José Paixão de Oliveira Júnior'},{id:4,name:'Lucas Hernández'},{id:5,name:'Theo Hernández'},{id:6,name:'Jean Pierre de la Roche'}];
@@ -39,6 +40,22 @@ test('pitch mirrors horizontal coordinates for each team attacking toward the ce
  ];
  assert.deepEqual(formation.rows({startXI:xi}).rows[1].players.map(p=>p.name),['Right','Centre','Left']);
  assert.deepEqual(formation.rows({startXI:xi},true).rows[0].players.map(p=>p.name),['Left','Centre','Right']);
+});
+test('verified overrides require two sources and only replace agreed player slots',()=>{
+ const lineup={team:{id:541,name:'Real Madrid'},formation:'4-2-3-1',startXI:[
+  {id:129718,name:'J. Bellingham',grid:'4:3'},
+  {id:744,name:'Brahim Díaz',grid:'4:2'},
+  {id:278,name:'Kylian Mbappé',grid:'4:1'},
+  {id:762,name:'Vinícius Júnior',grid:'5:1'},
+ ]};
+ const corrected=applyVerifiedLineupOverride(1635714,lineup);
+ assert.equal(corrected.formation,'4-2-3-1');
+ assert.deepEqual(corrected.startXI.map(p=>[p.id,p.grid]),[
+  [129718,'4:2'],[744,'4:3'],[278,'5:1'],[762,'4:1'],
+ ]);
+ assert.equal(corrected.verification.status,'multi-source');
+ assert.equal(corrected.verification.sources.length,2);
+ assert.equal(applyVerifiedLineupOverride(999,lineup),lineup);
 });
 test('events do not count own goals, missed penalties or substitutions as goals/assists',()=>{
  const events=[{type:'goal',player:{id:1},assist:{id:2}},{type:'own_goal',player:{id:1},assist:{id:2}},{type:'penalty_missed',player:{id:1}},{type:'substitution',player:{id:1},assist:{id:3},minute:"70'"}];
