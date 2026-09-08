@@ -1,6 +1,7 @@
 {
   "framework": null,
   "rewrites": [
+    { "source": "/api/adsense.js", "destination": "/api/player-photo?__am4_adsense_loader=1" },
     { "source": "/privacy", "destination": "/privacy.html" },
     { "source": "/read-later", "destination": "/read-later.html" },
     { "source": "/column", "destination": "/column.html" },

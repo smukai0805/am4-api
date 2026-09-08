@@ -17,8 +17,15 @@
 // フォールバックする(lib/name-search.js参照。例: search=Mbappé&fullName=Kylian Mbappé)。
 
 import { resolvePlayerProfile } from '../lib/name-search.js';
+import { createAdSenseHandler } from '../lib/adsense-loader.js';
 
 export default async function handler(req, res) {
+  if (String(req.query?.__am4_adsense_loader || '') === '1') {
+    return createAdSenseHandler({
+      publisherId: process.env.GOOGLE_ADSENSE_PUBLISHER_ID,
+    })(req, res);
+  }
+
   res.setHeader('Access-Control-Allow-Origin', '*');
 
   const API_KEY = process.env.API_FOOTBALL_KEY;

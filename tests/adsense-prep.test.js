@@ -5,7 +5,8 @@ import path from 'node:path';
 import {
   createAdSenseHandler,
   normalizeAdSensePublisherId,
-} from '../api/adsense.js';
+} from '../lib/adsense-loader.js';
+import playerPhotoHandler from '../api/player-photo.js';
 
 const root = path.resolve(import.meta.dirname, '..');
 const publisherId = `pub-${'1'.repeat(16)}`;
@@ -26,6 +27,10 @@ function responseSpy() {
       return this;
     },
     send(body) {
+      this.body = body;
+      return this;
+    },
+    json(body) {
       this.body = body;
       return this;
     },
@@ -63,6 +68,30 @@ test('AdSense loader emits a single third-party script only for a configured pub
   assert.match(response.body, new RegExp(`pagead2\\.googlesyndication\\.com/pagead/js/adsbygoogle\\.js\\?client=${clientId}`));
   assert.match(response.body, /document\.head\.append/);
   assert.doesNotMatch(response.body, /<ins\b|adsbygoogle\.push/);
+});
+
+test('the AdSense route reuses an existing serverless function without touching player-photo behavior', async () => {
+  const response = responseSpy();
+  await playerPhotoHandler({ query: { __am4_adsense_loader: '1' } }, response);
+
+  assert.equal(response.statusCode, 204);
+  assert.equal(response.body, '');
+  assert.equal(response.headers.get('Content-Type'), 'application/javascript; charset=utf-8');
+});
+
+test('a normal player-photo request stays on its existing validation path', async () => {
+  const response = responseSpy();
+  await playerPhotoHandler({ query: {} }, response);
+
+  assert.notEqual(response.statusCode, 204);
+  assert.match(response.body.error, /API_FOOTBALL_KEY|search/);
+});
+
+test('the AdSense preparation stays within the Vercel Hobby function limit', () => {
+  const apiFiles = fs.readdirSync(path.join(root, 'api')).filter((file) => file.endsWith('.js'));
+
+  assert.equal(apiFiles.length, 12);
+  assert.ok(!apiFiles.includes('adsense.js'));
 });
 
 test('every public AM4 entry point links to privacy and only uses the first-party AdSense loader', () => {
@@ -122,6 +151,10 @@ test('public static routes resolve consistently in Vercel and local Vite preview
   assert.deepEqual(vercel.rewrites?.find(({ source }) => source === '/privacy'), {
     source: '/privacy',
     destination: '/privacy.html',
+  });
+  assert.deepEqual(vercel.rewrites?.find(({ source }) => source === '/api/adsense.js'), {
+    source: '/api/adsense.js',
+    destination: '/api/player-photo?__am4_adsense_loader=1',
   });
   assert.match(vite, /url\.pathname==='\/privacy'/);
   assert.match(vite, /url\.pathname==='\/column'/);

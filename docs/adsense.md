@@ -5,7 +5,7 @@ AM4 does not include a publisher ID, an `ads.txt` file, advertising slots, or th
 ## After the publisher ID is issued
 
 1. In the Vercel project environment settings, add `GOOGLE_ADSENSE_PUBLISHER_ID` with the actual publisher value. Use either `pub-` followed by the real 16-digit value or its `ca-pub-` form. Do not commit this setting to source control.
-2. Redeploy, then confirm `/api/adsense.js` returns JavaScript only with the configured value. When the variable is absent or malformed, it returns `204 No Content` and no Google script is loaded.
+2. Redeploy, then confirm `/api/adsense.js` returns JavaScript only with the configured value. When the variable is absent or malformed, it returns `204 No Content` and no Google script is loaded. This URL is internally rewritten to an existing function so it does not increase the Vercel Hobby plan's function count.
 3. Create the repository-root `ads.txt` with the actual publisher value only:
 
    ```text
