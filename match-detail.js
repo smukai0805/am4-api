@@ -500,8 +500,8 @@
     return card;
   }
   function lineupMemberDetails(lineups) {
-    const details=node('details','lineup-details');
-    details.append(node('summary','',locale==='ja'?'控え選手と監督':'Substitutes and coach'));
+    const details=node('section','lineup-details');
+    details.append(node('h3','lineup-details-title',locale==='ja'?'控え選手と監督':'Substitutes and coach'));
     const switcher=node('div','lineup-team-switch');switcher.setAttribute('role','tablist');
     const panel=node('div','lineup-member-panel');panel.setAttribute('role','tabpanel');panel.id=`lineup-member-panel-${fixtureId}`;
     if (!lineups.some(lineup => String(lineup.team?.id) === String(lineupMemberTeamId))) lineupMemberTeamId=lineups[0]?.team?.id ?? null;
