@@ -987,7 +987,8 @@
   }
 
   function cleanEditorialText(value) {
-    return String(value || "").replace(/\r\n?/g, "\n").replace(/^[-*+]\s+/gm, "").replace(/\*\*/g, "").trim();
+    const cleaned = String(value || "").replace(/\r\n?/g, "\n").replace(/^[-*+]\s+/gm, "").replace(/\*\*/g, "").trim();
+    return window.AM4ArticlePresentation?.readerEditorialText?.(cleaned) ?? cleaned;
   }
 
   function markdownSections(markdown) {
@@ -1087,7 +1088,7 @@
     }
     if (values.childElementCount) hero.append(values);
     const summary = editorialValue(prediction, "prediction", "summary", ["3行要約", "予想要約", "summary"]);
-    if (summary) hero.append(node("p", "match-editorial-summary", summary));
+    if (summary) appendEditorialSummary(hero, summary);
     content.append(hero);
     const blocks = predictionBlocks(prediction);
     if (blocks.length) {
@@ -1187,7 +1188,7 @@
     const content = node("div", "match-editorial-content match-editorial-content--report");
     content.append(node("span", "match-editorial-kicker", t("matchSummary")));
     const summary = editorialValue(report, "report", "summary", ["3行要約", "試合要約", "summary"]);
-    if (summary) content.append(node("p", "match-editorial-summary", summary));
+    if (summary) appendEditorialSummary(content, summary);
     const blocks = reportBlocks(report);
     if (blocks.length) {
       const grid = node("div", "match-editorial-grid");
@@ -1195,6 +1196,21 @@
       content.append(grid);
     }
     return content;
+  }
+
+  function appendEditorialSummary(container, summary) {
+    const parts = window.AM4ArticleReading?.splitSummary(summary) || {lead:summary, rest:""};
+    container.append(node("p", "match-editorial-summary", parts.lead));
+    if (!parts.rest) return;
+    const details = node("details", "match-summary-more");
+    const toggle = node("summary", "", locale === "ja" ? "要約の続きを読む" : "Read the rest of the summary");
+    details.append(toggle, node("p", "match-editorial-summary", parts.rest));
+    details.addEventListener("toggle", () => {
+      toggle.textContent = details.open
+        ? (locale === "ja" ? "続きを閉じる" : "Show less")
+        : (locale === "ja" ? "要約の続きを読む" : "Read the rest of the summary");
+    });
+    container.append(details);
   }
 
   function renderArchiveOverview(detail, editorial = currentEditorial) {

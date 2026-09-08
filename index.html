@@ -707,6 +707,7 @@
   @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;}}
 </style>
 <link rel="stylesheet" href="/night-stage.css?v=20260908-light-ribbons-v3">
+<link rel="stylesheet" href="/reading.css?v=20260908-safe-reading-v1">
 </head>
 <body>
 
@@ -862,11 +863,10 @@
     <h2 class="block-title"><small>Transfer Desk</small>移籍情報</h2>
     <span class="see-all">更新中</span>
   </div>
-  <article class="transfer-updating" aria-live="polite">
-    <small>AM4 TRANSFER DESK · UPDATING</small>
-    <h3>最新の移籍情報を確認中です</h3>
+  <details class="transfer-updating transfer-updating--compact">
+    <summary>最新の移籍情報を確認中です</summary>
     <p>確認できた情報だけを、AM4の基準で更新します。</p>
-  </article>
+  </details>
 </section>
 
 <section class="block editorial-section" id="matches" hidden>
@@ -935,7 +935,7 @@
 
 <script src="favorites.js?v=20260906-am4-improvements-v1"></script>
 <script src="site-config.js"></script>
-<script src="article-presentation.js?v=20260906-am4-improvements-v1"></script>
+<script src="article-presentation.js?v=20260908-safe-reading-v1"></script>
 <script src="match-archive.js?v=20260907-editorial-availability-v4"></script>
 <script src="football-data.js?v=20260907-score-visibility-v1"></script>
 <script src="navigation-state.js?v=20260906-navigation-v2"></script>
@@ -1682,7 +1682,7 @@
         }
       });
 
-      const savedDestinationOpen = location.hash === '#for-you' || keepForYouVisible;
+      const savedDestinationOpen = keepForYouVisible;
       section.classList.toggle('visible', count > 0 || unavailableArticleIds.size > 0 || savedDestinationOpen);
       countLabel.textContent = count ? `${count}件のお気に入り` : '';
       if (status) {
@@ -1779,6 +1779,10 @@
     });
     document.addEventListener('am4:favorites-changed', render);
     document.addEventListener('am4:data-ready', render);
+    document.addEventListener('am4:section-navigation', (event) => {
+      keepForYouVisible = event.detail.targetId === 'for-you';
+      render();
+    });
     window.addEventListener('hashchange', () => {
       keepForYouVisible = location.hash === '#for-you';
       render();
@@ -1873,7 +1877,7 @@
     function updateActiveTab() {
       animationFrame = 0;
       const readingLine = nav.getBoundingClientRect().bottom + 24;
-      const visibleEntries = entries.filter(({ target }) => !target.hidden);
+      const visibleEntries = entries.filter(({ target }) => !target.hidden && target.getClientRects().length);
       if (!visibleEntries.length) return;
       const current = visibleEntries
         .filter(({ target }) => target.getBoundingClientRect().top <= readingLine)
@@ -1886,11 +1890,31 @@
       if (!animationFrame) animationFrame = requestAnimationFrame(updateActiveTab);
     }
 
+    function alignTarget(entry) {
+      window.requestAnimationFrame(() => {
+        if (!entry.target.getClientRects().length) return;
+        entry.target.style.scrollMarginTop = `${nav.getBoundingClientRect().bottom + 18}px`;
+        entry.target.scrollIntoView({ block:'start', behavior:'instant' });
+        entry.target.tabIndex = -1;
+        entry.target.focus({ preventScroll:true });
+        setActiveTab(entry.tab);
+      });
+    }
+
     nav.addEventListener('click', (event) => {
-      const tab = event.target.closest('.tag');
-      if (!tab) return;
-      setActiveTab(tab);
-      window.setTimeout(scheduleUpdate, 350);
+      if (event.button > 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const entry = entries.find(({ tab }) => tab === event.target.closest('.tag'));
+      if (!entry) return;
+      event.preventDefault();
+      // Settle Saved's display before the browser calculates the destination.
+      document.dispatchEvent(new CustomEvent('am4:section-navigation', { detail:{ targetId:entry.target.id } }));
+      const hash = entry.tab.getAttribute('href');
+      if (location.hash !== hash) history.pushState(null, '', hash);
+      alignTarget(entry);
+    });
+    window.addEventListener('hashchange', () => {
+      const entry = entries.find(({ tab }) => tab.getAttribute('href') === location.hash);
+      if (entry) alignTarget(entry);
     });
     window.addEventListener('scroll', scheduleUpdate, { passive:true });
     window.addEventListener('resize', scheduleUpdate);

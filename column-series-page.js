@@ -51,6 +51,7 @@
   function seasonCard(season, article) {
     const available = Boolean(article?.id);
     const card = node(available ? 'a' : 'article', `twenty-season-card ${available ? 'is-available' : 'is-coming-soon'}`);
+    card.id = `season-${season}`;
     if (available) {
       card.href = `/article.html?id=${encodeURIComponent(article.id)}`;
       card.setAttribute('aria-label', `${article.title || season}を読む`);
@@ -92,6 +93,22 @@
       fragment.append(seasonCard(season, bySeason.get(season)));
     });
     root.replaceChildren(fragment);
+    const jump = document.getElementById('twenty-seasons-jump');
+    if (jump) {
+      const links = series.seasons().map((season) => {
+        const link = node('a', '', season);
+        link.href = `#season-${season}`;
+        link.setAttribute('aria-label', `${season}${bySeason.has(season) ? 'の物語' : '（準備中）'}へ移動`);
+        if (!bySeason.has(season)) link.className = 'is-pending';
+        return link;
+      });
+      jump.replaceChildren(...links);
+      jump.hidden = false;
+    }
+    // A return URL can point to a season whose card did not exist at load time.
+    if (/^#season-20\d{2}-\d{2}$/.test(location.hash)) {
+      document.getElementById(location.hash.slice(1))?.scrollIntoView({block:'start', behavior:'instant'});
+    }
     const published = bySeason.size;
     status.textContent = published
       ? `${published} / 20 STORIES AVAILABLE`
