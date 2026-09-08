@@ -28,11 +28,11 @@
 <link rel="stylesheet" href="/brand.css?v=20260906-am4-improvements-v1">
 <style>
   :root{
-    --home-topbar-height:70px;
-    --home-primary-nav-height:63px;
-    --home-sticky-controls-offset:calc(var(--home-topbar-height) + var(--home-primary-nav-height));
+    --am4-topbar-height:70px;
+    --am4-primary-nav-height:63px;
+    --am4-primary-stack-height:calc(var(--am4-topbar-height) + var(--am4-primary-nav-height));
   }
-  body{padding-top:var(--home-sticky-controls-offset);}
+  body{padding-top:var(--am4-primary-stack-height);}
   main{display:flex;flex-direction:column;}
 
   /* ---------- top bar ---------- */
@@ -67,7 +67,7 @@
 
   /* ---------- tag nav ---------- */
   .tagnav-wrap{
-    position:fixed; top:var(--home-topbar-height); left:0; right:0; z-index:30;
+    position:fixed; top:var(--am4-topbar-height); left:0; right:0; z-index:30;
     background:rgba(6,10,23,0.78);
     backdrop-filter:blur(16px);
     border-bottom:1px solid var(--line);
@@ -719,7 +719,7 @@
 </head>
 <body>
 
-<div class="topbar">
+<div class="topbar" data-sticky-topbar>
   <a class="wordmark" href="/" aria-label="AM4 Football ホーム">
     <img src="/am4-logo.png" alt="AM4">
     <small>Football</small>
@@ -727,7 +727,7 @@
   <div class="lang">日本語</div>
 </div>
 
-<div class="tagnav-wrap">
+<div class="tagnav-wrap" data-sticky-navigation>
   <nav class="tagnav" aria-label="主要ナビゲーション">
     <a class="tag" href="#fixtures">試合</a>
     <a class="tag" id="column-nav-link" href="/column" data-section="lead-story">COLUMN</a>
@@ -735,6 +735,7 @@
     <a class="tag" href="/read-later">あとで読む</a>
   </nav>
 </div>
+<script src="/sticky-stack.js?v=20260908-stacked-navigation-v1"></script>
 
 <main>
 <section class="block quick-fixtures matchday-home" id="fixtures" aria-labelledby="today-fixtures-title">

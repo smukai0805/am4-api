@@ -18,12 +18,12 @@
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;700;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+JP:wght@400;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/brand.css?v=20260908-fixed-primary-tabs-v1">
+  <link rel="stylesheet" href="/brand.css?v=20260908-stacked-navigation-v1">
 <link rel="stylesheet" href="/night-stage.css?v=20260908-light-ribbons-v3">
   <link rel="stylesheet" href="/reading.css?v=20260908-reading-navigation-v1">
 </head>
 <body class="twenty-seasons-page">
-  <header class="brand-topbar">
+  <header class="brand-topbar" data-sticky-topbar>
     <a class="brand-wordmark" href="/" aria-label="AM4 Football ホームへ">
       <img src="/am4-logo.png" alt="AM4">
       <small>Football</small>
@@ -31,12 +31,13 @@
     <span class="brand-pill">AM4 COLUMN</span>
   </header>
 
-  <nav class="twenty-seasons-nav" aria-label="メインナビゲーション">
+  <nav class="twenty-seasons-nav" aria-label="メインナビゲーション" data-sticky-navigation>
     <a href="/#fixtures">試合</a>
     <a href="/column">COLUMN</a>
     <a href="/column/20-seasons" aria-current="page">20 Seasons</a>
     <a href="/read-later">あとで読む</a>
   </nav>
+  <script src="/sticky-stack.js?v=20260908-stacked-navigation-v1"></script>
 
   <main class="twenty-seasons-shell">
     <section class="twenty-seasons-hero" aria-labelledby="twenty-seasons-title">
