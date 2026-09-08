@@ -14,13 +14,13 @@ const article = {
   story:{series:series.SERIES_NAME,season:'2015-16'}, sources:[], tags:['歴史'],
 };
 
-async function load({enhancer=reading, status=200, recommendationsFail=false, seriesPageStalls=false}={}) {
+async function load({enhancer=reading, status=200, recommendationsFail=false, seriesPageStalls=false, from='', storageFails=false}={}) {
   const document = readerDocument();
   const saved = new Map();
-  const localStorage = {getItem:key=>saved.get(key) ?? null, setItem:(key,value)=>saved.set(key,value)};
+  const localStorage = {getItem:key=>saved.get(key) ?? null, setItem:(key,value)=>{if(storageFails) throw new Error('storage unavailable'); saved.set(key,value);}};
   const requests = [];
   const context = {document, localStorage, sessionStorage:localStorage, URL, URLSearchParams,
-    location:{hostname:'am4football.com',search:'?id=stable-existing-id'},
+    location:{hostname:'am4football.com',search:`?id=stable-existing-id&from=${encodeURIComponent(from)}`},
     AM4SiteConfig:require('../site-config'), AM4ArticlePresentation:require('../article-presentation'),
     AM4ArticleContent:require('../article-content'), AM4ArticleLoadState:require('../article-load-state'),
     AM4Favorites:require('../favorites'), CustomEvent:class{},
@@ -58,6 +58,47 @@ test('existing ID renders body, duplicate headings, lists, tables, quotes and wo
   assert.ok(document.querySelector('.article-series-navigation').querySelectorAll('a').some(link=>link.href==='/article.html?id=next'));
 });
 
+test('top and bottom Read Later buttons stay in sync without changing article body', async () => {
+  const {document} = await load();
+  const top = document.querySelector('.read-later-button');
+  const bottom = document.querySelector('.article-footer-actions').querySelector('.favorite-btn');
+  const text = document.querySelector('blockquote').textContent;
+  top.listeners.click();
+  assert.equal(bottom.getAttribute('aria-pressed'),'true');
+  assert.equal(top.getAttribute('aria-label'),'あとで読むから解除');
+  bottom.listeners.click();
+  assert.equal(top.getAttribute('aria-pressed'),'false');
+  assert.equal(document.querySelector('blockquote').textContent,text);
+});
+
+test('failed storage remains unsaved and is explained beside the top control', async () => {
+  const {document} = await load({storageFails:true});
+  const top = document.querySelector('.read-later-button');
+  top.listeners.click();
+  assert.equal(top.getAttribute('aria-pressed'),'false');
+  assert.match(document.querySelector('.article-top-save-status').textContent,/保存できません/);
+  assert.match(document.querySelector('.article-body').textContent,/失ってはいけない本文/);
+});
+
+test('COLUMN return preserves search, page and row even for a series article; external paths are rejected', async () => {
+  const from='/column?q=歴史&page=2#story-stable-existing-id';
+  const valid=await load({from});
+  assert.equal(valid.document.querySelector('.article-back').href,from);
+  assert.equal(valid.document.querySelector('.article-back').textContent,'← COLUMN一覧へ戻る');
+  for (const from of ['//evil.example/column','/column/evil','https://evil.example/column']) {
+    const invalid=await load({from});
+    assert.match(invalid.document.querySelector('.article-back').href,/^\/column\/20-seasons/);
+  }
+});
+
+test('a legacy saved-list return migrates to the dedicated reading page, including series stories', async () => {
+  const from='/?matchDate=2026-09-08&matchFilter=2026-09-08#for-you';
+  const {document}=await load({from});
+  assert.equal(document.querySelector('.article-back').href,'/read-later');
+  assert.equal(document.querySelector('.article-back').textContent,'← あとで読むへ戻る');
+  assert.ok(document.querySelector('.article-series-navigation'));
+});
+
 test('an optional reading enhancement exception cannot remove the loaded article', async () => {
   const {document} = await load({enhancer:{enhanceArticle(){throw new Error('optional enhancement broke');}}});
   assert.equal(document.querySelector('.article-title').textContent, article.title);
@@ -87,4 +128,18 @@ test('a stalled optional series page does not delay existing recommendation card
   assert.ok(document.querySelector('.article-body'));
   assert.equal(document.querySelector('.article-related').hidden, false);
   assert.equal(document.querySelector('.article-related-card').href, '/article.html?id=next');
+});
+
+
+test('saved and suggested article returns preserve the dedicated reading row and reject unsafe destinations', async () => {
+  for (const from of ['/read-later','/read-later#saved-stable-existing-id','/read-later#suggested-stable-existing-id']) {
+    const {document}=await load({from});
+    assert.equal(document.querySelector('.article-back').href,from);
+    assert.equal(document.querySelector('.article-back').textContent,'← あとで読むへ戻る');
+    assert.match(document.querySelector('.article-body').textContent,/失ってはいけない本文/);
+  }
+  for (const from of ['//evil.example/read-later','/read-later/evil','/read-later?url=https://evil.example']) {
+    const {document}=await load({from});
+    assert.match(document.querySelector('.article-back').href,/^\/column\/20-seasons/);
+  }
 });

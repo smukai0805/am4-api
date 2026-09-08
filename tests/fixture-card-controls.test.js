@@ -32,8 +32,9 @@ test("a concealed score reveals in place without opening the match detail", () =
 });
 
 test("primary navigation and selected date stay available while fixtures scroll", () => {
-  assert.match(home, /\.topbar\{[^}]*position:fixed/);
-  assert.match(home, /\.tagnav-wrap\{[^}]*position:fixed/);
+  const primaryNavigation = fs.readFileSync(path.join(__dirname, "..", "primary-navigation.css"), "utf8");
+  assert.match(primaryNavigation, /\.primary-navigation-page \.topbar,[\s\S]*?position:sticky/);
+  assert.match(primaryNavigation, /\.primary-tabbar\{[^}]*position:sticky/);
   assert.match(home, /\.matchday-dates-sticky\{[^}]*position:sticky/);
   assert.match(home, /\.matchday-home\{[^}]*overflow:visible/);
   assert.match(home, /\.matchday-board\{[^}]*overflow:visible/);

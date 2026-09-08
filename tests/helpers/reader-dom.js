@@ -12,6 +12,8 @@ class Element {
   get className() { return this.attributes.class || ''; }
   set id(value) { this.attributes.id = value; }
   get id() { return this.attributes.id || ''; }
+  set href(value) { this.attributes.href = value; }
+  get href() { return this.attributes.href || ''; }
   setAttribute(key, value) { this.attributes[key] = String(value); }
   getAttribute(key) { return this.attributes[key] ?? null; }
   append(...nodes) {
@@ -67,6 +69,7 @@ function readerDocument() {
   document.root = document.createElement('main');
   document.root.innerHTML = '<a class="article-back" href="/">ホームへ戻る</a><span id="article-brand-pill"></span><article id="article-paper"></article>';
   document.querySelector = selector=>document.root.querySelector(selector);
+  document.querySelectorAll = selector=>document.root.querySelectorAll(selector);
   document.getElementById = id=>document.querySelector(`#${id}`);
   return document;
 }

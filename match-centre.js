@@ -3,6 +3,15 @@
   if (typeof module === "object" && module.exports) module.exports = api;
   if (root) root.AM4MatchCentre = api;
 })(typeof window !== "undefined" ? window : globalThis, function () {
+  function centerDateFilter(container, selected, behavior = 'auto') {
+    if (!selected || container.scrollWidth <= container.clientWidth) return;
+    const item = selected.getBoundingClientRect();
+    const viewport = container.getBoundingClientRect();
+    // scrollIntoView also scrolls ancestor pages, stealing an article/list return
+    // position. Only the horizontal date strip should move on data refresh.
+    container.scrollTo({left:Math.max(0,container.scrollLeft + item.left - viewport.left - (container.clientWidth-item.width)/2),behavior});
+  }
+
   const LEAGUE_PREVIEW_LIMIT = 4;
   const LIVE_DAILY_REFRESH_MS = 30_000;
   const KICKOFF_RECHECK_BUFFER_MS = 30_000;
@@ -385,7 +394,7 @@
       if (!pendingInitialScrollY) return;
       const scrollY = pendingInitialScrollY;
       pendingInitialScrollY = 0;
-      window.requestAnimationFrame(() => window.scrollTo({ top: scrollY, behavior: "auto" }));
+      window.requestAnimationFrame(() => window.scrollTo({ top: scrollY, behavior: "instant" }));
     }
 
     document.querySelectorAll(".fixture-mode-tab").forEach((button) => {
@@ -961,7 +970,7 @@
         const selected = fixtureFilters.querySelector('[aria-pressed="true"]');
         if (!selected || fixtureFilters.scrollWidth <= fixtureFilters.clientWidth) return;
         const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-        selected.scrollIntoView({ block: "nearest", inline: "center", behavior: reducedMotion ? "auto" : "smooth" });
+        centerDateFilter(fixtureFilters, selected, reducedMotion ? 'auto' : 'smooth');
       });
     }
 
@@ -994,7 +1003,9 @@
           ? `${dateLabel}は、選択条件に該当する試合がありません`
           : `${competitionLabel}の選択条件に該当する試合はありません${unavailableLabel}`;
       if (scrollY != null) {
-        window.requestAnimationFrame(() => window.scrollTo({ top: scrollY, behavior: "auto" }));
+        // Restore within this render: a queued stale Y must not overwrite a
+        // later home/article return restoration in the next animation frame.
+        window.scrollTo({ top: scrollY, behavior: "instant" });
       }
     }
 
@@ -1243,6 +1254,7 @@
 
   return {
     create,
+    centerDateFilter,
     competitionCountryLabel,
     competitionAccent,
     competitionDisplayRank,
