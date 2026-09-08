@@ -252,12 +252,13 @@
   function pitchPlayer(player, predicted) {
     const item = node('div','pitch-player');
     const button = node('button','pitch-player-button'); button.type='button';
-    button.setAttribute('aria-label',`${displayPlayerName(player)} · ${locale === 'ja' ? '選手詳細' : 'Player details'}`);
+    const formationName=nameRegistry.jersey(player);
+    button.setAttribute('aria-label',`${formationName} · ${locale === 'ja' ? '選手詳細' : 'Player details'}`);
     const portrait = node('span','pitch-portrait',String(player.number ?? '–'));
     const stat = !predicted && insightState.data?.players?.find(p=>p.id===player.id);
     const photo = player.photo || stat?.photo || (player.id ? `https://media.api-sports.io/football/players/${player.id}.png` : null);
     if (photo) { const img = node('img',''); img.src=photo; img.alt=''; img.loading='lazy'; img.width=44; img.height=44; img.addEventListener('error',()=>img.remove(),{once:true}); portrait.append(img); }
-    button.append(portrait,node('span','pitch-number',String(player.number ?? '–')),node('span','pitch-name',displayPlayerName(player)));
+    button.append(portrait,node('span','pitch-number',String(player.number ?? '–')),node('span','pitch-name',formationName));
     if (stat && stat.rating != null) button.append(node('span','pitch-rating',Number(stat.rating).toFixed(1)));
     if (player.uncertain) button.append(node('span','pitch-uncertain','?'));
     if (!predicted) {
