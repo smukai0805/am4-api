@@ -18,7 +18,7 @@ const expected = [
 
 function navigation(file, className) {
   const html = fs.readFileSync(path.join(__dirname, '..', file), 'utf8');
-  const nav = html.match(new RegExp(`<nav class="${className}"[^>]*>([\\s\\S]*?)</nav>`));
+  const nav = html.match(new RegExp(`<nav class="[^"]*\\b${className}\\b[^"]*"[^>]*>([\\s\\S]*?)</nav>`));
   assert.ok(nav, `${file} has its primary navigation`);
   return [...nav[1].matchAll(/<a\b([^>]*)>([^<]+)<\/a>/g)].map(([,attributes,label]) => ({
     label: label.trim(),
@@ -44,14 +44,24 @@ test('standalone destinations mark only their own tab as current', () => {
   }
 });
 
-test('20 Seasons keeps four full-width mobile tap targets', () => {
-  const css=fs.readFileSync(path.join(__dirname,'..','brand.css'),'utf8');
-  assert.match(css,/\.twenty-seasons-nav a\{[^}]*min-height:44px/);
-  assert.match(css,/@media\(max-width:680px\)\{\.twenty-seasons-nav\{[^}]*gap:5px[^}]*padding-inline:12px[^}]*\}\.twenty-seasons-nav a\{[^}]*flex:1 1 0[^}]*min-width:0/);
+test('all four pages use one bar component and one stylesheet', () => {
+  for (const [file] of pages) {
+    const html=fs.readFileSync(path.join(__dirname,'..',file),'utf8');
+    assert.match(html,/class="[^"]*primary-navigation-page/);
+    assert.match(html,/<nav class="[^"]*primary-tabbar/);
+    assert.match(html,/href="\/primary-navigation\.css\?v=20260908-primary-navigation-v1"/);
+  }
 });
 
-test('the selected 20 Seasons tab retains a distinct keyboard focus indicator', () => {
-  const css=fs.readFileSync(path.join(__dirname,'..','brand.css'),'utf8');
-  assert.match(css,/\.twenty-seasons-nav a:focus-visible\{[^}]*outline:2px solid/);
-  assert.doesNotMatch(css,/\.twenty-seasons-nav a:hover,.twenty-seasons-nav a:focus-visible\{[^}]*outline:0/);
+test('the shared bar fixes identical position, spacing, mobile sizing and focus across pages', () => {
+  const css=fs.readFileSync(path.join(__dirname,'..','primary-navigation.css'),'utf8');
+  assert.match(css,/--am4-topbar-height:76px/);
+  assert.match(css,/--am4-primary-nav-height:65px/);
+  assert.match(css,/\.primary-tabbar\{[^}]*top:var\(--am4-topbar-height\)[^}]*height:var\(--am4-primary-nav-height\)[^}]*gap:8px[^}]*padding:10px clamp\(16px,5vw,64px\)/);
+  assert.match(css,/\.primary-tabbar a\{[^}]*min-height:44px/);
+  assert.match(css,/@media\(max-width:600px\)\{[^}]*\.primary-tabbar\{gap:5px;padding-inline:12px;\}[^}]*\.primary-tabbar a\{flex:1 1 0/);
+  assert.match(css,/\.primary-tabbar a:focus-visible\{[^}]*outline:2px solid/);
+  assert.match(css,/\.primary-tabbar a\[aria-current\],\s*\.primary-tabbar a\.active/);
+  const home=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
+  assert.match(home,/\.matchday-dates-sticky\{position:sticky;top:var\(--am4-primary-stack-height\)/);
 });

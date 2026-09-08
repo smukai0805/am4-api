@@ -27,12 +27,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;700;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/brand.css?v=20260906-am4-improvements-v1">
 <style>
-  :root{
-    --am4-topbar-height:70px;
-    --am4-primary-nav-height:63px;
-    --am4-primary-stack-height:calc(var(--am4-topbar-height) + var(--am4-primary-nav-height));
-  }
-  body{padding-top:var(--am4-primary-stack-height);}
   main{display:flex;flex-direction:column;}
 
   /* ---------- top bar ---------- */
@@ -716,10 +710,11 @@
 </style>
 <link rel="stylesheet" href="/night-stage.css?v=20260908-light-ribbons-v3">
 <link rel="stylesheet" href="/reading.css?v=20260908-reading-navigation-v1">
+<link rel="stylesheet" href="/primary-navigation.css?v=20260908-primary-navigation-v1">
 </head>
-<body>
+<body class="primary-navigation-page">
 
-<div class="topbar" data-sticky-topbar>
+<div class="topbar">
   <a class="wordmark" href="/" aria-label="AM4 Football ホーム">
     <img src="/am4-logo.png" alt="AM4">
     <small>Football</small>
@@ -727,15 +722,12 @@
   <div class="lang">日本語</div>
 </div>
 
-<div class="tagnav-wrap" data-sticky-navigation>
-  <nav class="tagnav" aria-label="主要ナビゲーション">
+  <nav class="tagnav tagnav-wrap primary-tabbar" aria-label="主要ナビゲーション">
     <a class="tag" href="#fixtures">試合</a>
     <a class="tag" id="column-nav-link" href="/column" data-section="lead-story">COLUMN</a>
     <a class="tag" href="/column/20-seasons">20 Seasons</a>
     <a class="tag" href="/read-later">あとで読む</a>
   </nav>
-</div>
-<script src="/sticky-stack.js?v=20260908-stacked-navigation-v1"></script>
 
 <main>
 <section class="block quick-fixtures matchday-home" id="fixtures" aria-labelledby="today-fixtures-title">
