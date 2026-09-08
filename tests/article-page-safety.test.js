@@ -91,10 +91,10 @@ test('COLUMN return preserves search, page and row even for a series article; ex
   }
 });
 
-test('a series story opened from Read Later returns to that list, preserving match-list URL context', async () => {
+test('a legacy saved-list return migrates to the dedicated reading page, including series stories', async () => {
   const from='/?matchDate=2026-09-08&matchFilter=2026-09-08#for-you';
   const {document}=await load({from});
-  assert.equal(document.querySelector('.article-back').href,from);
+  assert.equal(document.querySelector('.article-back').href,'/read-later');
   assert.equal(document.querySelector('.article-back').textContent,'← あとで読むへ戻る');
   assert.ok(document.querySelector('.article-series-navigation'));
 });
@@ -128,4 +128,18 @@ test('a stalled optional series page does not delay existing recommendation card
   assert.ok(document.querySelector('.article-body'));
   assert.equal(document.querySelector('.article-related').hidden, false);
   assert.equal(document.querySelector('.article-related-card').href, '/article.html?id=next');
+});
+
+
+test('saved and suggested article returns preserve the dedicated reading row and reject unsafe destinations', async () => {
+  for (const from of ['/read-later','/read-later#saved-stable-existing-id','/read-later#suggested-stable-existing-id']) {
+    const {document}=await load({from});
+    assert.equal(document.querySelector('.article-back').href,from);
+    assert.equal(document.querySelector('.article-back').textContent,'← あとで読むへ戻る');
+    assert.match(document.querySelector('.article-body').textContent,/失ってはいけない本文/);
+  }
+  for (const from of ['//evil.example/read-later','/read-later/evil','/read-later?url=https://evil.example']) {
+    const {document}=await load({from});
+    assert.match(document.querySelector('.article-back').href,/^\/column\/20-seasons/);
+  }
 });

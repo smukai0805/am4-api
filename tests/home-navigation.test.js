@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const path = require('node:path');
 
-function setup({hash='#for-you'}={}) {
+function setup({hash='#favorites'}={}) {
   const source = fs.readFileSync(path.join(__dirname, '../index.html'), 'utf8');
   const navCode = source.slice(source.indexOf('  // ページ内ナビ：')).split('</script>')[0];
   const frames = [];
@@ -18,7 +18,7 @@ function setup({hash='#for-you'}={}) {
       focus: options => { events.push(['focus', id, options.preventScroll]); },
     };
   }
-  const sections = [element('fixtures', -500), element('lead-story', 1800), element('for-you', 0, false)];
+  const sections = [element('fixtures', -500), element('lead-story', 1800), element('favorites', 0, false)];
   const tabs = sections.map(target => ({ target, attrs: {href: `#${target.id}`},
     getAttribute(key) { return this.attrs[key]; },
     setAttribute(key, value) { this.attrs[key] = value; },
@@ -47,7 +47,7 @@ function setup({hash='#for-you'}={}) {
   return {tabs, listeners, events, flush};
 }
 
-test('scrollspy excludes CSS-hidden Saved rather than stealing current section', () => {
+test('scrollspy excludes CSS-hidden favorites rather than stealing current section', () => {
   const {tabs, flush} = setup();
   flush();
   assert.equal(tabs[0].attrs['aria-current'], 'location');
@@ -79,7 +79,7 @@ test('returning to a saved reading position takes precedence over initial hash a
   assert.deepEqual(events,[]);
 });
 
-test('COLUMN navigation settles Saved visibility before computing the scroll destination', () => {
+test('COLUMN navigation settles section visibility before computing the scroll destination', () => {
   const {tabs, listeners, events, flush} = setup();
   let prevented = false;
   listeners['nav:click']({target:tabs[1],button:0,preventDefault:()=>{prevented=true;}});

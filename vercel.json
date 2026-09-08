@@ -1,6 +1,7 @@
 {
   "framework": null,
   "rewrites": [
+    { "source": "/read-later", "destination": "/read-later.html" },
     { "source": "/column", "destination": "/column.html" },
     { "source": "/column/20-seasons", "destination": "/column-20-seasons.html" }
   ],

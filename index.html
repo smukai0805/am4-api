@@ -2,6 +2,14 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
+<script>
+  // Previously shared Reading List links now open the dedicated reading page.
+  (() => {
+    const openReadingList = () => { if (location.hash === '#for-you') location.replace('/read-later'); };
+    openReadingList();
+    window.addEventListener('hashchange', openReadingList);
+  })();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AM4 Football｜今日の海外サッカー試合日程・結果</title>
 <meta name="description" content="AM4 Football。今日の海外サッカー日程を日本時間で一覧表示。欧州5大リーグ、チャンピオンズリーグ、親善試合の結果はネタバレを避けて確認できます。">
@@ -724,7 +732,7 @@
     <a class="tag" href="#fixtures">試合</a>
     <a class="tag" id="column-nav-link" href="/column" data-section="lead-story">COLUMN</a>
     <a class="tag" href="/column/20-seasons">20 Seasons</a>
-    <a class="tag" href="#for-you">あとで読む</a>
+    <a class="tag" href="/read-later">あとで読む</a>
   </nav>
 </div>
 
@@ -782,9 +790,9 @@
   </div>
 </section>
 
-<section class="block for-you" id="for-you" aria-labelledby="for-you-title">
+<section class="block for-you" id="favorites" aria-labelledby="for-you-title">
   <div class="block-head">
-    <h2 class="block-title" id="for-you-title"><small>Reading List</small>あとで読む</h2>
+    <h2 class="block-title" id="for-you-title"><small>Your Favourites</small>お気に入りのクラブ・リーグ・選手</h2>
     <span class="see-all" id="favorite-count"></span>
   </div>
   <div class="for-you-grid" id="for-you-grid"></div>
@@ -1614,11 +1622,9 @@
     document.dispatchEvent(new CustomEvent('am4:data-ready', {detail:{restoredHomeScroll}}));
   })();
 
-  // local favourites and the returning-visitor For You area
+  // Club, league and player favourites remain on the home page. Articles live at /read-later.
   (function(){
     const catalog = AM4Favorites.readCatalog(localStorage);
-    const unavailableArticleIds = new Set();
-    const pendingArticleIds = new Set();
     const favoritePresentation = {
       leagues: { noun: 'リーグ', kind: 'Favourite league' },
       clubs: { noun: 'クラブ', kind: 'Favourite club' },
@@ -1644,9 +1650,9 @@
     }
     document.querySelectorAll('[data-favorite-type]').forEach(rememberFavorite);
 
-    const section = document.getElementById('for-you');
+    const section = document.getElementById('favorites');
     const grid = document.getElementById('for-you-grid');
-    let keepForYouVisible = location.hash === '#for-you';
+    let keepForYouVisible = location.hash === '#favorites';
     const countLabel = document.getElementById('favorite-count');
     const status = document.getElementById('for-you-status');
 
@@ -1666,9 +1672,7 @@
 
     function render(){
       const saved = AM4Favorites.read(localStorage);
-      const validItems = AM4Favorites.resolveSavedItems(saved, catalog)
-        .filter((item) => !(item.type === 'articles' && (unavailableArticleIds.has(item.id) || pendingArticleIds.has(item.id))))
-        .sort((a, b) => Number(b.type === 'articles') - Number(a.type === 'articles'));
+      const validItems = AM4Favorites.resolveSavedItems(saved, catalog).filter(item => item.type !== 'articles');
       const count = validItems.length;
       document.querySelectorAll('[data-favorite-type]').forEach((button) => {
         const aliases = (button.dataset.favoriteAliases || '').split(',').filter(Boolean);
@@ -1687,41 +1691,22 @@
         }
       });
 
-      const savedDestinationOpen = keepForYouVisible;
-      section.classList.toggle('visible', count > 0 || unavailableArticleIds.size > 0 || savedDestinationOpen);
-      const articleCount = validItems.filter(item => item.type === 'articles').length;
-      countLabel.textContent = `${articleCount}件の記事`;
-      if (status) {
-        status.textContent = unavailableArticleIds.size
-          ? '保存した記事の一部は現在公開されていません。必要であれば、ここから保存を解除できます。'
-          : '';
-      }
+      section.classList.toggle('visible', count > 0 || keepForYouVisible);
+      countLabel.textContent = `${count}件`;
+      if (status) status.textContent = '';
       grid.replaceChildren();
-      if (!articleCount && savedDestinationOpen && !pendingArticleIds.size && !unavailableArticleIds.size) {
+      if (!count && keepForYouVisible) {
         const empty = document.createElement('p');
         empty.className = 'for-you-empty';
-        empty.textContent = '読みたい記事をここに。記事の右上にある「あとで読む」から追加できます。';
+        empty.textContent = 'お気に入りのクラブ・リーグ・選手がここに表示されます。';
         grid.append(empty);
       }
-      let favoritesHeadingAdded = false;
       validItems.forEach((item) => {
-          if (item.type !== 'articles' && !favoritesHeadingAdded) {
-            const heading = document.createElement('h3');
-            heading.className = 'for-you-group-title';
-            heading.textContent = 'お気に入りのクラブ・リーグ・選手';
-            grid.append(heading);
-            favoritesHeadingAdded = true;
-          }
           const card = document.createElement('article');
           card.className = `for-you-card${item.type === 'leagues' ? ' for-you-card--league' : ''}`;
           const link = document.createElement(item.type === 'leagues' ? 'div' : 'a');
           link.className = 'for-you-card-link';
           if (item.type !== 'leagues') link.href = item.href;
-          if (item.type === 'articles' && item.href.startsWith('/article.html?')) {
-            const destination = new URL(item.href, location.origin);
-            destination.searchParams.set('from', `${location.pathname}${location.search}#for-you`);
-            link.href = `${destination.pathname}${destination.search}`;
-          }
           const kind = favoritePresentation[item.type].kind;
           link.innerHTML = `<small>${kind}</small><strong></strong><span></span>`;
           link.querySelector('strong').textContent = item.label;
@@ -1742,20 +1727,6 @@
             card.append(toggle);
           }
           grid.append(card);
-      });
-      unavailableArticleIds.forEach((articleId) => {
-        const unavailable = document.createElement('div');
-        unavailable.className = 'for-you-unavailable';
-        const copy = document.createElement('span');
-        copy.textContent = '公開されていない保存記事';
-        const remove = document.createElement('button');
-        remove.type = 'button';
-        remove.className = 'for-you-unavailable-remove';
-        remove.dataset.removeUnavailableArticle = articleId;
-        remove.textContent = '保存を解除';
-        remove.setAttribute('aria-label', '公開されていない保存記事を保存から解除');
-        unavailable.append(copy, remove);
-        grid.append(unavailable);
       });
     }
 
@@ -1799,80 +1770,15 @@
     document.addEventListener('am4:favorites-changed', render);
     document.addEventListener('am4:data-ready', render);
     document.addEventListener('am4:section-navigation', (event) => {
-      keepForYouVisible = event.detail.targetId === 'for-you';
+      keepForYouVisible = event.detail.targetId === 'favorites';
       render();
     });
     window.addEventListener('hashchange', () => {
-      keepForYouVisible = location.hash === '#for-you';
+      keepForYouVisible = location.hash === '#favorites';
       render();
     });
-
-    grid.addEventListener('click', (event) => {
-      const button = event.target.closest('[data-remove-unavailable-article]');
-      if (!button) return;
-      const articleId = button.dataset.removeUnavailableArticle;
-      const saved = AM4Favorites.read(localStorage);
-      const result = AM4Favorites.write(localStorage, {
-        ...saved,
-        articles: saved.articles.filter((id) => id !== articleId),
-      });
-      if (!result) {
-        if (status) status.textContent = 'この端末に保存できませんでした。ブラウザーの保存容量または設定を確認してください。';
-        return;
-      }
-      unavailableArticleIds.delete(articleId);
-      pendingArticleIds.delete(articleId);
-      delete catalog[`articles:${articleId}`];
-      AM4Favorites.writeCatalog(localStorage, catalog);
-      render();
-      document.dispatchEvent(new CustomEvent('am4:favorites-changed'));
-    });
-
-    async function restoreSavedArticles(){
-      const ids = AM4Favorites.read(localStorage).articles;
-      if (!ids.length) return;
-      ids.forEach((id) => pendingArticleIds.add(id));
-      render();
-      const apiBase = AM4SiteConfig.resolveApiBase(location.hostname);
-      let nextIndex = 0;
-      const restoreOne = async () => {
-        while (nextIndex < ids.length) {
-          const articleId = ids[nextIndex++];
-          try {
-            const savedHref = catalog[`articles:${articleId}`]?.href || '';
-            const fixtureId = savedHref.startsWith('/article.html?') ? new URLSearchParams(savedHref.split('?')[1]).get('fixtureId') : null;
-            const result = await AM4ArticleLoadState.readArticle({fetcher:fetch,apiBase,id:articleId,fixtureId});
-            if (result.state === 'missing') {
-              unavailableArticleIds.add(articleId);
-              continue;
-            }
-            if (result.state !== 'ready') continue;
-            const article = result.article;
-            if (!article?.id) continue;
-            const item = {
-              type: 'articles',
-              id: String(article.id),
-              label: article.title || 'AM4記事',
-              detail: ({am4_story:'AM4 COLUMN',match_report:'試合解説',match_prediction:'試合予想',player_intro:'選手ストーリー',transfer_news:'移籍情報'})[article.type] || 'AM4記事',
-              href: AM4ArticleLoadState.articleHref(article,fixtureId || article.match?.fixtureId),
-            };
-            catalog[`articles:${item.id}`] = item;
-            AM4Favorites.remember(localStorage, item);
-          } catch (_error) {
-            // A transient failure never removes a saved ID or marks it unavailable.
-          } finally {
-            pendingArticleIds.delete(articleId);
-          }
-        }
-      };
-      // Keep the home responsive for a long saved list while still restoring
-      // entries independently of whichever articles happen to be featured.
-      await Promise.all(Array.from({ length: Math.min(4, ids.length) }, restoreOne));
-      render();
-    }
 
     render();
-    restoreSavedArticles();
   })();
 
   // ページ内ナビ：スクロール位置に合わせて、今いるセクションを明確に示す。

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>あとで読む｜AM4 Football</title>
+  <meta name="description" content="保存した記事を、ゆっくり読む。AM4の試合解説やCOLUMNをまとめた自分だけのリーディングリスト。">
+  <meta name="theme-color" content="#060a17">
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="/icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;700;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+JP:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/brand.css?v=20260906-am4-improvements-v1">
+  <link rel="stylesheet" href="/night-stage.css?v=20260908-light-ribbons-v3">
+  <link rel="stylesheet" href="/column-index.css?v=20260908-reading-navigation-v1">
+  <link rel="stylesheet" href="/read-later.css?v=20260908-reading-page-v1">
+</head>
+<body class="column-index-page reading-list-page">
+  <header class="brand-topbar">
+    <a class="brand-wordmark" href="/" aria-label="AM4 Football ホームへ"><img src="/am4-logo.png" alt="AM4"><small>Football</small></a>
+    <span class="brand-pill">READING LIST</span>
+  </header>
+  <nav class="column-index-nav" aria-label="主要ナビゲーション">
+    <a href="/#fixtures">試合</a><a href="/column">COLUMN</a><a href="/column/20-seasons">20 Seasons</a><a href="/read-later" aria-current="page">あとで読む</a>
+  </nav>
+  <main class="reading-list-shell">
+    <header class="reading-list-head">
+      <p class="reading-eyebrow">YOUR READING TIME</p>
+      <h1>あとで読む</h1>
+      <p>気になった物語を、あなたの時間で。</p>
+    </header>
+    <section aria-labelledby="reading-saved-title">
+      <div class="reading-section-head"><h2 id="reading-saved-title" tabindex="-1">保存した記事</h2><span id="reading-count"></span></div>
+      <p class="reading-list-note">追加した順に、新しいものから表示</p>
+      <p id="reading-status" role="status"></p>
+      <div id="reading-saved" aria-busy="true"></div>
+      <button id="reading-retry" class="reading-button" type="button" hidden>記事をもう一度確認する</button>
+      <div class="reading-feedback"><p id="reading-action-status" role="status"></p><button id="reading-undo" class="reading-button" type="button" hidden>元に戻す</button></div>
+    </section>
+    <section class="reading-discover" aria-labelledby="reading-discover-title">
+      <div class="reading-section-head"><div><p class="reading-eyebrow">DISCOVER MORE</p><h2 id="reading-discover-title">次に読みたいCOLUMN</h2></div><a href="/column">一覧で探す →</a></div>
+      <p class="reading-list-note">まだ保存していない記事から、次の一編を。</p>
+      <p id="reading-suggestions-status" role="status">候補を読み込んでいます。</p>
+      <div id="reading-suggestions" aria-busy="true"></div>
+      <button id="reading-suggestions-retry" class="reading-button" type="button" hidden>候補をもう一度取得する</button>
+      <a class="reading-series" href="/column/20-seasons"><span><small>AM4 SIGNATURE SERIES</small><strong>20 Seasons, 20 Stories.</strong><span>欧州サッカーの20年を、20の物語で。</span></span><span aria-hidden="true">→</span></a>
+    </section>
+    <noscript><p>保存した記事の表示にはJavaScriptが必要です。<a href="/column">COLUMN一覧へ</a></p></noscript>
+  </main>
+  <footer class="brand-footer"><span>© AM4 Football</span><span>Some Moments Matter More.</span></footer>
+  <script src="/site-config.js"></script>
+  <script src="/favorites.js?v=20260906-am4-improvements-v1"></script>
+  <script src="/article-load-state.js?v=20260908-reading-navigation-v1"></script>
+  <script src="/read-later.js?v=20260908-reading-page-v1"></script>
+</body>
+</html>

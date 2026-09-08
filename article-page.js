@@ -10,7 +10,8 @@
   // A list return URL is explicit and limited to this route, never an external redirect.
   const columnReturn = new URLSearchParams(location.search).get('from');
   const fromColumn = /^\/column(?:\?[^#]*)?(?:#story-[\w-]+)?$/.test(columnReturn || '') ? columnReturn : null;
-  const fromSaved = /^\/(?:\?[^#]*)?#for-you$/.test(columnReturn || '') ? columnReturn : null;
+  const fromSaved = /^\/read-later(?:#(?:saved|suggested)-[\w-]+)?$/.test(columnReturn || '') ? columnReturn
+    : /^\/(?:\?[^#]*)?#for-you$/.test(columnReturn || '') ? '/read-later' : null;
   if (articleBack && fromColumn) {
     articleBack.href = fromColumn;
     articleBack.textContent = '← COLUMN一覧へ戻る';
