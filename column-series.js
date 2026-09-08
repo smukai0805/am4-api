@@ -89,6 +89,13 @@
     return selected;
   }
 
+  function publishedStories(articles = []) {
+    const selected = storiesBySeason(articles);
+    return seasons()
+      .map((season) => [season, selected.get(season)])
+      .filter(([, article]) => Boolean(article?.id));
+  }
+
   const api = {
     SERIES_NAME,
     FIRST_SEASON_START,
@@ -99,6 +106,7 @@
     isTwentySeasonsStory,
     seasonForStory,
     storiesBySeason,
+    publishedStories,
   };
 
   root.AM4ColumnSeries = api;

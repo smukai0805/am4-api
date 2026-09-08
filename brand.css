@@ -88,6 +88,8 @@ img{max-width:100%;}
 .article-state h1{font:900 48px var(--display);margin:0 0 12px;}
 .article-state p{color:var(--steel-dim);line-height:1.7;}
 .brand-footer{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;width:min(100% - 40px,var(--content-width));margin:0 auto;padding:36px 0 56px;color:var(--steel-dim);font:11px var(--mono);}
+.footer-privacy-link{color:var(--steel);text-decoration:underline;text-decoration-color:rgba(201,212,227,.38);text-underline-offset:4px;}
+.footer-privacy-link:hover{color:#fff;text-decoration-color:var(--floodlight);}
 @media(max-width:640px){
   .brand-topbar{padding:16px 20px;}
   .article-shell{width:min(100% - 28px,980px);padding:30px 0 56px;}
@@ -101,6 +103,25 @@ img{max-width:100%;}
 }
 @media(prefers-reduced-motion:reduce){*{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto;}}
+
+/* Privacy policy: the same night-stadium shell with a deliberately calm reading surface. */
+.privacy-page{min-height:100vh;background:radial-gradient(ellipse 78% 32% at 50% -8%,rgba(42,94,255,.2),transparent 67%),var(--ink);}
+.privacy-shell{width:min(100% - 32px,920px);margin:0 auto;padding:54px 0 80px;}
+.privacy-back{display:inline-flex;margin-bottom:28px;color:var(--steel-dim);font:500 11px var(--mono);letter-spacing:.05em;}
+.privacy-paper{overflow:hidden;border:1px solid rgba(151,177,232,.22);border-radius:18px;background:linear-gradient(145deg,rgba(22,35,74,.96),rgba(6,10,23,.98));box-shadow:0 20px 55px rgba(0,0,0,.25);}
+.privacy-header{padding:clamp(34px,7vw,64px) clamp(24px,7vw,70px) 32px;border-bottom:1px solid var(--line);}
+.privacy-kicker{margin:0 0 18px;color:#9db8ff;font:700 10px var(--mono);letter-spacing:.14em;}
+.privacy-header h1{margin:0;color:#fff;font:900 clamp(42px,7vw,74px)/.95 var(--display);letter-spacing:-.03em;}
+.privacy-header>p:not(.privacy-kicker):not(.privacy-updated){max-width:630px;margin:22px 0 0;color:var(--steel);font-size:15px;line-height:1.8;}
+.privacy-updated{margin:18px 0 0;color:var(--steel-dim);font:500 10px var(--mono);letter-spacing:.04em;}
+.privacy-content{padding:clamp(30px,6vw,60px) clamp(24px,7vw,70px) clamp(38px,7vw,70px);}
+.privacy-content section+section{margin-top:36px;padding-top:34px;border-top:1px solid var(--line);}
+.privacy-content h2{margin:0 0 13px;color:#fff;font:800 clamp(26px,4vw,34px)/1 var(--display);letter-spacing:.01em;}
+.privacy-content p{margin:0;color:var(--steel);font-size:15px;line-height:1.9;}
+.privacy-content p+p{margin-top:16px;}
+.privacy-content a{color:#a8c6ff;text-decoration:underline;text-decoration-color:rgba(168,198,255,.48);text-underline-offset:3px;}
+.privacy-content a:hover{color:#fff;text-decoration-color:var(--floodlight);}
+@media(max-width:640px){.privacy-shell{width:min(100% - 28px,920px);padding:30px 0 56px;}.privacy-header{padding:36px 22px 28px;}.privacy-header h1{font-size:48px;}.privacy-content{padding:34px 22px 42px;}.privacy-content p{font-size:14px;line-height:1.85;}.privacy-content section+section{margin-top:30px;padding-top:28px;}}
 
 /* Match detail: a deliberately utilitarian match room inside the AM4 night shell. */
 .match-page{min-height:100vh;background:radial-gradient(ellipse 72% 34% at 50% -7%,rgba(42,94,255,.28),transparent 66%),var(--ink);}
@@ -194,7 +215,6 @@ img{max-width:100%;}
 .twenty-season-card.is-available{transition:transform .24s ease,border-color .24s ease,background .24s ease,box-shadow .24s ease;}
 .twenty-season-card.is-available:hover{border-color:rgba(133,171,255,.68);background:linear-gradient(122deg,rgba(21,44,96,.97),rgba(7,16,38,.98) 68%,rgba(16,35,79,.84));box-shadow:inset 0 1px rgba(255,255,255,.08),0 22px 42px -27px rgba(31,80,206,.62);transform:translateY(-3px);}
 .twenty-season-card.is-available:focus-visible{outline:3px solid #8dafee;outline-offset:3px;}
-.twenty-season-card.is-coming-soon{border-color:rgba(139,163,214,.13);border-left-color:rgba(139,163,214,.33);background:linear-gradient(122deg,rgba(12,22,45,.62),rgba(6,11,24,.72));color:#9daac1;}
 .twenty-season-card-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:23px;}
 .twenty-season-kicker,.twenty-season-category{color:var(--twenty-card-accent);font:700 9px/1.25 var(--mono);letter-spacing:.13em;text-transform:uppercase;}
 .twenty-season-year{color:#b8c6e2;font:600 10px/1.2 var(--mono);letter-spacing:.08em;white-space:nowrap;}
@@ -204,8 +224,6 @@ img{max-width:100%;}
 .twenty-season-date{margin-right:auto;color:#7186ac;font:600 9px/1.2 var(--mono);letter-spacing:.06em;}
 .twenty-season-read{white-space:nowrap;}
 .twenty-seasons-arrow{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;}
-.twenty-season-pending{margin:8px 0 10px;color:#d2dbed;font:900 clamp(30px,3vw,40px)/1 var(--display);letter-spacing:.04em;text-transform:uppercase;}
-.twenty-season-pending-copy{max-width:22ch;margin:0;color:#8594ad;font:500 12px/1.65 "Noto Sans JP",var(--body);}
 @media(max-width:680px){.twenty-seasons-nav{top:59px;padding-inline:20px;}.twenty-seasons-shell{width:min(100% - 28px,1180px);padding-top:30px;}.twenty-seasons-hero{padding:30px 22px 27px;border-radius:17px;}.twenty-seasons-hero::after{right:22px;left:22px;}.twenty-seasons-hero h1{margin:17px 0 17px;font-size:clamp(54px,17vw,84px);}.twenty-seasons-lead{font-size:19px;}.twenty-seasons-question{font-size:13px;}.twenty-seasons-range{margin-top:25px;}.twenty-seasons-intro{margin-bottom:45px;}.twenty-seasons-intro p{flex-basis:50%;padding:12px 8px;font-size:8px;}.twenty-seasons-intro p:nth-child(2){border-right:0;}.twenty-seasons-intro p:nth-child(-n+2){border-bottom:1px solid rgba(139,163,214,.16);}.twenty-seasons-collection-head{align-items:flex-start;flex-direction:column;gap:10px;margin-bottom:20px;padding-bottom:17px;}.twenty-seasons-collection-head h2{font-size:48px;}#twenty-seasons-status{max-width:none;text-align:left;}.twenty-seasons-grid{grid-template-columns:1fr;gap:12px;}.twenty-season-period{margin-top:21px;}.twenty-season-card{min-height:248px;padding:20px 19px 18px;border-radius:14px;}.twenty-season-card::after{right:19px;left:19px;}.twenty-season-card-head{margin-bottom:20px;}.twenty-season-title{font-size:38px;}.twenty-season-excerpt{font-size:12px;}.twenty-season-card-footer{padding-top:17px;}}
 @media(prefers-reduced-motion:reduce){.twenty-season-card.is-available{transition:none;}.twenty-season-card.is-available:hover{transform:none;}}
 @media(max-width:390px){.match-event{display:block;}.match-event-card{padding:10px 11px;}.match-event-card .match-event-photo{display:none;}.match-event-player-name{font-size:12px;}.match-event-sub-row{grid-template-columns:10px 22px minmax(0,1fr);}.match-event-card--away .match-event-sub-row{grid-template-columns:minmax(0,1fr) 22px 10px;}.match-summary-lanes{gap:9px;}.match-summary-event-main{gap:4px;}.match-summary-event-main strong{font-size:12px;}.match-summary-event-main time{flex-basis:27px;font-size:8px;}.match-summary-event-copy small{margin-left:31px;font-size:8px;}.match-summary-lane--away .match-summary-event-copy small{margin-right:31px;}}

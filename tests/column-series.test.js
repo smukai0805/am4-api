@@ -49,3 +49,15 @@ test('duplicate stories for a season resolve deterministically without inventing
   assert.equal(series.storiesBySeason([earlier, selected]).get('2008-09'), selected);
   assert.equal(series.storiesBySeason([]).size, 0);
 });
+
+test('20 Seasons publishes only existing editorial stories instead of empty placeholders', () => {
+  const published = {
+    id: 'published-2010',
+    story: { series: '20 Seasons, 20 Stories.', season: '2010-11' },
+  };
+  const unpublished = {
+    story: { series: '20 Seasons, 20 Stories.', season: '2011-12' },
+  };
+
+  assert.deepEqual(series.publishedStories([unpublished, published]), [['2010-11', published]]);
+});

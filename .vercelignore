@@ -1,0 +1,7 @@
+# Source-controlled reference material and retired prototypes are not public AM4 pages.
+docs/
+tests/
+football-hub.html
+el-blanco.html
+el-blanco-players.html
+sample-football-data.js

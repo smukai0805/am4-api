@@ -49,53 +49,45 @@
   }
 
   function seasonCard(season, article) {
-    const available = Boolean(article?.id);
-    const card = node(available ? 'a' : 'article', `twenty-season-card ${available ? 'is-available' : 'is-coming-soon'}`);
-    if (available) {
-      card.href = `/article.html?id=${encodeURIComponent(article.id)}`;
-      card.setAttribute('aria-label', `${article.title || season}を読む`);
-    } else {
-      card.setAttribute('aria-label', `${season}の物語は準備中です`);
-    }
+    const card = node('a', 'twenty-season-card is-available');
+    card.href = `/article.html?id=${encodeURIComponent(article.id)}`;
+    card.setAttribute('aria-label', `${article.title || season}を読む`);
 
     const head = node('div', 'twenty-season-card-head');
     head.append(node('span', 'twenty-season-kicker', 'SEASON'), node('time', 'twenty-season-year', seasonLabel(season)));
     card.append(head);
 
-    if (available) {
-      card.append(node('span', 'twenty-season-category', categoryLabel(article)));
-      card.append(node('h2', 'twenty-season-title', article.title || season));
-      const copy = excerpt(article);
-      if (copy) card.append(node('p', 'twenty-season-excerpt', copy));
-      const footer = node('span', 'twenty-season-card-footer');
-      const publishedAt = dateLabel(article.publishedAt);
-      if (publishedAt) footer.append(node('time', 'twenty-season-date', publishedAt));
-      footer.append(node('span', 'twenty-season-read', 'READ STORY'), arrow());
-      card.append(footer);
-    } else {
-      card.append(node('p', 'twenty-season-pending', 'Coming Soon'));
-      card.append(node('p', 'twenty-season-pending-copy', 'このシーズンの物語を準備しています。'));
-    }
+    card.append(node('span', 'twenty-season-category', categoryLabel(article)));
+    card.append(node('h2', 'twenty-season-title', article.title || season));
+    const copy = excerpt(article);
+    if (copy) card.append(node('p', 'twenty-season-excerpt', copy));
+    const footer = node('span', 'twenty-season-card-footer');
+    const publishedAt = dateLabel(article.publishedAt);
+    if (publishedAt) footer.append(node('time', 'twenty-season-date', publishedAt));
+    footer.append(node('span', 'twenty-season-read', 'READ STORY'), arrow());
+    card.append(footer);
     return card;
   }
 
   function render(articles) {
-    const bySeason = series.storiesBySeason(articles);
+    const publishedStories = series.publishedStories(articles);
+    if (!publishedStories.length) {
+      status.textContent = 'PUBLIC ARCHIVE';
+      renderArchiveState('is-empty', '現在公開中の記事はありません。');
+      return;
+    }
     const fragment = document.createDocumentFragment();
-    series.seasons().forEach((season) => {
+    publishedStories.forEach(([season, article]) => {
       const period = PERIODS.get(season);
       if (period) {
         const divider = node('div', 'twenty-season-period');
         divider.append(node('span', '', period), node('span', '', 'SEASONS'));
         fragment.append(divider);
       }
-      fragment.append(seasonCard(season, bySeason.get(season)));
+      fragment.append(seasonCard(season, article));
     });
     root.replaceChildren(fragment);
-    const published = bySeason.size;
-    status.textContent = published
-      ? `${published} / 20 STORIES AVAILABLE`
-      : 'STORIES ARE BEING PREPARED';
+    status.textContent = `${publishedStories.length} STORIES PUBLISHED`;
   }
 
   function renderArchiveState(kind, message) {
@@ -120,8 +112,8 @@
     return all;
   }
 
-  renderArchiveState('is-loading', 'STORIES ARE LOADING');
-  status.textContent = 'LOADING ARCHIVE';
+  renderArchiveState('is-loading', '公開済みの記事を読み込んでいます。');
+  status.textContent = 'PUBLIC ARCHIVE';
   loadStories()
     .then(render)
     .catch((error) => {
