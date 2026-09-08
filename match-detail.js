@@ -56,6 +56,7 @@
   let liveRefreshInFlight = false;
   let editorialRequest = 0;
   let standingsRequest = 0;
+  let lineupMemberTeamId = null;
 
   function node(tag, className, content) {
     const el = document.createElement(tag);
@@ -463,30 +464,67 @@
     return el;
   }
 
+  function memberPhoto(person, kind = "players") {
+    const photo = node("span", "lineup-member-photo", text(person?.name, "?").slice(0, 1));
+    const source = person?.photo || (person?.id ? `https://media.api-sports.io/football/${kind}/${person.id}.png` : null);
+    if (!source) return photo;
+    const image = document.createElement("img");
+    image.src = source;
+    image.alt = "";
+    image.loading = "lazy";
+    image.width = 42;
+    image.height = 42;
+    image.addEventListener("error", () => image.remove(), { once: true });
+    photo.append(image);
+    return photo;
+  }
   function playerRow(player) {
     const item = node("li", "lineup-player");
     const number = node("span", "lineup-number", player.number == null ? "—" : String(player.number));
     const name = playerButton(player, "lineup-name");
     const position = node("small", "", text(player.position, "—"));
-    item.append(number, name, position);
+    item.append(memberPhoto(player), number, name, position);
     AM4Formation.contributions(player.id,currentDetail?.events || []).changes.forEach(c => item.append(node('span','lineup-change',`${c.direction} ${c.minute || ''} · ${displayPlayerName(c.other)}`)));
     return item;
   }
   function lineupCard(lineup) {
     const card = node("article", "lineup-card");
-    const heading = node("div", "lineup-card-head");
-    heading.append(node("h3", "", text(lineup.team?.name, "チーム情報なし")), node("span", "", lineup.formation ? `${lineup.formation}` : "フォーメーション未発表"));
-    const coach = node("p", "lineup-coach", `${locale === "ja" ? "監督" : "Coach"} ${text(lineup.coach?.name, "—")}`);
-    card.append(heading, coach);
-    const xiTitle = node("h4", "", locale === "ja" ? "スターティングXI" : "Starting XI");
-    card.append(xiTitle);
-    if (lineup.startXI?.length) { const list = node("ol", "lineup-list"); lineup.startXI.forEach((player) => list.append(playerRow(player))); card.append(list); }
-    else card.append(node("p", "match-empty", "先発メンバーは未発表です。"));
     const subTitle = node("h4", "", locale === "ja" ? "控え選手" : "Substitutes");
     card.append(subTitle);
     if (lineup.substitutes?.length) { const list = node("ol", "lineup-list lineup-list--subs"); lineup.substitutes.forEach((player) => list.append(playerRow(player))); card.append(list); }
     else card.append(node("p", "match-empty", "控え選手の情報はありません。"));
+    const coachTitle = node("h4", "", locale === "ja" ? "監督" : "Coach");
+    const coach = node("div", "lineup-coach");
+    coach.append(memberPhoto(lineup.coach, "coachs"), node("strong", "", text(lineup.coach?.name, "—")));
+    card.append(coachTitle, coach);
     return card;
+  }
+  function lineupMemberDetails(lineups) {
+    const details=node('details','lineup-details');
+    details.append(node('summary','',locale==='ja'?'控え選手と監督':'Substitutes and coach'));
+    const switcher=node('div','lineup-team-switch');switcher.setAttribute('role','tablist');
+    const panel=node('div','lineup-member-panel');panel.setAttribute('role','tabpanel');panel.id=`lineup-member-panel-${fixtureId}`;
+    if (!lineups.some(lineup => String(lineup.team?.id) === String(lineupMemberTeamId))) lineupMemberTeamId=lineups[0]?.team?.id ?? null;
+    const buttons=lineups.map((lineup,index)=>{
+      const button=node('button','lineup-team-tab');button.type='button';button.setAttribute('role','tab');
+      button.id=`lineup-member-tab-${fixtureId}-${index}`;button.setAttribute('aria-controls',panel.id);
+      button.setAttribute('aria-label',`${index ? t('away') : t('home')} · ${text(lineup.team?.name)}`);
+      button.append(crest(lineup.team));
+      button.addEventListener('click',()=>{lineupMemberTeamId=lineup.team?.id;renderMembers();});
+      button.addEventListener('keydown',event=>{
+        if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;
+        event.preventDefault();const next=event.key==='Home'?0:event.key==='End'?buttons.length-1:(index+(event.key==='ArrowRight'?1:-1)+buttons.length)%buttons.length;
+        lineupMemberTeamId=lineups[next].team?.id;renderMembers();buttons[next].focus();
+      });
+      switcher.append(button);return button;
+    });
+    function renderMembers(){
+      const selectedIndex=Math.max(0,lineups.findIndex(lineup=>String(lineup.team?.id)===String(lineupMemberTeamId)));
+      buttons.forEach((button,index)=>{const selected=index===selectedIndex;button.setAttribute('aria-selected',String(selected));button.tabIndex=selected?0:-1;});
+      panel.setAttribute('aria-labelledby',buttons[selectedIndex].id);
+      panel.replaceChildren(lineupCard(lineups[selectedIndex]));
+    }
+    details.append(switcher,panel);renderMembers();return details;
   }
   function renderLineups(detail) {
     const el = section('lineups',t('lineups'),locale==='ja'?'配置から試合を読む。選手をタップして詳細へ。':'Read the shape. Tap a player for details.');
@@ -515,14 +553,17 @@
       layout.rows.forEach(row=>{const line=node('div','pitch-row');line.style.setProperty('--players',row.players.length);line.dataset.count=row.players.length;row.players.forEach(p=>line.append(pitchPlayer(p,Boolean(lineup.predicted))));field.append(line);});
       if (!layout.rows.length) field.append(node('p','match-empty',locale==='ja'?'配置情報はまだありません。':'Positions are not available yet.'));
       half.append(field);
-      if (layout.unplaced.length) half.append(node('p','match-empty',locale==='ja'?`${layout.unplaced.length}人は配置情報がないため下の一覧で確認できます。`:`${layout.unplaced.length} players without positions are listed below.`));
+      if (layout.unplaced.length) {
+        const missing=node('div','lineup-unplaced');
+        missing.append(node('p','match-empty',locale==='ja'?'配置情報がない先発選手':'Starting players without position data'));
+        const list=node('ol','lineup-list');layout.unplaced.forEach(player=>list.append(playerRow(player)));missing.append(list);half.append(missing);
+      }
       if (lineup.predicted) {half.append(node('p','pitch-disclaimer',locale==='ja'?'配置も直近の布陣を基にした推定です。':'Positions are estimated from recent formations.')); half.append(predictionEvidence(lineup));}
       pitch.append(half);
     });
     el.append(pitch);
     if(insightState.data?.updatedAt) el.append(node('p','lineup-updated',`${locale==='ja'?'最終更新':'Updated'} ${new Date(insightState.data.updatedAt).toLocaleString(locale==='ja'?'ja-JP':'en-GB')}`));
-    const lists=node('details','lineup-details');lists.append(node('summary','',locale==='ja'?'先発・控え・監督を確認':'Starting XI, substitutes and coaches'));
-    const grid=node('div','lineup-grid');lineups.forEach(l=>grid.append(lineupCard(l)));lists.append(grid);el.append(lists);
+    el.append(lineupMemberDetails(lineups));
     return el;
   }
 

@@ -508,7 +508,7 @@ function normalizeDetailLineups(lineups, fixture) {
   const normalized = (Array.isArray(lineups) ? lineups : []).map((lineup) => applyVerifiedLineupOverride(fixture.id, {
     team: normalizeParticipant(lineup?.team),
     formation: lineup?.formation || null,
-    coach: { id: nullableNumber(lineup?.coach?.id), name: lineup?.coach?.name || null },
+    coach: { id: nullableNumber(lineup?.coach?.id), name: lineup?.coach?.name || null, photo: lineup?.coach?.photo || null },
     startXI: (Array.isArray(lineup?.startXI) ? lineup.startXI : []).map(normalizeLineupPlayer),
     substitutes: (Array.isArray(lineup?.substitutes) ? lineup.substitutes : []).map(normalizeLineupPlayer),
   }));
