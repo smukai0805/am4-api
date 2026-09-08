@@ -68,7 +68,17 @@
       const items = markers.map((marker, index) => flat.slice(
         marker.index + marker[0].length, markers[index + 1]?.index ?? flat.length,
       ));
-      if (items.every((item) => item.trim() && !/[。！？]|[.!?](?:\s|$)/u.test(item))) return true;
+      const isHeadingText = (value) => {
+        const text = value.trim().replace(/\.{3,}$/, "");
+        return Boolean(text) && !/[。！？]|[.!?](?:\s|$)/u.test(text);
+      };
+      const prefix = flat.slice(0, markers[0].index).trim();
+      // The final item may be truncated with "...", or run into the opening
+      // prose. Two complete heading entries still identify the agenda. Never
+      // discard an ordinary introductory sentence followed by numbered points.
+      const completeItems = items.slice(0, -1);
+      if ((!prefix || isHeadingText(prefix)) && (items.every(isHeadingText) ||
+        (completeItems.length >= 2 && completeItems.every(isHeadingText)))) return true;
     }
     // A sequence of two or more numbered entries without explanatory prose is
     // also navigation, even when a Notion source omitted the heading.

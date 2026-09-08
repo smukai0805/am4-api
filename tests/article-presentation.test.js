@@ -33,6 +33,14 @@ test("flattened consecutive agenda items are not displayed as a card introductio
   assert.equal(presentation.articleExcerpt("2025. 進化するチームと、その理由。"), "進化するチームと、その理由。");
 });
 
+test("truncated live series excerpts and agenda-to-prose tails stay off cards", () => {
+  assert.equal(presentation.articleExcerpt("前年14位のチームに、なぜ優勝の芽があったのか 7. 保持率42%台でも勝てた理由 8. ヴァーディ、マフレズ、カンテと支える選手たち 9. タイトル争いを本物にした3試合 10. 優勝が決まった夜 11. 同じ年の欧州 12. レスター..."), "");
+  assert.equal(presentation.articleExcerpt("無冠の翌夏 7. スアレス加入とMSN 8. 縦への速さ 9. 春の欧州 10. 完成した三冠 11. 2014-15が残したもの 2014年夏、バルセロナは再出発した。"), "");
+  assert.equal(presentation.articleExcerpt("目次 1. 序章 2. 戦術…"), "");
+  const prose = "守備が安定した。 1. 回収 2. 前進 3. 決定力";
+  assert.equal(presentation.articleExcerpt(prose), prose);
+});
+
 test("only the observed obsolete MOTM instruction is omitted, not player analysis or uncertainty", () => {
   const note = "MOTM / POTM：公式または信頼できる統一選出を確認できず。推測で設定しない。";
   assert.equal(presentation.readerEditorialText(`${note} Martín Satriano：21分に先制点。`), "Martín Satriano：21分に先制点。");
