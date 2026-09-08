@@ -13,7 +13,7 @@ async function setup({ids=[],catalog={},fetcher,hash=''}={}) {
   const create = document.createElement;
   const scrolls = [];
   document.createElement = tag => {const el=create(tag); el.focus=()=>{document.activeElement=el;};el.scrollIntoView=()=>scrolls.push(el.id);return el;};
-  document.root.innerHTML = '<h2 id="reading-saved-title"></h2><span id="reading-count"></span><p id="reading-status"></p><div id="reading-saved"></div><button id="reading-retry"></button><p id="reading-action-status"></p><button id="reading-undo"></button><div id="reading-suggestions"></div><p id="reading-suggestions-status"></p><button id="reading-suggestions-retry"></button>';
+  document.root.innerHTML = '<h2 id="reading-saved-title"></h2><span id="reading-count"></span><p id="reading-status"></p><div id="reading-saved"></div><button id="reading-retry"></button><p id="reading-action-status"></p><button id="reading-undo"></button><button id="reading-dismiss"></button><div id="reading-suggestions"></div><p id="reading-suggestions-status"></p><button id="reading-suggestions-retry"></button>';
   const data = new Map();let failWrites=false;
   const storage = {getItem:key=>data.get(key)||null,setItem:(key,value)=>{if(failWrites)throw new Error('storage blocked');data.set(key,value);}};
   favorites.write(storage,{articles:ids,leagues:['39'],clubs:['42']});
@@ -127,4 +127,14 @@ test('late article metadata preserves keyboard focus on another article link',as
   document.getElementById('open-saved-a').focus();
   resolve(response({article:story('b')}));await drain();
   assert.equal(document.activeElement,document.getElementById('open-saved-a'));
+});
+
+test('read-later confirmation can be dismissed without changing the restored list',async()=>{
+  const {document,storage}=await setup({ids:['a']});
+  document.getElementById('remove-saved-a').listeners.click();
+  document.getElementById('reading-undo').listeners.click();
+  document.getElementById('reading-dismiss').listeners.click();
+  assert.equal(document.getElementById('reading-action-status').textContent,'');
+  assert.deepEqual(favorites.read(storage).articles,['a']);
+  assert.equal(document.activeElement.id,'reading-saved-title');
 });

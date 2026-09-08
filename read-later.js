@@ -8,6 +8,7 @@
   const retry = document.getElementById('reading-retry');
   const feedback = document.getElementById('reading-action-status');
   const undo = document.getElementById('reading-undo');
+  const dismiss = document.getElementById('reading-dismiss');
   const suggestions = document.getElementById('reading-suggestions');
   const suggestionsStatus = document.getElementById('reading-suggestions-status');
   const suggestionsRetry = document.getElementById('reading-suggestions-retry');
@@ -150,6 +151,12 @@
     document.getElementById(`remove-${rowId('saved',lastRemoved.id)}`)?.focus({preventScroll:true});
     lastRemoved = null;
     document.dispatchEvent(new CustomEvent('am4:favorites-changed'));
+  });
+  dismiss.addEventListener('click',() => {
+    feedback.textContent = '';
+    undo.hidden = true;
+    lastRemoved = null;
+    document.getElementById('reading-saved-title').focus({preventScroll:true});
   });
   async function loadSaved() {
     const ticket = ++generation;
