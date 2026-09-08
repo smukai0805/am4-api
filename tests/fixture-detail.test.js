@@ -220,7 +220,7 @@ test('fixture detail retains provider display labels for events and lineups', as
       assist: { id: 2, name: 'Long Assist Name', knownAs: 'A. Assist' },
     }] };
     if (path === '/fixtures/lineups') return { response: [{
-      team: { id: 10, name: 'Home' }, startXI: [{ player: { id: 1, name: 'Natan Bernardo de Souza', shortName: 'Natan', number: 4, pos: 'D' } }], substitutes: [],
+      team: { id: 10, name: 'Home' }, coach: { id: 99, name: 'A. Coach', photo: 'https://example.test/coach.png' }, startXI: [{ player: { id: 1, name: 'Natan Bernardo de Souza', shortName: 'Natan', number: 4, pos: 'D' } }], substitutes: [],
     }] };
     return { response: [] };
   };
@@ -229,4 +229,5 @@ test('fixture detail retains provider display labels for events and lineups', as
   assert.equal(detail.events[0].player.displayName, 'Vinícius Jr.');
   assert.equal(detail.events[0].assist.displayName, 'A. Assist');
   assert.equal(detail.lineups[0].startXI[0].displayName, 'Natan');
+  assert.deepEqual(detail.lineups[0].coach, { id: 99, name: 'A. Coach', photo: 'https://example.test/coach.png' });
 });
