@@ -515,18 +515,6 @@
       layout.rows.forEach(row=>{const line=node('div','pitch-row');line.style.setProperty('--players',row.players.length);line.dataset.count=row.players.length;row.players.forEach(p=>line.append(pitchPlayer(p,Boolean(lineup.predicted))));field.append(line);});
       if (!layout.rows.length) field.append(node('p','match-empty',locale==='ja'?'配置情報はまだありません。':'Positions are not available yet.'));
       half.append(field);
-      if (lineup.verification?.status === 'multi-source') {
-        const verification=node('details','lineup-evidence lineup-verification');
-        verification.append(node('summary','',locale==='ja'?'配置：複数ソース確認済み':'Positions: multi-source verified'));
-        verification.append(node('p','',locale==='ja'?'フォーメーション表記はAPIを維持し、複数媒体で一致した選手の位置だけを補正しています。':'The API formation label is retained; only player positions confirmed by multiple sources are corrected.'));
-        const sources=node('p','');
-        (lineup.verification.sources || []).forEach((source,sourceIndex)=>{
-          if(sourceIndex) sources.append(document.createTextNode(' · '));
-          if(source.url){const link=node('a','',source.name);link.href=source.url;link.target='_blank';link.rel='noopener noreferrer';sources.append(link);}
-          else sources.append(document.createTextNode(source.name));
-        });
-        verification.append(sources);half.append(verification);
-      }
       if (layout.unplaced.length) half.append(node('p','match-empty',locale==='ja'?`${layout.unplaced.length}人は配置情報がないため下の一覧で確認できます。`:`${layout.unplaced.length} players without positions are listed below.`));
       if (lineup.predicted) {half.append(node('p','pitch-disclaimer',locale==='ja'?'配置も直近の布陣を基にした推定です。':'Positions are estimated from recent formations.')); half.append(predictionEvidence(lineup));}
       pitch.append(half);
