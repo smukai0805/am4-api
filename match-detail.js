@@ -1017,11 +1017,13 @@
     return "";
   }
 
-  function editorialBlock(label, value) {
+  function editorialBlock(label, value, field) {
     if (!value) return null;
     const block = node("article", "match-editorial-block");
     block.append(node("h3", "", label));
-    const contentBlocks = window.AM4EditorialList?.editorialBlocksWithLocalNumbering(value);
+    const contentBlocks = field === "turningPoints"
+      ? window.AM4EditorialList?.turningPointBlocks?.(value)
+      : window.AM4EditorialList?.editorialBlocksWithLocalNumbering(value);
     if (contentBlocks) {
       contentBlocks.forEach((content) => {
         if (content.type === "ordered-list") {
@@ -1036,6 +1038,36 @@
       block.append(node("p", "", value));
     }
     return block;
+  }
+
+  function highlightMotm(block, value) {
+    const detail = currentDetail || {};
+    const players = [
+      ...(detail.events || []).flatMap(event => [event.player, event.assist]),
+      ...(detail.lineups || []).flatMap(lineup => [...(lineup.startXI || []), ...(lineup.substitutes || [])]),
+    ];
+    const selection = window.AM4MatchReportPresentation?.selectedMotm(value, players);
+    if (!selection) return;
+    const header = node("div", "match-motm-header");
+    const portrait = node("span", "match-motm-portrait", selection.name.split(/\s+/).map(part => part[0]).slice(0, 2).join(""));
+    portrait.setAttribute("aria-hidden", "true");
+    if (selection.player) {
+      const image = node("img", "");
+      image.src = `https://media.api-sports.io/football/players/${selection.player.id}.png`;
+      image.alt = "";
+      image.width = 88;
+      image.height = 88;
+      image.loading = "lazy";
+      image.decoding = "async";
+      image.addEventListener("error", () => image.remove(), { once: true });
+      portrait.append(image);
+    }
+    const copy = node("div", "match-motm-copy");
+    copy.append(node("span", "match-motm-label", "MAN OF THE MATCH"), node("h4", "match-motm-name", selection.name));
+    header.append(portrait, copy);
+    block.querySelector("h3").after(header);
+    block.classList.add("match-editorial-block--motm");
+    block.querySelector("h3").textContent = "MOTM";
   }
 
   function predictionBlocks(prediction) {
@@ -1063,7 +1095,15 @@
       [t("resultMeaning"), "resultMeaning", ["結果の意味", "what the result"]],
       [t("nextMatchFocus"), "nextMatchFocus", ["次戦への課題", "next match"]],
     ];
-    return fields.map(([label, field, aliases]) => editorialBlock(label, editorialValue(report, "report", field, aliases))).filter(Boolean);
+    return fields.map(([label, field, aliases]) => {
+      const value = editorialValue(report, "report", field, aliases);
+      const block = editorialBlock(label, value, field);
+      if (block && field === "keyFigures") {
+        // A missing optional helper or portrait enhancement must not hide prose.
+        try { highlightMotm(block, value); } catch (error) { console.warn("MOTM presentation unavailable.", error); }
+      }
+      return block;
+    }).filter(Boolean);
   }
 
   function predictionPanel(prediction, { disclosure = false } = {}) {
