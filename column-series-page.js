@@ -50,6 +50,7 @@
 
   function seasonCard(season, article) {
     const card = node('a', 'twenty-season-card is-available');
+    card.id = `season-${season}`;
     card.href = `/article.html?id=${encodeURIComponent(article.id)}`;
     card.setAttribute('aria-label', `${article.title || season}を読む`);
 
@@ -73,6 +74,11 @@
     const publishedStories = series.publishedStories(articles);
     if (!publishedStories.length) {
       status.textContent = 'PUBLIC ARCHIVE';
+      const jump = document.getElementById('twenty-seasons-jump');
+      if (jump) {
+        jump.replaceChildren();
+        jump.hidden = true;
+      }
       renderArchiveState('is-empty', '現在公開中の記事はありません。');
       return;
     }
@@ -87,6 +93,21 @@
       fragment.append(seasonCard(season, article));
     });
     root.replaceChildren(fragment);
+    const jump = document.getElementById('twenty-seasons-jump');
+    if (jump) {
+      const links = publishedStories.map(([season]) => {
+        const link = node('a', '', season);
+        link.href = `#season-${season}`;
+        link.setAttribute('aria-label', `${season}の物語へ移動`);
+        return link;
+      });
+      jump.replaceChildren(...links);
+      jump.hidden = false;
+    }
+    // A return URL can point to a season whose card did not exist at load time.
+    if (/^#season-20\d{2}-\d{2}$/.test(location.hash)) {
+      document.getElementById(location.hash.slice(1))?.scrollIntoView({block:'start', behavior:'instant'});
+    }
     status.textContent = `${publishedStories.length} STORIES PUBLISHED`;
   }
 

@@ -96,6 +96,17 @@
       .filter(([, article]) => Boolean(article?.id));
   }
 
+  function storyNavigation(article, articles = []) {
+    if (!isTwentySeasonsStory(article)) return null;
+    const season = seasonForStory(article);
+    if (!season) return null;
+    const bySeason = storiesBySeason(articles);
+    const published = publishedStories(articles).map(([key]) => key);
+    const previousSeason = published.filter(key => key < season).at(-1);
+    const nextSeason = published.find(key => key > season);
+    return {season, previous:bySeason.get(previousSeason) || null, next:bySeason.get(nextSeason) || null};
+  }
+
   const api = {
     SERIES_NAME,
     FIRST_SEASON_START,
@@ -107,6 +118,7 @@
     seasonForStory,
     storiesBySeason,
     publishedStories,
+    storyNavigation,
   };
 
   root.AM4ColumnSeries = api;

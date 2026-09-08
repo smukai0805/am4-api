@@ -19,10 +19,12 @@
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;700;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+JP:wght@400;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/brand.css?v=20260907-motion-safety-v1">
-<link rel="stylesheet" href="/night-stage.css?v=20260906-night-v2">
+  <link rel="stylesheet" href="/brand.css?v=20260908-stacked-navigation-v1">
+<link rel="stylesheet" href="/night-stage.css?v=20260908-light-ribbons-v3">
+  <link rel="stylesheet" href="/reading.css?v=20260908-reading-navigation-v1">
+  <link rel="stylesheet" href="/primary-navigation.css?v=20260908-primary-navigation-v1">
 </head>
-<body class="twenty-seasons-page">
+<body class="twenty-seasons-page primary-navigation-page">
   <header class="brand-topbar">
     <a class="brand-wordmark" href="/" aria-label="AM4 Football ホームへ">
       <img src="/am4-logo.png" alt="AM4">
@@ -31,10 +33,11 @@
     <span class="brand-pill">AM4 COLUMN</span>
   </header>
 
-  <nav class="twenty-seasons-nav" aria-label="メインナビゲーション">
-    <a href="/#fixtures">試合日程</a>
-    <a href="/#lead-story" aria-current="page">AM4 COLUMN</a>
-    <a href="/#transfer">移籍情報</a>
+  <nav class="twenty-seasons-nav primary-tabbar" aria-label="メインナビゲーション">
+    <a href="/#fixtures">試合</a>
+    <a href="/column">COLUMN</a>
+    <a href="/column/20-seasons" aria-current="page">20 Seasons</a>
+    <a href="/read-later">あとで読む</a>
   </nav>
 
   <main class="twenty-seasons-shell">
@@ -62,14 +65,15 @@
         </div>
         <p id="twenty-seasons-status" aria-live="polite">PUBLIC ARCHIVE</p>
       </header>
+      <nav id="twenty-seasons-jump" class="twenty-seasons-jump" aria-label="シーズンへ移動" hidden></nav>
       <div class="twenty-seasons-grid" id="twenty-seasons-grid"></div>
     </section>
   </main>
 
   <footer class="brand-footer"><span>© AM4 Football</span><a class="footer-privacy-link" href="/privacy">プライバシーポリシー</a><span>Some Moments Matter More.</span></footer>
   <script src="/site-config.js"></script>
-  <script src="/article-presentation.js"></script>
-  <script src="/column-series.js?v=20260904-20-seasons"></script>
-  <script src="/column-series-page.js?v=20260907-motion-safety-v1"></script>
+  <script src="/article-presentation.js?v=20260908-safe-reading-v1"></script>
+  <script src="/column-series.js?v=20260908-safe-reading-v1"></script>
+  <script src="/column-series-page.js?v=20260908-safe-reading-v1"></script>
 </body>
 </html>

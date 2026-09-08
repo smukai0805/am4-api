@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>COLUMN一覧｜AM4 Football</title>
+  <meta name="description" content="AM4 COLUMNの全記事を一覧で。クラブ、選手、テーマで検索して、読みたいフットボールの物語を見つける。">
+  <meta name="theme-color" content="#060a17">
+  <link rel="canonical" href="https://am4football.com/column">
+  <script async src="/api/adsense.js"></script>
+  <link rel="icon" href="/icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;700;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+JP:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/brand.css?v=20260906-am4-improvements-v1">
+  <link rel="stylesheet" href="/night-stage.css?v=20260908-light-ribbons-v3">
+  <link rel="stylesheet" href="/column-index.css?v=20260908-reading-navigation-v1">
+  <link rel="stylesheet" href="/primary-navigation.css?v=20260908-primary-navigation-v1">
+</head>
+<body class="column-index-page primary-navigation-page">
+  <header class="brand-topbar">
+    <a class="brand-wordmark" href="/" aria-label="AM4 Football ホームへ"><img src="/am4-logo.png" alt="AM4"><small>Football</small></a>
+    <span class="brand-pill">AM4 COLUMN</span>
+  </header>
+  <nav class="column-index-nav primary-tabbar" aria-label="主要ナビゲーション">
+    <a href="/#fixtures">試合</a><a href="/column" aria-current="page">COLUMN</a><a href="/column/20-seasons">20 Seasons</a><a href="/read-later">あとで読む</a>
+  </nav>
+  <main class="column-index-shell">
+    <header class="column-index-head">
+      <div><p>THE MATCH IS ONLY THE BEGINNING.</p><h1>COLUMN <span>一覧</span></h1></div>
+      <a href="/column/20-seasons">20 Seasons 特集へ →</a>
+    </header>
+    <form class="column-index-search" id="column-index-search" role="search">
+      <label for="column-query">クラブ・選手・テーマから探す</label>
+      <div><input id="column-query" name="q" type="search" maxlength="120" placeholder="例：レスター、戦術、クラシコ" autocomplete="off"><button type="submit">検索</button><button id="column-search-clear" type="button" hidden>解除</button></div>
+    </form>
+    <section class="column-index-results" aria-labelledby="column-results-title">
+      <div class="column-index-results-head"><h2 id="column-results-title" tabindex="-1">すべての記事</h2><p id="column-index-status" role="status">記事を読み込んでいます。</p></div>
+      <nav class="column-pagination" aria-label="記事一覧のページ（上）" hidden></nav>
+      <div id="column-index-list" aria-busy="true"></div>
+      <button id="column-index-retry" type="button" hidden>もう一度取得する</button>
+      <nav class="column-pagination" aria-label="記事一覧のページ（下）" hidden></nav>
+    </section>
+    <noscript><p>記事一覧にはJavaScriptが必要です。<a href="/#lead-story">ホームのCOLUMNへ</a></p></noscript>
+  </main>
+  <footer class="brand-footer"><span>© AM4 Football</span><a class="footer-privacy-link" href="/privacy">プライバシーポリシー</a><span>Some Moments Matter More.</span></footer>
+  <script src="/site-config.js"></script>
+  <script src="/column-index.js?v=20260908-reading-navigation-v1"></script>
+</body>
+</html>

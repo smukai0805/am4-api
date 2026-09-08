@@ -2,10 +2,24 @@
 
   const paper = document.getElementById("article-paper");
   const id = new URLSearchParams(location.search).get("id");
+  const fixtureId = new URLSearchParams(location.search).get('fixtureId');
   const apiBase = AM4SiteConfig.resolveApiBase(location.hostname);
   const articleBack = document.querySelector(".article-back");
   const homeState = window.AM4NavigationState?.readHomeState(sessionStorage);
   if (articleBack && homeState?.returnUrl) articleBack.href = homeState.returnUrl;
+  // A list return URL is explicit and limited to this route, never an external redirect.
+  const columnReturn = new URLSearchParams(location.search).get('from');
+  const fromColumn = /^\/column(?:\?[^#]*)?(?:#story-[\w-]+)?$/.test(columnReturn || '') ? columnReturn : null;
+  const fromSaved = /^\/read-later(?:#(?:saved|suggested)-[\w-]+)?$/.test(columnReturn || '') ? columnReturn
+    : /^\/(?:\?[^#]*)?#for-you$/.test(columnReturn || '') ? '/read-later' : null;
+  if (articleBack && fromColumn) {
+    articleBack.href = fromColumn;
+    articleBack.textContent = '← COLUMN一覧へ戻る';
+  }
+  if (articleBack && fromSaved) {
+    articleBack.href = fromSaved;
+    articleBack.textContent = '← あとで読むへ戻る';
+  }
 
   function articleTypeLabel(type) {
     return {
@@ -204,6 +218,24 @@
       if (!response.ok) throw new Error(`articles unavailable (${response.status})`);
       const data = await response.json();
       const articles = Array.isArray(data.items) ? data.items : [];
+      if (window.AM4ColumnSeries?.isTwentySeasonsStory(currentArticle)) {
+        // Only series navigation needs the full archive. Failure of this extra
+        // read must not remove the article or its already available cards.
+        void (async () => {
+          try {
+            const all = [...articles];
+            const totalPages = Math.max(1, Number(data.totalPages) || 1);
+            for (let page = 2; page <= totalPages; page += 1) {
+              const response = await fetch(`${apiBase}/articles?type=am4_story&pageSize=100&page=${page}`, { headers: { Accept:"application/json" } });
+              if (!response.ok) throw new Error('Series unavailable');
+              const payload = await response.json();
+              if (!Array.isArray(payload.items)) throw new Error('Series unavailable');
+              all.push(...payload.items);
+            }
+            renderSeriesNavigation(currentArticle, all, container);
+          } catch (_error) { /* Keep the collection return link and article. */ }
+        })();
+      }
       const recommended = articles
         .filter((article) => article.id && article.id !== currentArticle.id)
         .sort((left, right) => compareRecommendedArticles(currentArticle, left, right))
@@ -228,6 +260,31 @@
     }
   }
 
+  function renderSeriesNavigation(article, articles, before) {
+    const navigation = window.AM4ColumnSeries?.storyNavigation(article, articles);
+    if (!navigation) return;
+    const nav = document.createElement("nav");
+    nav.className = "article-series-navigation";
+    nav.setAttribute("aria-label", "20 Seasonsの読み進め方");
+    const collection = document.createElement("a");
+    collection.className = "article-series-return";
+    collection.href = `/column/20-seasons#season-${navigation.season}`;
+    collection.textContent = "20 Seasons, 20 Stories. · シーズン一覧へ";
+    nav.append(collection);
+    [["前の公開ストーリー", navigation.previous], ["次の公開ストーリー", navigation.next]].forEach(([label, story]) => {
+      if (!story?.id) return;
+      const link = document.createElement("a");
+      link.href = `/article.html?id=${encodeURIComponent(story.id)}`;
+      const small = document.createElement("small");
+      small.textContent = `${label} · ${window.AM4ColumnSeries.seasonForStory(story)}`;
+      const title = document.createElement("span");
+      title.textContent = story.title || small.textContent;
+      link.append(small, title);
+      nav.append(link);
+    });
+    before.before(nav);
+  }
+
   function renderArticle(article) {
     document.title = `${article.title}｜AM4 Football`;
     const header = document.createElement("header");
@@ -247,8 +304,19 @@
     save.dataset.favoriteId = article.id;
     save.dataset.favoriteLabel = article.title || "AM4記事";
     save.dataset.favoriteDetail = articleTypeLabel(article.type);
-    save.dataset.favoriteHref = `/article.html?id=${encodeURIComponent(article.id)}`;
-    save.textContent = "記事を保存";
+    const savedHref = AM4ArticleLoadState.articleHref(article, fixtureId || article.match?.fixtureId);
+    save.dataset.favoriteHref = savedHref;
+    save.textContent = "あとで読む";
+    const topSave = document.createElement('button');
+    topSave.type = 'button';
+    topSave.className = 'favorite-btn read-later-button';
+    topSave.innerHTML = '<svg class="bookmark-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4Z"></path></svg><span></span>';
+    const topStatus = document.createElement('p');
+    topStatus.className = 'article-top-save-status';
+    topStatus.setAttribute('role','status');
+    const topActions = document.getElementById('article-top-actions');
+    if (topActions) topActions.replaceChildren(topSave, topStatus);
+    else header.querySelector('.article-kicker').append(topSave, topStatus);
     const saveStatus = document.createElement("p");
     saveStatus.className = "article-save-status";
     saveStatus.setAttribute("aria-live", "polite");
@@ -288,23 +356,46 @@
     function syncFavorite() {
       const selected = AM4Favorites.has(AM4Favorites.read(localStorage), "articles", article.id);
       save.setAttribute("aria-pressed", String(selected));
-      save.textContent = selected ? "記事を保存済み" : "記事を保存";
+      save.textContent = selected ? "あとで読むに追加済み" : "あとで読む";
+      topSave.setAttribute('aria-pressed', String(selected));
+      topSave.setAttribute('aria-label', selected ? 'あとで読むから解除' : 'あとで読むに追加');
+      topSave.querySelector('span').textContent = selected ? '追加済み' : 'あとで読む';
     }
-    save.addEventListener("click", () => {
+    const toggleFavorite = () => {
       const saved = AM4Favorites.toggleWithItem(localStorage, "articles", article.id, {
         label: article.title || "AM4記事",
         detail: articleTypeLabel(article.type),
-        href: `/article.html?id=${encodeURIComponent(article.id)}`,
+        href: savedHref,
       });
       if (!saved) {
         saveStatus.textContent = "この端末に保存できませんでした。ブラウザーの保存容量または設定を確認してください。";
+        topStatus.textContent = saveStatus.textContent;
         return;
       }
       saveStatus.textContent = "";
+      topStatus.textContent = '';
       syncFavorite();
       document.dispatchEvent(new CustomEvent("am4:favorites-changed"));
-    });
+    };
+    save.addEventListener('click', toggleFavorite);
+    topSave.addEventListener('click', toggleFavorite);
+    window.addEventListener?.('pageshow', syncFavorite);
+    window.addEventListener?.('storage', syncFavorite);
     syncFavorite();
+    // Enhancements are isolated from the successful article load. No optional
+    // TOC/link/series failure may turn readable content into an error screen.
+    try {
+      window.AM4ArticleReading?.enhanceArticle(body, {
+        cleanText: article.type === "match_report"
+          ? (value) => window.AM4ArticlePresentation?.readerEditorialText?.(value) ?? value
+          : (value) => value,
+      });
+      if (articleBack && !fromColumn && !fromSaved && window.AM4ColumnSeries?.isTwentySeasonsStory(article)) {
+        const season = window.AM4ColumnSeries.seasonForStory(article);
+        articleBack.href = `/column/20-seasons${season ? `#season-${season}` : ""}`;
+        articleBack.textContent = "← 20 Seasonsの一覧へ戻る";
+      }
+    } catch (_error) { /* The original article remains readable. */ }
     renderRecommendedArticles(article, related);
   }
 
@@ -322,15 +413,9 @@
   async function loadArticle() {
     if (!id) return renderMissing();
     try {
-      const response = await fetch(`${apiBase}/articles?id=${encodeURIComponent(id)}`, { headers: { Accept: "application/json" } });
-      if (response.ok) {
-        const data = await response.json();
-        const state = AM4ArticleLoadState.articleLoadState({ status: response.status, hasArticle: Boolean(data.article) });
-        if (state === "ready") return renderArticle(data.article);
-        return renderUnavailable();
-      }
-      const state = AM4ArticleLoadState.articleLoadState({ status: response.status, hasArticle: false });
-      return state === "missing" ? renderMissing() : renderUnavailable();
+      const result = await AM4ArticleLoadState.readArticle({fetcher:fetch,apiBase,id,fixtureId});
+      if (result.state === 'ready') return renderArticle(result.article);
+      return result.state === 'missing' ? renderMissing() : renderUnavailable();
     } catch (error) {
       AM4ArticleLoadState.articleLoadState({ error });
       return renderUnavailable();

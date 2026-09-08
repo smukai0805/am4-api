@@ -63,5 +63,15 @@
     return blocks?.length === 1 && blocks[0].type === "ordered-list" ? blocks[0].items : null;
   }
 
-  return { editorialBlocksWithLocalNumbering, numberedEditorialItems };
+  function turningPointBlocks(value) {
+    const blocks = editorialBlocksWithLocalNumbering(value);
+    // A legacy 2/3/4 run is already restarted at 1 below its introductory
+    // paragraph. Only remove the duplicated leading 1 in that exact layout.
+    if (blocks?.[0]?.type === "paragraph" && blocks[1]?.type === "ordered-list") {
+      blocks[0].text = blocks[0].text.replace(/^1[.)]\s+(?=\S)/u, "");
+    }
+    return blocks;
+  }
+
+  return { editorialBlocksWithLocalNumbering, numberedEditorialItems, turningPointBlocks };
 });

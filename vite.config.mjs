@@ -5,6 +5,8 @@ export default defineConfig({
  plugins:[{name:'am4-local-routes',configureServer(server){server.middlewares.use((req,res,next)=>{
   const url=new URL(req.url,'http://local');
   if(url.pathname==='/privacy')req.url='/privacy.html';
+  if(url.pathname==='/column')req.url='/column.html';
+  if(url.pathname==='/read-later')req.url='/read-later.html';
   if(url.pathname==='/column/20-seasons')req.url='/column-20-seasons.html';
   if(url.pathname==='/api/adsense.js'){
    res.statusCode=204;res.setHeader('Cache-Control','no-store');res.end();return;

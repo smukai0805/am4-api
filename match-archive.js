@@ -12,7 +12,7 @@
     internazionale: "inter", inter: "inter", intermilan: "inter",
     manchesterunited: "manchesterunited", manunited: "manchesterunited",
     parissaintgermain: "parissaintgermain", psg: "parissaintgermain",
-    atleticomadrid: "atleticomadrid",
+    atleticomadrid: "atleticomadrid", atleticodemadrid: "atleticomadrid",
     malaga: "malaga",
     bayernmunchen: "bayernmuenchen", bayernmunich: "bayernmuenchen",
     borussiamonchengladbach: "borussiamonchengladbach", borussiamgladbach: "borussiamonchengladbach",
@@ -28,6 +28,8 @@
     stuttgart: "vfbstuttgart", vfbstuttgart: "vfbstuttgart",
     cologne: "1fckoln", koln: "1fckoln", "1fckoln": "1fckoln",
     mainz: "mainz05", mainz05: "mainz05",
+    lask: "lasklinz", lasklinz: "lasklinz",
+    clubbrugge: "brugge", clubbruggekv: "brugge", brugge: "brugge", bruggekv: "brugge",
     paderborn: "scpaderborn", scpaderborn: "scpaderborn",
     freiburg: "scfreiburg", scfreiburg: "scfreiburg",
     deportivo: "deportivolacoruna", rcdeportivo: "deportivolacoruna", deportivolacoruna: "deportivolacoruna",
@@ -39,6 +41,9 @@
     "ブンデスリーガ": "bundesliga", bundesliga: "bundesliga",
     "リーグアン": "ligue1", ligue1: "ligue1",
     "チャンピオンズリーグ": "championsleague", championsleague: "championsleague",
+    uefachampionsleague: "championsleague", ucl: "championsleague", cl: "championsleague",
+    "ヨーロッパリーグ": "europaleague", europaleague: "europaleague",
+    uefaeuropaleague: "europaleague", uel: "europaleague", el: "europaleague",
   };
   const EDITORIAL_TYPES = new Set(["match_prediction", "match_report"]);
   // Legal/organisational suffixes are not club identities. Do not discard

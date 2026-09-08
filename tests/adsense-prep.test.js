@@ -66,7 +66,7 @@ test('AdSense loader emits a single third-party script only for a configured pub
 });
 
 test('every public AM4 entry point links to privacy and only uses the first-party AdSense loader', () => {
-  const pages = ['index.html', 'match.html', 'article.html', 'column-20-seasons.html', 'privacy.html'];
+  const pages = ['index.html', 'match.html', 'article.html', 'column.html', 'column-20-seasons.html', 'read-later.html', 'privacy.html'];
 
   for (const page of pages) {
     const document = fs.readFileSync(path.join(root, page), 'utf8');
@@ -115,7 +115,7 @@ test('20 Seasons only describes published content and legacy prototypes stay out
   }
 });
 
-test('privacy resolves consistently in Vercel and local Vite previews', () => {
+test('public static routes resolve consistently in Vercel and local Vite previews', () => {
   const vercel = JSON.parse(fs.readFileSync(path.join(root, 'vercel.json'), 'utf8'));
   const vite = fs.readFileSync(path.join(root, 'vite.config.mjs'), 'utf8');
 
@@ -124,4 +124,6 @@ test('privacy resolves consistently in Vercel and local Vite previews', () => {
     destination: '/privacy.html',
   });
   assert.match(vite, /url\.pathname==='\/privacy'/);
+  assert.match(vite, /url\.pathname==='\/column'/);
+  assert.match(vite, /url\.pathname==='\/read-later'/);
 });

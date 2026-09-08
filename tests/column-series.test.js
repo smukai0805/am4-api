@@ -61,3 +61,16 @@ test('20 Seasons publishes only existing editorial stories instead of empty plac
 
   assert.deepEqual(series.publishedStories([unpublished, published]), [['2010-11', published]]);
 });
+
+test('series navigation skips unpublished seasons and does not invent membership', () => {
+  const story = (id, season) => ({id, title:id, story:{series:series.SERIES_NAME,season}});
+  const first = story('first', '2006-07');
+  const middle = story('middle', '2015-16');
+  const last = story('last', '2025-26');
+  assert.deepEqual(series.storyNavigation(middle, [last,first,middle]), {
+    season:'2015-16', previous:first, next:last,
+  });
+  assert.equal(series.storyNavigation(first, [first,middle,last]).previous, null);
+  assert.equal(series.storyNavigation(last, [first,middle,last]).next, null);
+  assert.equal(series.storyNavigation({id:'other',title:'2015-16'}, [first,middle,last]), null);
+});

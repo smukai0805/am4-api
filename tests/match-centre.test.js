@@ -2,15 +2,101 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
   competitionCountryLabel,
+  competitionAccent,
   competitionDisplayRank,
+  isPrimaryCompetition,
+  partitionCompetitionGroups,
   contentAvailabilityBatches,
   contentBadgeLabels,
+  visibleContentTypes,
   contentAvailabilityForFixture,
   mergeRoundFixtureData,
   partitionFavoriteFixtures,
   roundLeagueNames,
   selectFavoriteFixtures,
+  scoreDisplayParts,
 } = require("../match-centre.js");
+
+test("finished fixtures only advertise readable reports while upcoming and live predictions remain", () => {
+  const types = ["report", "prediction"];
+  for (const status of ["FT", "AET", "PEN", "ft"]) {
+    assert.deepEqual(visibleContentTypes(types, status), ["report"]);
+    assert.deepEqual(visibleContentTypes(["prediction"], status), []);
+  }
+  for (const status of ["NS", "TBD", "1H", "HT", "2H", "LIVE", "ARCHIVE"]) {
+    assert.deepEqual(visibleContentTypes(types, status), types);
+  }
+  assert.deepEqual(types, ["report", "prediction"]);
+  assert.deepEqual(visibleContentTypes(undefined, "FT"), []);
+});
+
+test("five major leagues and European club competitions stay outside the drawer", () => {
+  for (const competitionId of [39, 140, 135, 78, 61, 2, 3]) {
+    assert.equal(isPrimaryCompetition({ competitionId }), true);
+  }
+  assert.equal(isPrimaryCompetition({ competition: "UEFA Conference League" }), true);
+});
+
+test("major domestic cups stay visible using their name and country together", () => {
+  for (const [competitionCountry, competition] of [
+    ["England", "FA Cup"], ["England", "League Cup"], ["England", "Community Shield"],
+    ["Spain", "Copa del Rey"], ["Spain", "Super Cup"],
+    ["Italy", "Coppa Italia"], ["Italy", "Super Cup"],
+    ["Germany", "DFB Pokal"], ["Germany", "Super Cup"],
+    ["France", "Coupe de France"], ["France", "Trophée des Champions"],
+  ]) assert.equal(isPrimaryCompetition({ competitionCountry, competition }), true, `${competitionCountry}: ${competition}`);
+});
+
+test("other countries, lower divisions, youth and women's cups default to the drawer", () => {
+  for (const [competitionCountry, competition] of [
+    ["Ghana", "Premier League"], ["Japan", "J1 League"], ["Brazil", "Serie A"],
+    ["England", "Championship"], ["England", "FA Youth Cup"], ["England", "FA Cup Women"],
+    ["Germany", "2. Bundesliga"], ["France", "Ligue 2"],
+    ["Thailand", "FA Cup"], ["Turkey", "Super Cup"], ["World", "Friendlies Clubs"],
+    ["", "Super Cup"],
+  ]) assert.equal(isPrimaryCompetition({ competitionCountry, competition }), false, `${competitionCountry}: ${competition}`);
+});
+
+test("favorite competitions and clubs stay above the drawer without duplicating fixtures", () => {
+  const fixtures = [
+    { id: 1, competitionId: 98, competition: "J1 League", competitionCountry: "Japan", homeId: 1001 },
+    { id: 2, competitionId: 667, competition: "Friendlies Clubs", competitionCountry: "World", homeId: 541 },
+    { id: 3, competitionId: 253, competition: "Major League Soccer", competitionCountry: "USA" },
+    { id: 4, competitionId: 39, competition: "Premier League", competitionCountry: "England" },
+  ];
+  const favorites = partitionFavoriteFixtures(fixtures, { leagues: ["league-98"], clubs: ["team-541"] });
+  const groups = [
+    { isFavoriteGroup: true, fixtures: favorites.clubs },
+    { isFavoriteGroup: true, fixtures: favorites.leagues },
+    ...favorites.others.map((fixture) => ({ fixtures: [fixture] })),
+  ];
+  const split = partitionCompetitionGroups(groups);
+  assert.deepEqual(split.primary.flatMap((group) => group.fixtures.map((fixture) => fixture.id)), [2, 1, 4]);
+  assert.deepEqual(split.other.flatMap((group) => group.fixtures.map((fixture) => fixture.id)), [3]);
+  assert.equal(new Set([...split.primary, ...split.other].flatMap((group) => group.fixtures.map((fixture) => fixture.id))).size, 4);
+});
+
+test("competition partition keeps ordering and handles days with only other or primary matches", () => {
+  const other = [{ competition: "J1 League", competitionCountry: "Japan" }, { competition: "Championship", competitionCountry: "England" }];
+  assert.deepEqual(partitionCompetitionGroups(other), { primary: [], other });
+  const primary = [{ competitionId: 39 }, { competitionId: 140 }];
+  assert.deepEqual(partitionCompetitionGroups(primary), { primary, other: [] });
+  assert.deepEqual(partitionCompetitionGroups([]), { primary: [], other: [] });
+});
+
+test("hidden scores have identical silhouettes regardless of digit shape or length", () => {
+  const concealed = scoreDisplayParts(0, 0, true);
+  for (const [home, away] of [[1, 0], [2, 1], [8, 8], [10, 0], [0, 12]]) {
+    assert.deepEqual(scoreDisplayParts(home, away, true), concealed);
+  }
+  assert.deepEqual(scoreDisplayParts(0, 12, false), ["0", "12"]);
+});
+
+test("league accents follow verified competition identity across names", () => {
+  assert.equal(competitionAccent({ competitionId: 39 }), competitionAccent({ competition: "プレミアリーグ" }));
+  assert.notEqual(competitionAccent({ competitionId: 39 }), competitionAccent({ competitionId: 140 }));
+  assert.notEqual(competitionAccent({ competitionId: 39 }), competitionAccent({ competition: "Premier League", competitionCountry: "Ghana" }));
+});
 
 test("European club competitions lead the five major leagues in date view", () => {
   const fixtures = [

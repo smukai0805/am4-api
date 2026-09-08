@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { canonicalMatchKey, fetchNotionMatchContent, isPublishableNotionState, markdownExcerpt, normalizeNotionContent, notionBlocksToMarkdown, notionPageToArticle, syncNotionContent } from '../lib/notion-content-sync.js';
+import { canonicalMatchKey, fetchNotionMatchContent, isPublishableNotionState, markdownExcerpt, matchKeyForMatch, normalizeNotionContent, notionBlocksToMarkdown, notionPageToArticle, syncNotionContent } from '../lib/notion-content-sync.js';
 import { matchContentAvailabilityByMatchKey } from '../lib/article-content-availability.js';
 
 function textProperty(type, text) {
@@ -115,6 +115,22 @@ test('Notion prediction entries preserve an exact match identity and prediction 
   assert.deepEqual(article.prediction, { score: '2-1', pick: 'Arsenal', confidence: 82 });
   assert.match(article.summary, /前節で見えた/);
   assert.equal(article.public, true);
+});
+
+test('Notion Match Keys canonicalize every CL and EL club regardless of domestic league', () => {
+  const match = {
+    date: '2026-09-09',
+    homeTeam: 'AEK Athens FC',
+    awayTeam: 'LASK Linz',
+  };
+  assert.equal(
+    matchKeyForMatch({ ...match, competition: 'UEFA Champions League' }),
+    'Champions League|2026-09-09|AEK Athens FC|LASK Linz',
+  );
+  assert.equal(
+    matchKeyForMatch({ ...match, competition: 'UEFA Europa League' }),
+    'Europa League|2026-09-09|AEK Athens FC|LASK Linz',
+  );
 });
 
 test('Notion uses an explicit fixture ID before a legacy Match Key and retains structured editorial fields', () => {
@@ -322,11 +338,11 @@ function notionResponse(payload, status = 200) {
   return { ok: status >= 200 && status < 300, status, json: async () => payload };
 }
 
-function matchPage({ id, type, matchKey, home, away, date, competition = 'Premier League' }) {
+function matchPage({ id, type, matchKey, home, away, date, competition = 'Premier League', editedAt = '2026-09-03T10:00:00.000Z' }) {
   return {
     id,
     url: `https://notion.so/${id}`,
-    last_edited_time: '2026-09-03T10:00:00.000Z',
+    last_edited_time: editedAt,
     properties: {
       '記事タイトル': textProperty('title', `${home} vs ${away}｜${type === 'match_prediction' ? '試合予想' : '試合解説'}`),
       '記事状態': { type: 'select', select: { name: '公開済' } },
@@ -494,6 +510,39 @@ test('Match Key alias fallback requires the full competition, date, home and awa
   assert.equal(canonicalMatchKey({ competition: 'Serie A', date: '2026-09-07', homeTeam: 'AC Milan', awayTeam: 'Inter' }), 'seriea|2026-09-07|acmilan|inter');
   assert.equal(result.prediction.notion.pageId, 'milan-prediction');
   assert.equal(result.report, null);
+});
+
+test('duplicate AEK and LASK prediction pages resolve to the most recently edited exact match', async () => {
+  const older = matchPage({
+    id: 'aek-lask-older', type: 'match_prediction',
+    matchKey: 'Champions League|2026-09-08|AEK Athens|LASK',
+    home: 'AEK Athens', away: 'LASK', date: '2026-09-08', competition: 'Champions League',
+    editedAt: '2026-09-07T18:22:00.000Z',
+  });
+  const newer = matchPage({
+    id: 'aek-lask-newer', type: 'match_prediction',
+    matchKey: 'Champions League|2026-09-08|AEK Athens|LASK',
+    home: 'AEK Athens', away: 'LASK', date: '2026-09-08', competition: 'Champions League',
+    editedAt: '2026-09-07T18:23:00.000Z',
+  });
+
+  const result = await fetchNotionMatchContent({
+    match: {
+      fixtureId: 1635609,
+      competition: 'チャンピオンズリーグ',
+      date: '2026-09-09',
+      kickoff: '2026-09-09T01:45:00+09:00',
+      homeTeam: 'AEK Athens FC',
+      awayTeam: 'Lask Linz',
+    },
+    apiKey: 'test-key',
+    fetcher: matchContentFetcher({ prediction: [older, newer], report: [] }),
+    sourceIds: { match_prediction: 'predictions', match_report: 'reports' },
+    logger: { info: () => {}, warn: () => {}, error: () => {} },
+  });
+
+  assert.equal(result.prediction?.notion.pageId, 'aek-lask-newer');
+  assert.equal(result.errors.match_prediction, undefined);
 });
 
 test('legacy provider club names resolve the real Newcastle and Ipswich editorial aliases', async () => {
