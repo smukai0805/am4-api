@@ -52,6 +52,16 @@ test('official XI replaces predictions without reading histories or injuries',as
  const data=await getLineupInsights({id:123,status:'NS',home:teams[0],away:teams[1]},async(path)=>{calls.push(path);return teams.map(team=>({team,startXI:Array.from({length:11},(_,i)=>({player:{id:i+1}}))}));});
  assert.deepEqual(calls,['/fixtures/lineups']);assert.equal(data.lineups.length,2);assert.ok(data.lineups.every(l=>l.predicted===false));
 });
+test('live official lineups refresh quickly so corrected formation rows can appear',async()=>{
+ const calls=[];
+ const xi=Array.from({length:11},(_,i)=>({player:{id:i+1,grid:i===0?'1:1':`${2+Math.floor((i-1)/4)}:${1+((i-1)%4)}`}}));
+ await getLineupInsights({id:456,status:'1H',home:{id:1},away:{id:2}},async(path,params,ttl)=>{
+  calls.push({path,ttl});
+  if(path==='/fixtures/lineups')return [{team:{id:1},formation:'4-2-3-1',startXI:xi}];
+  return [];
+ });
+ assert.equal(calls.find(call=>call.path==='/fixtures/lineups').ttl,60000);
+});
 test('prediction retains left/right/central grids for selected returning starters',()=>{
  const team={id:1}, lineup={formation:'4-3-3',startXI:[{player:{id:90,name:'Left',pos:'D',grid:'2:1'}},{player:{id:3,name:'Centre',pos:'D',grid:'2:2'}},{player:{id:40,name:'Right',pos:'D',grid:'2:3'}}]};
  const p=predictTeam({team,histories:[{id:1,date:'2026-09-01',lineup}],squad:null,injuries:null,kickoff:'2026-09-06'});
