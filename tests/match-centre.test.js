@@ -8,6 +8,7 @@ const {
   partitionCompetitionGroups,
   contentAvailabilityBatches,
   contentBadgeLabels,
+  visibleContentTypes,
   contentAvailabilityForFixture,
   mergeRoundFixtureData,
   partitionFavoriteFixtures,
@@ -15,6 +16,19 @@ const {
   selectFavoriteFixtures,
   scoreDisplayParts,
 } = require("../match-centre.js");
+
+test("finished fixtures only advertise readable reports while upcoming and live predictions remain", () => {
+  const types = ["report", "prediction"];
+  for (const status of ["FT", "AET", "PEN", "ft"]) {
+    assert.deepEqual(visibleContentTypes(types, status), ["report"]);
+    assert.deepEqual(visibleContentTypes(["prediction"], status), []);
+  }
+  for (const status of ["NS", "TBD", "1H", "HT", "2H", "LIVE", "ARCHIVE"]) {
+    assert.deepEqual(visibleContentTypes(types, status), types);
+  }
+  assert.deepEqual(types, ["report", "prediction"]);
+  assert.deepEqual(visibleContentTypes(undefined, "FT"), []);
+});
 
 test("five major leagues and European club competitions stay outside the drawer", () => {
   for (const competitionId of [39, 140, 135, 78, 61, 2, 3]) {

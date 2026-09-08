@@ -59,6 +59,27 @@
     // as a contents/source block. This keeps ordinary prose mentioning an
     // agenda from being discarded.
     if (heading && listed.length >= 2) return true;
+    // Notion's list index can already have flattened an agenda into one line.
+    // Require consecutive item numbers and heading-like (not sentence) text.
+    const flat = compact(lines.join(" "));
+    const markers = [...flat.matchAll(/(?:^|\s)(\d{1,2})[.)]\s+/g)];
+    if (markers.length >= 2 && markers.every((marker, index) =>
+      !index || Number(marker[1]) === Number(markers[index - 1][1]) + 1)) {
+      const items = markers.map((marker, index) => flat.slice(
+        marker.index + marker[0].length, markers[index + 1]?.index ?? flat.length,
+      ));
+      const isHeadingText = (value) => {
+        const text = value.trim().replace(/\.{3,}$/, "");
+        return Boolean(text) && !/[。！？]|[.!?](?:\s|$)/u.test(text);
+      };
+      const prefix = flat.slice(0, markers[0].index).trim();
+      // The final item may be truncated with "...", or run into the opening
+      // prose. Two complete heading entries still identify the agenda. Never
+      // discard an ordinary introductory sentence followed by numbered points.
+      const completeItems = items.slice(0, -1);
+      if ((!prefix || isHeadingText(prefix)) && (items.every(isHeadingText) ||
+        (completeItems.length >= 2 && completeItems.every(isHeadingText)))) return true;
+    }
     // A sequence of two or more numbered entries without explanatory prose is
     // also navigation, even when a Notion source omitted the heading.
     return numbered.length >= 2 && numbered.length === lines.length;
@@ -77,5 +98,13 @@
     return text.length <= safeLimit ? text : `${text.slice(0, Math.max(1, safeLimit - 1)).trimEnd()}…`;
   }
 
-  return { compact, formatTokyoDate, normalizeConfidence, normalizedLines, isNavigationExcerpt, articleExcerpt };
+  function readerEditorialText(value) {
+    // Presentation only: keep the source and all surrounding player analysis.
+    return String(value || "").replace(
+      /MOTM\s*\/\s*POTM[：:]公式または信頼できる統一選出を確認できず。推測で設定しない。\s*/g,
+      "",
+    ).trim();
+  }
+
+  return { compact, formatTokyoDate, normalizeConfidence, normalizedLines, isNavigationExcerpt, articleExcerpt, readerEditorialText };
 });

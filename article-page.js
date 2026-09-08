@@ -204,6 +204,24 @@
       if (!response.ok) throw new Error(`articles unavailable (${response.status})`);
       const data = await response.json();
       const articles = Array.isArray(data.items) ? data.items : [];
+      if (window.AM4ColumnSeries?.isTwentySeasonsStory(currentArticle)) {
+        // Only series navigation needs the full archive. Failure of this extra
+        // read must not remove the article or its already available cards.
+        void (async () => {
+          try {
+            const all = [...articles];
+            const totalPages = Math.max(1, Number(data.totalPages) || 1);
+            for (let page = 2; page <= totalPages; page += 1) {
+              const response = await fetch(`${apiBase}/articles?type=am4_story&pageSize=100&page=${page}`, { headers: { Accept:"application/json" } });
+              if (!response.ok) throw new Error('Series unavailable');
+              const payload = await response.json();
+              if (!Array.isArray(payload.items)) throw new Error('Series unavailable');
+              all.push(...payload.items);
+            }
+            renderSeriesNavigation(currentArticle, all, container);
+          } catch (_error) { /* Keep the collection return link and article. */ }
+        })();
+      }
       const recommended = articles
         .filter((article) => article.id && article.id !== currentArticle.id)
         .sort((left, right) => compareRecommendedArticles(currentArticle, left, right))
@@ -226,6 +244,31 @@
     } catch (_error) {
       container.remove();
     }
+  }
+
+  function renderSeriesNavigation(article, articles, before) {
+    const navigation = window.AM4ColumnSeries?.storyNavigation(article, articles);
+    if (!navigation) return;
+    const nav = document.createElement("nav");
+    nav.className = "article-series-navigation";
+    nav.setAttribute("aria-label", "20 Seasonsの読み進め方");
+    const collection = document.createElement("a");
+    collection.className = "article-series-return";
+    collection.href = `/column/20-seasons#season-${navigation.season}`;
+    collection.textContent = "20 Seasons, 20 Stories. · シーズン一覧へ";
+    nav.append(collection);
+    [["前の公開ストーリー", navigation.previous], ["次の公開ストーリー", navigation.next]].forEach(([label, story]) => {
+      if (!story?.id) return;
+      const link = document.createElement("a");
+      link.href = `/article.html?id=${encodeURIComponent(story.id)}`;
+      const small = document.createElement("small");
+      small.textContent = `${label} · ${window.AM4ColumnSeries.seasonForStory(story)}`;
+      const title = document.createElement("span");
+      title.textContent = story.title || small.textContent;
+      link.append(small, title);
+      nav.append(link);
+    });
+    before.before(nav);
   }
 
   function renderArticle(article) {
@@ -305,6 +348,20 @@
       document.dispatchEvent(new CustomEvent("am4:favorites-changed"));
     });
     syncFavorite();
+    // Enhancements are isolated from the successful article load. No optional
+    // TOC/link/series failure may turn readable content into an error screen.
+    try {
+      window.AM4ArticleReading?.enhanceArticle(body, {
+        cleanText: article.type === "match_report"
+          ? (value) => window.AM4ArticlePresentation?.readerEditorialText?.(value) ?? value
+          : (value) => value,
+      });
+      if (articleBack && window.AM4ColumnSeries?.isTwentySeasonsStory(article)) {
+        const season = window.AM4ColumnSeries.seasonForStory(article);
+        articleBack.href = `/column/20-seasons${season ? `#season-${season}` : ""}`;
+        articleBack.textContent = "← 20 Seasonsの一覧へ戻る";
+      }
+    } catch (_error) { /* The original article remains readable. */ }
     renderRecommendedArticles(article, related);
   }
 

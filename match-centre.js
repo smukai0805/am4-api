@@ -292,6 +292,12 @@
       : { prediction: "予想あり", report: "解説あり" };
   }
 
+  function visibleContentTypes(types, status) {
+    // Finished details show the report, with no pre-match prediction panel.
+    const finished = ["FT", "AET", "PEN"].includes(String(status || "").toUpperCase());
+    return (types || []).filter(type => type !== "prediction" || !finished);
+  }
+
   function contentAvailabilityForFixture(response, fixture) {
     const fixtureId = Number(fixture?.id);
     const types = new Set(Array.isArray(response?.availability?.[fixtureId]) ? response.availability[fixtureId] : []);
@@ -431,7 +437,7 @@
     }
 
     function appendContentBadges(meta, fixture) {
-      const types = contentAvailability.get(String(fixture?.id)) || [];
+      const types = visibleContentTypes(contentAvailability.get(String(fixture?.id)), fixture?.status);
       if (!types.length) return;
 
       const labels = contentBadgeLabels(document.documentElement.lang);
@@ -1243,6 +1249,7 @@
     isPrimaryCompetition,
     partitionCompetitionGroups,
     contentBadgeLabels,
+    visibleContentTypes,
     contentAvailabilityBatches,
     contentAvailabilityForFixture,
     mergeRoundFixtureData,
