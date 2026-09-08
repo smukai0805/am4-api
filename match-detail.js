@@ -181,6 +181,20 @@
   let nameRegistry = AM4PlayerDisplay.createRegistry();
   let insightState = {state:'idle', data:null};
   let insightFetchedAt = 0;
+  const insightReads = new Map();
+  function readLineupInsights(id, force = false) {
+    const prior = insightReads.get(id);
+    if (prior && (prior.pending || (!force && prior.until > Date.now()))) return prior.promise;
+    const entry = {pending:true, until:Date.now()+60000};
+    entry.promise = client.lineupInsights(id).then(data => {
+      if (Number(data?.fixtureId) !== Number(id)) throw new Error('Fixture mismatch');
+      return data;
+    }).catch(error => { if (insightReads.get(id) === entry) insightReads.delete(id); throw error; })
+      .finally(() => { entry.pending=false; });
+    insightReads.set(id,entry);
+    if (insightReads.size > 4) insightReads.delete(insightReads.keys().next().value);
+    return entry.promise;
+  }
   function updateNames(detail) {
     nameRegistry = AM4PlayerDisplay.createRegistry([
       ...(detail.events || []).flatMap(e => [e.player,e.assist]),
@@ -219,7 +233,7 @@
     insightState = {...insightState,state:'loading'};
     if (activePanel === 'lineups') replaceActivePanel();
     try {
-      const data = await client.lineupInsights(fixtureId);
+      const data = await readLineupInsights(fixtureId, force);
       if (data.fixtureId !== currentDetail.fixture.id) throw new Error('Fixture mismatch');
       if (data.errors?.players && insightState.data?.players) data.players = insightState.data.players;
       insightState = {state:Object.values(data.errors || {}).some(Boolean) ? 'partial' : 'ready',data}; insightFetchedAt = Date.now();
@@ -1040,14 +1054,16 @@
     return block;
   }
 
-  function highlightMotm(block, value) {
+  function highlightMotm(block, value, suppliedSelection) {
     const detail = currentDetail || {};
     const players = [
       ...(detail.events || []).flatMap(event => [event.player, event.assist]),
       ...(detail.lineups || []).flatMap(lineup => [...(lineup.startXI || []), ...(lineup.substitutes || [])]),
     ];
-    const selection = window.AM4MatchReportPresentation?.selectedMotm(value, players);
+    const selection = suppliedSelection || window.AM4MatchReportPresentation?.selectedMotm(value, players);
     if (!selection) return;
+    block.querySelector('.match-motm-header')?.remove();
+    block.querySelector('.match-motm-reason')?.remove();
     const header = node("div", "match-motm-header");
     const portrait = node("span", "match-motm-portrait", selection.name.split(/\s+/).map(part => part[0]).slice(0, 2).join(""));
     portrait.setAttribute("aria-hidden", "true");
@@ -1063,11 +1079,52 @@
       portrait.append(image);
     }
     const copy = node("div", "match-motm-copy");
-    copy.append(node("span", "match-motm-label", "MAN OF THE MATCH"), node("h4", "match-motm-name", selection.name));
+    copy.append(node("span", "match-motm-label", selection.authority === 'AM4' ? (locale === 'ja' ? 'AM4選出' : 'AM4 SELECTION') : "MAN OF THE MATCH"), node("h4", "match-motm-name", selection.name));
     header.append(portrait, copy);
     block.querySelector("h3").after(header);
     block.classList.add("match-editorial-block--motm");
     block.querySelector("h3").textContent = "MOTM";
+    if (selection.reason) header.after(node('p','match-motm-reason',selection.reason));
+  }
+
+  async function completeReportMotm(content, report) {
+    const helper = window.AM4MatchReportPresentation;
+    const detail = currentDetail;
+    if (!helper || !detail) return;
+    const value = editorialValue(report,'report','keyFigures',['試合主要人物','主要人物','MOTM','key figure']);
+    const participants = [
+      ...(detail.events || []).flatMap(e=>[e.player,e.assist]),
+      ...(detail.lineups || []).flatMap(l=>[...(l.startXI || []),...(l.substitutes || [])]),
+    ];
+    let selection = helper.selectedMotm(value,participants) || helper.editorialAm4Motm(report.id,value,participants);
+    const apply = choice => {
+      if (!choice || currentDetail !== detail) return;
+      let block = content.querySelector('[data-report-field="keyFigures"]');
+      if (!block) {
+        block = node('article','match-editorial-block');
+        block.dataset.reportField='keyFigures';
+        block.append(node('h3','','MOTM'));
+        content.querySelector('.match-editorial-grid').prepend(block);
+      }
+      highlightMotm(block,value,choice);
+      if (choice.authority === 'AM4') {
+        block.querySelectorAll('p').forEach(paragraph => {
+          if (paragraph.classList.contains('match-motm-reason')) return;
+          const text = helper.withoutMotmAbstention(paragraph.textContent);
+          if (text) paragraph.textContent=text; else paragraph.remove();
+        });
+      }
+    };
+    apply(selection);
+    if (selection?.player || (!selection && helper.hasAwardStatement(value)) || matchGroup(detail.fixture)!=='finished') return;
+    // Optional, coalesced data retrieval never gates the article or replaces its
+    // content. Only this MOTM block is enhanced, preserving scroll and disclosures.
+    const data = await readLineupInsights(String(detail.fixture.id));
+    if (currentDetail !== detail || Number(data.fixtureId)!==Number(detail.fixture.id)) return;
+    const allPlayers = [...participants,...(data.players || []),...(data.lineups || []).flatMap(l=>[...(l.startXI || []),...(l.substitutes || [])])];
+    selection = helper.selectedMotm(value,allPlayers) || helper.editorialAm4Motm(report.id,value,allPlayers)
+      || (!data.errors?.players ? helper.dataAm4Motm(detail.fixture,data.players,value) : null);
+    apply(selection);
   }
 
   function predictionBlocks(prediction) {
@@ -1098,6 +1155,7 @@
     return fields.map(([label, field, aliases]) => {
       const value = editorialValue(report, "report", field, aliases);
       const block = editorialBlock(label, value, field);
+      if (block) block.dataset.reportField = field;
       if (block && field === "keyFigures") {
         // A missing optional helper or portrait enhancement must not hide prose.
         try { highlightMotm(block, value); } catch (error) { console.warn("MOTM presentation unavailable.", error); }
@@ -1230,11 +1288,10 @@
     const summary = editorialValue(report, "report", "summary", ["3行要約", "試合要約", "summary"]);
     if (summary) appendEditorialSummary(content, summary);
     const blocks = reportBlocks(report);
-    if (blocks.length) {
-      const grid = node("div", "match-editorial-grid");
-      grid.append(...blocks);
-      content.append(grid);
-    }
+    const grid = node("div", "match-editorial-grid");
+    grid.append(...blocks);
+    content.append(grid);
+    void completeReportMotm(content, report).catch(error => console.warn('Optional MOTM selection unavailable.',error));
     return content;
   }
 

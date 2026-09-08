@@ -5,6 +5,7 @@ AM4 is a Japanese-language football media site covering Europe's top five league
 - **看板記事**: the primary editorial story for first-time visitors.
 - **For You**: returning-visitor content derived from locally saved clubs, players, and articles.
 - **AM4予想**: an editorial predicted lineup based on provider data, with changes and reasoning disclosed.
+- **MOTM（2026-09-08ユーザー承認）**: 原稿にある公式・媒体・AM4の選出を優先し、同じ写真付きカードで強調する。未選出の場合はAM4として独自選出してよい。「AM4選出」と理由を明記し、公式受賞を装わない。個別の編集判断を優先し、補完では終了試合の両チームの評価点を比較、同点では得点・アシスト関与、出場時間の順に評価する。片側だけのデータや完全同点では断定しない。原稿・記事ID・公開状態を変更せず表示側で補完する。
 - **試合予想・試合解説の対象**: 国内リーグは欧州5大リーグを基本対象とする。UEFA Champions LeagueとUEFA Europa Leagueは例外で、所属国内リーグに関係なく、大会に出場する男子トップチームの全カードを両方の編集対象にする。ELを任意扱いにしない。
 - **AM4注目度**: upcoming-match ranking led by picked-club matchups, then editorial boosts for major rivalries, Champions League and top-five domestic league fixtures, and Japan-friendly kickoff times; proximity breaks otherwise equal scores.
 - **今日の試合**: the Japan-time daily schedule across every competition returned by the provider, including club friendlies. Favorite clubs/leagues, the five major leagues, CL/EL/Conference League and the five countries' domestic cups appear first. Other competitions are grouped under a closed-by-default 「その他の大会を開く」 disclosure. Opening it reveals the full remaining competition directory; favorites move outside it without duplicate fixtures. Open/closed state is retained for the current date/filter and match-detail return.
