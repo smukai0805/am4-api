@@ -11,7 +11,9 @@ const css=fs.readFileSync(path.join(root,'brand.css'),'utf8');
 test('member details switch between home and away without repeating the starting XI',()=>{
  const card=source.slice(source.indexOf('function lineupCard'),source.indexOf('function renderLineups'));
  assert.doesNotMatch(card,/startXI|Starting XI|スターティングXI/);
- assert.match(card,/node\\('section','lineup-details'\\)/);\n assert.doesNotMatch(card,/node\\('details','lineup-details'\\)|node\\('summary'/);\n assert.match(source,/lineup-team-switch/);
+ assert.match(card,/node\('section','lineup-details'\)/);
+ assert.doesNotMatch(card,/node\('details','lineup-details'\)|node\('summary'/);
+ assert.match(source,/lineup-team-switch/);
  assert.match(source,/aria-selected/);
  assert.match(source,/ArrowLeft.*ArrowRight.*Home.*End/);
  assert.match(source,/aria-labelledby/);
