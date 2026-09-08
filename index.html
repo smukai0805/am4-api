@@ -1607,10 +1607,11 @@
       }
     }
 
-    if (initialHomeState && relativeUrl(location.href) === initialHomeState.returnUrl && initialHomeState.scrollY > 0) {
+    const restoredHomeScroll = Boolean(initialHomeState && relativeUrl(location.href) === initialHomeState.returnUrl && initialHomeState.scrollY > 0);
+    if (restoredHomeScroll) {
       window.requestAnimationFrame(() => window.scrollTo({ top: initialHomeState.scrollY, behavior: 'auto' }));
     }
-    document.dispatchEvent(new CustomEvent('am4:data-ready'));
+    document.dispatchEvent(new CustomEvent('am4:data-ready', {detail:{restoredHomeScroll}}));
   })();
 
   // local favourites and the returning-visitor For You area
@@ -1941,7 +1942,8 @@
     });
     window.addEventListener('scroll', scheduleUpdate, { passive:true });
     window.addEventListener('resize', scheduleUpdate);
-    document.addEventListener('am4:data-ready', () => {
+    document.addEventListener('am4:data-ready', (event) => {
+      if (event?.detail?.restoredHomeScroll) cancelInitialAlignment();
       const entry = initialDestination && entries.find(({target}) => `#${target.id}` === initialDestination);
       if (entry && location.hash === initialDestination) alignTarget(entry);
       scheduleUpdate();

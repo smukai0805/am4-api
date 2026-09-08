@@ -71,6 +71,14 @@ test('a COLUMN page destination keeps native navigation while scrollspy still id
   assert.deepEqual(events,[]);
 });
 
+test('returning to a saved reading position takes precedence over initial hash alignment',()=>{
+  const {listeners,events,flush}=setup({hash:'#lead-story'});
+  listeners['document:am4:data-ready']({detail:{restoredHomeScroll:true}});
+  flush();
+  listeners['document:am4:data-ready']();flush();
+  assert.deepEqual(events,[]);
+});
+
 test('COLUMN navigation settles Saved visibility before computing the scroll destination', () => {
   const {tabs, listeners, events, flush} = setup();
   let prevented = false;
