@@ -4,6 +4,45 @@
   if (typeof module === 'object' && module.exports) module.exports = api;
   if (root) root.AM4ArticleReading = api;
 })(typeof window !== 'undefined' ? window : globalThis, function () {
+  function appendReportSections(container, blocks, {open = false, onToggle = () => {}, locale = 'ja'} = {}) {
+    const document = container.ownerDocument;
+    const lead = document.createElement('div');
+    lead.className = 'match-editorial-grid';
+    const more = blocks.filter(block => block.dataset.reportField !== 'keyFigures');
+    lead.append(...blocks.filter(block => block.dataset.reportField === 'keyFigures'));
+    container.append(lead);
+    if (!more.length) return;
+    const details = document.createElement('details');
+    details.className = 'match-report-more';
+    details.open = open;
+    const summary = document.createElement('summary');
+    const title = document.createElement('strong');
+    title.textContent = locale === 'ja' ? '試合のレビュー・分析を読む' : 'Read the match review & analysis';
+    const topics = document.createElement('span');
+    topics.className = 'match-report-topics';
+    topics.textContent = more.map(block => block.querySelector('h3')?.textContent).filter(Boolean).join(' / ');
+    const action = document.createElement('span');
+    action.className = 'match-report-more-action';
+    const sync = () => { action.textContent = details.open ? (locale === 'ja' ? '閉じる ↑' : 'Show less ↑') : (locale === 'ja' ? 'さらに表示 ↓' : 'Show more ↓'); };
+    sync();
+    summary.append(title, topics, action);
+    const grid = document.createElement('div');
+    grid.className = 'match-editorial-grid';
+    grid.append(...more);
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'match-report-close';
+    close.textContent = locale === 'ja' ? 'レビュー・分析を閉じる ↑' : 'Close review & analysis ↑';
+    close.addEventListener('click', () => {
+      details.open = false;
+      summary.scrollIntoView({block:'start', behavior:'instant'});
+      summary.focus({preventScroll:true});
+    });
+    details.addEventListener('toggle', () => { sync(); onToggle(details.open); });
+    details.append(summary, grid, close);
+    container.append(details);
+  }
+
   function safeUrl(value) {
     try {
       const url = new URL(value);
@@ -95,5 +134,5 @@
     return {lead:text.slice(0, end), rest:text.slice(end)};
   }
 
-  return {linkTokens, appendLinkedText, enhanceArticle, splitSummary};
+  return {linkTokens, appendLinkedText, enhanceArticle, splitSummary, appendReportSections};
 });

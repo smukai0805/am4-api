@@ -1,6 +1,7 @@
 {
   "framework": null,
   "rewrites": [
+    { "source": "/column", "destination": "/column.html" },
     { "source": "/column/20-seasons", "destination": "/column-20-seasons.html" }
   ],
   "crons": [

@@ -47,6 +47,7 @@
   const KICKOFF_RECHECK_BUFFER_MS = 30_000;
   let client = null;
   let currentDetail = null;
+  const reportReadingState = new Map();
   let currentEditorial = { prediction: null, report: null, loading: true };
   let currentStandings = { state: "idle", data: null };
   const PANEL_IDS = new Set(["overview", "events", "lineups", "statistics", "standings"]);
@@ -1170,7 +1171,7 @@
     if (disclosure) wrap.append(node("summary", "", t("priorPrediction")));
     const content = node("div", "match-editorial-content");
     const hero = node("article", "match-editorial-hero match-editorial-hero--prediction");
-    hero.append(node("span", "match-editorial-kicker", t("prediction")));
+    hero.append(editorialHeading(prediction, t('prediction')));
     const values = node("div", "match-prediction-values");
     if (prediction.prediction?.score) values.append(node("strong", "", prediction.prediction.score));
     if (prediction.prediction?.pick) {
@@ -1281,16 +1282,57 @@
     }
     return node('p','match-editorial-pending',t(kind==='match_report'?'reportPending':'predictionPending'));
   }
+  function editorialHeading(article, label) {
+    const heading = node('div','match-editorial-heading');
+    heading.append(node('span','match-editorial-kicker',label));
+    if (!article?.id || !window.AM4Favorites) return heading;
+    const save = node('button','favorite-btn read-later-button');
+    save.type = 'button';
+    save.innerHTML = '<svg class="bookmark-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4Z"></path></svg><span></span>';
+    const status = node('span','match-save-status');
+    status.setAttribute('role','status');
+    const sync = () => {
+      const selected = AM4Favorites.has(AM4Favorites.read(localStorage),'articles',article.id);
+      save.setAttribute('aria-pressed',String(selected));
+      save.setAttribute('aria-label',locale === 'ja' ? (selected ? 'あとで読むから解除' : 'あとで読むに追加') : (selected ? 'Remove from reading list' : 'Read later'));
+      save.querySelector('span').textContent = locale === 'ja' ? (selected ? '追加済み' : 'あとで読む') : (selected ? 'Saved' : 'Read later');
+    };
+    save.addEventListener('click', () => {
+      const result = AM4Favorites.toggleWithItem(localStorage,'articles',article.id, {
+        label:article.title || document.title, detail:label,
+        href:window.AM4ArticleLoadState?.articleHref(article,currentDetail?.fixture?.id) || `/article.html?id=${encodeURIComponent(article.id)}`,
+      });
+      if (!result) { status.textContent = locale === 'ja' ? 'この端末に保存できませんでした。' : 'Could not save on this device.'; return; }
+      status.textContent = '';
+      sync();
+      document.dispatchEvent(new CustomEvent('am4:favorites-changed'));
+    });
+    sync();
+    heading.append(save, status);
+    return heading;
+  }
+
   function reportPanel(report) {
     if (!report) return editorialEmpty('match_report');
     const content = node("div", "match-editorial-content match-editorial-content--report");
-    content.append(node("span", "match-editorial-kicker", t("matchSummary")));
+    content.append(editorialHeading(report, t('matchSummary')));
     const summary = editorialValue(report, "report", "summary", ["3行要約", "試合要約", "summary"]);
     if (summary) appendEditorialSummary(content, summary);
     const blocks = reportBlocks(report);
-    const grid = node("div", "match-editorial-grid");
-    grid.append(...blocks);
-    content.append(grid);
+    const readingKey = `${currentDetail?.fixture?.id || 'archive'}:${report.id}`;
+    const sections = node('div','match-report-sections');
+    try {
+      if (!window.AM4ArticleReading?.appendReportSections) throw new Error('Optional reading helper unavailable');
+      window.AM4ArticleReading.appendReportSections(sections, blocks, {
+        locale, open: reportReadingState.get(readingKey) === true,
+        onToggle: open => reportReadingState.set(readingKey, open),
+      });
+    } catch (_error) {
+      const grid = node("div", "match-editorial-grid");
+      grid.append(...blocks);
+      sections.replaceChildren(grid);
+    }
+    content.append(sections);
     void completeReportMotm(content, report).catch(error => console.warn('Optional MOTM selection unavailable.',error));
     return content;
   }
