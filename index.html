@@ -1609,7 +1609,7 @@
 
     const restoredHomeScroll = Boolean(initialHomeState && relativeUrl(location.href) === initialHomeState.returnUrl && initialHomeState.scrollY > 0);
     if (restoredHomeScroll) {
-      window.requestAnimationFrame(() => window.scrollTo({ top: initialHomeState.scrollY, behavior: 'auto' }));
+      window.requestAnimationFrame(() => window.scrollTo({ top: initialHomeState.scrollY, behavior: 'instant' }));
     }
     document.dispatchEvent(new CustomEvent('am4:data-ready', {detail:{restoredHomeScroll}}));
   })();

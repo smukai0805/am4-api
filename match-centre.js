@@ -394,7 +394,7 @@
       if (!pendingInitialScrollY) return;
       const scrollY = pendingInitialScrollY;
       pendingInitialScrollY = 0;
-      window.requestAnimationFrame(() => window.scrollTo({ top: scrollY, behavior: "auto" }));
+      window.requestAnimationFrame(() => window.scrollTo({ top: scrollY, behavior: "instant" }));
     }
 
     document.querySelectorAll(".fixture-mode-tab").forEach((button) => {
@@ -1003,7 +1003,7 @@
           ? `${dateLabel}は、選択条件に該当する試合がありません`
           : `${competitionLabel}の選択条件に該当する試合はありません${unavailableLabel}`;
       if (scrollY != null) {
-        window.requestAnimationFrame(() => window.scrollTo({ top: scrollY, behavior: "auto" }));
+        window.requestAnimationFrame(() => window.scrollTo({ top: scrollY, behavior: "instant" }));
       }
     }
 
