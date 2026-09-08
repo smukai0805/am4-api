@@ -1003,7 +1003,9 @@
           ? `${dateLabel}は、選択条件に該当する試合がありません`
           : `${competitionLabel}の選択条件に該当する試合はありません${unavailableLabel}`;
       if (scrollY != null) {
-        window.requestAnimationFrame(() => window.scrollTo({ top: scrollY, behavior: "instant" }));
+        // Restore within this render: a queued stale Y must not overwrite a
+        // later home/article return restoration in the next animation frame.
+        window.scrollTo({ top: scrollY, behavior: "instant" });
       }
     }
 
