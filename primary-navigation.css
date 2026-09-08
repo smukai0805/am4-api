@@ -57,6 +57,7 @@
   white-space:nowrap;
   text-decoration:none;
   box-shadow:none;
+  transition:background .2s ease,border-color .2s ease,color .2s ease,box-shadow .2s ease;
 }
 .primary-tabbar a:hover{border-color:#52698f;background:#112344;color:#edf4ff;}
 .primary-tabbar a:focus-visible{outline:2px solid #d8e6ff;outline-offset:-3px;}

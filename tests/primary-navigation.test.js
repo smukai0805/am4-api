@@ -50,6 +50,8 @@ test('all four pages use one bar component and one stylesheet', () => {
     assert.match(html,/class="[^"]*primary-navigation-page/);
     assert.match(html,/<nav class="[^"]*primary-tabbar/);
     assert.match(html,/href="\/primary-navigation\.css\?v=20260908-primary-navigation-v1"/);
+    const styles=[...html.matchAll(/<link\b[^>]*rel="stylesheet"[^>]*>/g)].map(match=>match[0]);
+    assert.match(styles.at(-1),/\/primary-navigation\.css\?v=20260908-primary-navigation-v1/,`${file} loads the shared bar rules last`);
   }
 });
 
@@ -59,6 +61,7 @@ test('the shared bar fixes identical position, spacing, mobile sizing and focus 
   assert.match(css,/--am4-primary-nav-height:65px/);
   assert.match(css,/\.primary-tabbar\{[^}]*top:var\(--am4-topbar-height\)[^}]*height:var\(--am4-primary-nav-height\)[^}]*gap:8px[^}]*padding:10px clamp\(16px,5vw,64px\)/);
   assert.match(css,/\.primary-tabbar a\{[^}]*min-height:44px/);
+  assert.match(css,/\.primary-tabbar a\{[^}]*transition:background \.2s ease,border-color \.2s ease,color \.2s ease,box-shadow \.2s ease/);
   assert.match(css,/@media\(max-width:600px\)\{[^}]*\.primary-tabbar\{gap:5px;padding-inline:12px;\}[^}]*\.primary-tabbar a\{flex:1 1 0/);
   assert.match(css,/\.primary-tabbar a:focus-visible\{[^}]*outline:2px solid/);
   assert.match(css,/\.primary-tabbar a\[aria-current\],\s*\.primary-tabbar a\.active/);
