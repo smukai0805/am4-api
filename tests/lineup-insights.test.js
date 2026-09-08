@@ -19,6 +19,16 @@ test('grid follows provider coordinates, reverses away orientation and keeps mis
  }
  assert.equal(formation.rows({startXI:[{grid:null},{grid:'1:1'},{grid:'1:1'}]}).unplaced.length,2);
 });
+test('pitch mirrors horizontal coordinates for each team attacking toward the centre',()=>{
+ const xi=[
+  {id:1,name:'Goalkeeper',grid:'1:1'},
+  {id:2,name:'Left',grid:'2:1'},
+  {id:3,name:'Centre',grid:'2:2'},
+  {id:4,name:'Right',grid:'2:3'},
+ ];
+ assert.deepEqual(formation.rows({startXI:xi}).rows[1].players.map(p=>p.name),['Right','Centre','Left']);
+ assert.deepEqual(formation.rows({startXI:xi},true).rows[0].players.map(p=>p.name),['Left','Centre','Right']);
+});
 test('events do not count own goals, missed penalties or substitutions as goals/assists',()=>{
  const events=[{type:'goal',player:{id:1},assist:{id:2}},{type:'own_goal',player:{id:1},assist:{id:2}},{type:'penalty_missed',player:{id:1}},{type:'substitution',player:{id:1},assist:{id:3},minute:"70'"}];
  assert.equal(formation.contributions(1,events).goals,1);assert.equal(formation.contributions(2,events).assists,1);assert.equal(formation.contributions(1,events).changes[0].direction,'OUT');assert.equal(formation.contributions(3,events).changes[0].direction,'IN');
