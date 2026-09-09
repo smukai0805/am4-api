@@ -1137,7 +1137,8 @@
   function playerOfMatchEditorialValue(report) {
     const value = editorialValue(report, "report", "playerOfMatch", ["Player of the Match", "POTM", "MOTM", "MOM", "プレイヤー・オブ・ザ・マッチ", "マン・オブ・ザ・マッチ"]);
     if (!value) return "";
-    const alreadyLabeled = /(?:Man of the Match|Player of the Match|MOTM|POTM|MOM|プレイヤー[・\s]?オブ[・\s]?ザ[・\s]?マッチ|マン[・\s]?オブ[・\s]?ザ[・\s]?マッチ)(?:\s*[（(][^）)\n]+[）)])?\s*(?:[：:]|は)/iu.test(value);
+    const alreadyLabeled = window.AM4MatchReportPresentation?.hasAwardLabel?.(value)
+      || /(?:Man of the Match|Player of the Match|MOTM|POTM|MOM|MVP|プレイヤー[・\s]?オブ[・\s]?ザ[・\s]?マッチ|マン[・\s]?オブ[・\s]?ザ[・\s]?マッチ)(?:\s*[（(][^）)\n]+[）)])?\s*(?:[：:]|は)/iu.test(value);
     return alreadyLabeled
       ? value
       : `Player of the Match: ${value}`;

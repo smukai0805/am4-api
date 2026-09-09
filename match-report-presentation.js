@@ -15,6 +15,12 @@
   const validName = name => name && name.length <= 80 && /^[\p{L}\p{M} .’'\-・]+$/u.test(name)
     && !/未|確認|選出|なし|不明|候補|該当|推測|unknown|none|unavailable|not\s|pending|unconfirmed|tbc|tbd/iu.test(name);
 
+  function hasAwardLabel(value) {
+    const text=String(value || '').replace(/\*\*/g,'');
+    return /(?:^|[\n。])\s*(?:[-*]\s+)?(?:(?:Sofascore|FotMob|WhoScored|Sports Mole|ESPN|UEFA|FIFA|公式|AM4)\s*(?:の\s*)?)?(?:Man of the Match|Player of the Match|MOTM|POTM|MOM|MVP|プレイヤー[・\s]?オブ[・\s]?ザ[・\s]?マッチ|マン[・\s]?オブ[・\s]?ザ[・\s]?マッチ)(?:\s*[（(][^）)\n]+[）)])?\s*(?:[：:]|は)/iu.test(text)
+      || /(?:^|[\n。])\s*(?:[-*]\s+)?(?:Sofascore|FotMob|WhoScored|Sports Mole|ESPN)\s*(?:の\s*)?(?:最高評価(?:選手)?|Highest[- ]rated(?: player)?)\s*(?:[：:]|は)/iu.test(text);
+  }
+
   function resolvePlayer(name, players = []) {
     const wanted = nameKey(name);
     const wantedParts = wanted.split(" ");
@@ -39,10 +45,17 @@
 
   function selectedMotm(value, players = []) {
     const text = String(value || "").replace(/\*\*/g, "");
-    const matches = [...text.matchAll(/(?:^|[\n。])\s*(?:[-*]\s+)?(?:(Sofascore|FotMob|Sports Mole|UEFA|FIFA|公式|AM4)\s*)?(?:Man of the Match|Player of the Match|MOTM|POTM|MOM|プレイヤー[・\s]?オブ[・\s]?ザ[・\s]?マッチ|マン[・\s]?オブ[・\s]?ザ[・\s]?マッチ)(?:\s*[（(]([^）)\n]+)[）)])?\s*(?:[：:]|は)\s*([^（(\n。:：]+)/giu)]
+    const matches = [...text.matchAll(/(?:^|[\n。])\s*(?:[-*]\s+)?(?:(Sofascore|FotMob|WhoScored|Sports Mole|ESPN|UEFA|FIFA|公式|AM4)\s*(?:の\s*)?)?(?:Man of the Match|Player of the Match|MOTM|POTM|MOM|MVP|プレイヤー[・\s]?オブ[・\s]?ザ[・\s]?マッチ|マン[・\s]?オブ[・\s]?ザ[・\s]?マッチ)(?:\s*[（(]([^）)\n]+)[）)])?\s*(?:[：:]|は)\s*([^（(\n。:：]+)/giu)]
       .map(match => ({ name:match[3].trim(), authority:match[1] || match[2] || "AM4" })).filter(item => validName(item.name));
+    // A named highest-rated player from a recognized ratings provider is an
+    // explicit external selection. Generic analysis saying only "highest
+    // rated" remains insufficient to create an award.
+    for (const match of text.matchAll(/(?:^|[\n。])\s*(?:[-*]\s+)?(Sofascore|FotMob|WhoScored|Sports Mole|ESPN)\s*(?:の\s*)?(?:最高評価(?:選手)?|Highest[- ]rated(?: player)?)\s*(?:[：:]|は)\s*([^（(\n。:：]+)/giu)) {
+      const name=match[2].trim();
+      if (validName(name)) matches.push({name,authority:match[1]});
+    }
     // Legacy reports sometimes state a named player's MVP award in prose.
-    const proseAward = text.match(/(?:^|\n)\s*([\p{L}\p{M} .’'\-・]+?)[（(][^）)\n]+[）)]\s*[：:]\s*(Sofascore|FotMob|UEFA|FIFA)の[^。\n]*?(?:MVP|MOTM|POTM)として(?:扱われ|選出され)/iu);
+    const proseAward = text.match(/(?:^|\n)\s*([\p{L}\p{M} .’'\-・]+?)[（(][^）)\n]+[）)]\s*[：:]\s*(Sofascore|FotMob|WhoScored|Sports Mole|ESPN|UEFA|FIFA)の[^。\n]*?(?:MVP|MOTM|POTM)として(?:扱われ|選出され)/iu);
     if (proseAward && validName(proseAward[1].trim())) matches.push({name:proseAward[1].trim(),authority:proseAward[2]});
     const distinct = new Map(matches.map(item => [nameKey(item.name), item]));
     if (distinct.size !== 1) return null;
@@ -183,5 +196,5 @@
           : '確認できた実出場者を対象に、試合解説と出場記録を総合してAM4が選出。'};
   }
 
-  return { selectedMotm, hasAwardStatement, editorialAm4Motm, narrativeAm4Motm, dataAm4Motm, resolvePlayer, withoutMotmAbstention };
+  return { selectedMotm, hasAwardLabel, hasAwardStatement, editorialAm4Motm, narrativeAm4Motm, dataAm4Motm, resolvePlayer, withoutMotmAbstention };
 });
