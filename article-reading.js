@@ -8,8 +8,9 @@
     const document = container.ownerDocument;
     const lead = document.createElement('div');
     lead.className = 'match-editorial-grid';
-    const more = blocks.filter(block => block.dataset.reportField !== 'keyFigures');
-    lead.append(...blocks.filter(block => block.dataset.reportField === 'keyFigures'));
+    const leadFields = new Set(['playerOfMatch', 'keyFigures']);
+    const more = blocks.filter(block => !leadFields.has(block.dataset.reportField));
+    lead.append(...blocks.filter(block => leadFields.has(block.dataset.reportField)));
     container.append(lead);
     if (!more.length) return;
     const details = document.createElement('details');

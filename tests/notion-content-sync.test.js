@@ -146,6 +146,7 @@ test('Notion uses an explicit fixture ID before a legacy Match Key and retains s
       '大会': { type: 'select', select: { name: 'Premier League' } },
       '試合日': { type: 'date', date: { start: '2026-09-05' } },
       '3行要約': textProperty('rich_text', 'AM4の要約です。'),
+      'POTM': textProperty('rich_text', 'Erling Haaland。2得点を記録した。'),
       '試合を分けたポイント': textProperty('rich_text', '後半の交代で主導権が変わった。'),
       '戦術分析': textProperty('rich_text', '中盤の数的優位が決定的だった。'),
     },
@@ -156,6 +157,7 @@ test('Notion uses an explicit fixture ID before a legacy Match Key and retains s
   assert.equal(article.match.canonicalKey, 'premierleague|2026-09-05|brentford|sunderland');
   assert.deepEqual(article.report, {
     summary: 'AM4の要約です。',
+    playerOfMatch: 'Erling Haaland。2得点を記録した。',
     turningPoints: '後半の交代で主導権が変わった。',
     tactics: '中盤の数的優位が決定的だった。',
   });

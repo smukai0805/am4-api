@@ -39,7 +39,7 @@
 
   function selectedMotm(value, players = []) {
     const text = String(value || "").replace(/\*\*/g, "");
-    const matches = [...text.matchAll(/(?:^|[\n。])\s*(?:[-*]\s+)?(?:(Sofascore|FotMob|Sports Mole|UEFA|FIFA|公式|AM4)\s*)?(?:Man of the Match|Player of the Match|MOTM|POTM)(?:\s*[（(]([^）)\n]+)[）)])?\s*[：:]\s*([^（(\n。:：]+)/giu)]
+    const matches = [...text.matchAll(/(?:^|[\n。])\s*(?:[-*]\s+)?(?:(Sofascore|FotMob|Sports Mole|UEFA|FIFA|公式|AM4)\s*)?(?:Man of the Match|Player of the Match|MOTM|POTM|MOM|プレイヤー[・\s]?オブ[・\s]?ザ[・\s]?マッチ|マン[・\s]?オブ[・\s]?ザ[・\s]?マッチ)(?:\s*[（(]([^）)\n]+)[）)])?\s*(?:[：:]|は)\s*([^（(\n。:：]+)/giu)]
       .map(match => ({ name:match[3].trim(), authority:match[1] || match[2] || "AM4" })).filter(item => validName(item.name));
     // Legacy reports sometimes state a named player's MVP award in prose.
     const proseAward = text.match(/(?:^|\n)\s*([\p{L}\p{M} .’'\-・]+?)[（(][^）)\n]+[）)]\s*[：:]\s*(Sofascore|FotMob|UEFA|FIFA)の[^。\n]*?(?:MVP|MOTM|POTM)として(?:扱われ|選出され)/iu);
@@ -82,16 +82,18 @@
     const teams = [Number(fixture.home?.id),Number(fixture.away?.id)];
     if (teams.some(id=>!Number.isSafeInteger(id) || id<=0) || teams[0]===teams[1]) return null;
     const eligible = [...new Map(players.filter(p => p && Number.isSafeInteger(Number(p.id)) && Number(p.id)>0
-      && validName(p.name) && teams.includes(Number(p.teamId)) && typeof p.rating==='number' && Number.isFinite(p.rating)
-      && p.rating>=1 && p.rating<=10 && typeof p.minutes==='number' && p.minutes>0).map(p=>[Number(p.id),p])).values()];
-    // Do not crown someone from a one-sided or substantially incomplete payload.
-    if (teams.some(id=>eligible.filter(p=>Number(p.teamId)===id).length<9)) return null;
+      && validName(p.name) && teams.includes(Number(p.teamId))).map(p=>[Number(p.id),p])).values()];
+    const rating = p => typeof p.rating === 'number' && Number.isFinite(p.rating) && p.rating >= 1 && p.rating <= 10 ? p.rating : -1;
     const contribution = p => (Number.isFinite(p.goals)?p.goals:0)+(Number.isFinite(p.assists)?p.assists:0);
-    eligible.sort((a,b)=>b.rating-a.rating || contribution(b)-contribution(a) || b.minutes-a.minutes);
-    const [best,next] = eligible;
-    if (next && best.rating===next.rating && contribution(best)===contribution(next) && best.minutes===next.minutes) return null;
-    return {name:best.name,player:best,authority:'AM4',basis:'data',rating:best.rating,
-      reason:`API-FOOTBALLの評価点${best.rating.toFixed(1)}を基に選出。同評価では得点・アシストへの関与、出場時間の順に比較。`};
+    const minutes = p => typeof p.minutes === 'number' && Number.isFinite(p.minutes) && p.minutes > 0 ? p.minutes : 0;
+    eligible.sort((a,b)=>rating(b)-rating(a) || contribution(b)-contribution(a) || minutes(b)-minutes(a) || Number(a.id)-Number(b.id));
+    const [best] = eligible;
+    if (!best) return null;
+    const hasRating = rating(best) >= 1;
+    return {name:best.name,player:best,authority:'AM4',basis:'data',rating:hasRating ? best.rating : null,
+      reason:hasRating
+        ? `API-FOOTBALLの評価点${best.rating.toFixed(1)}を基に選出。同評価では得点・アシストへの関与、出場時間の順に比較。`
+        : '取得できた試合データから、得点・アシストへの関与、出場時間の順に比較して選出。'};
   }
 
   return { selectedMotm, hasAwardStatement, editorialAm4Motm, dataAm4Motm, resolvePlayer, withoutMotmAbstention };

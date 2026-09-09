@@ -1111,9 +1111,12 @@
     const header = node("div", "match-motm-header");
     const portrait = node("span", "match-motm-portrait", selection.name.split(/\s+/).map(part => part[0]).slice(0, 2).join(""));
     portrait.setAttribute("aria-hidden", "true");
-    if (selection.player) {
+    const playerPhoto = selection.player?.photo || (selection.player?.id
+      ? `https://media.api-sports.io/football/players/${selection.player.id}.png`
+      : "");
+    if (playerPhoto) {
       const image = node("img", "");
-      image.src = `https://media.api-sports.io/football/players/${selection.player.id}.png`;
+      image.src = playerPhoto;
       image.alt = "";
       image.width = 88;
       image.height = 88;
@@ -1123,7 +1126,7 @@
       portrait.append(image);
     }
     const copy = node("div", "match-motm-copy");
-    copy.append(node("span", "match-motm-label", selection.authority === 'AM4' ? (locale === 'ja' ? 'AM4選出' : 'AM4 SELECTION') : "MAN OF THE MATCH"), node("h4", "match-motm-name", selection.name));
+    copy.append(node("span", "match-motm-label", selection.authority === 'AM4' ? (locale === 'ja' ? 'AM4選出' : 'AM4 SELECTION') : "PLAYER OF THE MATCH"), node("h4", "match-motm-name", selection.name));
     header.append(portrait, copy);
     block.querySelector("h3").after(header);
     block.classList.add("match-editorial-block--motm");
@@ -1131,22 +1134,33 @@
     if (selection.reason) header.after(node('p','match-motm-reason',selection.reason));
   }
 
+  function playerOfMatchEditorialValue(report) {
+    const value = editorialValue(report, "report", "playerOfMatch", ["Player of the Match", "POTM", "MOTM", "MOM", "プレイヤー・オブ・ザ・マッチ", "マン・オブ・ザ・マッチ"]);
+    if (!value) return "";
+    const alreadyLabeled = /(?:Man of the Match|Player of the Match|MOTM|POTM|MOM|プレイヤー[・\s]?オブ[・\s]?ザ[・\s]?マッチ|マン[・\s]?オブ[・\s]?ザ[・\s]?マッチ)(?:\s*[（(][^）)\n]+[）)])?\s*(?:[：:]|は)/iu.test(value);
+    return alreadyLabeled
+      ? value
+      : `Player of the Match: ${value}`;
+  }
+
   async function completeReportMotm(content, report) {
     const helper = window.AM4MatchReportPresentation;
     const detail = currentDetail;
     if (!helper || !detail) return;
-    const value = editorialValue(report,'report','keyFigures',['試合主要人物','主要人物','MOTM','key figure']);
-    const participants = [
-      ...(detail.events || []).flatMap(e=>[e.player,e.assist]),
-      ...(detail.lineups || []).flatMap(l=>[...(l.startXI || []),...(l.substitutes || [])]),
-    ];
+    const dedicated = playerOfMatchEditorialValue(report);
+    const value = dedicated
+      ? dedicated
+      : editorialValue(report,'report','keyFigures',['試合主要人物','主要人物','MOTM','key figure']);
+    const eventPlayers = (detail.events || []).flatMap(e=>[e.player,e.assist].filter(Boolean).map(player=>({...player,teamId:e.team?.id})));
+    const lineupPlayers = (detail.lineups || []).flatMap(l=>[...(l.startXI || []),...(l.substitutes || [])].map(player=>({...(player.player || player),teamId:l.team?.id})));
+    const participants = [...eventPlayers,...lineupPlayers];
     let selection = helper.selectedMotm(value,participants) || helper.editorialAm4Motm(report.id,value,participants);
     const apply = choice => {
       if (!choice || currentDetail !== detail) return;
-      let block = content.querySelector('[data-report-field="keyFigures"]');
+      let block = content.querySelector('[data-report-field="playerOfMatch"]') || content.querySelector('[data-report-field="keyFigures"]');
       if (!block) {
         block = node('article','match-editorial-block');
-        block.dataset.reportField='keyFigures';
+        block.dataset.reportField='playerOfMatch';
         block.append(node('h3','','MOTM'));
         content.querySelector('.match-editorial-grid').prepend(block);
       }
@@ -1165,10 +1179,16 @@
     // content. Only this MOTM block is enhanced, preserving scroll and disclosures.
     const data = await readLineupInsights(String(detail.fixture.id));
     if (currentDetail !== detail || Number(data.fixtureId)!==Number(detail.fixture.id)) return;
-    const allPlayers = [...participants,...(data.players || []),...(data.lineups || []).flatMap(l=>[...(l.startXI || []),...(l.substitutes || [])])];
+    const insightLineupPlayers = (data.lineups || []).flatMap(l=>[...(l.startXI || []),...(l.substitutes || [])].map(player=>({...(player.player || player),teamId:l.team?.id})));
+    const allPlayers = [...participants,...(data.players || []),...insightLineupPlayers];
     selection = helper.selectedMotm(value,allPlayers) || helper.editorialAm4Motm(report.id,value,allPlayers)
-      || (!data.errors?.players ? helper.dataAm4Motm(detail.fixture,data.players,value) : null);
+      || helper.dataAm4Motm(detail.fixture,[...(data.players || []),...insightLineupPlayers,...eventPlayers],value);
     apply(selection);
+    if (!selection?.name || selection.player || !client?.playerPhoto || currentDetail !== detail) return;
+    const nameParts = selection.name.trim().split(/\s+/);
+    const photo = await client.playerPhoto({ search:nameParts.at(-1), fullName:selection.name });
+    if (currentDetail !== detail || !photo?.photo) return;
+    apply({ ...selection, player:{ name:photo.name || selection.name, photo:photo.photo } });
   }
 
   function predictionBlocks(prediction) {
@@ -1185,7 +1205,9 @@
   }
 
   function reportBlocks(report) {
+    const dedicated = editorialValue(report, "report", "playerOfMatch", ["Player of the Match", "POTM", "MOTM", "MOM", "プレイヤー・オブ・ザ・マッチ", "マン・オブ・ザ・マッチ"]);
     const fields = [
+      [locale === "ja" ? "POTM" : "Player of the Match", "playerOfMatch", ["Player of the Match", "POTM", "MOTM", "MOM", "プレイヤー・オブ・ザ・マッチ", "マン・オブ・ザ・マッチ"]],
       [locale === "ja" ? "試合主要人物" : "Key figures", "keyFigures", ["試合主要人物", "主要人物", "MOTM", "key figure"]],
       [t("turningPoints"), "turningPoints", ["試合を分けたポイント", "勝負を分けたポイント", "turning point"]],
       [t("firstHalf"), "firstHalf", ["前半レビュー", "first half"]],
@@ -1197,10 +1219,10 @@
       [t("nextMatchFocus"), "nextMatchFocus", ["次戦への課題", "next match"]],
     ];
     return fields.map(([label, field, aliases]) => {
-      const value = editorialValue(report, "report", field, aliases);
+      const value = field === "playerOfMatch" ? playerOfMatchEditorialValue(report) : editorialValue(report, "report", field, aliases);
       const block = editorialBlock(label, value, field);
       if (block) block.dataset.reportField = field;
-      if (block && field === "keyFigures") {
+      if (block && (field === "playerOfMatch" || (field === "keyFigures" && !dedicated))) {
         // A missing optional helper or portrait enhancement must not hide prose.
         try { highlightMotm(block, value); } catch (error) { console.warn("MOTM presentation unavailable.", error); }
       }

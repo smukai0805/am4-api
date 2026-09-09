@@ -32,6 +32,7 @@ import {
   getFixtureEvents,
   getFixturePlayers,
   computePlayerRatings,
+  requirePlayerOfMatch,
   generateMatchReportDraft,
 } from '../lib/match-report-core.js';
 import { saveArticle, listArticles, slugify } from '../lib/article-store.js';
@@ -122,6 +123,7 @@ function cleanArticleBody(draft) {
 }
 
 async function buildAndSaveArticle(matchInfo, ratingResult) {
+  requirePlayerOfMatch(ratingResult);
   const { draft: rawDraft, searchSources } = await generateMatchReportDraft(matchInfo, ratingResult);
   const draft = cleanArticleBody(rawDraft);
   const dateStr = (matchInfo.date || '').slice(0, 10);

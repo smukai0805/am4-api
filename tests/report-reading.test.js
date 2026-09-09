@@ -17,12 +17,13 @@ function setup(fields, options={}) {
   return {content,blocks};
 }
 test('MOTM stays visible and every later block is retained, in order, under explicit review topics',()=>{
-  const fields=[['keyFigures','MOTM','選手と理由。'],['turningPoints','試合を分けたポイント','元のポイント。'],['firstHalf','前半レビュー','前半の全文。'],['tactics','戦術分析','戦術の全文。']];
+  const fields=[['playerOfMatch','MOTM','Haalandと選出理由。'],['keyFigures','試合主要人物','CostaとAït-Nouri。'],['turningPoints','試合を分けたポイント','元のポイント。'],['firstHalf','前半レビュー','前半の全文。'],['tactics','戦術分析','戦術の全文。']];
   const {content,blocks}=setup(fields);
   const details=content.querySelector('details');
   assert.equal(details.open,false);
   assert.equal(content.children[0].children[0],blocks[0]);
-  assert.deepEqual(details.querySelectorAll('article'),blocks.slice(1));
+  assert.equal(content.children[0].children[1],blocks[1]);
+  assert.deepEqual(details.querySelectorAll('article'),blocks.slice(2));
   assert.deepEqual(content.querySelectorAll('p').map(p=>p.textContent),fields.map(f=>f[2]));
   assert.match(details.querySelector('summary').textContent,/前半レビュー \/ 戦術分析/);
 });

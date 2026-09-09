@@ -34,6 +34,9 @@ test('media prefixes, later paragraphs and explicit AM4 selections are recognize
   assert.equal(hasAwardStatement('MOTM：Player One\nMOTM：Player Two'),true);
   assert.equal(hasAwardStatement('公式MOTM/POTM：確認できず。推測では設定しない。'),false);
   assert.equal(selectedMotm('最高評価はPlayer One。'),null);
+  assert.equal(selectedMotm('Player of the MatchはErling Haaland。6本のシュートから2得点。',[{id:1100,name:'E. Haaland'}]).player.id,1100);
+  assert.equal(selectedMotm('MOM：Erling Haaland。',[{id:1100,name:'E. Haaland'}]).player.id,1100);
+  assert.equal(selectedMotm('プレイヤー・オブ・ザ・マッチはErling Haaland。',[{id:1100,name:'E. Haaland'}]).player.id,1100);
 });
 
 test('reviewed AM4 choices are exact-article-scoped and yield to a later explicit award', () => {
@@ -55,14 +58,14 @@ test('AM4 data selection evaluates both teams and cannot override editorial awar
   assert.equal(dataAm4Motm(finished,players,'MOTM：Player A'),null);
   assert.equal(dataAm4Motm({...finished,status:'2H'},players),null);
   assert.equal(dataAm4Motm({...finished,status:'NS'},players),null);
-  assert.equal(dataAm4Motm(finished,players.slice(0,11)),null);
-  assert.equal(dataAm4Motm(finished,players.map(p=>({...p,rating:null}))),null);
-  assert.equal(dataAm4Motm(finished,players.map(p=>({...p,minutes:0}))),null);
+  assert.equal(dataAm4Motm(finished,players.slice(0,11)).player.id,1);
+  assert.equal(dataAm4Motm(finished,players.map(p=>({...p,rating:null}))).player.id,1);
+  assert.equal(dataAm4Motm(finished,players.map(p=>({...p,rating:null,minutes:0}))).player.id,1);
 });
 
-test('equal ratings use contributions then minutes, with no arbitrary identity tiebreak', () => {
+test('equal ratings use contributions, minutes and a stable provider identity tiebreak', () => {
   const tied=players.map(p=>({...p,rating:7}));
-  assert.equal(dataAm4Motm(finished,tied),null);
+  assert.equal(dataAm4Motm(finished,tied).player.id,1);
   tied[0].assists=1;
   assert.equal(dataAm4Motm(finished,tied).player.id,1);
   tied[1].goals=1;tied[1].minutes=95;
