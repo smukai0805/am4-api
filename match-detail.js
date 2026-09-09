@@ -1151,10 +1151,14 @@
     const value = dedicated
       ? dedicated
       : editorialValue(report,'report','keyFigures',['試合主要人物','主要人物','MOTM','key figure']);
-    const eventPlayers = (detail.events || []).flatMap(e=>[e.player,e.assist].filter(Boolean).map(player=>({...player,teamId:e.team?.id})));
-    const lineupPlayers = (detail.lineups || []).flatMap(l=>[...(l.startXI || []),...(l.substitutes || [])].map(player=>({...(player.player || player),teamId:l.team?.id})));
+    const eventPlayers = (detail.events || []).flatMap(e=>[e.player,e.assist].filter(Boolean).map(player=>({...player,teamId:e.team?.id,appeared:true})));
+    const lineupPlayers = (detail.lineups || []).flatMap(l=>[
+      ...(l.startXI || []).map(player=>({...(player.player || player),teamId:l.team?.id,started:true,appeared:true})),
+      ...(l.substitutes || []).map(player=>({...(player.player || player),teamId:l.team?.id})),
+    ]);
     const participants = [...eventPlayers,...lineupPlayers];
-    let selection = helper.selectedMotm(value,participants) || helper.editorialAm4Motm(report.id,value,participants);
+    let selection = helper.selectedMotm(value,participants) || helper.editorialAm4Motm(report.id,value,participants)
+      || helper.narrativeAm4Motm(detail.fixture,value,participants,{requireCue:true});
     const apply = choice => {
       if (!choice || currentDetail !== detail) return;
       let block = content.querySelector('[data-report-field="playerOfMatch"]') || content.querySelector('[data-report-field="keyFigures"]');
@@ -1196,10 +1200,15 @@
     // content. Only this MOTM block is enhanced, preserving scroll and disclosures.
     const data = await readLineupInsights(String(detail.fixture.id));
     if (currentDetail !== detail || Number(data.fixtureId)!==Number(detail.fixture.id)) return;
-    const insightLineupPlayers = (data.lineups || []).flatMap(l=>[...(l.startXI || []),...(l.substitutes || [])].map(player=>({...(player.player || player),teamId:l.team?.id})));
+    const insightLineupPlayers = (data.lineups || []).flatMap(l=>[
+      ...(l.startXI || []).map(player=>({...(player.player || player),teamId:l.team?.id,started:true,appeared:true})),
+      ...(l.substitutes || []).map(player=>({...(player.player || player),teamId:l.team?.id})),
+    ]);
     const allPlayers = [...participants,...(data.players || []),...insightLineupPlayers];
     selection = helper.selectedMotm(value,allPlayers) || helper.editorialAm4Motm(report.id,value,allPlayers)
-      || helper.dataAm4Motm(detail.fixture,[...(data.players || []),...insightLineupPlayers,...eventPlayers],value);
+      || helper.narrativeAm4Motm(detail.fixture,value,allPlayers,{requireCue:true})
+      || helper.dataAm4Motm(detail.fixture,[...(data.players || []),...insightLineupPlayers,...eventPlayers],value)
+      || helper.narrativeAm4Motm(detail.fixture,value,allPlayers);
     apply(selection);
     await withPlayerPhoto(selection);
   }

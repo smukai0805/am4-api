@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const {selectedMotm,hasAwardStatement,editorialAm4Motm,dataAm4Motm,withoutMotmAbstention} = require('../match-report-presentation');
+const {selectedMotm,hasAwardStatement,editorialAm4Motm,narrativeAm4Motm,dataAm4Motm,withoutMotmAbstention} = require('../match-report-presentation');
 
 test('explicit editorial MOTM resolves accents and abbreviated fixture names to the provider ID', () => {
   const value = 'Man of the Match：Martin Ødegaard（Sports Mole選出）。決勝点に加えて4度のチャンス創出。Havertzも活躍。';
@@ -46,6 +46,14 @@ test('reviewed AM4 choices are exact-article-scoped and yield to a later explici
   assert.equal(editorialAm4Motm('another-match','Carl Starfeltが同点ゴール。'),null);
   assert.equal(editorialAm4Motm(id,'MOTM：Martín Satriano'),null);
   assert.equal(editorialAm4Motm(id,'Satrianoは公式MOTMに選出。'),null);
+
+  const madridInter='notion-match_report-3d5b49a367ef81eb997bf054ca5b0a4c';
+  const courtois=editorialAm4Motm(madridInter,'Thibaut Courtoisが7セーブ。勝点3の最大の支えとなった。',[
+    {id:28,name:'T. Courtois',minutes:90},
+    {id:640,name:'M. Akanji',minutes:null},
+  ]);
+  assert.equal(courtois.name,'Thibaut Courtois');
+  assert.equal(courtois.player.id,28);
 });
 
 const finished={status:'FT',home:{id:1},away:{id:2}};
@@ -60,17 +68,66 @@ test('AM4 data selection evaluates both teams and cannot override editorial awar
   assert.equal(dataAm4Motm({...finished,status:'NS'},players),null);
   assert.equal(dataAm4Motm(finished,players.slice(0,11)).player.id,1);
   assert.equal(dataAm4Motm(finished,players.map(p=>({...p,rating:null}))).player.id,1);
-  assert.equal(dataAm4Motm(finished,players.map(p=>({...p,rating:null,minutes:0}))).player.id,1);
+  assert.equal(dataAm4Motm(finished,players.map(p=>({...p,rating:null,minutes:0}))),null);
 });
 
-test('equal ratings use contributions, minutes and a stable provider identity tiebreak', () => {
+test('unused substitutes and arbitrary provider identity cannot decide MOTM', () => {
   const tied=players.map(p=>({...p,rating:7}));
-  assert.equal(dataAm4Motm(finished,tied).player.id,1);
+  const noNameFallback=dataAm4Motm({...finished,goals:{home:0,away:0}},tied,'守備戦となった。');
+  assert.equal(noNameFallback.player.id,1);
+  assert.equal(noNameFallback.player.minutes,90);
   tied[0].assists=1;
   assert.equal(dataAm4Motm(finished,tied).player.id,1);
   tied[1].goals=1;tied[1].minutes=95;
   assert.equal(dataAm4Motm(finished,tied).player.id,2);
   assert.equal(players[0].rating,6.1);
+
+  const played=[
+    ...players.map(p=>({...p,rating:null,goals:0,assists:0})),
+    {id:640,teamId:2,name:'M. Akanji',minutes:null,rating:null,goals:4,assists:4},
+  ];
+  assert.equal(dataAm4Motm(finished,played).player.id,1);
+});
+
+test('final actual-participant fallback prefers the winning team and then a starter', () => {
+  const sameRecord=[
+    {id:1,teamId:1,name:'Zulu Winner',minutes:90,rating:7,started:true},
+    {id:2,teamId:2,name:'Alpha Loser',minutes:90,rating:7,started:true},
+  ];
+  assert.equal(dataAm4Motm({...finished,goals:{home:2,away:1}},sameRecord,'守備戦となった。').player.id,1);
+
+  const sameTeam=[
+    {id:3,teamId:1,name:'Zulu Starter',minutes:90,rating:7,started:true},
+    {id:4,teamId:1,name:'Alpha Substitute',minutes:90,rating:7,appeared:true},
+  ];
+  assert.equal(dataAm4Motm({...finished,goals:{home:0,away:0}},sameTeam,'守備戦となった。').player.id,3);
+});
+
+test('the first key figure can become AM4 MOTM only when actual appearance is proven', () => {
+  const participants=[
+    {id:28,teamId:1,name:'T. Courtois',started:true},
+    {id:10,teamId:1,name:'K. Mbappe',started:true},
+    {id:640,teamId:2,name:'M. Akanji'},
+  ];
+  const value='Mbappeが先制点を決めた。Thibaut Courtoisが7セーブで勝点3の最大の支えとなった。Akanjiはベンチ入りした。';
+  const chosen=narrativeAm4Motm(finished,value,participants);
+  assert.equal(chosen.player.id,28);
+  assert.equal(chosen.authority,'AM4');
+  assert.doesNotMatch(chosen.name,/Akanji/);
+  assert.equal(narrativeAm4Motm(finished,'Akanjiが注目された。',participants),null);
+  assert.equal(narrativeAm4Motm(finished,'Thibaut Courtoisに注目。',participants,{requireCue:true}),null);
+  assert.equal(narrativeAm4Motm(finished,'Thibaut Courtoisに注目。',participants).player.id,28);
+  assert.equal(narrativeAm4Motm(finished,'今季のseasonを振り返る。',[
+    {id:7,teamId:1,name:'Son',started:true},
+  ]),null);
+});
+
+test('later lineup identities cannot erase earlier appearance statistics', () => {
+  const stats=players.map(p=>({...p,rating:p.id===16?8.4:6.1}));
+  const lineup=players.map(p=>({id:p.id,teamId:p.teamId,name:p.name,started:true}));
+  const chosen=dataAm4Motm(finished,[...stats,...lineup]);
+  assert.equal(chosen.player.id,16);
+  assert.equal(chosen.rating,8.4);
 });
 
 test('obsolete abstention is removed only for display while adjacent analysis survives', () => {
