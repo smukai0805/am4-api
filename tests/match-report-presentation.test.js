@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const {selectedMotm,hasAwardStatement,editorialAm4Motm,narrativeAm4Motm,dataAm4Motm,withoutMotmAbstention} = require('../match-report-presentation');
+const {selectedMotm,hasAwardLabel,hasAwardStatement,editorialAm4Motm,narrativeAm4Motm,dataAm4Motm,withoutMotmAbstention} = require('../match-report-presentation');
 
 test('explicit editorial MOTM resolves accents and abbreviated fixture names to the provider ID', () => {
   const value = 'Man of the Match：Martin Ødegaard（Sports Mole選出）。決勝点に加えて4度のチャンス創出。Havertzも活躍。';
@@ -37,6 +37,49 @@ test('media prefixes, later paragraphs and explicit AM4 selections are recognize
   assert.equal(selectedMotm('Player of the MatchはErling Haaland。6本のシュートから2得点。',[{id:1100,name:'E. Haaland'}]).player.id,1100);
   assert.equal(selectedMotm('MOM：Erling Haaland。',[{id:1100,name:'E. Haaland'}]).player.id,1100);
   assert.equal(selectedMotm('プレイヤー・オブ・ザ・マッチはErling Haaland。',[{id:1100,name:'E. Haaland'}]).player.id,1100);
+});
+
+test('trusted external MVP and highest-rating statements take priority and resolve the player portrait identity', () => {
+  const yamal=selectedMotm('Sofascore最高評価：Lamine Yamal（9.8）：2得点。',[
+    {id:129718,name:'L. Yamal'},
+    {id:94605,name:'K. Adeyemi'},
+  ]);
+  assert.equal(yamal.name,'Lamine Yamal');
+  assert.equal(yamal.authority,'Sofascore');
+  assert.equal(yamal.player.id,129718);
+  assert.equal(hasAwardStatement('Sofascore最高評価：Lamine Yamal（9.8）：2得点。'),true);
+
+  const mbappe=selectedMotm('Sofascore MVP：Kylian Mbappé（9.1）。6本のシュート、4本の枠内、1得点。',[
+    {id:278,name:'K. Mbappe'},
+  ]);
+  assert.equal(mbappe.name,'Kylian Mbappé');
+  assert.equal(mbappe.authority,'Sofascore');
+  assert.equal(mbappe.player.id,278);
+  assert.equal(hasAwardStatement('Sofascore MVP：Kylian Mbappé（9.1）。'),true);
+  assert.equal(hasAwardLabel('Sofascore MVP：Kylian Mbappé（9.1）。'),true);
+
+  const naturalJapanese=selectedMotm('Sofascoreの最高評価：Lamine Yamal（9.8）。',[
+    {id:386828,name:'Lamine Yamal'},
+  ]);
+  assert.equal(naturalJapanese.player.id,386828);
+  assert.equal(naturalJapanese.authority,'Sofascore');
+
+  const fotmob=selectedMotm('FotMobのMVP：Kylian Mbappé（9.1）。',[
+    {id:278,name:'K. Mbappe'},
+  ]);
+  assert.equal(fotmob.player.id,278);
+  assert.equal(fotmob.authority,'FotMob');
+  assert.equal(hasAwardLabel('FotMobのMVP：Kylian Mbappé（9.1）。'),true);
+
+  const whoscored=selectedMotm('WhoScored MVP: Bukayo Saka (8.9).',[
+    {id:1460,name:'B. Saka'},
+  ]);
+  assert.equal(whoscored.player.id,1460);
+  assert.equal(whoscored.authority,'WhoScored');
+
+  assert.equal(selectedMotm('最高評価はPlayer One。'),null);
+  assert.equal(hasAwardLabel('最高評価はPlayer One。'),false);
+  assert.equal(hasAwardStatement('最高評価はPlayer One。'),false);
 });
 
 test('reviewed AM4 choices are exact-article-scoped and yield to a later explicit award', () => {

@@ -14,7 +14,8 @@
 
   function hasPositiveSelection(value) {
     return String(value || "").split(/\n|。/u).some((line) =>
-      /MOTM|POTM|MVP|(?:Man|Player) of the Match/iu.test(line)
+      (/(?:MOTM|POTM|MVP|(?:Man|Player) of the Match)/iu.test(line)
+        || /(?:Sofascore|FotMob|WhoScored|Sports Mole|ESPN)\s*(?:の\s*)?(?:最高評価(?:選手)?|Highest[- ]rated(?: player)?)/iu.test(line))
       && !/未|確認でき|設定しない|記載しない|見つから|不明|なし|候補|not |unknown|unavailable|unconfirmed/iu.test(line));
   }
 
