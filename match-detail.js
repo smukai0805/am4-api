@@ -1173,7 +1173,24 @@
         });
       }
     };
+    const withPlayerPhoto = async choice => {
+      if (!choice?.name || choice.player || !client?.playerPhoto || currentDetail !== detail) return choice;
+      const nameParts = choice.name.trim().split(/\s+/);
+      try {
+        const photo = await client.playerPhoto({ search:nameParts.at(-1), fullName:choice.name });
+        if (currentDetail !== detail || !photo?.photo) return choice;
+        const enhanced = { ...choice, player:{ name:photo.name || choice.name, photo:photo.photo } };
+        apply(enhanced);
+        return enhanced;
+      } catch (error) {
+        console.warn('Optional MOTM portrait unavailable.',error);
+        return choice;
+      }
+    };
     apply(selection);
+    // Match-Key archives have no provider fixture ID, events or line-ups. The
+    // explicit editorial winner can still receive a verified profile portrait.
+    if (matchGroup(detail.fixture)!=='finished') selection = await withPlayerPhoto(selection);
     if (selection?.player || (!selection && helper.hasAwardStatement(value)) || matchGroup(detail.fixture)!=='finished') return;
     // Optional, coalesced data retrieval never gates the article or replaces its
     // content. Only this MOTM block is enhanced, preserving scroll and disclosures.
@@ -1184,11 +1201,7 @@
     selection = helper.selectedMotm(value,allPlayers) || helper.editorialAm4Motm(report.id,value,allPlayers)
       || helper.dataAm4Motm(detail.fixture,[...(data.players || []),...insightLineupPlayers,...eventPlayers],value);
     apply(selection);
-    if (!selection?.name || selection.player || !client?.playerPhoto || currentDetail !== detail) return;
-    const nameParts = selection.name.trim().split(/\s+/);
-    const photo = await client.playerPhoto({ search:nameParts.at(-1), fullName:selection.name });
-    if (currentDetail !== detail || !photo?.photo) return;
-    apply({ ...selection, player:{ name:photo.name || selection.name, photo:photo.photo } });
+    await withPlayerPhoto(selection);
   }
 
   function predictionBlocks(prediction) {
