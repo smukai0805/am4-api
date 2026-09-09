@@ -69,6 +69,7 @@
     'notion-match_report-3d4b49a367ef8187a4abee8340999adf': {name:'Daniel Maldini',reason:'試合唯一の得点を決め、5本のシュートを記録。継続してゴールに迫り、勝利につなげた働きを評価。'},
     'notion-match_report-3d0b49a367ef81f28883e4bad4738340': {name:'Malick Fofana',reason:'途中出場から攻撃の流れを変え、勝利を近づける2点目を記録。終盤の攻撃への貢献を評価。'},
     'notion-match_report-3d0b49a367ef81c2a8cbf67d478e19fb': {name:'Donyell Malen',reason:'2得点で勝利に直結。背後への動きを繰り返し、相手の最終ラインを押し下げた貢献を評価。'},
+    'notion-match_report-3d5b49a367ef81eb997bf054ca5b0a4c': {name:'Thibaut Courtois',reason:'7セーブでInterの連続攻撃を阻止。劣勢の時間帯を耐え、2-1の勝利を支えた貢献を評価。'},
   };
 
   function editorialAm4Motm(articleId, value, players = []) {
@@ -77,24 +78,110 @@
     return choice ? {...choice, authority:'AM4', basis:'editorial',player:resolvePlayer(choice.name,players)} : null;
   }
 
+  function mergeParticipants(players = []) {
+    const merged = new Map();
+    for (const entry of players) {
+      const player = entry?.player || entry;
+      const id = Number(player?.id);
+      if (!Number.isSafeInteger(id) || id <= 0) continue;
+      const previous = merged.get(id) || {};
+      const next = {...previous,...player,id};
+      for (const field of ['teamId','rating','minutes','goals','assists','photo']) {
+        if (player?.[field] == null && previous[field] != null) next[field]=previous[field];
+      }
+      next.appeared=Boolean(previous.appeared || player?.appeared || player?.started
+        || (typeof next.minutes==='number' && Number.isFinite(next.minutes) && next.minutes>0));
+      merged.set(id,next);
+    }
+    return [...merged.values()];
+  }
+
+  function actualParticipants(fixture, players = []) {
+    const teams=[Number(fixture?.home?.id),Number(fixture?.away?.id)];
+    if (teams.some(id=>!Number.isSafeInteger(id) || id<=0) || teams[0]===teams[1]) return [];
+    return mergeParticipants(players).filter(player=>player.appeared && validName(player.name)
+      && teams.includes(Number(player.teamId)));
+  }
+
+  function narrativeAm4Motm(fixture, value, players = [], options = {}) {
+    if (hasAwardStatement(value)) return null;
+    const participants=actualParticipants(fixture,players);
+    const textKey=nameKey(value);
+    if (!textKey || !participants.length) return null;
+    const surnames=new Map();
+    participants.forEach(player=>{
+      const surname=nameKey(player.name).split(' ').at(-1);
+      if (!surname) return;
+      const matches=surnames.get(surname) || [];
+      matches.push(player);surnames.set(surname,matches);
+    });
+    const mentionIndex=surname=>{
+      const escaped=surname.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+      const match=new RegExp(`(?:^|\\s)${escaped}(?=$|\\s|[\\p{Script=Hiragana}\\p{Script=Katakana}\\p{Script=Han}])`,'u').exec(textKey);
+      return match ? match.index : -1;
+    };
+    const cueScore=sentence=>{
+      let score=0;
+      if (/最大の支え|最大の功労者|勝利の立役者|最優秀|試合を決め/iu.test(sentence)) score+=100;
+      if (/決勝点|決勝ゴール/iu.test(sentence)) score+=40;
+      if (/勝利に直結|勝利を支え|無失点を支え/iu.test(sentence)) score+=30;
+      if (/先制点|同点ゴール|逆転ゴール/iu.test(sentence)) score+=15;
+      const goals=sentence.match(/(\d+)\s*(?:得点|ゴール)/u);
+      if (goals) score+=Number(goals[1])*18;
+      const saves=sentence.match(/(\d+)\s*セーブ/u);
+      if (saves) score+=Number(saves[1])*5;
+      if (/アシスト|得点を演出/iu.test(sentence)) score+=10;
+      return score;
+    };
+    const sentences=String(value || '').split(/(?<=[。.!?！？])|\n+/u).filter(Boolean);
+    const mentioned=[...surnames.entries()].filter(([,matches])=>matches.length===1).map(([surname,matches])=>{
+      const index=mentionIndex(surname);
+      const score=sentences.filter(sentence=>nameKey(sentence).includes(surname)).reduce((total,sentence)=>total+cueScore(sentence),0);
+      return {player:matches[0],index,score};
+    }).filter(item=>item.index>=0).sort((a,b)=>b.score-a.score || a.index-b.index);
+    const winner=mentioned[0];
+    if (options.requireCue && (!winner || winner.score<=0)) return null;
+    if (!winner) return null;
+    return {name:winner.player.name,player:winner.player,authority:'AM4',basis:'editorial-narrative',
+      reason:winner.score>0
+        ? '試合解説に記録された決定的な貢献を比較し、AM4が選出。'
+        : '試合解説の主要人物欄で中心に扱われた実出場選手として、AM4が選出。'};
+  }
+
   function dataAm4Motm(fixture, players, value = '') {
     if (!['FT','AET','PEN'].includes(fixture?.status) || hasAwardStatement(value) || !Array.isArray(players)) return null;
     const teams = [Number(fixture.home?.id),Number(fixture.away?.id)];
     if (teams.some(id=>!Number.isSafeInteger(id) || id<=0) || teams[0]===teams[1]) return null;
-    const eligible = [...new Map(players.filter(p => p && Number.isSafeInteger(Number(p.id)) && Number(p.id)>0
-      && validName(p.name) && teams.includes(Number(p.teamId))).map(p=>[Number(p.id),p])).values()];
     const rating = p => typeof p.rating === 'number' && Number.isFinite(p.rating) && p.rating >= 1 && p.rating <= 10 ? p.rating : -1;
     const contribution = p => (Number.isFinite(p.goals)?p.goals:0)+(Number.isFinite(p.assists)?p.assists:0);
     const minutes = p => typeof p.minutes === 'number' && Number.isFinite(p.minutes) && p.minutes > 0 ? p.minutes : 0;
-    eligible.sort((a,b)=>rating(b)-rating(a) || contribution(b)-contribution(a) || minutes(b)-minutes(a) || Number(a.id)-Number(b.id));
-    const [best] = eligible;
-    if (!best) return null;
+    const eligible = actualParticipants(fixture,players);
+    if (!eligible.length) return null;
+    const homeGoals=Number(fixture.goals?.home),awayGoals=Number(fixture.goals?.away);
+    const winnerTeamId=Number.isFinite(homeGoals)&&Number.isFinite(awayGoals)&&homeGoals!==awayGoals
+      ? (homeGoals>awayGoals ? teams[0] : teams[1]) : null;
+    eligible.sort((a,b)=>rating(b)-rating(a)
+      || contribution(b)-contribution(a)
+      || minutes(b)-minutes(a)
+      || Number(Number(b.teamId)===winnerTeamId)-Number(Number(a.teamId)===winnerTeamId)
+      || Number(Boolean(b.started))-Number(Boolean(a.started))
+      || nameKey(a.name).localeCompare(nameKey(b.name)));
+    const [best,next] = eligible;
+    const exactFootballTie=next && rating(best)===rating(next) && contribution(best)===contribution(next)
+      && minutes(best)===minutes(next) && Number(best.teamId===winnerTeamId)===Number(next.teamId===winnerTeamId)
+      && Boolean(best.started)===Boolean(next.started);
+    if (exactFootballTie) {
+      const editorial=narrativeAm4Motm(fixture,value,eligible);
+      if (editorial) return editorial;
+    }
     const hasRating = rating(best) >= 1;
     return {name:best.name,player:best,authority:'AM4',basis:'data',rating:hasRating ? best.rating : null,
       reason:hasRating
         ? `API-FOOTBALLの評価点${best.rating.toFixed(1)}を基に選出。同評価では得点・アシストへの関与、出場時間の順に比較。`
-        : '取得できた試合データから、得点・アシストへの関与、出場時間の順に比較して選出。'};
+        : contribution(best)>0
+          ? '得点・アシストへの関与と出場記録を比較し、AM4が選出。'
+          : '確認できた実出場者を対象に、試合解説と出場記録を総合してAM4が選出。'};
   }
 
-  return { selectedMotm, hasAwardStatement, editorialAm4Motm, dataAm4Motm, resolvePlayer, withoutMotmAbstention };
+  return { selectedMotm, hasAwardStatement, editorialAm4Motm, narrativeAm4Motm, dataAm4Motm, resolvePlayer, withoutMotmAbstention };
 });
