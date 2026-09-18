@@ -6,9 +6,11 @@ import {
   collectNotionSourcePages,
   createNotionClient,
   notionMarkdownToBlocks,
+  publishGeneratedMatchPrediction,
   publishGeneratedMatchReport,
   syncNotionPage,
 } from '../lib/notion-content-sync.js';
+import { compactArticleIndexEntry } from '../lib/sync-article-store.js';
 
 function response(value, status = 200) {
   return new Response(JSON.stringify(value), { status, headers: { 'content-type': 'application/json' } });
@@ -151,6 +153,50 @@ test('generated match reports use only the validated source schema and preserve 
   assert.ok(payload.children.some((block) => block.paragraph?.rich_text?.[0]?.text?.content.includes('本文末尾マーカー。')));
   assert.ok(payload.children.some((block) => block.bulleted_list_item?.rich_text?.[0]?.text?.content.includes('Official match centre')));
   assert.equal(notionMarkdownToBlocks('## 見出し\n本文末尾').length, 2);
+});
+
+test('generated match predictions use the prediction source schema and retain structured score metadata', async () => {
+  let payload = null;
+  const schema = {
+    記事タイトル: { type: 'title', title: {} },
+    記事状態: { type: 'select', select: { options: [{ name: '自動生成' }, { name: '公開準備' }] } },
+    'Match Key': { type: 'rich_text', rich_text: {} },
+    試合日: { type: 'date', date: {} },
+    大会: { type: 'select', select: { options: [{ name: 'Premier League' }] } },
+    ホーム: { type: 'rich_text', rich_text: {} },
+    アウェイ: { type: 'rich_text', rich_text: {} },
+    'Fixture ID': { type: 'number', number: {} },
+    予想スコア: { type: 'rich_text', rich_text: {} },
+    本命: { type: 'rich_text', rich_text: {} },
+    確信度: { type: 'number', number: {} },
+    生成日時: { type: 'date', date: {} },
+  };
+  const result = await publishGeneratedMatchPrediction({
+    match: {
+      fixtureId: 1557409, date: '2026-09-19', kickoff: '2026-09-19T14:00:00Z', timezone: 'UTC',
+      competition: 'Premier League', homeTeam: 'Brighton', awayTeam: 'Arsenal',
+      homeTeamId: 51, awayTeamId: 42,
+    },
+    prediction: { score: '1-2', pick: 'Arsenal', confidence: 64 },
+    draft: '# 3行要約\nBrightonとArsenalの本文末尾マーカー。\n\n## 予想の根拠\n検証済みの直近結果だけを使う。',
+    sources: [{ title: 'Contract fixture data', url: 'https://example.com/fixture' }],
+    now: () => new Date('2026-09-18T00:00:00.000Z'),
+    client: {
+      sourceProperties: async () => schema,
+      createPage: async (value) => {
+        payload = value;
+        return { id: 'generated-prediction-page', created_time: '2026-09-18T00:00:00.000Z' };
+      },
+    },
+  });
+  assert.equal(result.page.id, 'generated-prediction-page');
+  assert.equal(payload.parent.data_source_id, 'b4743ad8-9ca9-462c-b90d-406e3e0a0c4b');
+  assert.equal(payload.properties.記事状態.select.name, '自動生成');
+  assert.equal(payload.properties['Fixture ID'].number, 1557409);
+  assert.equal(payload.properties.予想スコア.rich_text[0].text.content, '1-2');
+  assert.equal(payload.properties.本命.rich_text[0].text.content, 'Arsenal');
+  assert.equal(payload.properties.確信度.number, 64);
+  assert.ok(payload.children.some((block) => block.paragraph?.rich_text?.[0]?.text?.content.includes('本文末尾マーカー。')));
 });
 
 test('the durable usage gate counts each nested Notion HTTP attempt and prevents the next request at its cap', async () => {
@@ -360,6 +406,58 @@ test('syncNotionPage shares normalisation and rejects a changed version before p
   assert.equal(result.outcome, 'source_changed');
   assert.equal(result.sourceVersion, '2026-09-14T00:01:00.000Z');
   assert.equal(writes.length, 0);
+});
+
+test('syncNotionPage keeps a failed monitor-created delivery private until the Notion source changes', async () => {
+  const page = notionPage({ version: '2026-09-18T00:00:00.000Z' });
+  const held = {
+    id: 'notion-match_prediction-page-1', type: 'match_prediction', public: false,
+    notion: { pageId: page.id, updatedAt: page.last_edited_time, state: '自動生成' },
+    siteMonitor: {
+      deliveryHold: { sourceVersion: page.last_edited_time, reason: 'browser_validation_failed' },
+    },
+  };
+  const writes = [];
+  let pageReads = 0;
+  const result = await syncNotionPage({
+    pageId: page.id, sourceType: 'match_prediction', expectedSourceVersion: page.last_edited_time,
+    apiKey: 'notion-token', sourceIds: { match_prediction: 'source-pred' },
+    articleStore: {
+      async getArticle() { return held; },
+      async saveArticle(article) { writes.push(article); },
+    },
+    fetcher: async (url) => {
+      if (url.endsWith('/pages/page-1')) {
+        pageReads += 1;
+        return response(page);
+      }
+      throw new Error(`the held revision must not fetch blocks: ${url}`);
+    },
+  });
+  assert.equal(result.outcome, 'monitor_delivery_hold');
+  assert.equal(result.article, held);
+  assert.equal(pageReads, 1);
+  assert.equal(writes.length, 0);
+});
+
+test('the compact article index retains only the monitor delivery hold needed by a full source scan', () => {
+  const compact = compactArticleIndexEntry({
+    id: 'notion-match_prediction-page-1', type: 'match_prediction', public: false,
+    siteMonitor: {
+      provisionalCreation: { sourceVersion: '2026-09-18T00:00:00.000Z', sourceJobId: 'source-job' },
+      deliveryHold: { sourceVersion: '2026-09-18T00:00:00.000Z', sourceJobId: 'source-job', reason: 'browser_validation_failed' },
+      ignoredSensitiveValue: 'must-not-copy',
+    },
+  });
+  assert.deepEqual(compact.siteMonitor, {
+    provisionalCreation: {
+      sourceVersion: '2026-09-18T00:00:00.000Z', sourceJobId: 'source-job', reason: null,
+    },
+    deliveryHold: {
+      sourceVersion: '2026-09-18T00:00:00.000Z', sourceJobId: 'source-job', reason: 'browser_validation_failed',
+    },
+  });
+  assert.equal(JSON.stringify(compact.siteMonitor).includes('must-not-copy'), false);
 });
 
 test('syncNotionPage never hides a page that was republished before its guarded write', async () => {

@@ -29,6 +29,10 @@ import {
   scanMissingMatchReports,
 } from '../lib/match-report-repair.js';
 import {
+  PREDICTION_GENERATION_SOURCE_TYPE,
+  scanMissingMatchPredictions,
+} from '../lib/match-prediction-repair.js';
+import {
   isValidVercelWebhookSignature,
   readVercelWebhookPayload,
   vercelWebhookSignature,
@@ -52,6 +56,17 @@ const VERCEL_PRODUCTION_EVENTS = new Set(['deployment.promoted']);
 const DEFAULT_VERCEL_PROJECT_ID = 'prj_8EJAFi2Dgph83Jbuf20rmfyFahuu';
 const DEFAULT_VERCEL_TEAM_ID = 'team_j4FD3nvbNt5PKHJLJJfO9Xbq';
 const MATCH_EDITORIAL_SOURCE_TYPES = Object.freeze(['match_report', 'match_prediction']);
+// These source types are internal, durable creation jobs. They are never
+// claimed by the ordinary reader-safe monitor lane: a single, authenticated
+// extended worker owns one verified editorial generation at a time.
+const GENERATED_EDITORIAL_SOURCE_TYPES = Object.freeze([
+  REPORT_GENERATION_SOURCE_TYPE,
+  PREDICTION_GENERATION_SOURCE_TYPE,
+]);
+const MONITOR_QUEUE_SOURCE_TYPES = Object.freeze([
+  ...MATCH_EDITORIAL_SOURCE_TYPES,
+  ...GENERATED_EDITORIAL_SOURCE_TYPES,
+]);
 // This is intentionally source-controlled rather than operator input.  It
 // identifies the corrected association/media repair below, so one legacy
 // terminal job cannot prevent a single safe recovery after the repair code
@@ -78,6 +93,7 @@ const MANUAL_EDITORIAL_BACKFILL_DAILY_LIMITS = Object.freeze({
 const REPORT_GENERATION_RECOVERY_DAILY_LIMITS = Object.freeze({
   maxApiCallsPerDay: 1_000,
   maxProviderRequestsPerDay: 400,
+  maxGenerationsPerDay: 20,
   // The project can already have a legitimate editorial-sync backlog in the
   // shared ledger when a finished-fixture incident begins.  Leave 95 bounded
   // operations above the observed 145-operation baseline: enough for the
@@ -327,6 +343,14 @@ function compactRun(result) {
         sourceVersion: safeId(job.result.reportGeneration.sourceVersion, 100),
         browserValidationJobId: safeId(job.result.reportGeneration.browserValidationJobId, 80),
       } : null,
+      predictionGeneration: job.result?.predictionGeneration ? {
+        fixtureId: Number.isSafeInteger(Number(job.result.predictionGeneration.fixtureId))
+          ? Number(job.result.predictionGeneration.fixtureId) : null,
+        outcome: safeId(job.result.predictionGeneration.outcome, 80),
+        notionPageId: safeId(job.result.predictionGeneration.notionPageId, 80),
+        sourceVersion: safeId(job.result.predictionGeneration.sourceVersion, 100),
+        browserValidationJobId: safeId(job.result.predictionGeneration.browserValidationJobId, 80),
+      } : null,
     };
   };
   return {
@@ -344,7 +368,7 @@ function compactEditorialQueue(items = []) {
   // small per-lane count in the protected status response lets us distinguish
   // "the prediction lane is waiting" from "the source scan never queued it"
   // without exposing page IDs, article bodies, or Notion properties.
-  const bySource = Object.fromEntries(MATCH_EDITORIAL_SOURCE_TYPES.map((sourceType) => [sourceType, {
+  const bySource = Object.fromEntries(MONITOR_QUEUE_SOURCE_TYPES.map((sourceType) => [sourceType, {
     queued: 0,
     deliveryOnly: 0,
     priorities: {},
@@ -754,6 +778,7 @@ export async function respondWithSiteMonitor(req, res, {
   scanDuplicateCandidates = scanMatchEditorialDuplicateCandidates,
   refreshDuplicateCandidates = refreshMatchEditorialDuplicateCandidates,
   scanMissingReports = scanMissingMatchReports,
+  scanMissingPredictions = scanMissingMatchPredictions,
   runWatchdog = checkSiteMonitorWatchdog,
   now = () => new Date(),
   getTarget = getNotionPageMonitorTarget,
@@ -817,6 +842,7 @@ export async function respondWithSiteMonitor(req, res, {
       usage: state.value.usage,
       matchEditorialSync: state.value.matchEditorialSync || null,
       matchReportRepair: state.value.matchReportRepair || null,
+      matchPredictionRepair: state.value.matchPredictionRepair || null,
       // Preserve the former report-only state during the migration so an
       // existing operational consumer does not lose historical visibility.
       matchReportSync: state.value.matchReportSync || null,
@@ -1022,11 +1048,87 @@ export async function respondWithSiteMonitor(req, res, {
       targetJobId = queued.job.id;
     }
   }
+  // A fixture scan consumes provider budget before it can enqueue ordinary
+  // work, so it has a separate durable lease from the later editorial writer
+  // lock. This prevents overlapping minute Crons from paying for the same
+  // source scan while still letting the current queue drain if a scan is in
+  // progress elsewhere.
+  const fixtureScanConfigured = Boolean(env.API_FOOTBALL_KEY && env.NOTION_API_KEY);
+  let fixtureScanLock = null;
+  let fixtureScanLockState = null;
+  let scanProviderRequests = 0;
+  const consumeFixtureScanProviderRequest = async () => {
+    if (scanProviderRequests >= settings.maxProviderRequestsPerRun) {
+      return {
+        ok: false, exceeded: 'providerRequestsPerRun',
+        usage: { providerRequests: scanProviderRequests }, requested: { providerRequests: 1 },
+      };
+    }
+    const reservation = await store.consumeUsage({ providerRequests: 1 }, {
+      providerRequests: settings.maxProviderRequestsPerDay,
+    });
+    if (reservation.ok) scanProviderRequests += 1;
+    return reservation;
+  };
+  if (editorialContinuation && fixtureScanConfigured) {
+    try {
+      fixtureScanLock = await store.acquireLock({ name: 'fixture-editorial-scan', ttlMs: settings.lockTtlMs });
+      fixtureScanLockState = fixtureScanLock ? 'acquired' : 'already_running';
+    } catch {
+      fixtureScanLockState = 'unavailable';
+    }
+  }
+  let missingPredictionScan = null;
+  let missingReportScan = null;
+  try {
+  // Every minute the existing authenticated editorial continuation reconciles
+  // the scheduled target-fixture list with the public prediction mirror. The
+  // fixture-first scanner itself is hourly, so a missing Notion source page is
+  // queued for deterministic creation without turning the minute Cron into an
+  // unbounded provider poll.
+  if (editorialContinuation) {
+    if (!env.API_FOOTBALL_KEY || !env.NOTION_API_KEY) {
+      missingPredictionScan = { state: 'not_configured', reason: !env.API_FOOTBALL_KEY ? 'fixture_provider_unconfigured' : 'notion_unconfigured' };
+      await recordWebhookAlert(store, notify, {
+        key: 'prediction-generation:configuration', category: 'external_connection',
+        message: 'AM4監視は試合予想の自動復旧を開始できません。必要なサーバー接続を利用できません。',
+        metadata: { reason: missingPredictionScan.reason },
+      });
+    } else if (!fixtureScanLock) {
+      missingPredictionScan = {
+        state: fixtureScanLockState === 'already_running' ? 'already_running' : 'unavailable',
+        reason: fixtureScanLockState === 'already_running' ? 'fixture_scan_in_progress' : 'fixture_scan_lock_unavailable',
+      };
+    } else try {
+      missingPredictionScan = await scanMissingPredictions({
+        store, now, consumeProviderRequest: consumeFixtureScanProviderRequest,
+      });
+      if (missingPredictionScan?.state === 'unavailable') {
+        await recordWebhookAlert(store, notify, {
+          key: 'prediction-generation:fixture-scan', category: 'external_connection',
+          message: 'AM4監視は近日の試合予想欠落を再確認できませんでした。既存記事は保持し、次の巡回で再試行します。',
+          metadata: { reason: missingPredictionScan.reason || null },
+        });
+      }
+      if (missingPredictionScan?.state === 'quota_exceeded') {
+        await recordWebhookAlert(store, notify, {
+          key: 'usage_limit', category: 'usage_limit',
+          message: 'AM4監視は設定済みの利用量上限に達したため、安全に停止しました。',
+          metadata: { phase: 'prediction_fixture_scan' },
+        });
+      }
+    } catch (_error) {
+      missingPredictionScan = { state: 'unavailable', reason: 'prediction_fixture_scan_failed' };
+      await recordWebhookAlert(store, notify, {
+        key: 'prediction-generation:fixture-scan', category: 'external_connection',
+        message: 'AM4監視は近日の試合予想欠落を再確認できませんでした。既存記事は保持し、次の巡回で再試行します。',
+      });
+    }
+  }
   // Every minute the existing authenticated editorial continuation reconciles
   // the independent fixture list with the public report mirror. The scanner
   // itself is throttled to an hourly rolling pass after its bounded initial
   // recovery, so this Cron signal is not an unbounded provider poll.
-  let missingReportScan = null;
   if (editorialContinuation) {
     if (!env.API_FOOTBALL_KEY || !env.NOTION_API_KEY) {
       missingReportScan = { state: 'not_configured', reason: !env.API_FOOTBALL_KEY ? 'fixture_provider_unconfigured' : 'notion_unconfigured' };
@@ -1035,22 +1137,15 @@ export async function respondWithSiteMonitor(req, res, {
         message: 'AM4監視は終了試合の解説自動復旧を開始できません。必要なサーバー接続を利用できません。',
         metadata: { reason: missingReportScan.reason },
       });
-    } else try {
-      let scanProviderRequests = 0;
-      const consumeProviderRequest = async () => {
-        if (scanProviderRequests >= settings.maxProviderRequestsPerRun) {
-          return {
-            ok: false, exceeded: 'providerRequestsPerRun',
-            usage: { providerRequests: scanProviderRequests }, requested: { providerRequests: 1 },
-          };
-        }
-        const reservation = await store.consumeUsage({ providerRequests: 1 }, {
-          providerRequests: settings.maxProviderRequestsPerDay,
-        });
-        if (reservation.ok) scanProviderRequests += 1;
-        return reservation;
+    } else if (!fixtureScanLock) {
+      missingReportScan = {
+        state: fixtureScanLockState === 'already_running' ? 'already_running' : 'unavailable',
+        reason: fixtureScanLockState === 'already_running' ? 'fixture_scan_in_progress' : 'fixture_scan_lock_unavailable',
       };
-      missingReportScan = await scanMissingReports({ store, now, consumeProviderRequest });
+    } else try {
+      missingReportScan = await scanMissingReports({
+        store, now, consumeProviderRequest: consumeFixtureScanProviderRequest,
+      });
       if (missingReportScan?.state === 'unavailable') {
         await recordWebhookAlert(store, notify, {
           key: 'report-generation:fixture-scan', category: 'external_connection',
@@ -1071,6 +1166,16 @@ export async function respondWithSiteMonitor(req, res, {
         key: 'report-generation:fixture-scan', category: 'external_connection',
         message: 'AM4監視は終了試合の解説欠落を再確認できませんでした。既存記事は保持し、次の巡回で再試行します。',
       });
+    }
+  }
+  } finally {
+    if (fixtureScanLock) {
+      try {
+        await store.releaseLock(fixtureScanLock);
+      } catch {
+        // The lease expires safely if Blob is transiently unavailable here.
+        // It is never evidence that either source scan completed.
+      }
     }
   }
   // The minute-level editorial worker normally drains only durable jobs. When
@@ -1115,7 +1220,7 @@ export async function respondWithSiteMonitor(req, res, {
       if (quotaPolicyChanged || retiredProviderCircuit) {
         if (quotaPolicyChanged) {
           releasedReportGenerationHolds = await store.requeueDeferredUsageLimitedJobs({
-            sourceTypes: [REPORT_GENERATION_SOURCE_TYPE],
+            sourceTypes: GENERATED_EDITORIAL_SOURCE_TYPES,
             limit: REPORT_GENERATION_RECOVERY_DAILY_LIMITS.maxGenerationsPerDay || 20,
           });
         }
@@ -1140,20 +1245,26 @@ export async function respondWithSiteMonitor(req, res, {
     }
   }
 
-  // A report-generation job is deliberately isolated from the short source
-  // delivery drain. Only one ready fixture is claimed in this 300-second
-  // lane; ordinary editorial delivery resumes on the next minute when no
-  // generation job is ready. Its composer uses only verified provider data,
-  // so there is no external text-generation provider circuit to pause it.
-  const reportGenerationQueueReady = editorialContinuation
-    ? (await store.readQueue()).value.items.some((item) => (
-      item?.sourceType === REPORT_GENERATION_SOURCE_TYPE
-      && !item.leaseOwner
-      && Date.parse(item.availableAt || '') <= new Date(now()).getTime()
-    ))
-    : false;
-  const reportGenerationWorkReady = reportGenerationQueueReady;
-  const monitorTrigger = reportGenerationWorkReady ? 'report_generation'
+  // Generation is deliberately isolated from the short source-delivery drain.
+  // Only one ready fixture is claimed in this 300-second lane; normal
+  // editorial delivery resumes on the next minute when no generator is
+  // ready. Both composers use only verified provider data and their shared
+  // durable attempt/version ceilings, so no external text-generation circuit
+  // or reader request can create a duplicate source page.
+  const readyGenerationSourceTypes = editorialContinuation
+    ? [...new Set((await store.readQueue()).value.items
+      .filter((item) => (
+        GENERATED_EDITORIAL_SOURCE_TYPES.includes(item?.sourceType)
+        && !item.leaseOwner
+        && Date.parse(item.availableAt || '') <= new Date(now()).getTime()
+      ))
+      .map((item) => item.sourceType))]
+    : [];
+  const generationWorkReady = readyGenerationSourceTypes.length > 0;
+  const monitorTrigger = generationWorkReady
+    ? readyGenerationSourceTypes.includes(REPORT_GENERATION_SOURCE_TYPE)
+      ? 'report_generation'
+      : 'prediction_generation'
     : (runMatchEditorialBackfill || (editorialContinuation && collectMatchEditorialBackfill))
     ? 'match_editorial_backfill'
     : editorialContinuation ? 'editorial_continuation'
@@ -1171,8 +1282,8 @@ export async function respondWithSiteMonitor(req, res, {
     // A full manual editorial recovery must never consume its elevated
     // allowance on another monitor lane. Normal Cron remains unfiltered so
     // it can drain legacy work and every supported source as before.
-    ...(reportGenerationWorkReady ? {
-      claimSourceTypes: [REPORT_GENERATION_SOURCE_TYPE],
+    ...(generationWorkReady ? {
+      claimSourceTypes: readyGenerationSourceTypes,
       claimDeliveryOnly: false,
     } : runMatchEditorialBackfill ? {
       claimSourceTypes: MATCH_EDITORIAL_SOURCE_TYPES,
@@ -1189,13 +1300,13 @@ export async function respondWithSiteMonitor(req, res, {
       claimJobKinds: ['deployment_validation', 'article_validation', 'notification_delivery'],
       claimDeliveryOnly: true,
     } : {
-      // Report creation is never safe in the short generic monitor: it needs
-      // the authenticated 285-second lane and its separate recovery budget.
-      // Without this exclusion a regular Cron can repeatedly defer the same
-      // generation job behind its smaller routine write cap.
-      excludeSourceTypes: [REPORT_GENERATION_SOURCE_TYPE],
+      // Source-page creation is never safe in the short generic monitor: it
+      // needs the authenticated 285-second lane and its separate recovery
+      // budget. Without this exclusion a regular Cron can repeatedly defer a
+      // generator behind its smaller routine write cap.
+      excludeSourceTypes: GENERATED_EDITORIAL_SOURCE_TYPES,
     }),
-    settings: reportGenerationWorkReady ? {
+    settings: generationWorkReady ? {
       ...settings,
       allowExtendedRun: true,
       maxJobsPerRun: 1,
@@ -1210,6 +1321,7 @@ export async function respondWithSiteMonitor(req, res, {
       maxApiCallsPerRun: Math.max(settings.maxApiCallsPerRun, 180),
       maxApiCallsPerDay: Math.max(settings.maxApiCallsPerDay, REPORT_GENERATION_RECOVERY_DAILY_LIMITS.maxApiCallsPerDay),
       maxProviderRequestsPerDay: Math.max(settings.maxProviderRequestsPerDay, REPORT_GENERATION_RECOVERY_DAILY_LIMITS.maxProviderRequestsPerDay),
+      maxGenerationsPerDay: Math.max(settings.maxGenerationsPerDay, REPORT_GENERATION_RECOVERY_DAILY_LIMITS.maxGenerationsPerDay),
       maxRepairsPerDay: Math.max(settings.maxRepairsPerDay, REPORT_GENERATION_RECOVERY_DAILY_LIMITS.maxRepairsPerDay),
       maxBrowserLaunchesPerDay: Math.max(settings.maxBrowserLaunchesPerDay, REPORT_GENERATION_RECOVERY_DAILY_LIMITS.maxBrowserLaunchesPerDay),
     } : runMatchEditorialBackfill || editorialContinuation
@@ -1249,7 +1361,7 @@ export async function respondWithSiteMonitor(req, res, {
     // collection. The editorial minute worker may collect only while a
     // source-controlled recovery generation is incomplete; otherwise both
     // continuations claim work that is already durable.
-    collect: reportGenerationWorkReady ? false
+    collect: generationWorkReady ? false
       : editorialContinuation
       ? collectMatchEditorialBackfill
       : continuation ? false
@@ -1297,8 +1409,8 @@ export async function respondWithSiteMonitor(req, res, {
       queueStatus: job.status || null,
       state: job.result?.state || null,
       reason: job.result?.reason || null,
-      fixtureId: job.result?.reportGeneration?.fixtureId || job.result?.fixture?.id || job.fixtureId || null,
-      outcome: job.result?.reportGeneration?.outcome || null,
+      fixtureId: job.result?.reportGeneration?.fixtureId || job.result?.predictionGeneration?.fixtureId || job.result?.fixture?.id || job.fixtureId || null,
+      outcome: job.result?.reportGeneration?.outcome || job.result?.predictionGeneration?.outcome || null,
       // A fixed error class is operationally useful for the server browser
       // runtime, without ever logging the raw browser message (which may
       // contain deployment paths or a future library's request details).
@@ -1326,6 +1438,15 @@ export async function respondWithSiteMonitor(req, res, {
       missingReports: Number(missingReportScan.missingReports || 0),
       queued: Array.isArray(missingReportScan.queued) ? missingReportScan.queued.length : 0,
       reason: missingReportScan.reason || null,
+    } : null,
+    predictionScan: missingPredictionScan ? {
+      state: missingPredictionScan.state || null,
+      scheduledFixtures: Number(missingPredictionScan.scheduledFixtures || 0),
+      missingPredictions: Number(missingPredictionScan.missingPredictions || 0),
+      queued: Array.isArray(missingPredictionScan.queued)
+        ? missingPredictionScan.queued.length
+        : Number(missingPredictionScan.queued || 0),
+      reason: missingPredictionScan.reason || null,
     } : null,
     // Source reconciliation is the evidence that an editorial recovery
     // actually queried Notion, rather than merely draining an old queue. Log
@@ -1355,6 +1476,7 @@ export async function respondWithSiteMonitor(req, res, {
   noStore(res);
   return res.status(result.status === 'failed' ? 500 : result.status === 'attention' ? 503 : 200).json({
     ...compactRun(result),
+    ...(missingPredictionScan ? { missingPredictionScan } : {}),
     ...(missingReportScan ? { missingReportScan } : {}),
     ...(editorialRulesetReconciliation ? { editorialRulesetReconciliation } : {}),
     ...(editorialDuplicateCandidates ? { editorialDuplicateCandidates } : {}),

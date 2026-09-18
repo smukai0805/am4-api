@@ -10,6 +10,7 @@ import {
 } from '../api/site-monitor.js';
 import { createSiteMonitorStore } from '../lib/site-monitor-store.js';
 import { MATCH_EDITORIAL_BACKFILL_GENERATION } from '../lib/match-editorial-sync.js';
+import { PREDICTION_GENERATION_SOURCE_TYPE } from '../lib/match-prediction-repair.js';
 
 function createBlob() {
   const data = new Map();
@@ -471,6 +472,95 @@ test('an editorial continuation resumes a missing source generation exactly thro
   assert.ok(calls[0].settings.maxApiCallsPerRun >= 500);
 });
 
+test('an editorial continuation routes a fixture-first missing prediction into the extended durable generator', async () => {
+  const env = { ...fixtureEnv(), API_FOOTBALL_KEY: 'provider-key' };
+  const store = createSiteMonitorStore({ blob: createBlob() });
+  await store.updateState((state) => ({
+    ...state,
+    matchEditorialSync: {
+      backfill: {
+        match_report: { generation: MATCH_EDITORIAL_BACKFILL_GENERATION, sourceScanCompletedAt: '2026-09-17T00:00:00.000Z' },
+        match_prediction: { generation: MATCH_EDITORIAL_BACKFILL_GENERATION, sourceScanCompletedAt: '2026-09-17T00:00:00.000Z' },
+      },
+    },
+  }));
+  const calls = [];
+  let predictionScanConsumer = null;
+  const res = response();
+  await respondWithSiteMonitor({
+    method: 'GET', query: { editorialContinuation: '1' }, headers: { authorization: 'Bearer cron-token' },
+  }, res, {
+    env,
+    createStore: () => store,
+    scanMissingPredictions: async ({ consumeProviderRequest }) => {
+      predictionScanConsumer = consumeProviderRequest;
+      assert.equal((await consumeProviderRequest()).ok, true);
+      const queued = await store.enqueue({
+        kind: 'prediction_generation', fixtureId: 1557409,
+        sourceType: PREDICTION_GENERATION_SOURCE_TYPE, sourceVersion: 'scheduled-v1',
+        repairGeneration: 'test-generation', trigger: 'scheduled_fixture_scan', priority: 94,
+      });
+      return {
+        state: 'queued', scheduledFixtures: 1, publicPredictions: 0,
+        missingPredictions: 1, queued: [queued.job.id],
+      };
+    },
+    scanMissingReports: async ({ consumeProviderRequest }) => {
+      assert.equal(consumeProviderRequest, predictionScanConsumer);
+      assert.equal((await consumeProviderRequest()).ok, true);
+      return { state: 'throttled', finishedFixtures: 0, missingReports: 0, queued: [] };
+    },
+    scanDuplicateCandidates: async () => ({ state: 'not_needed', candidates: 0, types: {} }),
+    runMonitor: async (input) => {
+      calls.push(input);
+      return monitorResult(input.trigger);
+    },
+  });
+  assert.equal(res.statusCode, 200);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].trigger, 'prediction_generation');
+  assert.deepEqual(calls[0].claimSourceTypes, [PREDICTION_GENERATION_SOURCE_TYPE]);
+  assert.equal(calls[0].claimDeliveryOnly, false);
+  assert.equal(calls[0].collect, false);
+  assert.equal(calls[0].settings.allowExtendedRun, true);
+  assert.equal(calls[0].settings.maxRunMs, 285_000);
+  assert.ok(calls[0].settings.maxGenerationsPerDay >= 20);
+  assert.equal(res.body.missingPredictionScan.missingPredictions, 1);
+});
+
+test('an overlapping editorial continuation leaves fixture scans to the durable scan lease', async () => {
+  const env = { ...fixtureEnv(), API_FOOTBALL_KEY: 'provider-key' };
+  const store = createSiteMonitorStore({ blob: createBlob() });
+  await store.updateState((state) => ({
+    ...state,
+    matchEditorialSync: {
+      backfill: {
+        match_report: { generation: MATCH_EDITORIAL_BACKFILL_GENERATION, sourceScanCompletedAt: '2026-09-17T00:00:00.000Z' },
+        match_prediction: { generation: MATCH_EDITORIAL_BACKFILL_GENERATION, sourceScanCompletedAt: '2026-09-17T00:00:00.000Z' },
+      },
+    },
+  }));
+  const lock = await store.acquireLock({ name: 'fixture-editorial-scan', ttlMs: 60_000 });
+  assert.ok(lock);
+  let scans = 0;
+  const res = response();
+  await respondWithSiteMonitor({
+    method: 'GET', query: { editorialContinuation: '1' }, headers: { authorization: 'Bearer cron-token' },
+  }, res, {
+    env,
+    createStore: () => store,
+    scanMissingPredictions: async () => { scans += 1; return {}; },
+    scanMissingReports: async () => { scans += 1; return {}; },
+    scanDuplicateCandidates: async () => ({ state: 'not_needed', candidates: 0, types: {} }),
+    runMonitor: async (input) => monitorResult(input.trigger),
+  });
+  assert.equal(res.statusCode, 200);
+  assert.equal(scans, 0);
+  assert.equal(res.body.missingPredictionScan.reason, 'fixture_scan_in_progress');
+  assert.equal(res.body.missingReportScan.reason, 'fixture_scan_in_progress');
+  await store.releaseLock(lock);
+});
+
 test('an editorial continuation seeds only a source-controlled association-ruleset retry before draining the durable queue', async () => {
   const env = fixtureEnv();
   const store = createSiteMonitorStore({ blob: createBlob() });
@@ -835,6 +925,8 @@ test('protected monitor status exposes compact persisted diagnostics without art
     bySource: {
       match_report: { queued: 1, deliveryOnly: 1, priorities: { 70: 1 } },
       match_prediction: { queued: 1, deliveryOnly: 0, priorities: { 45: 1 } },
+      match_report_generation: { queued: 0, deliveryOnly: 0, priorities: {} },
+      match_prediction_generation: { queued: 0, deliveryOnly: 0, priorities: {} },
     },
     itemsWithoutSourceMetadata: 1,
   });

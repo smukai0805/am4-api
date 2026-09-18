@@ -10,7 +10,7 @@
   const TEAM_KEY_ALIASES = {
     acmilan: "acmilan", milan: "acmilan",
     internazionale: "inter", inter: "inter", intermilan: "inter",
-    manchesterunited: "manchesterunited", manunited: "manchesterunited",
+    manchesterunited: "manchesterunited", manunited: "manchesterunited", manutd: "manchesterunited",
     parissaintgermain: "parissaintgermain", psg: "parissaintgermain",
     // The provider's registered names for these senior sides differ from the
     // concise forms used in the editorial collection.  They remain aliases
