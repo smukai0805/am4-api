@@ -1,5 +1,52 @@
 {
+  "framework": null,
+  "functions": {
+    "api/site-monitor.js": {
+      "includeFiles": "node_modules/@sparticuz/chromium/bin/**"
+    }
+  },
+  "rewrites": [
+    { "source": "/api/adsense.js", "destination": "/api/player-photo?__am4_adsense_loader=1" },
+    { "source": "/teams/:teamId", "destination": "/api/fixtures?teamPage=1&teamId=:teamId" },
+    { "source": "/players/:playerId", "destination": "/api/player-photo?playerPage=1&playerId=:playerId" },
+    { "source": "/article.html", "destination": "/api/articles?articlePage=1" },
+    { "source": "/match.html", "destination": "/api/fixtures?matchPage=1" },
+    { "source": "/sitemap.xml", "destination": "/api/articles?articleSitemap=1" },
+    { "source": "/privacy", "destination": "/privacy.html" },
+    { "source": "/company", "destination": "/company.html" },
+    { "source": "/contact", "destination": "/contact.html" },
+    { "source": "/read-later", "destination": "/read-later.html" },
+    { "source": "/column", "destination": "/column.html" },
+    { "source": "/column/20-seasons", "destination": "/column-20-seasons.html" }
+  ],
   "crons": [
-    { "path": "/api/articles?trendingRefresh=1", "schedule": "45 8 * * *" }
+    { "path": "/api/articles?trendingRefresh=1", "schedule": "45 8 * * *" },
+    { "path": "/api/site-monitor?cron=1", "schedule": "30 0 * * *" },
+    { "path": "/api/site-monitor?cron=1", "schedule": "30 1 * * *" },
+    { "path": "/api/site-monitor?cron=1", "schedule": "30 2 * * *" },
+    { "path": "/api/site-monitor?cron=1", "schedule": "30 3 * * *" },
+    { "path": "/api/site-monitor?cron=1", "schedule": "30 4 * * *" },
+    { "path": "/api/site-monitor?cron=1", "schedule": "30 5 * * *" },
+    { "path": "/api/site-monitor?cron=1", "schedule": "30 6 * * *" },
+    { "path": "/api/site-monitor?cron=1", "schedule": "30 7 * * *" },
+    { "path": "/api/site-monitor?cron=1", "schedule": "30 8 * * *" },
+    { "path": "/api/site-monitor?cron=1", "schedule": "30 9 * * *" },
+    { "path": "/api/site-monitor?cron=1", "schedule": "30 10 * * *" },
+    { "path": "/api/site-monitor?cron=1", "schedule": "30 11 * * *" },
+    { "path": "/api/site-monitor?cron=1", "schedule": "30 12 * * *" },
+    { "path": "/api/site-monitor?cron=1", "schedule": "30 13 * * *" },
+    { "path": "/api/site-monitor?cron=1", "schedule": "30 14 * * *" },
+    { "path": "/api/site-monitor?cron=1", "schedule": "30 15 * * *" },
+    { "path": "/api/site-monitor?cron=1", "schedule": "30 16 * * *" },
+    { "path": "/api/site-monitor?cron=1", "schedule": "30 17 * * *" },
+    { "path": "/api/site-monitor?cron=1", "schedule": "30 18 * * *" },
+    { "path": "/api/site-monitor?cron=1", "schedule": "30 19 * * *" },
+    { "path": "/api/site-monitor?cron=1", "schedule": "30 20 * * *" },
+    { "path": "/api/site-monitor?cron=1", "schedule": "30 21 * * *" },
+    { "path": "/api/site-monitor?cron=1", "schedule": "30 22 * * *" },
+    { "path": "/api/site-monitor?cron=1", "schedule": "30 23 * * *" },
+    { "path": "/api/site-monitor?continuation=1", "schedule": "0 * * * *" },
+    { "path": "/api/site-monitor?editorialContinuation=1", "schedule": "* * * * *" },
+    { "path": "/api/site-monitor?watchdog=1", "schedule": "10 * * * *" }
   ]
 }

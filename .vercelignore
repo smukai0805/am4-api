@@ -1,0 +1,13 @@
+# Source-controlled reference material and retired prototypes are not public AM4 pages.
+docs/
+tests/
+football-hub.html
+el-blanco.html
+el-blanco-players.html
+sample-football-data.js
+# Keep the local Vite article shell, but let the Vercel rewrite serve SSR at
+# /article.html instead of a filesystem response.
+article.html
+# Keep the local Vite match shell, but serve the Vercel-only SSR response at
+# /match.html instead of a filesystem response.
+match.html

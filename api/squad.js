@@ -169,7 +169,7 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'API_FOOTBALL_KEY が設定されていません' });
   }
 
-  const { club, team, teamId: teamIdParam } = req.query;
+  const { club, team, teamId: teamIdParam, brief } = req.query;
   if (!club && !team && !teamIdParam) {
     return res.status(400).json({ error: 'club(日本語クラブ名)または team/teamId(API-FootballチームID)のいずれかのパラメータが必要です' });
   }
@@ -211,8 +211,12 @@ export default async function handler(req, res) {
         photo: p.photo || null,
       }));
 
-    // トップチーム以外(下部組織の未出場選手・移籍市場ノイズ)を除外する。
-    const players = await filterToFirstTeam(rawPlayers, teamId, API_KEY);
+    // 顔写真カードは名前との照合だけが目的なので、スカッド作成用の重い
+    // トップチーム判定（選手ごとの移籍履歴照会）を待たずに返す。通常の
+    // スカッド作成画面は従来どおりフィルタ済みの一覧を受け取る。
+    const players = brief === '1'
+      ? rawPlayers
+      : await filterToFirstTeam(rawPlayers, teamId, API_KEY);
 
     res.setHeader('Cache-Control', 's-maxage=21600, stale-while-revalidate');
     return res.status(200).json({ found: players.length > 0, players });
