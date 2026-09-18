@@ -2,13 +2,30 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { createSiteMonitorStore } from '../lib/site-monitor-store.js';
-import { runSiteMonitor, siteMonitorSettings } from '../lib/site-monitor-core.js';
+import {
+  isTransientBrowserRuntimeRecoveryJob,
+  runSiteMonitor,
+  siteMonitorSettings,
+} from '../lib/site-monitor-core.js';
 import { MATCH_EDITORIAL_BACKFILL_GENERATION } from '../lib/match-editorial-sync.js';
 
 test('browser verification gets a bounded forty-second budget for article, match, and list checks', () => {
   const settings = siteMonitorSettings({});
   assert.equal(settings.browserBudgetMs, 40_000);
   assert.ok(settings.browserBudgetMs < settings.maxRunMs);
+});
+
+test('only the code-owned browser-runtime migration can use its browser reserve', () => {
+  const exact = {
+    kind: 'transient_browser_recovery',
+    repairGeneration: 'browser-runtime-interruption-recovery-v1',
+    trigger: 'transient_browser_runtime_recovery',
+    payload: { releaseMonitorDeliveryHold: true },
+  };
+  assert.equal(isTransientBrowserRuntimeRecoveryJob(exact), true);
+  assert.equal(isTransientBrowserRuntimeRecoveryJob({ ...exact, trigger: 'other' }), false);
+  assert.equal(isTransientBrowserRuntimeRecoveryJob({ ...exact, repairGeneration: 'other' }), false);
+  assert.equal(isTransientBrowserRuntimeRecoveryJob({ ...exact, payload: {} }), false);
 });
 
 function createBlob() {
@@ -1154,6 +1171,10 @@ test('a production validation restores only a legacy browser-process hold throug
     },
     repairAttempts: 2,
   });
+  // The normal daily browser allowance is already exhausted. The incident
+  // migration may use only its two code-owned reserve launches (21 and 22),
+  // then remains bounded by the same durable daily ledger.
+  assert.equal((await store.consumeUsage({ browserLaunches: 20 }, { browserLaunches: 20 })).ok, true);
   await store.enqueue({ kind: 'deployment_validation', deploymentId: 'dpl-runtime-recovery', priority: 90 });
   const notifications = [];
   let released = false;
@@ -1246,6 +1267,7 @@ test('a production validation restores only a legacy browser-process hold throug
     (await store.readState()).value.browserRuntimeRecovery.processedLegacyJobIds,
     [legacy.job.id],
   );
+  assert.equal((await store.readState()).value.usage.browserLaunches, 22);
 });
 
 test('a repeated runtime interruption restores a legacy recovery hold before both defer and terminal block', async () => {

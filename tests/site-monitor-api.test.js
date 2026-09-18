@@ -379,6 +379,10 @@ test('Cron and manual monitor routes are separately authenticated', async () => 
   assert.ok(calls[6].settings.maxApiCallsPerDay >= 5_000);
   assert.ok(calls[6].settings.maxRepairsPerDay >= 1_500);
   assert.equal(calls[6].settings.maxBrowserLaunchesPerDay, 20);
+  assert.equal(
+    (await store.readState()).value.browserRuntimeRecovery.browserQuotaPolicyVersion,
+    'browser-runtime-interruption-recovery-browser-reserve-v1',
+  );
 });
 
 test('the authenticated Production Cron queues one bounded deployment validation when webhook delivery is absent', async () => {
@@ -471,6 +475,61 @@ test('an editorial continuation resumes a missing source generation exactly thro
   assert.equal(calls[0].claimDeliveryOnly, true);
   assert.ok(calls[0].settings.maxJobsPerRun >= 40);
   assert.ok(calls[0].settings.maxApiCallsPerRun >= 500);
+});
+
+test('concurrent editorial continuations reconnect exactly two code-owned browser-runtime recoveries', async () => {
+  const clock = new Date('2026-09-18T00:00:00.000Z');
+  const store = createSiteMonitorStore({ blob: createBlob(), now: () => clock });
+  const malformed = await store.enqueue({
+    kind: 'transient_browser_recovery', pageId: 'page-malformed', articleId: 'notion-match_prediction-malformed',
+    sourceType: 'match_prediction', sourceVersion: 'v1', repairGeneration: 'browser-runtime-interruption-recovery-v1',
+  });
+  const valid = [];
+  for (const suffix of ['one', 'two', 'three']) {
+    valid.push(await store.enqueue({
+      kind: 'transient_browser_recovery', pageId: `page-${suffix}`, articleId: `notion-match_prediction-${suffix}`,
+      sourceType: 'match_prediction', sourceVersion: 'v1', repairGeneration: 'browser-runtime-interruption-recovery-v1',
+      trigger: 'transient_browser_runtime_recovery', payload: { releaseMonitorDeliveryHold: true },
+    }));
+  }
+  for (const job of [malformed, ...valid]) {
+    const claim = await store.claimJobs({ owner: `owner-${job.job.id}`, jobIds: [job.job.id] });
+    await store.deferJob(claim.jobs[0].id, {
+      owner: `owner-${job.job.id}`, reason: 'browser_usage_limit', delayMs: 12 * 60 * 60 * 1000,
+    });
+  }
+  const calls = [];
+  const dependencies = {
+    env: fixtureEnv(), now: () => clock, createStore: () => store,
+    listPublicArticles: async () => ({ items: [], page: 1, totalPages: 1 }),
+    scanMissingReports: async () => ({ state: 'not_configured', finishedFixtures: 0, missingReports: 0, queued: [] }),
+    scanMissingPredictions: async () => ({ state: 'not_configured', scheduledFixtures: 0, missingPredictions: 0, queued: [] }),
+    scanDuplicateCandidates: async () => ({ state: 'not_needed', candidates: 0, types: {} }),
+    runMonitor: async (input) => { calls.push(input); return monitorResult(input.trigger); },
+  };
+  const request = {
+    method: 'GET', query: { editorialContinuation: '1' }, headers: { authorization: 'Bearer cron-token' },
+  };
+  const first = response();
+  const second = response();
+  await Promise.all([
+    respondWithSiteMonitor(request, first, dependencies),
+    respondWithSiteMonitor(request, second, dependencies),
+  ]);
+
+  assert.equal(first.statusCode, 200);
+  assert.equal(second.statusCode, 200);
+  assert.equal(calls.length, 2);
+  const queue = (await store.readQueue()).value.items;
+  const released = valid.filter((job) => (
+    queue.find((item) => item.jobId === job.job.id).availableAt === clock.toISOString()
+  ));
+  assert.equal(released.length, 2);
+  assert.notEqual(queue.find((item) => item.jobId === malformed.job.id).availableAt, clock.toISOString());
+  assert.equal((await store.readJob(malformed.job.id)).value.lastError, 'browser_usage_limit');
+  const recovery = (await store.readState()).value.browserRuntimeRecovery;
+  assert.equal(recovery.browserQuotaPolicyVersion, 'browser-runtime-interruption-recovery-browser-reserve-v1');
+  assert.equal(recovery.browserQuotaPolicyAppliedAt, clock.toISOString());
 });
 
 test('an editorial continuation routes a fixture-first missing prediction into the extended durable generator', async () => {

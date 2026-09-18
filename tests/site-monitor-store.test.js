@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { createSiteMonitorStore, siteMonitorPath } from '../lib/site-monitor-store.js';
+import { isTransientBrowserRuntimeRecoveryJob } from '../lib/site-monitor-core.js';
 
 function createBlob() {
   const values = new Map();
@@ -141,6 +142,48 @@ test('a reviewed quota-policy release wakes only deferred usage-limited jobs wit
   assert.notEqual(queue.find((item) => item.jobId === unrelated.job.id).availableAt, clock.toISOString());
   assert.equal((await store.readJob(held.job.id)).value.lastError, 'usage_limit_released');
   assert.equal((await store.readJob(unrelated.job.id)).value.lastError, 'usage_limit');
+});
+
+test('the browser-runtime reserve wakes only exact delayed recovery jobs', async () => {
+  let clock = new Date('2026-09-18T00:00:00.000Z');
+  const store = createSiteMonitorStore({ blob: createBlob(), now: () => clock });
+  const malformed = await store.enqueue({
+    kind: 'transient_browser_recovery', pageId: 'page-malformed', articleId: 'notion-match_prediction-malformed',
+    sourceType: 'match_prediction', sourceVersion: 'v1', repairGeneration: 'browser-runtime-interruption-recovery-v1',
+  });
+  const held = await store.enqueue({
+    kind: 'transient_browser_recovery', pageId: 'page-held', articleId: 'notion-match_prediction-held',
+    sourceType: 'match_prediction', sourceVersion: 'v1', repairGeneration: 'browser-runtime-interruption-recovery-v1',
+    trigger: 'transient_browser_runtime_recovery', payload: { releaseMonitorDeliveryHold: true },
+  });
+  const unrelated = await store.enqueue({
+    kind: 'article_validation', articleId: 'notion-match_prediction-unrelated',
+    sourceType: 'match_prediction', sourceVersion: 'v1',
+  });
+  const heldClaim = await store.claimJobs({ owner: 'held-owner', jobIds: [held.job.id] });
+  await store.deferJob(heldClaim.jobs[0].id, {
+    owner: 'held-owner', reason: 'browser_usage_limit', delayMs: 12 * 60 * 60 * 1000,
+  });
+  const malformedClaim = await store.claimJobs({ owner: 'malformed-owner', jobIds: [malformed.job.id] });
+  await store.deferJob(malformedClaim.jobs[0].id, {
+    owner: 'malformed-owner', reason: 'browser_usage_limit', delayMs: 12 * 60 * 60 * 1000,
+  });
+  const unrelatedClaim = await store.claimJobs({ owner: 'unrelated-owner', jobIds: [unrelated.job.id] });
+  await store.deferJob(unrelatedClaim.jobs[0].id, {
+    owner: 'unrelated-owner', reason: 'browser_usage_limit', delayMs: 12 * 60 * 60 * 1000,
+  });
+
+  const released = await store.requeueDeferredUsageLimitedJobs({
+    kinds: ['transient_browser_recovery'], reasons: ['browser_usage_limit'], limit: 2,
+    matchesJob: isTransientBrowserRuntimeRecoveryJob,
+  });
+  assert.deepEqual(released, { requeued: 1, jobIds: [held.job.id] });
+  const queue = (await store.readQueue()).value.items;
+  assert.equal(queue.find((item) => item.jobId === held.job.id).availableAt, clock.toISOString());
+  assert.notEqual(queue.find((item) => item.jobId === unrelated.job.id).availableAt, clock.toISOString());
+  assert.equal((await store.readJob(held.job.id)).value.lastError, 'browser_usage_limit_released');
+  assert.equal((await store.readJob(malformed.job.id)).value.lastError, 'browser_usage_limit');
+  assert.equal((await store.readJob(unrelated.job.id)).value.lastError, 'browser_usage_limit');
 });
 
 test('only historical browser-quota terminal jobs are revived for the next bounded browser window', async () => {

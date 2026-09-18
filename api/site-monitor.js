@@ -27,6 +27,7 @@ import {
   checkSiteMonitorWatchdog,
   siteMonitorSettings,
   TRANSIENT_BROWSER_RUNTIME_RECOVERY_KIND,
+  isTransientBrowserRuntimeRecoveryJob,
 } from '../lib/site-monitor-core.js';
 import { createSiteMonitorStore, siteMonitorDigest } from '../lib/site-monitor-store.js';
 import {
@@ -108,6 +109,12 @@ const REPORT_GENERATION_RECOVERY_DAILY_LIMITS = Object.freeze({
   maxBrowserLaunchesPerDay: 20,
 });
 const REPORT_GENERATION_QUOTA_POLICY_VERSION = 'report-generation-recovery-limits-v4-prioritized';
+// A one-time, code-owned release of exactly the two delayed jobs created by
+// the Chromium-interruption migration. The core still enforces its hard
+// twenty-two launch ceiling for that exact job kind, so this cannot reset the
+// day ledger or broaden the ordinary editorial browser budget.
+const TRANSIENT_BROWSER_RUNTIME_RECOVERY_QUOTA_POLICY_VERSION = 'browser-runtime-interruption-recovery-browser-reserve-v1';
+const TRANSIENT_BROWSER_RUNTIME_RECOVERY_QUOTA_POLICY_LOCK = 'browser-runtime-recovery-quota-policy';
 // Production's hourly reader-facing monitor has a finite 12-launch daily
 // ceiling. This preserves a bounded site-wide visual pass even if a legacy
 // runtime setting is lower; the durable JST usage ledger is never reset by a
@@ -1250,6 +1257,72 @@ export async function respondWithSiteMonitor(req, res, {
     }
   }
 
+  // The prior deployment correctly kept the two recovered prediction pages
+  // private when the ordinary daily browser budget was exhausted. Let the
+  // reviewed migration consume its two finite reserve slots immediately,
+  // rather than treating "wait until midnight" as a successful recovery.
+  // This only wakes existing, code-owned transient recovery jobs with the
+  // exact browser budget hold; source data and public delivery remain guarded
+  // by their normal fresh-read, write, and visual-verification path.
+  let releasedTransientBrowserRuntimeRecoveries = null;
+  if (editorialContinuation) {
+    let quotaPolicyLock = null;
+    try {
+      // Hold a separate durable lock across the read/requeue/marker sequence.
+      // Two concurrent Cron invocations therefore cannot each release a
+      // different pair before the policy marker is persisted.
+      quotaPolicyLock = await store.acquireLock({
+        name: TRANSIENT_BROWSER_RUNTIME_RECOVERY_QUOTA_POLICY_LOCK,
+        // The policy release is bounded to two job CAS updates and always
+        // runs inside this Function's five-minute ceiling. Keep the normal
+        // nine-minute durable lease rather than a one-minute shortcut, so a
+        // slow Blob retry cannot let a second continuation release another
+        // pair before this worker persists its policy marker.
+        ttlMs: settings.lockTtlMs,
+      });
+      if (!quotaPolicyLock) {
+        releasedTransientBrowserRuntimeRecoveries = { state: 'already_releasing' };
+      } else {
+        const current = await store.readState();
+        const recovery = current.value.browserRuntimeRecovery && typeof current.value.browserRuntimeRecovery === 'object'
+          ? current.value.browserRuntimeRecovery
+          : {};
+        if (recovery.browserQuotaPolicyVersion !== TRANSIENT_BROWSER_RUNTIME_RECOVERY_QUOTA_POLICY_VERSION) {
+          releasedTransientBrowserRuntimeRecoveries = await store.requeueDeferredUsageLimitedJobs({
+            kinds: [TRANSIENT_BROWSER_RUNTIME_RECOVERY_KIND],
+            reasons: ['browser_usage_limit'],
+            limit: 2,
+            matchesJob: isTransientBrowserRuntimeRecoveryJob,
+          });
+          await store.updateState((state) => ({
+            ...state,
+            browserRuntimeRecovery: {
+              ...(state.browserRuntimeRecovery && typeof state.browserRuntimeRecovery === 'object'
+                ? state.browserRuntimeRecovery
+                : {}),
+              browserQuotaPolicyVersion: TRANSIENT_BROWSER_RUNTIME_RECOVERY_QUOTA_POLICY_VERSION,
+              browserQuotaPolicyAppliedAt: new Date(now()).toISOString(),
+            },
+          }));
+        }
+      }
+    } catch (_error) {
+      // Do not manufacture a duplicate recovery job. Leaving the policy
+      // marker absent makes the next authenticated continuation retry this
+      // exact release while the original holds stay durable.
+      releasedTransientBrowserRuntimeRecoveries = { state: 'unavailable' };
+    } finally {
+      if (quotaPolicyLock) {
+        try {
+          await store.releaseLock(quotaPolicyLock);
+        } catch {
+          // A stale or unavailable release is harmless: the finite lease
+          // expires, while the durable policy marker prevents duplicate work.
+        }
+      }
+    }
+  }
+
   // Generation is deliberately isolated from the short source-delivery drain.
   // Only one ready fixture is claimed in this 300-second lane; normal
   // editorial delivery resumes on the next minute when no generator is
@@ -1496,6 +1569,7 @@ export async function respondWithSiteMonitor(req, res, {
       };
     })() : null,
     releasedReportGenerationHolds,
+    releasedTransientBrowserRuntimeRecoveries,
   }));
   noStore(res);
   return res.status(result.status === 'failed' ? 500 : result.status === 'attention' ? 503 : 200).json({
