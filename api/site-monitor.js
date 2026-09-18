@@ -25,6 +25,7 @@ import { deliverSiteMonitorAlert } from '../lib/site-monitor-notify.js';
 import {
   runSiteMonitor,
   checkSiteMonitorWatchdog,
+  migrateClaimQueueMetadata,
   siteMonitorSettings,
   TRANSIENT_BROWSER_RUNTIME_RECOVERY_KIND,
   isTransientBrowserRuntimeRecoveryJob,
@@ -68,6 +69,16 @@ const MATCH_EDITORIAL_SOURCE_TYPES = Object.freeze(['match_report', 'match_predi
 const GENERATED_EDITORIAL_SOURCE_TYPES = Object.freeze([
   REPORT_GENERATION_SOURCE_TYPE,
   PREDICTION_GENERATION_SOURCE_TYPE,
+]);
+// Internal monitor jobs which may travel with the dedicated editorial source
+// lane. Keep this single allow-list shared by legacy queue migration and the
+// later claim so an old projection cannot be marked migrated before its
+// authoritative internal job metadata is restored.
+const EDITORIAL_CONTINUATION_JOB_KINDS = Object.freeze([
+  'deployment_validation',
+  'article_validation',
+  TRANSIENT_BROWSER_RUNTIME_RECOVERY_KIND,
+  'notification_delivery',
 ]);
 const MONITOR_QUEUE_SOURCE_TYPES = Object.freeze([
   ...MATCH_EDITORIAL_SOURCE_TYPES,
@@ -1362,16 +1373,47 @@ export async function respondWithSiteMonitor(req, res, {
   // ready. Both composers use only verified provider data and their shared
   // durable attempt/version ceilings, so no external text-generation circuit
   // or reader request can create a duplicate source page.
-  const readyGenerationSourceTypes = editorialContinuation
-    ? [...new Set((await store.readQueue()).value.items
-      .filter((item) => (
-        GENERATED_EDITORIAL_SOURCE_TYPES.includes(item?.sourceType)
-        && !item.leaseOwner
-        && Date.parse(item.availableAt || '') <= new Date(now()).getTime()
-      ))
-      .map((item) => item.sourceType))]
+  // Old durable queue projections may lack the lightweight delivery metadata
+  // used below. Hydrate that bounded legacy page before deciding whether a
+  // source delivery or a generator gets this minute. The worker reuses this
+  // same shared migration and sees it as a no-op, so there is one authority
+  // for the migration cursor and no duplicate repair path.
+  let editorialQueueMetadataMigration = null;
+  if (editorialContinuation) {
+    try {
+      editorialQueueMetadataMigration = await migrateClaimQueueMetadata(
+        store,
+        MATCH_EDITORIAL_SOURCE_TYPES,
+        EDITORIAL_CONTINUATION_JOB_KINDS,
+        now,
+      );
+    } catch {
+      // A transient Blob failure is not evidence that the queue is empty.
+      // The normal worker will retry the same bounded migration before its
+      // source-filtered claim; do not manufacture or discard any job here.
+      editorialQueueMetadataMigration = { state: 'unavailable' };
+    }
+  }
+  const readyEditorialQueueItems = editorialContinuation
+    ? (await store.readQueue()).value.items.filter((item) => (
+      !item.leaseOwner && Date.parse(item.availableAt || '') <= new Date(now()).getTime()
+    ))
     : [];
-  const generationWorkReady = readyGenerationSourceTypes.length > 0;
+  // A Notion version already collected into the delivery lane must not wait
+  // behind an unrelated fixture generator. Otherwise a retryable generator
+  // can start every minute and starve a reader-visible article revision
+  // indefinitely. Drain the bounded, existing source queue first; the next
+  // continuation returns to deterministic source generation.
+  const editorialDeliveryReady = editorialQueueMetadataMigration?.state === 'partial'
+    || readyEditorialQueueItems.some((item) => (
+    item?.kind === 'notion_page'
+    && item?.deliveryOnly === true
+    && MATCH_EDITORIAL_SOURCE_TYPES.includes(item?.sourceType)
+  ));
+  const readyGenerationSourceTypes = [...new Set(readyEditorialQueueItems
+    .filter((item) => GENERATED_EDITORIAL_SOURCE_TYPES.includes(item?.sourceType))
+    .map((item) => item.sourceType))];
+  const generationWorkReady = readyGenerationSourceTypes.length > 0 && !editorialDeliveryReady;
   const monitorTrigger = generationWorkReady
     ? readyGenerationSourceTypes.includes(REPORT_GENERATION_SOURCE_TYPE)
       ? 'report_generation'
@@ -1415,7 +1457,7 @@ export async function respondWithSiteMonitor(req, res, {
       // promptly instead of waiting for the next hourly general Cron. A
       // confirmed notification 429 also gets its one durable retry here;
       // this lane never replays ambiguous notification writes.
-      claimJobKinds: ['deployment_validation', 'article_validation', TRANSIENT_BROWSER_RUNTIME_RECOVERY_KIND, 'notification_delivery'],
+      claimJobKinds: EDITORIAL_CONTINUATION_JOB_KINDS,
       claimDeliveryOnly: true,
     } : {
       // Source-page creation is never safe in the short generic monitor: it

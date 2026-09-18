@@ -8,7 +8,7 @@ import {
   respondWithSiteMonitor,
   respondWithVercelSiteMonitorWebhook,
 } from '../api/site-monitor.js';
-import { createSiteMonitorStore } from '../lib/site-monitor-store.js';
+import { createSiteMonitorStore, siteMonitorPath } from '../lib/site-monitor-store.js';
 import { MATCH_EDITORIAL_BACKFILL_GENERATION } from '../lib/match-editorial-sync.js';
 import { PREDICTION_GENERATION_SOURCE_TYPE } from '../lib/match-prediction-repair.js';
 
@@ -17,6 +17,7 @@ function createBlob() {
   let revision = 0;
   const conflict = () => Object.assign(new Error('etag mismatch'), { status: 412 });
   return {
+    values: data,
     async get(path) {
       const entry = data.get(path);
       return entry ? { stream: new Blob([entry.text]).stream(), etag: entry.etag } : null;
@@ -602,6 +603,124 @@ test('an editorial continuation routes a fixture-first missing prediction into t
   assert.ok(calls[0].settings.maxGenerationsPerDay >= 20);
   assert.ok(calls[0].settings.maxBrowserLaunchesPerDay >= 20);
   assert.equal(res.body.missingPredictionScan.missingPredictions, 1);
+});
+
+test('an editorial continuation delivers a collected Notion revision before an unrelated ready generator', async () => {
+  const env = fixtureEnv();
+  const store = createSiteMonitorStore({ blob: createBlob() });
+  await store.updateState((state) => ({
+    ...state,
+    matchEditorialSync: {
+      backfill: {
+        match_report: { generation: MATCH_EDITORIAL_BACKFILL_GENERATION, sourceScanCompletedAt: '2026-09-17T00:00:00.000Z' },
+        match_prediction: { generation: MATCH_EDITORIAL_BACKFILL_GENERATION, sourceScanCompletedAt: '2026-09-17T00:00:00.000Z' },
+      },
+    },
+  }));
+  await store.enqueue({
+    kind: 'notion_page', pageId: 'latest-prediction', sourceType: 'match_prediction',
+    sourceVersion: '2026-09-18T14:22:00.000Z', deliveryOnly: true, priority: 70,
+  });
+  await store.enqueue({
+    kind: 'prediction_generation', fixtureId: 1557409,
+    sourceType: PREDICTION_GENERATION_SOURCE_TYPE, sourceVersion: 'scheduled-v1',
+    repairGeneration: 'test-generation', priority: 94,
+  });
+  const calls = [];
+  const res = response();
+  await respondWithSiteMonitor({
+    method: 'GET', query: { editorialContinuation: '1' }, headers: { authorization: 'Bearer cron-token' },
+  }, res, {
+    env,
+    createStore: () => store,
+    scanMissingPredictions: async () => ({ state: 'throttled' }),
+    scanMissingReports: async () => ({ state: 'throttled' }),
+    scanDuplicateCandidates: async () => ({ state: 'not_needed', candidates: 0, types: {} }),
+    runMonitor: async (input) => { calls.push(input); return monitorResult(input.trigger); },
+  });
+  assert.equal(res.statusCode, 200);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].trigger, 'editorial_continuation');
+  assert.deepEqual(calls[0].claimSourceTypes, ['match_report', 'match_prediction']);
+  assert.equal(calls[0].claimDeliveryOnly, true);
+  assert.equal(calls[0].collect, false);
+});
+
+test('an editorial continuation hydrates a legacy delivery projection before a ready generator can claim work', async () => {
+  const env = fixtureEnv();
+  const blob = createBlob();
+  const store = createSiteMonitorStore({ blob });
+  await store.updateState((state) => ({
+    ...state,
+    matchEditorialSync: {
+      backfill: {
+        match_report: { generation: MATCH_EDITORIAL_BACKFILL_GENERATION, sourceScanCompletedAt: '2026-09-17T00:00:00.000Z' },
+        match_prediction: { generation: MATCH_EDITORIAL_BACKFILL_GENERATION, sourceScanCompletedAt: '2026-09-17T00:00:00.000Z' },
+      },
+    },
+  }));
+  const delivery = await store.enqueue({
+    kind: 'notion_page', pageId: 'legacy-prediction', sourceType: 'match_prediction',
+    sourceVersion: '2026-09-18T14:22:00.000Z', deliveryOnly: true, priority: 70,
+  });
+  const generator = await store.enqueue({
+    kind: 'prediction_generation', fixtureId: 1557410,
+    sourceType: PREDICTION_GENERATION_SOURCE_TYPE, sourceVersion: 'scheduled-v1',
+    repairGeneration: 'test-generation', priority: 94,
+  });
+  const internal = await store.enqueue({
+    kind: 'article_validation', articleId: 'legacy-validation', sourceType: 'match_prediction',
+    sourceVersion: '2026-09-18T14:22:00.000Z', priority: 10,
+  });
+  const queuePath = siteMonitorPath('queue.json');
+  const stored = blob.values.get(queuePath);
+  const legacyQueue = JSON.parse(stored.text);
+  const legacyItem = legacyQueue.items.find((item) => item.jobId === delivery.job.id);
+  delete legacyItem.sourceType;
+  delete legacyItem.kind;
+  delete legacyItem.deliveryOnly;
+  const legacyInternal = legacyQueue.items.find((item) => item.jobId === internal.job.id);
+  delete legacyInternal.sourceType;
+  delete legacyInternal.kind;
+  delete legacyInternal.deliveryOnly;
+  blob.values.set(queuePath, { ...stored, text: JSON.stringify(legacyQueue) });
+  const calls = [];
+  const res = response();
+  await respondWithSiteMonitor({
+    method: 'GET', query: { editorialContinuation: '1' }, headers: { authorization: 'Bearer cron-token' },
+  }, res, {
+    env,
+    createStore: () => store,
+    scanMissingPredictions: async () => ({ state: 'throttled' }),
+    scanMissingReports: async () => ({ state: 'throttled' }),
+    scanDuplicateCandidates: async () => ({ state: 'not_needed', candidates: 0, types: {} }),
+    runMonitor: async (input) => {
+      calls.push(input);
+      const claimed = await store.claimJobs({
+        owner: 'test-delivery-worker', limit: 1,
+        sourceTypes: input.claimSourceTypes,
+        kinds: input.claimJobKinds,
+        deliveryOnly: input.claimDeliveryOnly,
+      });
+      assert.deepEqual(claimed.jobs.map((job) => job.id), [delivery.job.id]);
+      return monitorResult(input.trigger);
+    },
+  });
+  assert.equal(res.statusCode, 200);
+  assert.equal(calls[0].trigger, 'editorial_continuation');
+  const queue = (await store.readQueue()).value.items;
+  const hydrated = queue.find((item) => item.jobId === delivery.job.id);
+  assert.equal(hydrated.sourceType, 'match_prediction');
+  assert.equal(hydrated.kind, 'notion_page');
+  assert.equal(hydrated.deliveryOnly, true);
+  const hydratedInternal = queue.find((item) => item.jobId === internal.job.id);
+  assert.equal(hydratedInternal.sourceType, 'match_prediction');
+  assert.equal(hydratedInternal.kind, 'article_validation');
+  const internalClaim = await store.claimJobs({
+    owner: 'test-internal-worker', limit: 1, kinds: ['article_validation'], deliveryOnly: true,
+  });
+  assert.deepEqual(internalClaim.jobs.map((job) => job.id), [internal.job.id]);
+  assert.equal((await store.readJob(generator.job.id)).value.status, 'queued');
 });
 
 test('an overlapping editorial continuation leaves fixture scans to the durable scan lease', async () => {
