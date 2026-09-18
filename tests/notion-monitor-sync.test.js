@@ -440,6 +440,48 @@ test('syncNotionPage keeps a failed monitor-created delivery private until the N
   assert.equal(writes.length, 0);
 });
 
+test('the code-owned runtime recovery can release only the same-version browser hold after rereading Notion', async () => {
+  const page = notionPage({ version: '2026-09-18T00:00:00.000Z' });
+  const held = {
+    id: 'notion-match_prediction-page-1', type: 'match_prediction', public: false,
+    notion: { pageId: page.id, updatedAt: page.last_edited_time, state: '自動生成' },
+    siteMonitor: {
+      provisionalCreation: { sourceVersion: page.last_edited_time, sourceJobId: 'source-job' },
+      deliveryHold: { sourceVersion: page.last_edited_time, reason: 'browser_validation_failed' },
+    },
+  };
+  const writes = [];
+  const guard = [];
+  let pageReads = 0;
+  const result = await syncNotionPage({
+    pageId: page.id, sourceType: 'match_prediction', expectedSourceVersion: page.last_edited_time,
+    apiKey: 'notion-token', sourceIds: { match_prediction: 'source-pred' },
+    releaseMonitorDeliveryHold: true,
+    articleStore: {
+      async getArticle() { return held; },
+      async saveArticle(article) { writes.push(article); },
+    },
+    beforeWrite: async (input) => { guard.push(input); return true; },
+    fetcher: async (url) => {
+      if (url.endsWith('/pages/page-1')) {
+        pageReads += 1;
+        return response(page);
+      }
+      if (url.includes('/blocks/page-1/children')) {
+        return response({ results: [paragraph('復旧後も本文末尾まで取得する。')], has_more: false });
+      }
+      throw new Error(`Unexpected URL ${url}`);
+    },
+  });
+  assert.equal(result.outcome, 'updated');
+  assert.equal(pageReads, 2);
+  assert.equal(guard.length, 1);
+  assert.equal(guard[0].existingArticle.public, false);
+  assert.equal(writes.length, 1);
+  assert.equal(writes[0].public, true);
+  assert.equal(writes[0].siteMonitor?.deliveryHold, undefined);
+});
+
 test('the compact article index retains only the monitor delivery hold needed by a full source scan', () => {
   const compact = compactArticleIndexEntry({
     id: 'notion-match_prediction-page-1', type: 'match_prediction', public: false,

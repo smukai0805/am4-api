@@ -223,6 +223,79 @@ test('an interrupted historical browser-quota recovery keeps its exact terminal 
   assert.equal((await store.readJob(held.job.id)).value.status, 'queued');
 });
 
+test('legacy runtime recovery discovery selects only explicit browser process interruptions', async () => {
+  const store = createSiteMonitorStore({ blob: createBlob(), now: () => new Date('2026-09-18T00:00:00.000Z'), uuid: () => 'runtime-owner' });
+  const interrupted = await store.enqueue({
+    kind: 'article_validation', articleId: 'notion-match_prediction-runtime', sourceType: 'match_prediction',
+    sourceVersion: 'v1', priority: 90,
+  });
+  const visual = await store.enqueue({
+    kind: 'article_validation', articleId: 'notion-match_prediction-visual', sourceType: 'match_prediction',
+    sourceVersion: 'v1', priority: 90,
+  });
+  const protocol = await store.enqueue({
+    kind: 'article_validation', articleId: 'notion-match_prediction-protocol', sourceType: 'match_prediction',
+    sourceVersion: 'v1', priority: 90,
+  });
+  const interruptedClaim = await store.claimJobs({ owner: 'runtime-owner', jobIds: [interrupted.job.id] });
+  await store.finishJob(interruptedClaim.jobs[0].id, {
+    owner: 'runtime-owner', status: 'blocked', error: 'browser_failed',
+    result: {
+      state: 'browser_failed',
+      browser: { error: 'Target page, context or browser has been closed' },
+    },
+  });
+  const visualClaim = await store.claimJobs({ owner: 'visual-owner', jobIds: [visual.job.id] });
+  await store.finishJob(visualClaim.jobs[0].id, {
+    owner: 'visual-owner', status: 'blocked', error: 'browser_failed',
+    result: {
+      state: 'browser_failed',
+      browser: { error: 'locator.waitFor: Timeout 5000ms exceeded' },
+    },
+  });
+  const protocolClaim = await store.claimJobs({ owner: 'protocol-owner', jobIds: [protocol.job.id] });
+  await store.finishJob(protocolClaim.jobs[0].id, {
+    owner: 'protocol-owner', status: 'blocked', error: 'browser_failed',
+    result: {
+      state: 'browser_failed',
+      browser: { error: 'Protocol error (Runtime.callFunctionOn): Invalid parameters' },
+    },
+  });
+
+  const found = await store.findBlockedTransientBrowserValidationJobs();
+  assert.deepEqual(found.jobs.map((job) => job.id), [interrupted.job.id]);
+});
+
+test('legacy runtime recovery discovery progresses beyond its newest bounded page', async () => {
+  const store = createSiteMonitorStore({ blob: createBlob(), now: () => new Date('2026-09-18T00:00:00.000Z') });
+  const jobs = [];
+  for (let index = 0; index < 21; index += 1) {
+    const queued = await store.enqueue({
+      kind: 'article_validation', articleId: `notion-match_prediction-runtime-${index}`,
+      sourceType: 'match_prediction', sourceVersion: 'v1', priority: 90,
+    });
+    const claimed = await store.claimJobs({ owner: `runtime-owner-${index}`, jobIds: [queued.job.id] });
+    await store.finishJob(claimed.jobs[0].id, {
+      owner: `runtime-owner-${index}`, status: 'blocked', error: 'browser_failed',
+      result: {
+        state: 'browser_failed',
+        browser: { error: 'Target page, context or browser has been closed' },
+      },
+    });
+    jobs.push(queued.job);
+  }
+
+  const newestPage = await store.findBlockedTransientBrowserValidationJobs({ limit: 20 });
+  assert.equal(newestPage.jobs.length, 20);
+  assert.equal(newestPage.jobs.some((job) => job.id === jobs[0].id), false);
+
+  const nextPage = await store.findBlockedTransientBrowserValidationJobs({
+    limit: 20,
+    excludeJobIds: newestPage.jobs.map((job) => job.id),
+  });
+  assert.deepEqual(nextPage.jobs.map((job) => job.id), [jobs[0].id]);
+});
+
 test('article-validation jobs persist and distinguish their exact article target', async () => {
   const store = createSiteMonitorStore({ blob: createBlob(), now: () => new Date('2026-09-14T00:00:00.000Z') });
   const first = await store.enqueue({

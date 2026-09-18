@@ -13,6 +13,7 @@ import {
   initialPayloadFromHtml,
   initialPayloadContainsExpectedCard,
   isMonitorSameOriginRequest,
+  isTransientBrowserRuntimeFailure,
   matchEditorialVerificationRoute,
   monitorFixtureBadgeUrl,
   verifySiteMonitorInBrowser,
@@ -168,6 +169,30 @@ test('browser monitor reports unavailable when Chromium is not launchable rather
   assert.equal(result.status, 'unavailable');
   assert.equal(result.reason, 'browser_runtime_unavailable');
   assert.equal(result.runtimeFailure, 'runtime_launch_failed');
+});
+
+test('browser monitor treats an explicit Playwright process disconnect as unavailable, not a visual assertion', async () => {
+  assert.equal(isTransientBrowserRuntimeFailure('Target page, context or browser has been closed'), true);
+  const result = await verifySiteMonitorInBrowser({
+    article: { id: 'article-1', body: '本文' },
+    baseUrl: 'https://am4football.com',
+    launch: async () => { throw new Error('Target page, context or browser has been closed'); },
+  });
+  assert.equal(result.status, 'unavailable');
+  assert.equal(result.reason, 'browser_runtime_unavailable');
+  assert.equal(result.runtimeFailure, 'runtime_browser_transport_interrupted');
+});
+
+test('browser monitor keeps a selector timeout in the visual assertion path', async () => {
+  assert.equal(isTransientBrowserRuntimeFailure('locator.waitFor: Timeout 5000ms exceeded'), false);
+  assert.equal(isTransientBrowserRuntimeFailure('Protocol error (Runtime.callFunctionOn): Invalid parameters'), false);
+  const result = await verifySiteMonitorInBrowser({
+    article: { id: 'article-1', body: '本文' },
+    baseUrl: 'https://am4football.com',
+    launch: async () => { throw new Error('locator.waitFor: Timeout 5000ms exceeded'); },
+  });
+  assert.equal(result.status, 'failed');
+  assert.equal(result.failureKind, 'browser_assertion');
 });
 
 test('browser monitor returns a distinct deferred result and closes Chromium when its worker budget expires', async () => {

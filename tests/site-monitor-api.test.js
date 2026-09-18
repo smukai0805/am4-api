@@ -372,7 +372,7 @@ test('Cron and manual monitor routes are separately authenticated', async () => 
   assert.equal(calls[6].trigger, 'editorial_continuation');
   assert.equal(calls[6].collect, false);
   assert.deepEqual(calls[6].claimSourceTypes, ['match_report', 'match_prediction']);
-  assert.deepEqual(calls[6].claimJobKinds, ['deployment_validation', 'article_validation', 'notification_delivery']);
+  assert.deepEqual(calls[6].claimJobKinds, ['deployment_validation', 'article_validation', 'transient_browser_recovery', 'notification_delivery']);
   assert.equal(calls[6].claimDeliveryOnly, true);
   assert.ok(calls[6].settings.maxJobsPerRun >= 40);
   assert.ok(calls[6].settings.maxApiCallsPerRun >= 500);
@@ -521,7 +521,7 @@ test('an editorial continuation routes a fixture-first missing prediction into t
   assert.equal(calls.length, 1);
   assert.equal(calls[0].trigger, 'prediction_generation');
   assert.deepEqual(calls[0].claimSourceTypes, [PREDICTION_GENERATION_SOURCE_TYPE]);
-  assert.deepEqual(calls[0].claimJobKinds, ['article_validation', 'notification_delivery']);
+  assert.deepEqual(calls[0].claimJobKinds, ['article_validation', 'transient_browser_recovery', 'notification_delivery']);
   assert.equal(calls[0].claimDeliveryOnly, false);
   assert.equal(calls[0].collect, false);
   assert.equal(calls[0].settings.allowExtendedRun, true);

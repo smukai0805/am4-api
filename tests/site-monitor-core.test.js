@@ -1086,3 +1086,281 @@ test('a browser-only deployment validation gets one bounded cold recheck without
   assert.equal((await store.readJob(second.jobs[0].jobId)).value.repairAttempts, 2);
   assert.equal(notifications.length, 1);
 });
+
+test('a transient browser runtime interruption gets one non-destructive cold recheck', async () => {
+  let clock = new Date('2026-09-18T00:00:00.000Z');
+  let sequence = 0;
+  const store = createSiteMonitorStore({ blob: createBlob(), now: () => clock, uuid: () => `runtime-recheck-${++sequence}` });
+  const article = sourceArticle('am4_story');
+  const database = new Map([[article.id, structuredClone(article)]]);
+  await store.enqueue({
+    kind: 'article_validation', articleId: article.id, sourceType: article.type, sourceVersion: 'v1', priority: 90,
+  });
+  let browserCalls = 0;
+  const dependencies = {
+    getArticle: async (id) => structuredClone(database.get(id) || null),
+    saveArticle: async (value) => database.set(value.id, structuredClone(value)),
+    browserVerify: async () => {
+      browserCalls += 1;
+      return browserCalls === 1
+        ? {
+          status: 'unavailable', reason: 'browser_runtime_unavailable',
+          runtimeFailure: 'runtime_browser_transport_interrupted',
+        }
+        : { status: 'passed' };
+    },
+    notify: async () => ({ state: 'delivered' }),
+    listArticles: async () => ({ items: [] }),
+  };
+  const settings = {
+    maxJobsPerRun: 1, maxRepairAttemptsPerVersion: 2, maxTransportRetries: 1,
+    maxRepairsPerDay: 20, maxBrowserLaunchesPerDay: 10, maxApiCallsPerDay: 100,
+    lockTtlMs: 60_000, jobLeaseMs: 60_000, browserEnabled: true,
+  };
+  const first = await runSiteMonitor({ store, trigger: 'manual', collect: false, dependencies, settings, now: () => clock });
+  assert.equal(first.jobs[0].status, 'deferred');
+  assert.equal((await store.readJob(first.jobs[0].jobId)).value.repairAttempts, 1);
+  assert.equal(database.get(article.id).public, true);
+
+  clock = new Date('2026-09-18T00:01:01.000Z');
+  const second = await runSiteMonitor({ store, trigger: 'manual', collect: false, dependencies, settings, now: () => clock });
+  assert.equal(second.jobs[0].status, 'completed');
+  assert.equal(database.get(article.id).public, true);
+});
+
+test('a production validation restores only a legacy browser-process hold through the normal sync and browser path', async () => {
+  let clock = new Date('2026-09-18T00:00:00.000Z');
+  let sequence = 0;
+  const store = createSiteMonitorStore({ blob: createBlob(), now: () => clock, uuid: () => `runtime-recovery-${++sequence}` });
+  const publicArticle = sourceArticle('match_prediction');
+  const held = {
+    ...publicArticle,
+    public: false,
+    siteMonitor: {
+      provisionalCreation: { sourceVersion: 'v1', sourceJobId: 'generation-job' },
+      deliveryHold: { sourceVersion: 'v1', sourceJobId: 'generation-job', reason: 'browser_validation_failed' },
+    },
+  };
+  const database = new Map([[held.id, structuredClone(held)]]);
+  const legacy = await store.enqueue({
+    kind: 'article_validation', articleId: held.id, sourceType: held.type, sourceVersion: 'v1', priority: 99,
+  });
+  const legacyClaim = await store.claimJobs({ owner: 'legacy-owner', jobIds: [legacy.job.id] });
+  await store.finishJob(legacyClaim.jobs[0].id, {
+    owner: 'legacy-owner', status: 'blocked', error: 'browser_failed',
+    result: {
+      state: 'browser_failed', article: structuredClone(held),
+      browser: { error: 'Target page, context or browser has been closed' },
+    },
+    repairAttempts: 2,
+  });
+  await store.enqueue({ kind: 'deployment_validation', deploymentId: 'dpl-runtime-recovery', priority: 90 });
+  const notifications = [];
+  let released = false;
+  let browserCalls = 0;
+  const dependencies = {
+    getArticle: async (id) => structuredClone(database.get(id) || null),
+    listArticles: async () => ({ items: [] }),
+    createSyncStore: () => ({}),
+    syncPage: async (options) => {
+      released = options.releaseMonitorDeliveryHold === true;
+      const current = database.get(held.id);
+      const allowed = await options.beforeWrite({
+        existingArticle: structuredClone(current), article: structuredClone(publicArticle),
+        page: { id: 'page-1', last_edited_time: 'v1' },
+      });
+      if (!allowed) return { outcome: 'write_cancelled' };
+      database.set(publicArticle.id, structuredClone(publicArticle));
+      return {
+        outcome: 'updated', article: structuredClone(publicArticle), articleId: publicArticle.id,
+        sourceType: publicArticle.type, sourceVersion: 'v1',
+      };
+    },
+    saveArticle: async (article) => database.set(article.id, structuredClone(article)),
+    getFixture: async () => fixture,
+    resolveFixture: async () => fixtureResolution(),
+    associationRepair: (article) => ({
+      ...article,
+      match: { ...article.match, fixtureId: fixture.id, homeTeamId: fixture.home.id, awayTeamId: fixture.away.id },
+    }),
+    hydratePrediction: async (article) => ({
+      ...article,
+      prediction: {
+        ...article.prediction,
+        keyPlayerCards: [{
+          playerName: 'Bukayo Saka', playerId: 100, teamId: fixture.home.id, side: 'home', clubName: 'Arsenal',
+          reason: '理由。', photoUrl: 'https://media.api-sports.io/football/players/100.png',
+          logoUrl: fixture.home.logo, resolved: true,
+        }],
+      },
+    }),
+    readStoredPredictionCards: async () => [],
+    saveStoredPredictionCards: async () => true,
+    getAvailability: async () => ({ availability: { [fixture.id]: ['prediction'] }, matchAvailability: {} }),
+    browserVerify: async () => {
+      browserCalls += 1;
+      return browserCalls === 1
+        ? {
+          status: 'unavailable', reason: 'browser_runtime_unavailable',
+          runtimeFailure: 'runtime_browser_transport_interrupted',
+        }
+        : { status: 'passed' };
+    },
+    notify: async (notice) => { notifications.push(notice); return { state: 'delivered' }; },
+  };
+  const first = await runSiteMonitor({
+    store, trigger: 'cron', deploymentId: 'dpl-runtime-recovery', collect: false, dependencies,
+    now: () => clock,
+    settings: {
+      maxJobsPerRun: 2, maxRepairAttemptsPerVersion: 2, maxTransportRetries: 1,
+      maxRepairsPerDay: 20, maxBrowserLaunchesPerDay: 12, maxApiCallsPerDay: 100,
+      lockTtlMs: 60_000, jobLeaseMs: 60_000, browserEnabled: true,
+    },
+  });
+  assert.equal(first.status, 'completed');
+  assert.equal(released, true);
+  assert.equal(database.get(publicArticle.id).public, false);
+  assert.equal(database.get(publicArticle.id).siteMonitor?.deliveryHold?.reason, 'browser_validation_failed');
+  assert.equal(first.jobs.length, 2);
+  assert.equal(first.jobs[1].status, 'deferred');
+  assert.equal(notifications.length, 0);
+
+  clock = new Date('2026-09-18T00:01:01.000Z');
+  const second = await runSiteMonitor({
+    store, trigger: 'cron', deploymentId: 'dpl-runtime-recovery', collect: false, dependencies,
+    now: () => clock,
+    settings: {
+      maxJobsPerRun: 2, maxRepairAttemptsPerVersion: 2, maxTransportRetries: 1,
+      maxRepairsPerDay: 20, maxBrowserLaunchesPerDay: 12, maxApiCallsPerDay: 100,
+      lockTtlMs: 60_000, jobLeaseMs: 60_000, browserEnabled: true,
+    },
+  });
+  assert.equal(second.status, 'completed');
+  assert.equal(database.get(publicArticle.id).public, true);
+  assert.equal(database.get(publicArticle.id).siteMonitor?.deliveryHold, undefined);
+  assert.equal(second.jobs.length, 1);
+  assert.equal(second.jobs[0].status, 'completed');
+  assert.equal(second.jobs[0].result.notification.category, 'repair_success');
+  assert.equal(notifications.length, 1);
+  assert.deepEqual(
+    (await store.readState()).value.browserRuntimeRecovery.processedLegacyJobIds,
+    [legacy.job.id],
+  );
+});
+
+test('a repeated runtime interruption restores a legacy recovery hold before both defer and terminal block', async () => {
+  let clock = new Date('2026-09-18T00:00:00.000Z');
+  let sequence = 0;
+  const store = createSiteMonitorStore({ blob: createBlob(), now: () => clock, uuid: () => `runtime-hold-${++sequence}` });
+  const publicArticle = sourceArticle('am4_story');
+  const held = {
+    ...publicArticle,
+    public: false,
+    siteMonitor: {
+      provisionalCreation: { sourceVersion: 'v1', sourceJobId: 'generation-job' },
+      deliveryHold: { sourceVersion: 'v1', sourceJobId: 'generation-job', reason: 'browser_validation_failed' },
+    },
+  };
+  const database = new Map([[held.id, structuredClone(held)]]);
+  const queued = await store.enqueue({
+    kind: 'transient_browser_recovery', pageId: 'page-1', articleId: held.id,
+    sourceType: held.type, sourceVersion: 'v1', repairGeneration: 'browser-runtime-interruption-recovery-v1',
+    trigger: 'transient_browser_runtime_recovery', priority: 99,
+    payload: { releaseMonitorDeliveryHold: true },
+  });
+  const dependencies = {
+    getArticle: async (id) => structuredClone(database.get(id) || null),
+    saveArticle: async (article) => database.set(article.id, structuredClone(article)),
+    listArticles: async () => ({ items: [] }),
+    createSyncStore: () => ({}),
+    syncPage: async (options) => {
+      const allowed = await options.beforeWrite({
+        existingArticle: structuredClone(database.get(held.id)), article: structuredClone(publicArticle),
+        page: { id: 'page-1', last_edited_time: 'v1' },
+      });
+      if (!allowed) return { outcome: 'write_cancelled' };
+      database.set(publicArticle.id, structuredClone(publicArticle));
+      return {
+        outcome: 'updated', article: structuredClone(publicArticle), articleId: publicArticle.id,
+        sourceType: publicArticle.type, sourceVersion: 'v1',
+      };
+    },
+    browserVerify: async () => ({
+      status: 'unavailable', reason: 'browser_runtime_unavailable',
+      runtimeFailure: 'runtime_browser_transport_interrupted',
+    }),
+    notify: async () => ({ state: 'delivered' }),
+  };
+  const settings = {
+    maxJobsPerRun: 1, maxRepairAttemptsPerVersion: 2, maxTransportRetries: 1,
+    maxRepairsPerDay: 20, maxBrowserLaunchesPerDay: 12, maxApiCallsPerDay: 100,
+    lockTtlMs: 60_000, jobLeaseMs: 60_000, browserEnabled: true,
+  };
+
+  const first = await runSiteMonitor({ store, trigger: 'cron', collect: false, dependencies, settings, now: () => clock });
+  assert.equal(first.jobs[0].status, 'deferred');
+  assert.equal(database.get(held.id).public, false);
+  assert.equal(database.get(held.id).siteMonitor?.deliveryHold?.reason, 'browser_validation_failed');
+
+  clock = new Date('2026-09-18T00:01:01.000Z');
+  const second = await runSiteMonitor({ store, trigger: 'cron', collect: false, dependencies, settings, now: () => clock });
+  assert.equal(second.jobs[0].status, 'blocked');
+  assert.equal((await store.readJob(queued.job.id)).value.status, 'blocked');
+  assert.equal(database.get(held.id).public, false);
+  assert.equal(database.get(held.id).siteMonitor?.deliveryHold?.reason, 'browser_validation_failed');
+});
+
+test('a legacy recovery restores its hold when fixture validation fails before Chromium starts', async () => {
+  const clock = new Date('2026-09-18T00:00:00.000Z');
+  const store = createSiteMonitorStore({ blob: createBlob(), now: () => clock, uuid: () => 'runtime-fixture-hold' });
+  const publicArticle = sourceArticle('match_prediction');
+  const held = {
+    ...publicArticle,
+    public: false,
+    siteMonitor: {
+      provisionalCreation: { sourceVersion: 'v1', sourceJobId: 'generation-job' },
+      deliveryHold: { sourceVersion: 'v1', sourceJobId: 'generation-job', reason: 'browser_validation_failed' },
+    },
+  };
+  const database = new Map([[held.id, structuredClone(held)]]);
+  await store.enqueue({
+    kind: 'transient_browser_recovery', pageId: 'page-1', articleId: held.id,
+    sourceType: held.type, sourceVersion: 'v1', repairGeneration: 'browser-runtime-interruption-recovery-v1',
+    trigger: 'transient_browser_runtime_recovery', priority: 99,
+    payload: { releaseMonitorDeliveryHold: true },
+  });
+  let browserCalls = 0;
+  const dependencies = {
+    getArticle: async (id) => structuredClone(database.get(id) || null),
+    saveArticle: async (article) => database.set(article.id, structuredClone(article)),
+    listArticles: async () => ({ items: [] }),
+    createSyncStore: () => ({}),
+    syncPage: async (options) => {
+      const allowed = await options.beforeWrite({
+        existingArticle: structuredClone(database.get(held.id)), article: structuredClone(publicArticle),
+        page: { id: 'page-1', last_edited_time: 'v1' },
+      });
+      if (!allowed) return { outcome: 'write_cancelled' };
+      database.set(publicArticle.id, structuredClone(publicArticle));
+      return {
+        outcome: 'updated', article: structuredClone(publicArticle), articleId: publicArticle.id,
+        sourceType: publicArticle.type, sourceVersion: 'v1',
+      };
+    },
+    resolveFixture: async () => ({ state: 'source_unavailable' }),
+    browserVerify: async () => { browserCalls += 1; return { status: 'passed' }; },
+    notify: async () => ({ state: 'delivered' }),
+  };
+  const result = await runSiteMonitor({
+    store, trigger: 'cron', collect: false, dependencies, now: () => clock,
+    settings: {
+      maxJobsPerRun: 1, maxRepairAttemptsPerVersion: 2, maxTransportRetries: 1,
+      maxRepairsPerDay: 20, maxBrowserLaunchesPerDay: 12, maxApiCallsPerDay: 100,
+      lockTtlMs: 60_000, jobLeaseMs: 60_000, browserEnabled: true,
+    },
+  });
+  assert.equal(result.jobs[0].status, 'deferred');
+  assert.equal(browserCalls, 0);
+  assert.equal(database.get(held.id).public, false);
+  assert.equal(database.get(held.id).siteMonitor?.deliveryHold?.reason, 'browser_validation_failed');
+});

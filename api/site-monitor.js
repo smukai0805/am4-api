@@ -22,7 +22,12 @@ import {
 } from '../lib/match-editorial-sync.js';
 import { listArticles } from '../lib/article-store.js';
 import { deliverSiteMonitorAlert } from '../lib/site-monitor-notify.js';
-import { runSiteMonitor, checkSiteMonitorWatchdog, siteMonitorSettings } from '../lib/site-monitor-core.js';
+import {
+  runSiteMonitor,
+  checkSiteMonitorWatchdog,
+  siteMonitorSettings,
+  TRANSIENT_BROWSER_RUNTIME_RECOVERY_KIND,
+} from '../lib/site-monitor-core.js';
 import { createSiteMonitorStore, siteMonitorDigest } from '../lib/site-monitor-store.js';
 import {
   REPORT_GENERATION_SOURCE_TYPE,
@@ -1290,7 +1295,7 @@ export async function respondWithSiteMonitor(req, res, {
       // make a successfully published near-kickoff article wait until every
       // lower-priority cap hold has been observed. Queue priority and the
       // allow-list still prevent this from becoming an arbitrary URL runner.
-      claimJobKinds: ['article_validation', 'notification_delivery'],
+      claimJobKinds: ['article_validation', TRANSIENT_BROWSER_RUNTIME_RECOVERY_KIND, 'notification_delivery'],
       claimDeliveryOnly: false,
     } : runMatchEditorialBackfill ? {
       claimSourceTypes: MATCH_EDITORIAL_SOURCE_TYPES,
@@ -1304,7 +1309,7 @@ export async function respondWithSiteMonitor(req, res, {
       // promptly instead of waiting for the next hourly general Cron. A
       // confirmed notification 429 also gets its one durable retry here;
       // this lane never replays ambiguous notification writes.
-      claimJobKinds: ['deployment_validation', 'article_validation', 'notification_delivery'],
+      claimJobKinds: ['deployment_validation', 'article_validation', TRANSIENT_BROWSER_RUNTIME_RECOVERY_KIND, 'notification_delivery'],
       claimDeliveryOnly: true,
     } : {
       // Source-page creation is never safe in the short generic monitor: it
