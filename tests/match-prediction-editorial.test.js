@@ -1,5 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
 
 test('SSR keeps the full legacy introduction above key players and moves match flow into disclosure', async () => {
   const { renderMatchPage } = await import('../lib/match-page-html.js');
@@ -291,4 +292,47 @@ test('SSR renders a verified stored MOTM portrait on the first match document', 
   assert.match(initial, /AS Roma/);
   assert.match(initial, /決勝点を決めた。/);
   assert.match(initial, /href="\/article\.html\?id=notion-match_report-dybala"/);
+});
+
+test('SSR presents the Brentford report as an explicit AM4 MOTM selection while an older mirror is draining', async () => {
+  const { renderMatchPage } = await import('../lib/match-page-html.js');
+  const fixture = {
+    id: 1557408,
+    status: 'FT',
+    date: '2026-09-18',
+    kickoff: '2026-09-18T19:00:00Z',
+    competition: 'Premier League',
+    home: { id: 55, name: 'Brentford' },
+    away: { id: 49, name: 'Chelsea' },
+  };
+  const report = {
+    id: 'notion-match_report-3dfb49a367ef81b88fd7cc9f3677597b',
+    type: 'match_report',
+    body: '# 試合主要人物\n\n公式または信頼できる媒体によるMOTM／POTM発表は確認できなかったため、推測では選出しない。\n\n最も大きな影響を与えたのはSchade。',
+    report: {
+      keyFigures: '公式または信頼できる媒体によるMOTM／POTM発表は確認できなかったため、推測では選出しない。\n\n最も大きな影響を与えたのはSchade。',
+    },
+  };
+
+  const page = renderMatchPage({
+    detail: { fixture, events: null, lineups: null, statistics: null },
+    editorials: { report }, route: 'fixture', fixtureId: fixture.id,
+  });
+  const main = page.slice(page.indexOf('<section class="match-section'), page.indexOf('<script id="am4-initial-match"'));
+
+  assert.match(main, /AM4選出/);
+  assert.match(main, /Kevin Schade/);
+  assert.match(main, /終盤2得点に直接関与/);
+  assert.doesNotMatch(main, /推測では選出しない/);
+
+  const { renderArticleBody, renderArticlePage } = await import('../lib/article-page-html.js');
+  const articleBody = renderArticleBody(report);
+  assert.match(articleBody, /AM4独自MOTM：Kevin Schade（Brentford）/);
+  assert.match(articleBody, /終盤2得点に直接関与/);
+  assert.doesNotMatch(articleBody, /推測では選出しない/);
+  const articlePage = renderArticlePage({ ...report, title: 'Brentford vs Chelsea｜試合解説' });
+  assert.ok(articlePage.indexOf('/match-report-presentation.js?v=20260918-brentford-motm-v8')
+    < articlePage.indexOf('/article-page.js?v=20260918-brentford-motm-v8'));
+  const clientSource = fs.readFileSync(require.resolve('../article-page.js'), 'utf8');
+  assert.match(clientSource, /AM4MatchReportPresentation\?\.withEditorialArticleMotm/);
 });

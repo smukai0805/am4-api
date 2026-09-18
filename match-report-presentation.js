@@ -90,6 +90,7 @@
   // Editorial choices made from the published reports below, not official awards.
   // Exact article identities prevent a choice leaking into a rematch.
   const editorialChoices = {
+    'notion-match_report-3dfb49a367ef81b88fd7cc9f3677597b': {name:'Kevin Schade',clubName:'Brentford',reason:'自身の得点はなかったが、2点目のシュートと3点目の折り返しでBrentfordの終盤2得点に直接関与した。'},
     'notion-match_report-3d4b49a367ef819a8a67f9f90e845605': {name:'Job Ochieng',reason:'1得点2アシストで全3得点に関与。10人になってからも決勝点を演出した攻撃への貢献を評価。'},
     'notion-match_report-3d4b49a367ef81d7b279fb6d54f4033c': {name:'Albert Guðmundsson',reason:'途中出場から決勝点を奪い、逆転勝利を決定づけた。短い出場時間で試合を変えた決定力を評価。'},
     'notion-match_report-3d0b49a367ef81b78893d0dee3622e7e': {name:'Eric Dier',reason:'決勝点に加え、最終ライン中央で後半の押し込みに対応。攻守両面で無失点勝利を支えた貢献を評価。'},
@@ -104,6 +105,26 @@
     const choice = editorialChoices[articleId];
     return choice ? {...choice, authority:'AM4', basis:'editorial',criteria:AM4_MOTM_CRITERIA,
       player:resolvePlayer(choice.name,players)} : null;
+  }
+
+  function withEditorialArticleMotm(article, blocks = []) {
+    if (article?.type !== 'match_report' || !Array.isArray(blocks)) return blocks;
+    const keyFigures = String(article?.report?.keyFigures || '');
+    if (selectedMotm(keyFigures, [])) return blocks;
+    const selection = editorialAm4Motm(article?.id, keyFigures, []);
+    if (!selection) return blocks;
+    const headingIndex = blocks.findIndex(block => block?.type === 'heading'
+      && /^(?:試合主要人物|主要人物|MOTM)$/iu.test(String(block.text || '').trim()));
+    if (headingIndex < 0) return blocks;
+    const nextHeadingIndex = blocks.findIndex((block, index) => index > headingIndex && block?.type === 'heading');
+    const sectionEnd = nextHeadingIndex < 0 ? blocks.length : nextHeadingIndex;
+    const club = String(selection.clubName || '').trim();
+    return [
+      ...blocks.slice(0, headingIndex + 1),
+      {type:'paragraph',text:`AM4独自MOTM：${selection.name}${club ? `（${club}）` : ''}`},
+      {type:'paragraph',text:selection.reason},
+      ...blocks.slice(sectionEnd),
+    ];
   }
 
   function dataAm4Motm(fixture, players, value = '') {
@@ -123,5 +144,5 @@
       criteria:AM4_MOTM_CRITERIA};
   }
 
-  return { selectedMotm, hasAwardStatement, editorialAm4Motm, dataAm4Motm, resolvePlayer, withoutMotmAbstention, AM4_MOTM_CRITERIA };
+  return { selectedMotm, hasAwardStatement, editorialAm4Motm, withEditorialArticleMotm, dataAm4Motm, resolvePlayer, withoutMotmAbstention, AM4_MOTM_CRITERIA };
 });
