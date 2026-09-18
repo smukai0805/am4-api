@@ -233,6 +233,55 @@ test('an interrupted prediction delta scan resumes its persisted Notion cursor a
   assert.deepEqual(secondInput.cursors.match_prediction, persisted);
 });
 
+test('a deployment collection-only run persists a changed source page without delivering it in the webhook', async () => {
+  const now = () => new Date('2026-09-18T14:00:00.000Z');
+  const store = createSiteMonitorStore({ blob: createBlob(), now, uuid: () => 'deployment-collection-owner' });
+  let deliveryCalls = 0;
+  const result = await runSiteMonitor({
+    store,
+    trigger: 'vercel_webhook_editorial_collection',
+    collect: true,
+    now,
+    settings: {
+      ...siteMonitorSettings({}),
+      // The signed deployment webhook may collect a bounded delta, but the
+      // existing minute worker remains the only code path that delivers it.
+      maxJobsPerRun: 0,
+      maxRunMs: 30_000,
+      minJobStartMs: 5_000,
+      browserEnabled: false,
+    },
+    dependencies: {
+      collectChanges: async ({ onPage }) => {
+        await onPage({
+          sourceType: 'match_prediction',
+          pages: [{ id: 'deployment-prediction-page', last_edited_time: '2026-09-18T13:59:00.000Z' }],
+          nextCursor: null,
+          complete: true,
+        });
+        return {
+          sources: { match_prediction: { watermark: '2026-09-18T14:00:00.000Z', collectedAt: '2026-09-18T14:00:00.000Z' } },
+          errors: {}, retryAfterMs: {},
+        };
+      },
+      syncPage: async () => {
+        deliveryCalls += 1;
+        throw new Error('collection-only webhook must not deliver an article');
+      },
+    },
+  });
+  assert.equal(result.status, 'completed');
+  assert.equal(result.jobs.length, 0);
+  assert.equal(deliveryCalls, 0);
+  assert.equal(result.collected.queued.length, 1);
+  const queue = (await store.readQueue()).value.items;
+  assert.equal(queue.length, 1);
+  const job = (await store.readJob(queue[0].jobId)).value;
+  assert.equal(job.kind, 'notion_page');
+  assert.equal(job.pageId, 'deployment-prediction-page');
+  assert.equal(job.deliveryOnly, true);
+});
+
 const fixture = {
   id: 1550125, date: '2026-09-15', kickoff: '2026-09-15T18:45:00Z', timezone: 'UTC',
   competition: 'Premier League',

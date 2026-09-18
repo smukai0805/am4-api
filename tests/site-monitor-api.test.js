@@ -179,6 +179,12 @@ test('Vercel webhook accepts only signed production-promotion events from the co
             result: { state: 'completed', validationJobIds: ['visual-job'] },
           }],
         }
+        : input.trigger === 'vercel_webhook_editorial_collection'
+          ? {
+            status: 'completed',
+            collected: { queued: ['source-job'], collected: { errors: {} }, quotaExceeded: null },
+            jobs: [],
+          }
         : {
           status: 'completed',
           jobs: [{
@@ -191,13 +197,20 @@ test('Vercel webhook accepts only signed production-promotion events from the co
   assert.equal(res.statusCode, 202);
   assert.equal(res.body.deploymentId, 'dpl-production');
   assert.equal(res.body.worker.state, 'deployment_validation_completed');
-  assert.equal(calls.length, 2);
+  assert.equal(calls.length, 3);
   assert.equal(calls[0].collect, false);
   assert.equal(Object.hasOwn(calls[0], 'allowReportGeneration'), false);
   assert.equal(calls[0].settings.browserEnabled, false);
-  assert.equal(calls[1].trigger, 'vercel_webhook_visual');
-  assert.deepEqual(calls[1].onlyJobIds, ['visual-job']);
-  assert.equal(calls[1].settings.browserEnabled, true);
+  assert.equal(calls[1].trigger, 'vercel_webhook_editorial_collection');
+  assert.equal(calls[1].collect, true);
+  assert.equal(calls[1].settings.maxJobsPerRun, 0);
+  assert.equal(calls[1].settings.browserEnabled, false);
+  assert.deepEqual(res.body.worker.dispatch.editorialCollection, {
+    status: 'completed', queued: 1, sourceErrors: [], quotaExceeded: false,
+  });
+  assert.equal(calls[2].trigger, 'vercel_webhook_visual');
+  assert.deepEqual(calls[2].onlyJobIds, ['visual-job']);
+  assert.equal(calls[2].settings.browserEnabled, true);
   assert.equal((await store.readQueue()).value.items.length, 1);
 
   const ignored = isExpectedProductionDeploymentEvent({
@@ -236,7 +249,7 @@ test('a duplicate signed Vercel production event reprojects its durable queue en
   assert.equal(duplicate.body.duplicateEvent, true);
   assert.equal(duplicate.body.queued, false);
   assert.equal(duplicate.body.worker.state, 'already_queued');
-  assert.equal(workerCalls, 1);
+  assert.equal(workerCalls, 2);
   assert.equal((await store.readQueue()).value.items.length, 1);
 });
 
@@ -266,7 +279,7 @@ test('distinct signed Vercel deliveries for one deployment share one bounded wor
   assert.equal(delayedEquivalent.body.duplicateEvent, false);
   assert.equal(delayedEquivalent.body.queued, false);
   assert.equal(delayedEquivalent.body.worker.state, 'already_queued');
-  assert.equal(workerCalls, 1);
+  assert.equal(workerCalls, 2);
   assert.equal((await store.readQueue()).value.items.length, 1);
 });
 

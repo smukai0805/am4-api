@@ -669,11 +669,9 @@ export async function respondWithVercelSiteMonitorWebhook(req, res, {
   await store.markEventQueued(event.id);
   // A Production promotion is a small, trusted, code-owned operation.  Run
   // its deployment-expansion job immediately instead of treating an accepted
-  // webhook response as proof that later repair work happened.  It only reads
-  // the persisted public index and creates bounded, durable validation jobs;
-  // it neither accepts caller content nor performs an article write.  A
-  // duplicate event never enters this branch, and the durable lock still
-  // protects a concurrent Cron.
+  // webhook response as proof that later repair work happened. A duplicate
+  // event never enters this branch, and the durable lock still protects a
+  // concurrent Cron.
   let dispatch = null;
   if (queued.enqueued) {
     try {
@@ -709,6 +707,41 @@ export async function respondWithVercelSiteMonitorWebhook(req, res, {
       const validationJobId = (result?.jobs || []).flatMap((job) => (
         Array.isArray(job?.result?.validationJobIds) ? job.result.validationJobIds : []
       )).find((jobId) => typeof jobId === 'string' && jobId);
+      // A Production promotion is also a trusted, bounded wake-up signal for
+      // the normal Notion delta collector. It is deliberately collection-only:
+      // this webhook reads source checkpoints and persists durable page jobs,
+      // while the existing minute worker remains the sole path that writes a
+      // public article. This covers a missed Notion event without turning a
+      // deployment into an unbounded full backfill or a reader-visible write.
+      try {
+        const editorialCollection = await runMonitor({
+          store,
+          trigger: 'vercel_webhook_editorial_collection',
+          deploymentId: expected.deploymentId,
+          collect: true,
+          settings: {
+            ...siteMonitorSettings(env),
+            maxJobsPerRun: 0,
+            maxRunMs: 30_000,
+            minJobStartMs: 5_000,
+            browserEnabled: false,
+          },
+          now,
+        });
+        const collection = editorialCollection?.collected || {};
+        dispatch.editorialCollection = {
+          status: safeId(editorialCollection?.status, 80) || 'unknown',
+          queued: Array.isArray(collection.queued) ? collection.queued.length : 0,
+          sourceErrors: Object.keys(collection?.collected?.errors || {}).slice(0, 3),
+          quotaExceeded: Boolean(collection.quotaExceeded),
+        };
+      } catch (_error) {
+        // The signed deployment validation already completed. Leave source
+        // checkpoints untouched on a transient collection startup failure so
+        // the normal hourly Cron retries it without pretending that content
+        // was current.
+        dispatch.editorialCollection = { status: 'deferred', queued: 0, sourceErrors: [], quotaExceeded: false };
+      }
       if (validationJobId) {
         try {
           const visualResult = await runMonitor({
