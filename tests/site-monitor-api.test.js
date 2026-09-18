@@ -521,11 +521,14 @@ test('an editorial continuation routes a fixture-first missing prediction into t
   assert.equal(calls.length, 1);
   assert.equal(calls[0].trigger, 'prediction_generation');
   assert.deepEqual(calls[0].claimSourceTypes, [PREDICTION_GENERATION_SOURCE_TYPE]);
+  assert.deepEqual(calls[0].claimJobKinds, ['article_validation', 'notification_delivery']);
   assert.equal(calls[0].claimDeliveryOnly, false);
   assert.equal(calls[0].collect, false);
   assert.equal(calls[0].settings.allowExtendedRun, true);
   assert.equal(calls[0].settings.maxRunMs, 285_000);
+  assert.equal(calls[0].settings.browserEnabled, true);
   assert.ok(calls[0].settings.maxGenerationsPerDay >= 20);
+  assert.ok(calls[0].settings.maxBrowserLaunchesPerDay >= 20);
   assert.equal(res.body.missingPredictionScan.missingPredictions, 1);
 });
 

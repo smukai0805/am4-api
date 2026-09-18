@@ -1284,6 +1284,13 @@ export async function respondWithSiteMonitor(req, res, {
     // it can drain legacy work and every supported source as before.
     ...(generationWorkReady ? {
       claimSourceTypes: readyGenerationSourceTypes,
+      // A generated source page creates a priority-99, durable visual
+      // validation child. Keep that child in the same bounded lane so a
+      // future-fixture generator which is paused at the daily cap cannot
+      // make a successfully published near-kickoff article wait until every
+      // lower-priority cap hold has been observed. Queue priority and the
+      // allow-list still prevent this from becoming an arbitrary URL runner.
+      claimJobKinds: ['article_validation', 'notification_delivery'],
       claimDeliveryOnly: false,
     } : runMatchEditorialBackfill ? {
       claimSourceTypes: MATCH_EDITORIAL_SOURCE_TYPES,
@@ -1315,9 +1322,11 @@ export async function respondWithSiteMonitor(req, res, {
       // substantial durable Notion/sync tail without requiring the former
       // model-call budget.
       minJobStartMs: 90_000,
-      // Browser verification is a separate, durable follow-up after the
-      // source page and public mirror are safely written.
-      browserEnabled: false,
+      // Browser verification remains a separate, durable child job after the
+      // source page and public mirror are safely written. It is enabled here
+      // solely so that priority-99 child can run before lower-priority source
+      // generation work in the next bounded continuation.
+      browserEnabled: true,
       maxApiCallsPerRun: Math.max(settings.maxApiCallsPerRun, 180),
       maxApiCallsPerDay: Math.max(settings.maxApiCallsPerDay, REPORT_GENERATION_RECOVERY_DAILY_LIMITS.maxApiCallsPerDay),
       maxProviderRequestsPerDay: Math.max(settings.maxProviderRequestsPerDay, REPORT_GENERATION_RECOVERY_DAILY_LIMITS.maxProviderRequestsPerDay),
