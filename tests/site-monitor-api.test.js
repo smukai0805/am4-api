@@ -378,6 +378,7 @@ test('Cron and manual monitor routes are separately authenticated', async () => 
   assert.ok(calls[6].settings.maxApiCallsPerRun >= 500);
   assert.ok(calls[6].settings.maxApiCallsPerDay >= 5_000);
   assert.ok(calls[6].settings.maxRepairsPerDay >= 1_500);
+  assert.equal(calls[6].settings.maxBrowserLaunchesPerDay, 20);
 });
 
 test('the authenticated Production Cron queues one bounded deployment validation when webhook delivery is absent', async () => {

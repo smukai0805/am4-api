@@ -1344,6 +1344,16 @@ export async function respondWithSiteMonitor(req, res, {
         // request or automatic trigger.
         maxApiCallsPerDay: Math.max(settings.maxApiCallsPerDay, MANUAL_EDITORIAL_BACKFILL_DAILY_LIMITS.maxApiCallsPerDay),
         maxRepairsPerDay: Math.max(settings.maxRepairsPerDay, MANUAL_EDITORIAL_BACKFILL_DAILY_LIMITS.maxRepairsPerDay),
+        // A generated report/prediction is deliberately published before its
+        // separate durable visual job runs.  Let this same authenticated
+        // continuation consume the reviewed incident ceiling (20/day), so
+        // those high-priority validation jobs are not stranded behind the
+        // ordinary twelve-launch site sweep.  This remains a hard daily cap;
+        // it does not reset browser usage or make browser work unbounded.
+        maxBrowserLaunchesPerDay: Math.max(
+          settings.maxBrowserLaunchesPerDay,
+          REPORT_GENERATION_RECOVERY_DAILY_LIMITS.maxBrowserLaunchesPerDay,
+        ),
       }
       : isManualTargetedRun ? { ...settings, maxJobsPerRun: 1 }
         // Vercel executes configured Cron paths only from Production. Do not
