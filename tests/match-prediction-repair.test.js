@@ -6,6 +6,7 @@ import {
   createGeneratedPrediction,
   PREDICTION_GENERATION_REPAIR_GENERATION,
   PREDICTION_GENERATION_SOURCE_TYPE,
+  predictionGenerationVersion,
   preparePredictionGeneration,
   scanMissingMatchPredictions,
 } from '../lib/match-prediction-repair.js';
@@ -60,7 +61,7 @@ function completedFixture({ id, date, homeId, awayId, home, away, homeGoals, awa
 }
 
 test('fixture-first prediction scan queues a scheduled target match with no public prediction', async () => {
-  const now = () => new Date('2026-09-18T00:00:00.000Z');
+  const now = () => new Date('2026-09-18T12:00:00.000Z');
   const store = createSiteMonitorStore({ blob: createBlob(), now, uuid: () => 'prediction-scan-owner' });
   const result = await scanMissingMatchPredictions({
     store, now,
@@ -81,6 +82,40 @@ test('fixture-first prediction scan queues a scheduled target match with no publ
   assert.equal(job.sourceType, PREDICTION_GENERATION_SOURCE_TYPE);
   assert.equal(job.fixtureId, 1557409);
   assert.equal(job.repairGeneration, PREDICTION_GENERATION_REPAIR_GENERATION);
+  assert.equal(job.priority, 98);
+});
+
+test('a priority-rule revision promotes an existing near-kickoff prediction job without duplicating it', async () => {
+  const now = () => new Date('2026-09-18T12:00:00.000Z');
+  const store = createSiteMonitorStore({ blob: createBlob(), now, uuid: () => 'prediction-priority-owner' });
+  const fixture = rawFixture();
+  const candidate = {
+    id: 1557409, status: 'NS', kickoff: fixture.fixture.date, date: '2026-09-19',
+    leagueId: 39, season: 2026, homeTeamId: 51, awayTeamId: 42,
+  };
+  const existing = await store.enqueue({
+    kind: 'prediction_generation', fixtureId: candidate.id,
+    sourceType: PREDICTION_GENERATION_SOURCE_TYPE,
+    sourceVersion: predictionGenerationVersion(candidate),
+    repairGeneration: PREDICTION_GENERATION_REPAIR_GENERATION,
+    trigger: 'scheduled_fixture_scan', priority: 94,
+  });
+  await store.updateState((state) => ({
+    ...state,
+    matchPredictionRepair: {
+      lastScanAt: now().toISOString(), lastScanTokyoDate: '2026-09-18', queuePriorityVersion: 'legacy-priority',
+    },
+  }));
+  const result = await scanMissingMatchPredictions({
+    store, now,
+    fetchFixtures: async (_path, params) => ({ response: params.date === '2026-09-19' ? [fixture] : [] }),
+    listPublicArticles: async () => ({ items: [] }),
+  });
+  assert.equal(result.state, 'queued');
+  assert.equal(result.queued, 0);
+  assert.equal((await store.readQueue()).value.items.length, 1);
+  assert.equal((await store.readQueue()).value.items[0].priority, 98);
+  assert.equal((await store.readJob(existing.job.id)).value.priority, 98);
 });
 
 test('fixture-first prediction scan exhausts the public archive before it creates a source page', async () => {

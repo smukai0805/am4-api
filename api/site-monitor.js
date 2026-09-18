@@ -94,15 +94,15 @@ const REPORT_GENERATION_RECOVERY_DAILY_LIMITS = Object.freeze({
   maxApiCallsPerDay: 1_000,
   maxProviderRequestsPerDay: 400,
   maxGenerationsPerDay: 20,
-  // The project can already have a legitimate editorial-sync backlog in the
-  // shared ledger when a finished-fixture incident begins.  Leave 95 bounded
-  // operations above the observed 145-operation baseline: enough for the
-// sixteen target reports' Notion/public/association writes, while the new
-// report-creation ceiling remains 20 and ordinary Cron remains at 20 repairs.
-  maxRepairsPerDay: 240,
+  // The shared ledger can already contain a legitimate editorial-sync
+  // backlog when a recovery begins. Keep forty bounded operations above the
+  // prior 240 ceiling so near-kickoff jobs can finish, while the separate
+  // hard generation ceiling remains 20/day and ordinary Cron stays at 20
+  // repairs. This is not a usage reset or an unbounded backfill allowance.
+  maxRepairsPerDay: 280,
   maxBrowserLaunchesPerDay: 20,
 });
-const REPORT_GENERATION_QUOTA_POLICY_VERSION = 'report-generation-recovery-limits-v3-deterministic';
+const REPORT_GENERATION_QUOTA_POLICY_VERSION = 'report-generation-recovery-limits-v4-prioritized';
 // Production's hourly reader-facing monitor has a finite 12-launch daily
 // ceiling. This preserves a bounded site-wide visual pass even if a legacy
 // runtime setting is lower; the durable JST usage ledger is never reset by a

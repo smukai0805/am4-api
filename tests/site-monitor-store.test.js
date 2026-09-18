@@ -64,6 +64,23 @@ test('site monitor queue persists deduplicated version jobs and recovers expired
   assert.deepEqual(complete.value.result, { verified: true });
 });
 
+test('a queued source job can be promoted without changing its durable identity', async () => {
+  const store = createSiteMonitorStore({ blob: createBlob(), now: () => new Date('2026-09-14T00:00:00.000Z') });
+  const first = await store.enqueue({
+    kind: 'prediction_generation', fixtureId: 1557409, sourceType: 'match_prediction_generation',
+    sourceVersion: 'fixture-v1', priority: 94,
+  });
+  const promoted = await store.enqueue({
+    kind: 'prediction_generation', fixtureId: 1557409, sourceType: 'match_prediction_generation',
+    sourceVersion: 'fixture-v1', priority: 98, promotePriority: true,
+  });
+  assert.equal(promoted.enqueued, false);
+  assert.equal(promoted.priorityPromoted, true);
+  assert.equal(promoted.job.id, first.job.id);
+  assert.equal((await store.readJob(first.job.id)).value.priority, 98);
+  assert.equal((await store.readQueue()).value.items[0].priority, 98);
+});
+
 test('deliberate deployment rechecks have an isolated durable identity', async () => {
   const store = createSiteMonitorStore({ blob: createBlob(), now: () => new Date('2026-09-14T00:00:00.000Z') });
   const first = await store.enqueue({
