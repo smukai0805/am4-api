@@ -44,9 +44,9 @@
   }
 
   function appendBody(container, article) {
-    const sourceBlocks = Array.isArray(article.body)
+    const sourceBlocks = AM4ArticleContent.withoutAgenda(Array.isArray(article.body)
       ? article.body
-      : AM4ArticleContent.parseMarkdownBlocks(article.body);
+      : AM4ArticleContent.parseMarkdownBlocks(article.body));
     const blocks = window.AM4MatchReportPresentation?.withEditorialArticleMotm?.(article, sourceBlocks) ?? sourceBlocks;
     const cleanText = article.type === "match_report"
       ? (value) => window.AM4ArticlePresentation?.readerEditorialText?.(value) ?? value

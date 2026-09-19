@@ -92,5 +92,21 @@
     return blocks;
   }
 
-  return { parseMarkdownBlocks };
+  // Remove only the duplicate navigation heading and its adjacent lists.
+  // Preserve prose, real section headings, sources, and the generated TOC.
+  function withoutAgenda(blocks) {
+    const result = [];
+    for (let index = 0; index < blocks.length; index += 1) {
+      const block = blocks[index];
+      const label = String(block.text || "").normalize("NFKC").replace(/\*\*/g, "").trim();
+      if (block.type === "heading" && /^(?:アジェンダ|agenda)\s*[:：]?$/iu.test(label)) {
+        while (blocks[index + 1]?.type === "list") index += 1;
+        continue;
+      }
+      result.push(block);
+    }
+    return result;
+  }
+
+  return { parseMarkdownBlocks, withoutAgenda };
 });
