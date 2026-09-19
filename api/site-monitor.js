@@ -63,6 +63,14 @@ const VERCEL_PRODUCTION_EVENTS = new Set(['deployment.promoted']);
 const DEFAULT_VERCEL_PROJECT_ID = 'prj_8EJAFi2Dgph83Jbuf20rmfyFahuu';
 const DEFAULT_VERCEL_TEAM_ID = 'team_j4FD3nvbNt5PKHJLJJfO9Xbq';
 const MATCH_EDITORIAL_SOURCE_TYPES = Object.freeze(['match_report', 'match_prediction']);
+// Reader-facing Notion mirrors share the same bounded delivery worker. Stories
+// do not participate in match-only fixture reconciliation, but once the hourly
+// collector has durably queued a story revision it must not be stranded behind
+// the match-only continuation filter.
+const READER_EDITORIAL_SOURCE_TYPES = Object.freeze([
+  ...MATCH_EDITORIAL_SOURCE_TYPES,
+  'am4_story',
+]);
 // These source types are internal, durable creation jobs. They are never
 // claimed by the ordinary reader-safe monitor lane: a single, authenticated
 // extended worker owns one verified editorial generation at a time.
@@ -81,7 +89,7 @@ const EDITORIAL_CONTINUATION_JOB_KINDS = Object.freeze([
   'notification_delivery',
 ]);
 const MONITOR_QUEUE_SOURCE_TYPES = Object.freeze([
-  ...MATCH_EDITORIAL_SOURCE_TYPES,
+  ...READER_EDITORIAL_SOURCE_TYPES,
   ...GENERATED_EDITORIAL_SOURCE_TYPES,
 ]);
 // This is intentionally source-controlled rather than operator input.  It
@@ -1383,7 +1391,7 @@ export async function respondWithSiteMonitor(req, res, {
     try {
       editorialQueueMetadataMigration = await migrateClaimQueueMetadata(
         store,
-        MATCH_EDITORIAL_SOURCE_TYPES,
+        READER_EDITORIAL_SOURCE_TYPES,
         EDITORIAL_CONTINUATION_JOB_KINDS,
         now,
       );
@@ -1408,7 +1416,7 @@ export async function respondWithSiteMonitor(req, res, {
     || readyEditorialQueueItems.some((item) => (
     item?.kind === 'notion_page'
     && item?.deliveryOnly === true
-    && MATCH_EDITORIAL_SOURCE_TYPES.includes(item?.sourceType)
+    && READER_EDITORIAL_SOURCE_TYPES.includes(item?.sourceType)
   ));
   const readyGenerationSourceTypes = [...new Set(readyEditorialQueueItems
     .filter((item) => GENERATED_EDITORIAL_SOURCE_TYPES.includes(item?.sourceType))
@@ -1449,11 +1457,11 @@ export async function respondWithSiteMonitor(req, res, {
       claimSourceTypes: MATCH_EDITORIAL_SOURCE_TYPES,
       claimDeliveryOnly: true,
     } : editorialContinuation ? {
-      claimSourceTypes: MATCH_EDITORIAL_SOURCE_TYPES,
+      claimSourceTypes: READER_EDITORIAL_SOURCE_TYPES,
       // A signed production promotion first creates a durable deployment
       // validation, which then creates its own article-validation jobs. Let
       // this authenticated minute worker drain only those internal kinds in
-      // addition to its two source lanes, so Production verification starts
+      // addition to the reader editorial source lanes, so Production verification starts
       // promptly instead of waiting for the next hourly general Cron. A
       // confirmed notification 429 also gets its one durable retry here;
       // this lane never replays ambiguous notification writes.
