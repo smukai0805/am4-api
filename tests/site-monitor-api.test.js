@@ -618,7 +618,7 @@ test('an editorial continuation delivers a collected Notion revision before an u
     },
   }));
   await store.enqueue({
-    kind: 'notion_page', pageId: 'latest-prediction', sourceType: 'match_prediction',
+    kind: 'notion_page', pageId: 'latest-story', sourceType: 'am4_story',
     sourceVersion: '2026-09-18T14:22:00.000Z', deliveryOnly: true, priority: 70,
   });
   await store.enqueue({
@@ -641,7 +641,7 @@ test('an editorial continuation delivers a collected Notion revision before an u
   assert.equal(res.statusCode, 200);
   assert.equal(calls.length, 1);
   assert.equal(calls[0].trigger, 'editorial_continuation');
-  assert.deepEqual(calls[0].claimSourceTypes, ['match_report', 'match_prediction']);
+  assert.deepEqual(calls[0].claimSourceTypes, ['match_report', 'match_prediction', 'am4_story']);
   assert.equal(calls[0].claimDeliveryOnly, true);
   assert.equal(calls[0].collect, false);
 });
