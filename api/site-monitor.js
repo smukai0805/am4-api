@@ -1509,7 +1509,7 @@ export async function respondWithSiteMonitor(req, res, {
       // this lane never replays ambiguous notification writes.
       claimJobKinds: EDITORIAL_CONTINUATION_JOB_KINDS,
       claimDeliveryOnly: true,
-    } : (primaryCron || continuation) ? {
+    } : cron ? {
       // Hourly collection still discovers reader-facing Notion revisions, but
       // delivery is owned exclusively by the elevated editorial continuation.
       // Otherwise the generic 600-call daily ledger can claim a freshly queued
