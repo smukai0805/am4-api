@@ -128,6 +128,11 @@ const REPORT_GENERATION_RECOVERY_DAILY_LIMITS = Object.freeze({
   maxBrowserLaunchesPerDay: 20,
 });
 const REPORT_GENERATION_QUOTA_POLICY_VERSION = 'report-generation-recovery-limits-v4-prioritized';
+// Reader-facing Notion revisions must be drained by the elevated editorial
+// continuation rather than being held until JST midnight by the generic
+// monitor's smaller daily request budget. This marker permits one bounded
+// release of only pre-existing usage_limit holds in those source lanes.
+const READER_EDITORIAL_DELIVERY_QUOTA_POLICY_VERSION = 'reader-editorial-delivery-elevated-lane-v1';
 // A one-time, code-owned release of exactly the two delayed jobs created by
 // the Chromium-interruption migration. The core still enforces its hard
 // twenty-two launch ceiling for that exact job kind, so this cannot reset the
@@ -1309,6 +1314,43 @@ export async function respondWithSiteMonitor(req, res, {
     }
   }
 
+  // A generic hourly worker may have collected a reader-facing Notion
+  // revision immediately before exhausting its smaller daily API ledger. In
+  // that case the durable job was safely deferred until JST midnight, but the
+  // dedicated editorial continuation now has a reviewed, higher finite budget.
+  // Wake only those exact pre-existing usage_limit holds once per policy
+  // generation. This does not create a new job, reset retries, or alter source
+  // content.
+  let releasedReaderEditorialHolds = null;
+  if (editorialContinuation) {
+    try {
+      const current = await store.readState();
+      const delivery = current.value.readerEditorialDelivery && typeof current.value.readerEditorialDelivery === 'object'
+        ? current.value.readerEditorialDelivery
+        : {};
+      if (delivery.quotaPolicyVersion !== READER_EDITORIAL_DELIVERY_QUOTA_POLICY_VERSION) {
+        releasedReaderEditorialHolds = await store.requeueDeferredUsageLimitedJobs({
+          sourceTypes: READER_EDITORIAL_SOURCE_TYPES,
+          limit: 50,
+        });
+        await store.updateState((state) => ({
+          ...state,
+          readerEditorialDelivery: {
+            ...(state.readerEditorialDelivery && typeof state.readerEditorialDelivery === 'object'
+              ? state.readerEditorialDelivery
+              : {}),
+            quotaPolicyVersion: READER_EDITORIAL_DELIVERY_QUOTA_POLICY_VERSION,
+            quotaPolicyAppliedAt: new Date(now()).toISOString(),
+          },
+        }));
+      }
+    } catch (_error) {
+      // The policy marker remains absent on failure, so the next authenticated
+      // continuation retries the same bounded release. Existing jobs remain
+      // durable and no public/editorial content is changed here.
+      releasedReaderEditorialHolds = { state: 'unavailable' };
+    }
+  }
   // The prior deployment correctly kept the two recovered prediction pages
   // private when the ordinary daily browser budget was exhausted. Let the
   // reviewed migration consume its two finite reserve slots immediately,
@@ -1467,11 +1509,19 @@ export async function respondWithSiteMonitor(req, res, {
       // this lane never replays ambiguous notification writes.
       claimJobKinds: EDITORIAL_CONTINUATION_JOB_KINDS,
       claimDeliveryOnly: true,
+    } : (primaryCron || continuation) ? {
+      // Hourly collection still discovers reader-facing Notion revisions, but
+      // delivery is owned exclusively by the elevated editorial continuation.
+      // Otherwise the generic 600-call daily ledger can claim a freshly queued
+      // revision and defer it until JST midnight before the elevated lane sees
+      // it. Generated source creation remains isolated for the same reason.
+      excludeSourceTypes: [
+        ...READER_EDITORIAL_SOURCE_TYPES,
+        ...GENERATED_EDITORIAL_SOURCE_TYPES,
+      ],
     } : {
-      // Source-page creation is never safe in the short generic monitor: it
-      // needs the authenticated 285-second lane and its separate recovery
-      // budget. Without this exclusion a regular Cron can repeatedly defer a
-      // generator behind its smaller routine write cap.
+      // Manual targeted verification/resync must retain access to its exact
+      // reader article while generated source creation stays isolated.
       excludeSourceTypes: GENERATED_EDITORIAL_SOURCE_TYPES,
     }),
     settings: generationWorkReady ? {
@@ -1652,6 +1702,7 @@ export async function respondWithSiteMonitor(req, res, {
       };
     })() : null,
     releasedReportGenerationHolds,
+    releasedReaderEditorialHolds,
     releasedTransientBrowserRuntimeRecoveries,
   }));
   noStore(res);
