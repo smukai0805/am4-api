@@ -11,6 +11,7 @@ import {
 import { createSiteMonitorStore, siteMonitorPath } from '../lib/site-monitor-store.js';
 import { MATCH_EDITORIAL_BACKFILL_GENERATION } from '../lib/match-editorial-sync.js';
 import { PREDICTION_GENERATION_SOURCE_TYPE } from '../lib/match-prediction-repair.js';
+import { REPORT_GENERATION_SOURCE_TYPE } from '../lib/match-report-repair.js';
 
 function createBlob() {
   const data = new Map();
@@ -299,6 +300,10 @@ test('Cron and manual monitor routes are separately authenticated', async () => 
   await respondWithSiteMonitor({ method: 'GET', query: { cron: '1' }, headers: { authorization: 'Bearer cron-token' } }, cron, { env, createStore: () => store, runMonitor });
   assert.equal(cron.statusCode, 200);
   assert.equal(calls[0].trigger, 'cron');
+  assert.deepEqual(calls[0].excludeSourceTypes, [
+    'match_report', 'match_prediction', 'am4_story',
+    REPORT_GENERATION_SOURCE_TYPE, PREDICTION_GENERATION_SOURCE_TYPE,
+  ]);
 
   const wrongMethod = response();
   await respondWithSiteMonitor({ method: 'GET', query: { run: '1' }, headers: { authorization: 'Bearer admin-token' } }, wrongMethod, { env, createStore: () => store, runMonitor });
@@ -361,6 +366,10 @@ test('Cron and manual monitor routes are separately authenticated', async () => 
   assert.equal(continuation.statusCode, 200);
   assert.equal(calls[5].trigger, 'continuation');
   assert.equal(calls[5].collect, false);
+  assert.deepEqual(calls[5].excludeSourceTypes, [
+    'match_report', 'match_prediction', 'am4_story',
+    REPORT_GENERATION_SOURCE_TYPE, PREDICTION_GENERATION_SOURCE_TYPE,
+  ]);
 
   const deniedEditorialContinuation = response();
   await respondWithSiteMonitor({ method: 'GET', query: { editorialContinuation: '1' }, headers: {} }, deniedEditorialContinuation, { env, createStore: () => store, runMonitor });
@@ -385,7 +394,7 @@ test('Cron and manual monitor routes are separately authenticated', async () => 
   assert.equal(editorialContinuation.statusCode, 200);
   assert.equal(calls[6].trigger, 'editorial_continuation');
   assert.equal(calls[6].collect, false);
-  assert.deepEqual(calls[6].claimSourceTypes, ['match_report', 'match_prediction']);
+  assert.deepEqual(calls[6].claimSourceTypes, ['match_report', 'match_prediction', 'am4_story']);
   assert.deepEqual(calls[6].claimJobKinds, ['deployment_validation', 'article_validation', 'transient_browser_recovery', 'notification_delivery']);
   assert.equal(calls[6].claimDeliveryOnly, true);
   assert.ok(calls[6].settings.maxJobsPerRun >= 40);
@@ -396,6 +405,66 @@ test('Cron and manual monitor routes are separately authenticated', async () => 
   assert.equal(
     (await store.readState()).value.browserRuntimeRecovery.browserQuotaPolicyVersion,
     'browser-runtime-interruption-recovery-browser-reserve-v1',
+  );
+});
+
+
+test('editorial continuation releases only reader delivery jobs held by the generic daily quota', async () => {
+  const clock = new Date('2026-09-19T04:30:00.000Z');
+  const store = createSiteMonitorStore({ blob: createBlob(), now: () => clock });
+  await store.updateState((state) => ({
+    ...state,
+    matchEditorialSync: {
+      backfill: {
+        match_report: { generation: MATCH_EDITORIAL_BACKFILL_GENERATION, sourceScanCompletedAt: '2026-09-17T00:00:00.000Z' },
+        match_prediction: { generation: MATCH_EDITORIAL_BACKFILL_GENERATION, sourceScanCompletedAt: '2026-09-17T00:00:00.000Z' },
+      },
+    },
+  }));
+
+  const report = await store.enqueue({
+    kind: 'notion_page', pageId: 'report-held', sourceType: 'match_report',
+    sourceVersion: '2026-09-19T03:18:00.000Z', deliveryOnly: true, priority: 10,
+  });
+  const story = await store.enqueue({
+    kind: 'notion_page', pageId: 'story-held', sourceType: 'am4_story',
+    sourceVersion: '2026-09-19T03:04:32.462Z', deliveryOnly: true, priority: 10,
+  });
+  for (const queued of [report, story]) {
+    const owner = `hold-${queued.job.id}`;
+    const claim = await store.claimJobs({ owner, jobIds: [queued.job.id] });
+    await store.deferJob(claim.jobs[0].id, {
+      owner, reason: 'usage_limit', delayMs: 12 * 60 * 60 * 1000,
+    });
+  }
+
+  const calls = [];
+  const res = response();
+  await respondWithSiteMonitor({
+    method: 'GET', query: { editorialContinuation: '1' }, headers: { authorization: 'Bearer cron-token' },
+  }, res, {
+    env: fixtureEnv(),
+    now: () => clock,
+    createStore: () => store,
+    listPublicArticles: async () => ({ items: [], page: 1, totalPages: 1 }),
+    scanMissingPredictions: async () => ({ state: 'throttled' }),
+    scanMissingReports: async () => ({ state: 'throttled' }),
+    scanDuplicateCandidates: async () => ({ state: 'not_needed', candidates: 0, types: {} }),
+    runMonitor: async (input) => { calls.push(input); return monitorResult(input.trigger); },
+  });
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(calls[0].trigger, 'editorial_continuation');
+  assert.deepEqual(calls[0].claimSourceTypes, ['match_report', 'match_prediction', 'am4_story']);
+
+  const queue = (await store.readQueue()).value.items;
+  assert.equal(queue.find((item) => item.jobId === report.job.id).availableAt, clock.toISOString());
+  assert.equal(queue.find((item) => item.jobId === story.job.id).availableAt, clock.toISOString());
+  assert.equal((await store.readJob(report.job.id)).value.lastError, 'usage_limit_released');
+  assert.equal((await store.readJob(story.job.id)).value.lastError, 'usage_limit_released');
+  assert.equal(
+    (await store.readState()).value.readerEditorialDelivery.quotaPolicyVersion,
+    'reader-editorial-delivery-elevated-lane-v1',
   );
 });
 
