@@ -1,3 +1,6 @@
+import { apiFootballFetch } from '../lib/api-football-client.js';
+import { withFootballCacheMetadata } from '../lib/football-cache-context.js';
+
 // api/squad.js
 // Vercelのサーバーレス関数(Node.js)。
 //
@@ -79,12 +82,7 @@ function lastCompletedSeasonYear(date = new Date()) {
 async function fetchSeasonStatsMap(teamId, season, apiKey) {
   const map = new Map(); // playerId -> このteamIdでの総出場数
   for (let page = 1; page <= 5; page++) {
-    const r = await fetch(
-      `https://v3.football.api-sports.io/players?team=${teamId}&season=${season}&page=${page}`,
-      { headers: { 'x-apisports-key': apiKey } }
-    );
-    if (!r.ok) break;
-    const d = await r.json();
+    const d = await apiFootballFetch('/players', { team: teamId, season, page }, { apiKey });
     for (const item of d.response || []) {
       const pid = item.player?.id;
       if (pid == null) continue;
@@ -110,12 +108,7 @@ async function fetchSeasonStatsMap(teamId, season, apiKey) {
 // マリオ・リバス)は「他クラブからの加入」ではないため対象外とする。
 async function isConfirmedNewSignee(playerId, teamId, apiKey) {
   try {
-    const r = await fetch(
-      `https://v3.football.api-sports.io/transfers?player=${playerId}`,
-      { headers: { 'x-apisports-key': apiKey } }
-    );
-    if (!r.ok) return false;
-    const d = await r.json();
+    const d = await apiFootballFetch('/transfers', { player: playerId }, { apiKey });
     const transfers = d.response?.[0]?.transfers || [];
     const latest = transfers.reduce((max, t) => {
       if (!t?.date) return max;
@@ -162,7 +155,7 @@ async function filterToFirstTeam(players, teamId, apiKey) {
   }
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   const API_KEY = process.env.API_FOOTBALL_KEY;
   if (!API_KEY) {
@@ -188,12 +181,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const response = await fetch(
-      `https://v3.football.api-sports.io/players/squads?team=${teamId}`,
-      { headers: { 'x-apisports-key': API_KEY } }
-    );
-    if (!response.ok) throw new Error(`取得に失敗: ${response.status}`);
-    const data = await response.json();
+    const data = await apiFootballFetch('/players/squads', { team: teamId });
 
     if (data.errors && Object.keys(data.errors).length > 0) {
       return res.status(200).json({ found: false, reason: 'API-Football側でエラーが発生しました', errors: data.errors });
@@ -226,3 +214,5 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: '取得に失敗しました', detail: err.message });
   }
 }
+
+export default withFootballCacheMetadata(handler);
