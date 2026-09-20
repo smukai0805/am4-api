@@ -6,6 +6,7 @@ import {
   collectNotionSourcePages,
   createNotionClient,
   notionMarkdownToBlocks,
+  notionPageToArticle,
   publishGeneratedMatchPrediction,
   publishGeneratedMatchReport,
   syncNotionPage,
@@ -39,6 +40,54 @@ function paragraph(text) {
     paragraph: { rich_text: [{ plain_text: text }] },
   };
 }
+
+test('keeps nested H3 key-player headings inside the structured prediction field', () => {
+  const page = {
+    id: 'pred-h3-page',
+    url: 'https://www.notion.so/pred-h3-page',
+    created_time: '2026-09-20T14:22:00.000Z',
+    last_edited_time: '2026-09-20T14:22:00.000Z',
+    properties: {
+      記事タイトル: { type: 'title', title: [{ plain_text: '2026-09-21｜Ligue 1｜Nice vs Lille｜試合予想' }] },
+      記事状態: { type: 'select', select: { name: '自動生成' } },
+      'Match Key': { type: 'rich_text', rich_text: [{ plain_text: 'Ligue 1|2026-09-21|Nice|Lille' }] },
+      大会: { type: 'select', select: { name: 'Ligue 1' } },
+      ホーム: { type: 'rich_text', rich_text: [{ plain_text: 'Nice' }] },
+      アウェイ: { type: 'rich_text', rich_text: [{ plain_text: 'Lille' }] },
+      試合日: { type: 'date', date: { start: '2026-09-21' } },
+    },
+  };
+  const article = notionPageToArticle({
+    type: 'match_prediction',
+    page,
+    markdown: [
+      '## 試合の見どころ',
+      '見どころ本文。',
+      '',
+      '## キーマン',
+      '',
+      '### Elye Wahi（Nice）',
+      '',
+      '前線で背後を取り、ボックス内の脅威になる。',
+      '',
+      '### Berke Özer（Lille）',
+      '',
+      '至近距離のシュートストップで試合を支える。',
+      '',
+      '## 予想の根拠',
+      'NiceとLilleの根拠本文。',
+    ].join('\n'),
+  });
+
+  assert.match(article.prediction.keyPlayers, /### Elye Wahi（Nice）/u);
+  assert.match(article.prediction.keyPlayers, /### Berke Özer（Lille）/u);
+  assert.doesNotMatch(article.prediction.keyPlayers, /予想の根拠/u);
+  assert.deepEqual(
+    article.prediction.keyPlayerCards.map((card) => card.playerName),
+    ['Elye Wahi', 'Berke Özer'],
+  );
+  assert.equal(article.prediction.rationale, 'NiceとLilleの根拠本文。');
+});
 
 test('Notion 429 returns its Retry-After as a durable deferral signal without an early in-function retry', async () => {
   let calls = 0;
