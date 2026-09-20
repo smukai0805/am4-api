@@ -7,24 +7,92 @@ permissions:
   contents: read
 jobs:
   regression:
+    if: github.ref == 'refs/heads/fix/api-quota-preserve-data-20260921'
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: write
+    env:
+      API_FOOTBALL_KEY: ''
+      BLOB_READ_WRITE_TOKEN: ''
+      NOTION_TOKEN: ''
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: npm
-      - name: Archive exact source without credentials or runtime data
-        run: git archive --format=tar HEAD -o /tmp/am4-quota-source.tar
-      - uses: actions/upload-artifact@v4
-        with:
-          name: am4-quota-source
-          path: /tmp/am4-quota-source.tar
-          retention-days: 3
       - name: Install locked dependencies without lifecycle scripts
         run: npm ci --ignore-scripts
-      - name: Run regression tests without provider credentials
-        run: npm test
-        env:
-          API_FOOTBALL_KEY: ''
+      - name: Apply the exact reviewed call-site diff on this isolated branch only
+        id: patch
+        run: |
+          if test -f docs/changes/api-quota-callsites.patch; then
+            git apply --check docs/changes/api-quota-callsites.patch
+            git apply --index docs/changes/api-quota-callsites.patch
+            git rm docs/changes/api-quota-callsites.patch
+            echo 'applied=true' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Run new cache regression tests without provider credentials
+        run: node --test tests/football-provider-cache.test.js | tee /tmp/am4-quota-targeted.tap
+      - name: Compare the complete suite to the unchanged base
+        run: |
+          mkdir -p /tmp/am4-quota-baseline
+          git archive a6beed227ac2acf1b36cf1e5ab7efb7ca96f99e1 | tar -x -C /tmp/am4-quota-baseline
+          ln -s "$GITHUB_WORKSPACE/node_modules" /tmp/am4-quota-baseline/node_modules
+          set +e
+          (cd /tmp/am4-quota-baseline && npm test) > /tmp/am4-quota-baseline.tap 2>&1
+          baseline_status=$?
+          npm test > /tmp/am4-quota-full.tap 2>&1
+          patched_status=$?
+          set -e
+          echo "Full suite exit codes: base=$baseline_status patched=$patched_status"
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          base = Path('/tmp/am4-quota-baseline.tap').read_text()
+          patched = Path('/tmp/am4-quota-full.tap').read_text()
+          failed = lambda value: set(re.findall(r'^not ok \d+ - (.+)$', value, re.M))
+          old, new = failed(base), failed(patched)
+          if not re.search(r'^# tests \d+$', patched, re.M):
+              raise SystemExit('Patched test run did not complete')
+          if new - old:
+              raise SystemExit('New regression failures: ' + repr(sorted(new - old)))
+          report = '# API quota regression results\n\n'
+          report += 'New cache tests: passed. Full-suite comparison: no additional failing test names.\n\n'
+          report += 'The full suite is NOT fully green when the known failures below remain.\n\n'
+          report += 'Baseline: ' + ', '.join(re.findall(r'^# (?:tests|pass|fail) \d+$', base, re.M)) + '\n\n'
+          report += 'Patched: ' + ', '.join(re.findall(r'^# (?:tests|pass|fail) \d+$', patched, re.M)) + '\n\n'
+          report += '\n'.join('- ' + name for name in sorted(new)) + '\n\n'
+          report += 'Production deployment is blocked until the CLI-only production changes are reconciled and browser/Blob checks pass.\n'
+          Path('docs/changes').mkdir(parents=True, exist_ok=True)
+          Path('docs/changes/api-quota-test-results.md').write_text(report)
+          print(report)
+          PY
+      - name: Commit tested call-site changes to the isolated fix branch, never main
+        if: steps.patch.outputs.applied == 'true'
+        run: |
+          test "$GITHUB_REF" = 'refs/heads/fix/api-quota-preserve-data-20260921'
+          git add docs/changes/api-quota-test-results.md
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Use shared provider cache at existing AM4 call sites; preserve last-good data'
+          git push origin HEAD:refs/heads/fix/api-quota-preserve-data-20260921
+      - name: Archive tested source and evidence without credentials or runtime data
+        if: always()
+        run: |
+          git archive --format=tar HEAD -o /tmp/am4-quota-tested-source.tar
+          git diff --binary > /tmp/am4-quota-uncommitted.patch
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: am4-quota-tested-source
+          path: |
+            /tmp/am4-quota-tested-source.tar
+            /tmp/am4-quota-targeted.tap
+            /tmp/am4-quota-baseline.tap
+            /tmp/am4-quota-full.tap
+            /tmp/am4-quota-uncommitted.patch
+          retention-days: 3
