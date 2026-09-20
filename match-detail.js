@@ -1221,10 +1221,15 @@
     const sections = [];
     let current = null;
     String(markdown || "").replace(/\r\n?/g, "\n").split("\n").forEach((line) => {
-      const heading = line.match(/^#{1,6}\s+(.+)$/);
+      const heading = line.match(/^(#{1,6})\s+(.+)$/);
       if (heading) {
+        const level = heading[1].length;
+        if (current?.level && level > current.level) {
+          current.body += `${line}\n`;
+          return;
+        }
         if (current?.body.trim()) sections.push({ ...current, body: clean(current.body) });
-        current = { heading: heading[1], body: "" };
+        current = { heading: heading[2], body: "", level };
       } else if (current) {
         current.body += `${line}\n`;
       }
