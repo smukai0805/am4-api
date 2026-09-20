@@ -30,8 +30,8 @@ jobs:
         id: patch
         run: |
           if test -f docs/changes/api-quota-callsites.patch; then
-            git apply --check docs/changes/api-quota-callsites.patch
-            git apply --index docs/changes/api-quota-callsites.patch
+            git apply --recount --check docs/changes/api-quota-callsites.patch
+            git apply --recount --index docs/changes/api-quota-callsites.patch
             git rm docs/changes/api-quota-callsites.patch
             echo 'applied=true' >> "$GITHUB_OUTPUT"
           fi
