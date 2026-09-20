@@ -1,0 +1,30 @@
+name: API quota regression
+on:
+  push:
+    branches:
+      - fix/api-quota-preserve-data-20260921
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Archive exact source without credentials or runtime data
+        run: git archive --format=tar HEAD -o /tmp/am4-quota-source.tar
+      - uses: actions/upload-artifact@v4
+        with:
+          name: am4-quota-source
+          path: /tmp/am4-quota-source.tar
+          retention-days: 3
+      - name: Install locked dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts
+      - name: Run regression tests without provider credentials
+        run: npm test
+        env:
+          API_FOOTBALL_KEY: ''
