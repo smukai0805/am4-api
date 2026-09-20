@@ -185,7 +185,7 @@
     String(value || '').replace(/\r\n?/g, '\n').replace(/\*\*/g, '').split('\n').forEach((line) => {
       const isHeading = /^\s*#{1,6}\s+/u.test(line);
       const clean = line.replace(/^\s*(?:[-*]|#{1,6})\s+/, '').trim();
-      if (!clean || isHeading) return;
+      if (!clean) return;
       const prefix = clean.match(/^([^:：｜|\n]{2,80})\s*(?:[:：｜|])\s*(.*)$/u);
       // A parenthetical on the left of a colon belongs to the player form
       // "Name (Club)：reason", not to a club label. In particular, the
@@ -194,6 +194,10 @@
       const team = prefix && !/[（(]/u.test(prefix[1]) && teamForLabel(prefix[1], fixture);
       const match = (team ? prefix[2] : clean).match(head);
       if (!match) {
+        // Subheadings inside the key-player section are structural copy, not
+        // a continuation of the previous player's rationale. Player headings
+        // themselves still flow through the anchored parser below.
+        if (isHeading) return;
         appendPredictionReason(entries, clean);
         return;
       }
@@ -205,6 +209,7 @@
       // is required. This makes unresolved prose stay prose instead of
       // attaching a portrait to an unrelated person.
       if (!team && !inlineTeam && !isKnownPlayer) {
+        if (isHeading) return;
         appendPredictionReason(entries, clean);
         return;
       }
