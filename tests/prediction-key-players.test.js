@@ -132,3 +132,56 @@ test('retains verified portraits across a later raw editorial refresh and caps c
   assert.equal(cards[0].photoUrl, 'https://media.api-sports.io/football/players/32966.png');
   assert.equal(cards[0].reason, '守備から前進を作る。');
 });
+
+
+test('parses H3 player headings with inline clubs and keeps following rationale', () => {
+  const targetFixture = {
+    home: { id: 84, name: 'Nice', logo: 'https://media.api-sports.io/football/teams/84.png' },
+    away: { id: 79, name: 'Lille', logo: 'https://media.api-sports.io/football/teams/79.png' },
+  };
+  const cards = keyPlayers.parsePredictionEntries(
+    '### Elye Wahi（Nice）\n前線で背後を取り、ボックス内の脅威になる。\n\n### Berke Özer（Lille）\n至近距離のシュートストップで試合を支える。',
+    targetFixture,
+  ).filter((entry) => entry.type === 'player');
+
+  assert.deepEqual(cards.map((card) => ({
+    name: card.playerName,
+    club: card.clubName,
+    reason: card.reason,
+    teamId: card.teamId,
+    side: card.side,
+    resolved: card.resolved,
+  })), [
+    {
+      name: 'Elye Wahi',
+      club: 'Nice',
+      reason: '前線で背後を取り、ボックス内の脅威になる。',
+      teamId: 84,
+      side: 'home',
+      resolved: false,
+    },
+    {
+      name: 'Berke Özer',
+      club: 'Lille',
+      reason: '至近距離のシュートストップで試合を支える。',
+      teamId: 79,
+      side: 'away',
+      resolved: false,
+    },
+  ]);
+});
+
+test('ignores generic markdown subheadings instead of attaching them to a player rationale', () => {
+  const targetFixture = {
+    home: { id: 84, name: 'Nice', logo: 'https://media.api-sports.io/football/teams/84.png' },
+    away: { id: 79, name: 'Lille', logo: 'https://media.api-sports.io/football/teams/79.png' },
+  };
+  const entries = keyPlayers.parsePredictionEntries(
+    '### Elye Wahi（Nice）\n前線で背後を取る。\n\n### 補足\n### Berke Özer（Lille）\nゴール前を守る。',
+    targetFixture,
+  ).filter((entry) => entry.type === 'player');
+
+  assert.equal(entries.length, 2);
+  assert.equal(entries[0].reason, '前線で背後を取る。');
+  assert.equal(entries[1].reason, 'ゴール前を守る。');
+});
