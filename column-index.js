@@ -76,7 +76,8 @@
     title.textContent = current.q ? `「${current.q}」の検索結果` : 'すべての記事';
     status.textContent = '記事を読み込んでいます。';
     list.setAttribute('aria-busy','true');
-    list.replaceChildren();
+    // Keep the server-visible fallback articles in place while refreshing.
+    // This prevents an API/network failure from turning COLUMN into an empty page.
     retry.hidden = true;
     pagers.forEach(pager => { pager.hidden = true; });
     const timeout = setTimeout(() => activeController.abort(),20000);
