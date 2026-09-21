@@ -1,3 +1,6 @@
+import { apiFootballFetch } from '../lib/api-football-client.js';
+import { withFootballCacheMetadata } from '../lib/football-cache-context.js';
+
 // api/player-photo.js
 // Vercelのサーバーレス関数(Node.js)。
 //
@@ -120,7 +123,7 @@ async function respondWithPlayerData(req, res) {
   }
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (String(req.query?.__am4_adsense_loader || '') === '1') {
     return createAdSenseHandler({
       publisherId: process.env.GOOGLE_ADSENSE_PUBLISHER_ID,
@@ -149,12 +152,7 @@ export default async function handler(req, res) {
       if (!Number.isInteger(providerId) || providerId <= 0) {
         return res.status(400).json({ error: 'playerId は正の整数で指定してください' });
       }
-      const response = await fetch(
-        `https://v3.football.api-sports.io/players/profiles?player=${providerId}`,
-        { headers: { 'x-apisports-key': API_KEY } }
-      );
-      if (!response.ok) throw new Error(`取得に失敗: ${response.status}`);
-      const data = await response.json();
+      const data = await apiFootballFetch('/players/profiles', { player: providerId });
       profile = data.response?.[0]?.player || null;
     } else {
       profile = await resolvePlayerProfile(API_KEY, { search, fullName });
@@ -162,10 +160,14 @@ export default async function handler(req, res) {
 
     // 写真は選手ごとに滅多に変わらないため、長め(1日)にキャッシュしてAPI-Football側の
     // 呼び出し回数を抑える。
-    res.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate');
+    res.setHeader('Cache-Control', profile?.photo
+      ? 's-maxage=86400, stale-while-revalidate=3600'
+      : 'no-store');
     return res.status(200).json({ photo: profile?.photo || null, name: profile?.name || null });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: '取得に失敗しました' });
   }
 }
+
+export default withFootballCacheMetadata(handler);

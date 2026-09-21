@@ -1,3 +1,5 @@
+import { withFootballCacheMetadata } from '../lib/football-cache-context.js';
+
 // api/fixtures.js
 // Vercelのサーバーレス関数(Node.js)。
 // api/standings.jsと同じ5大リーグを対象に、指定シーズンの全試合データを返す。
@@ -1082,7 +1084,7 @@ async function respondWithTeamData(req, res) {
   }
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.query.teamPage === '1') return respondWithTeamPage(req, res);
   if (req.query.teamData === '1') return respondWithTeamData(req, res);
   if (req.query.matchPage === '1') {
@@ -1241,3 +1243,5 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: '取得に失敗しました', detail: err.message });
   }
 }
+
+export default withFootballCacheMetadata(handler);

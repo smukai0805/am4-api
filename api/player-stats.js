@@ -1,3 +1,6 @@
+import { apiFootballFetch } from '../lib/api-football-client.js';
+import { withFootballCacheMetadata } from '../lib/football-cache-context.js';
+
 // api/player-stats.js
 // Vercelのサーバーレス関数(Node.js)。
 //
@@ -22,7 +25,7 @@ import { resolvePlayerProfile } from '../lib/name-search.js';
 // (2026は開幕前でまだ試合が無いため実データは薄いが、開幕後に自動的に反映される)。
 const SEASONS = [2022, 2023, 2024, 2025, 2026];
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
 
   const API_KEY = process.env.API_FOOTBALL_KEY;
@@ -60,12 +63,9 @@ export default async function handler(req, res) {
     try {
       const results = await Promise.all(
         SEASONS.map(async season => {
-          const response = await fetch(
-            `https://v3.football.api-sports.io/players?search=${encodeURIComponent(search)}&team=${teamId}&season=${season}`,
-            { headers: { 'x-apisports-key': API_KEY } }
-          );
-          if (!response.ok) return { season, error: `HTTP ${response.status}` };
-          const data = await response.json();
+          let data;
+          try { data = await apiFootballFetch('/players', { search, team: teamId, season }); }
+          catch (error) { return { season, error: error.code || 'provider_unavailable' }; }
           if (data.errors && Object.keys(data.errors).length > 0) {
             return { season, error: data.errors };
           }
@@ -109,3 +109,5 @@ export default async function handler(req, res) {
     seasons
   });
 }
+
+export default withFootballCacheMetadata(handler);

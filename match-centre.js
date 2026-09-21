@@ -1169,9 +1169,14 @@
       const dateLabel = new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", month: "long", day: "numeric", weekday: "short" }).format(new Date(`${selectedDailyDate}T12:00:00Z`));
       const displayOrderLabel = "欧州大会・5大リーグ優先・大会内は時間順";
       if (fixtureOrderLabel) fixtureOrderLabel.textContent = displayOrderLabel;
+      const fetchedAt = activeFixtureData?.dataFreshness?.fetchedAt;
+      const parsedFetchedAt = Date.parse(fetchedAt || "");
+      const freshnessLabel = Number.isFinite(parsedFetchedAt)
+        ? `${new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(parsedFetchedAt))} JST 最終取得${activeFixtureData.dataFreshness.stale ? " · 更新待ち（保存済みデータ）" : ""}`
+        : "取得時刻確認中";
       fixturesStatus.textContent = fixtures.length
         ? fixtureMode === "date"
-          ? `${dateLabel} · ${competitionLabel} · ${statusLabel} · ${fixtures.length}試合 · ${displayOrderLabel} · ${updatedAt()}更新`
+          ? `${dateLabel} · ${competitionLabel} · ${statusLabel} · ${fixtures.length}試合 · ${displayOrderLabel} · ${freshnessLabel}`
           : `${competitionLabel} · ${activeFixtureFilter || "節未選択"} · ${statusLabel} · ${fixtures.length}試合${unavailableLabel}`
         : fixtureMode === "date"
           ? `${dateLabel}は、選択条件に該当する試合がありません`

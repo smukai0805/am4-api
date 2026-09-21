@@ -1,3 +1,5 @@
+import { withFootballCacheMetadata } from '../lib/football-cache-context.js';
+
 // api/top-scorers.js
 // Vercelのサーバーレス関数(Node.js)。
 // 指定したリーグ・シーズンの得点ランキング(TOP10)を取得する。
@@ -21,7 +23,7 @@ const LEAGUES = {
 const MIN_SEASON = 2022;
 const MAX_SEASON = 2026;
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   // ブラウザから直接fetchできるようCORSを許可(standings.jsと同じ対応)
   res.setHeader('Access-Control-Allow-Origin', '*');
 
@@ -69,3 +71,5 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: '取得に失敗しました', detail: err.message });
   }
 }
+
+export default withFootballCacheMetadata(handler);

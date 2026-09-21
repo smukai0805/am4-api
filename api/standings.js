@@ -1,3 +1,5 @@
+import { withFootballCacheMetadata } from '../lib/football-cache-context.js';
+
 // api/standings.js
 // Vercelのサーバーレス関数(Node.js)。
 // このファイルをデプロイすると、
@@ -141,7 +143,7 @@ function scopedPayload(result, season, requestedName) {
   };
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   const API_KEY = process.env.API_FOOTBALL_KEY;
 
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -195,3 +197,5 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: '取得に失敗しました', detail: err.message });
   }
 }
+
+export default withFootballCacheMetadata(handler);
