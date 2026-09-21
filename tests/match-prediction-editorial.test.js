@@ -336,3 +336,73 @@ test('SSR presents the Brentford report as an explicit AM4 MOTM selection while 
   const clientSource = fs.readFileSync(require.resolve('../article-page.js'), 'utf8');
   assert.match(clientSource, /AM4MatchReportPresentation\?\.withEditorialArticleMotm/);
 });
+
+
+test('article SSR renders saved prediction portraits from persisted IDs and URLs without provider lookup', async () => {
+  const { renderArticlePage } = await import('../lib/article-page-html.js');
+  const html = renderArticlePage({
+    id: 'notion-match_prediction-portrait-test',
+    type: 'match_prediction',
+    title: 'Torino vs Roma｜試合予想',
+    publishedAt: '2026-09-21T00:00:00Z',
+    body: '## キーマン\nRolando Mandragora（Torino）— 中盤で前進を止める。',
+    prediction: {
+      keyPlayerCards: [{
+        playerName: 'Rolando Mandragora',
+        clubName: 'Torino',
+        reason: '中盤で前進を止める。',
+        teamId: 503,
+        side: 'home',
+        playerId: 30810,
+        photoUrl: 'https://media.api-sports.io/football/players/30810.png',
+        logoUrl: 'https://media.api-sports.io/football/teams/503.png',
+        resolved: true,
+      }],
+    },
+  });
+  assert.match(html, /id="article-brand-pill">Match Preview<\/span>/);
+  assert.match(html, /data-player-id="30810"/);
+  assert.match(html, /data-team-id="503"/);
+  assert.match(html, /players\/30810\.png/);
+  assert.match(html, /teams\/503\.png/);
+});
+
+test('article SSR renders saved MOTM portrait, correct report pill, and error pages omit AdSense', async () => {
+  const { renderArticlePage, renderArticleErrorPage } = await import('../lib/article-page-html.js');
+  const html = renderArticlePage({
+    id: 'notion-match_report-portrait-test',
+    type: 'match_report',
+    title: 'Torino 1-2 Roma｜試合解説',
+    publishedAt: '2026-09-21T00:00:00Z',
+    body: '## 試合主要人物\nMOTM：Paulo Dybala（AS Roma）— 決勝点を決めた。',
+    report: {
+      motmCard: {
+        playerName: 'Paulo Dybala',
+        clubName: 'AS Roma',
+        reason: '決勝点を決めた。',
+        teamId: 497,
+        side: 'away',
+        playerId: 276,
+        photoUrl: 'https://media.api-sports.io/football/players/276.png',
+        logoUrl: 'https://media.api-sports.io/football/teams/497.png',
+        resolved: true,
+      },
+    },
+  });
+  assert.match(html, /id="article-brand-pill">Match Report<\/span>/);
+  assert.match(html, /data-player-id="276"/);
+  assert.match(html, /data-team-id="497"/);
+  assert.match(html, /players\/276\.png/);
+
+  const errorHtml = renderArticleErrorPage({
+    title: '記事が見つかりません',
+    heading: '記事が見つかりません',
+    message: '公開中の記事を確認してください。',
+  });
+  assert.equal(errorHtml.includes('/api/adsense.js'), false);
+  assert.match(errorHtml, /id="article-brand-pill">AM4 Football<\/span>/);
+
+  const clientSource = fs.readFileSync(require.resolve('../article-page.js'), 'utf8');
+  assert.match(clientSource, /renderStoredEditorialMedia\(body, article\)/);
+  assert.match(clientSource, /AM4PredictionKeyPlayers/);
+});
