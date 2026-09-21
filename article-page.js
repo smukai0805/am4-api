@@ -101,6 +101,42 @@
     });
   }
 
+  function savedArticlePlayerCard(card) {
+    const playerId = Number(card?.playerId);
+    const teamId = Number(card?.teamId);
+    const playerName = String(card?.playerName || '').trim();
+    const clubName = String(card?.clubName || card?.clubLabel || '').trim();
+    const photo = String(card?.photoUrl || card?.photo || '').trim();
+    const logo = String(card?.logoUrl || '').trim();
+    const reason = String(card?.reason || '').trim();
+    if (!card?.resolved || !Number.isSafeInteger(playerId) || playerId <= 0 || !Number.isSafeInteger(teamId) || teamId <= 0 || !/^https:\/\//i.test(photo) || !/^https:\/\//i.test(logo) || !playerName || !clubName || !reason) return null;
+    return { ...card, playerName, playerId, teamId, photo, photoUrl: photo, reason, team: { id: teamId, name: clubName, logo } };
+  }
+
+  function renderStoredEditorialMedia(container, article) {
+    const helper = window.AM4PredictionKeyPlayers;
+    if (!helper) return;
+    let cards = [];
+    let label = '';
+    let motm = false;
+    if (article.type === 'match_prediction') {
+      cards = (Array.isArray(article?.prediction?.keyPlayerCards) ? article.prediction.keyPlayerCards : []).map(savedArticlePlayerCard).filter(Boolean).slice(0, 2);
+      label = 'キーマン';
+    } else if (article.type === 'match_report') {
+      const card = savedArticlePlayerCard(article?.report?.motmCard);
+      if (card) cards = [card];
+      label = 'MOTM';
+      motm = true;
+    }
+    if (!cards.length) return;
+    const section = document.createElement('section');
+    section.className = 'article-editorial-people';
+    section.setAttribute('aria-label', label);
+    const template = document.createElement('template');
+    template.innerHTML = cards.map((card) => helper.renderCard(card, { motm, label })).join('');
+    section.append(template.content.cloneNode(true));
+    container.append(section);
+  }
   function renderScoreboard(container, scoreboard) {
     if (!scoreboard) return;
     const board = document.createElement("div");
@@ -386,6 +422,7 @@
     const body = document.createElement("div");
     body.className = "article-body";
     renderScoreboard(body, article.scoreboard);
+    renderStoredEditorialMedia(body, article);
     appendBody(body, article);
     renderSources(body, article.sources);
     renderArticleTags(body, article);
