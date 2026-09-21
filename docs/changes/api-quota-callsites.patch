@@ -1,0 +1,74 @@
+diff --git a/tests/site-monitor-api.test.js b/tests/site-monitor-api.test.js
+--- a/tests/site-monitor-api.test.js
++++ b/tests/site-monitor-api.test.js
+@@ -554,7 +554,7 @@
+   assert.equal(calls.length, 1);
+   assert.equal(calls[0].trigger, 'match_editorial_backfill');
+   assert.equal(calls[0].collect, true);
+-  assert.deepEqual(calls[0].claimSourceTypes, ['match_report', 'match_prediction']);
++  assert.deepEqual(calls[0].claimSourceTypes, ['match_report', 'match_prediction', 'am4_story']);
+   assert.equal(calls[0].claimDeliveryOnly, true);
+   assert.ok(calls[0].settings.maxJobsPerRun >= 40);
+   assert.ok(calls[0].settings.maxApiCallsPerRun >= 500);
+@@ -1189,9 +1189,61 @@
+     bySource: {
+       match_report: { queued: 1, deliveryOnly: 1, priorities: { 70: 1 } },
+       match_prediction: { queued: 1, deliveryOnly: 0, priorities: { 45: 1 } },
++      am4_story: { queued: 0, deliveryOnly: 0, priorities: {} },
+       match_report_generation: { queued: 0, deliveryOnly: 0, priorities: {} },
+       match_prediction_generation: { queued: 0, deliveryOnly: 0, priorities: {} },
+     },
+     itemsWithoutSourceMetadata: 1,
+   });
+ });
++
++
++test('COLUMN continuation claims a queued story while leaving the generator unclaimed', async () => {
++  const env = fixtureEnv();
++  const store = createSiteMonitorStore({ blob: createBlob() });
++  await store.updateState((state) => ({
++    ...state, matchEditorialSync: { backfill: {
++      match_report: { generation: MATCH_EDITORIAL_BACKFILL_GENERATION, sourceScanCompletedAt: '2026-09-17T00:00:00.000Z' },
++      match_prediction: { generation: MATCH_EDITORIAL_BACKFILL_GENERATION, sourceScanCompletedAt: '2026-09-17T00:00:00.000Z' },
++    } },
++  }));
++  const story = await store.enqueue({ kind: 'notion_page', pageId: 'column-retest', sourceType: 'am4_story', sourceVersion: 'v1', deliveryOnly: true, priority: 70 });
++  const generator = await store.enqueue({ kind: 'prediction_generation', fixtureId: 1557409, sourceType: PREDICTION_GENERATION_SOURCE_TYPE, sourceVersion: 'v1', priority: 94 });
++  const res = response();
++  let claimed = [];
++  await respondWithSiteMonitor({ method: 'GET', query: { editorialContinuation: '1' }, headers: { authorization: 'Bearer cron-token' } }, res, {
++    env, createStore: () => store,
++    listPublicArticles: async () => ({ items: [], page: 1, totalPages: 1 }),
++    scanMissingPredictions: async () => ({ state: 'throttled' }),
++    scanMissingReports: async () => ({ state: 'throttled' }),
++    scanDuplicateCandidates: async () => ({ state: 'not_needed', candidates: 0, types: {} }),
++    runMonitor: async (input) => {
++      assert.equal(input.trigger, 'editorial_continuation');
++      assert.deepEqual(input.claimSourceTypes, ['match_report', 'match_prediction', 'am4_story']);
++      assert.equal(input.claimDeliveryOnly, true);
++      claimed = (await store.claimJobs({ owner: 'column-retest-owner', sourceTypes: input.claimSourceTypes, kinds: input.claimJobKinds, deliveryOnly: input.claimDeliveryOnly })).jobs;
++      return monitorResult(input.trigger);
++    },
++  });
++  assert.equal(res.statusCode, 200);
++  assert.deepEqual(claimed.map((job) => job.id), [story.job.id]);
++  const untouched = await store.readJob(generator.job.id);
++  assert.notEqual(untouched.value.status, 'running');
++  assert.notEqual(untouched.value.leaseOwner, 'column-retest-owner');
++});
++
++test('COLUMN status counts queued stories without exposing their page IDs or payloads', async () => {
++  const env = fixtureEnv();
++  const store = createSiteMonitorStore({ blob: createBlob() });
++  await store.enqueue({ kind: 'notion_page', pageId: 'column-private-page-id', sourceType: 'am4_story', sourceVersion: 'private-version', deliveryOnly: true, priority: 70, payload: { body: 'PRIVATE_COLUMN_BODY_SENTINEL' } });
++  const res = response();
++  await respondWithSiteMonitor({ method: 'GET', query: { status: '1' }, headers: { authorization: 'Bearer admin-token' } }, res, { env, createStore: () => store });
++  assert.equal(res.statusCode, 200);
++  assert.deepEqual(res.body.editorialQueue.bySource.am4_story, { queued: 1, deliveryOnly: 1, priorities: { 70: 1 } });
++  assert.equal(res.body.queued, 1);
++  const serialized = JSON.stringify(res.body);
++  assert.doesNotMatch(serialized, /column-private-page-id|private-version|PRIVATE_COLUMN_BODY_SENTINEL/);
++  const denied = response();
++  await respondWithSiteMonitor({ method: 'GET', query: { status: '1' }, headers: {} }, denied, { env, createStore: () => { throw new Error('Unauthorized request must not read the store'); } });
++  assert.equal(denied.statusCode, 401);
++});
