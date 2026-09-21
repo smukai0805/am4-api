@@ -1,0 +1,145 @@
+name: API quota monitor retest
+on:
+  push:
+    branches:
+      - fix/api-quota-preserve-data-20260921
+    paths:
+      - .github/workflows/api-quota-monitor-retest.yml
+permissions:
+  contents: read
+jobs:
+  retest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      API_FOOTBALL_KEY: ''
+      BLOB_READ_WRITE_TOKEN: ''
+      NOTION_TOKEN: ''
+      NOTION_API_KEY: ''
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Reproduce failures, verify existing COLUMN contract, and retest test-only corrections
+        run: |
+          python3 - <<'PY'
+          import subprocess, pathlib, glob, re, json, hashlib, difflib
+          root = pathlib.Path.cwd()
+          out = root / 'retest-results'
+          out.mkdir()
+          guard = out / 'offline-fetch-guard.mjs'
+          guard.write_text("globalThis.fetch = async () => { throw new Error('OFFLINE_TEST_EXTERNAL_FETCH_BLOCKED'); };\n")
+          def run_suite(name, directory):
+              files = sorted(str(p) for p in (directory / 'tests').glob('*.test.js'))
+              result = subprocess.run(['node', '--import', str(guard), '--test', *files], cwd=directory, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+              (out / (name + '.tap')).write_text(result.stdout)
+              counts = {k: int(v) for k, v in re.findall(r'^# (tests|pass|fail|skipped) (\d+)$', result.stdout, re.M)}
+              failures = re.findall(r'^not ok \d+ - (.+)$', result.stdout, re.M)
+              if not counts: raise RuntimeError(name + ' did not complete')
+              return {'exit': result.returncode, **counts, 'failures': failures}
+          runtime_paths = sorted([*root.glob('api/*.js'), *root.glob('lib/*.js'), *root.glob('*.js'), root / 'vercel.json'])
+          runtime_hashes = lambda: {str(p.relative_to(root)): hashlib.sha256(p.read_bytes()).hexdigest() for p in runtime_paths}
+          initial_hashes = runtime_hashes()
+          baseline = pathlib.Path('/tmp/am4-monitor-retest-baseline')
+          baseline.mkdir()
+          archive = subprocess.run(['git', 'archive', 'a6beed227ac2acf1b36cf1e5ab7efb7ca96f99e1'], check=True, stdout=subprocess.PIPE).stdout
+          subprocess.run(['tar', '-x', '-C', str(baseline)], input=archive, check=True)
+          (baseline / 'node_modules').symlink_to(root / 'node_modules', target_is_directory=True)
+          summary = {'source_commit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()}
+          summary['baseline'] = run_suite('baseline', baseline)
+          summary['candidate_before'] = run_suite('candidate-before', root)
+          expected_failures = {
+            'an editorial continuation resumes a missing source generation exactly through the durable backfill worker',
+            'protected monitor status exposes compact persisted diagnostics without article bodies',
+          }
+          assert set(summary['baseline']['failures']) == expected_failures, summary
+          assert set(summary['candidate_before']['failures']) == expected_failures, summary
+          target = root / 'tests/site-monitor-api.test.js'
+          original = target.read_text()
+          old = "  assert.equal(calls[0].collect, true);\n  assert.deepEqual(calls[0].claimSourceTypes, ['match_report', 'match_prediction']);\n  assert.equal(calls[0].claimDeliveryOnly, true);\n  assert.ok(calls[0].settings.maxJobsPerRun >= 40);"
+          new = old.replace("['match_report', 'match_prediction']", "['match_report', 'match_prediction', 'am4_story']")
+          assert original.count(old) == 1
+          corrected = original.replace(old, new, 1)
+          old_queue = "      match_prediction: { queued: 1, deliveryOnly: 0, priorities: { 45: 1 } },\n      match_report_generation:"
+          new_queue = "      match_prediction: { queued: 1, deliveryOnly: 0, priorities: { 45: 1 } },\n      am4_story: { queued: 0, deliveryOnly: 0, priorities: {} },\n      match_report_generation:"
+          assert corrected.count(old_queue) == 1
+          corrected = corrected.replace(old_queue, new_queue, 1)
+          # Keep the separate manual match-only backfill test unchanged.
+          manual = corrected[corrected.index("test('an authenticated collection backfill"):]
+          assert "assert.deepEqual(calls[0].claimSourceTypes, ['match_report', 'match_prediction']);" in manual
+          corrected += '''
+
+          test('COLUMN continuation claims a queued story while leaving the generator unclaimed', async () => {
+            const env = fixtureEnv();
+            const store = createSiteMonitorStore({ blob: createBlob() });
+            await store.updateState((state) => ({
+              ...state, matchEditorialSync: { backfill: {
+                match_report: { generation: MATCH_EDITORIAL_BACKFILL_GENERATION, sourceScanCompletedAt: '2026-09-17T00:00:00.000Z' },
+                match_prediction: { generation: MATCH_EDITORIAL_BACKFILL_GENERATION, sourceScanCompletedAt: '2026-09-17T00:00:00.000Z' },
+              } },
+            }));
+            const story = await store.enqueue({ kind: 'notion_page', pageId: 'column-retest', sourceType: 'am4_story', sourceVersion: 'v1', deliveryOnly: true, priority: 70 });
+            const generator = await store.enqueue({ kind: 'prediction_generation', fixtureId: 1557409, sourceType: PREDICTION_GENERATION_SOURCE_TYPE, sourceVersion: 'v1', priority: 94 });
+            const res = response();
+            let claimed = [];
+            await respondWithSiteMonitor({ method: 'GET', query: { editorialContinuation: '1' }, headers: { authorization: 'Bearer cron-token' } }, res, {
+              env, createStore: () => store,
+              listPublicArticles: async () => ({ items: [], page: 1, totalPages: 1 }),
+              scanMissingPredictions: async () => ({ state: 'throttled' }),
+              scanMissingReports: async () => ({ state: 'throttled' }),
+              scanDuplicateCandidates: async () => ({ state: 'not_needed', candidates: 0, types: {} }),
+              runMonitor: async (input) => {
+                assert.equal(input.trigger, 'editorial_continuation');
+                assert.deepEqual(input.claimSourceTypes, ['match_report', 'match_prediction', 'am4_story']);
+                assert.equal(input.claimDeliveryOnly, true);
+                claimed = (await store.claimJobs({ owner: 'column-retest-owner', sourceTypes: input.claimSourceTypes, kinds: input.claimJobKinds, deliveryOnly: input.claimDeliveryOnly })).jobs;
+                return monitorResult(input.trigger);
+              },
+            });
+            assert.equal(res.statusCode, 200);
+            assert.deepEqual(claimed.map((job) => job.id), [story.job.id]);
+            const untouched = await store.readJob(generator.job.id);
+            assert.notEqual(untouched.value.status, 'running');
+            assert.notEqual(untouched.value.leaseOwner, 'column-retest-owner');
+          });
+
+          test('COLUMN status counts queued stories without exposing their page IDs or payloads', async () => {
+            const env = fixtureEnv();
+            const store = createSiteMonitorStore({ blob: createBlob() });
+            await store.enqueue({ kind: 'notion_page', pageId: 'column-private-page-id', sourceType: 'am4_story', sourceVersion: 'private-version', deliveryOnly: true, priority: 70, payload: { body: 'PRIVATE_COLUMN_BODY_SENTINEL' } });
+            const res = response();
+            await respondWithSiteMonitor({ method: 'GET', query: { status: '1' }, headers: { authorization: 'Bearer admin-token' } }, res, { env, createStore: () => store });
+            assert.equal(res.statusCode, 200);
+            assert.deepEqual(res.body.editorialQueue.bySource.am4_story, { queued: 1, deliveryOnly: 1, priorities: { 70: 1 } });
+            assert.equal(res.body.queued, 1);
+            const serialized = JSON.stringify(res.body);
+            assert.doesNotMatch(serialized, /column-private-page-id|private-version|PRIVATE_COLUMN_BODY_SENTINEL/);
+            const denied = response();
+            await respondWithSiteMonitor({ method: 'GET', query: { status: '1' }, headers: {} }, denied, { env, createStore: () => { throw new Error('Unauthorized request must not read the store'); } });
+            assert.equal(denied.statusCode, 401);
+          });
+          '''
+          target.write_text(corrected)
+          patch = ''.join(difflib.unified_diff(original.splitlines(True), corrected.splitlines(True), fromfile='a/tests/site-monitor-api.test.js', tofile='b/tests/site-monitor-api.test.js'))
+          (out / 'column-test-expectations.patch').write_text('diff --git a/tests/site-monitor-api.test.js b/tests/site-monitor-api.test.js\n' + patch)
+          summary['candidate_after'] = run_suite('candidate-after', root)
+          summary['runtime_code_unchanged'] = runtime_hashes() == initial_hashes
+          summary['production_deployed'] = False
+          (out / 'summary.json').write_text(json.dumps(summary, indent=2))
+          print(json.dumps(summary, indent=2))
+          assert summary['runtime_code_unchanged']
+          assert summary['candidate_after']['exit'] == 0, summary
+          assert summary['candidate_after']['tests'] == summary['candidate_before']['tests'] + 2
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: am4-column-monitor-retest
+          path: retest-results/
+          retention-days: 7
