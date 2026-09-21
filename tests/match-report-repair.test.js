@@ -238,10 +238,13 @@ test('new report creation replaces an accidental generated award with one AM4-ba
   });
   assert.equal(result.page.id, 'new-notion-report');
   assert.match(published.draft, /MOTM：Verified Player/);
-  assert.match(published.draft, /AM4選出/);
+  assert.match(published.draft, /AM4独自選出/);
   assert.equal((published.draft.match(/^MOTM：/gmu) || []).length, 1);
   assert.equal(published.draft.includes('Old Choice'), false);
   assert.equal(published.draft.includes('残してはいけない理由'), false);
+  assert.equal(published.draft.includes('機械採点'), false);
+  assert.equal(published.draft.includes('API-Footballの試合スタッツ'), false);
+  assert.match(published.draft, /42分の先制点が勝敗を左右する場面だったため加点/);
   assert.match(published.draft, /本文の結び。/);
   assert.equal(published.sources[0].url, 'https://example.com/official');
   assert.equal(draftMatchInfo.fixtureId, 1570387);
