@@ -26,10 +26,10 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Reproduce failures, verify existing COLUMN contract, and retest test-only corrections
+      - name: Reproduce failures and retest the isolated test-only corrections
         run: |
           python3 - <<'PY'
-          import subprocess, pathlib, glob, re, json, hashlib, difflib
+          import subprocess, pathlib, re, json, hashlib, difflib
           root = pathlib.Path.cwd()
           out = root / 'retest-results'
           out.mkdir()
@@ -62,17 +62,20 @@ jobs:
           assert set(summary['candidate_before']['failures']) == expected_failures, summary
           target = root / 'tests/site-monitor-api.test.js'
           original = target.read_text()
-          old = "  assert.equal(calls[0].collect, true);\n  assert.deepEqual(calls[0].claimSourceTypes, ['match_report', 'match_prediction']);\n  assert.equal(calls[0].claimDeliveryOnly, true);\n  assert.ok(calls[0].settings.maxJobsPerRun >= 40);"
-          new = old.replace("['match_report', 'match_prediction']", "['match_report', 'match_prediction', 'am4_story']")
-          assert original.count(old) == 1
-          corrected = original.replace(old, new, 1)
+          start = original.index("test('an editorial continuation resumes a missing source generation")
+          end = original.index('\ntest(', start + 1)
+          selected = original[start:end]
+          old = "assert.deepEqual(calls[0].claimSourceTypes, ['match_report', 'match_prediction']);"
+          new = "assert.deepEqual(calls[0].claimSourceTypes, ['match_report', 'match_prediction', 'am4_story']);"
+          assert selected.count(old) == 1
+          corrected = original[:start] + selected.replace(old, new, 1) + original[end:]
           old_queue = "      match_prediction: { queued: 1, deliveryOnly: 0, priorities: { 45: 1 } },\n      match_report_generation:"
           new_queue = "      match_prediction: { queued: 1, deliveryOnly: 0, priorities: { 45: 1 } },\n      am4_story: { queued: 0, deliveryOnly: 0, priorities: {} },\n      match_report_generation:"
           assert corrected.count(old_queue) == 1
           corrected = corrected.replace(old_queue, new_queue, 1)
-          # Keep the separate manual match-only backfill test unchanged.
-          manual = corrected[corrected.index("test('an authenticated collection backfill"):]
-          assert "assert.deepEqual(calls[0].claimSourceTypes, ['match_report', 'match_prediction']);" in manual
+          manual_start = corrected.index("test('an authenticated collection backfill")
+          manual_end = corrected.index('\ntest(', manual_start + 1)
+          assert old in corrected[manual_start:manual_end]
           corrected += '''
 
           test('COLUMN continuation claims a queued story while leaving the generator unclaimed', async () => {
