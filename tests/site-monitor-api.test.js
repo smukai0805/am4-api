@@ -1195,3 +1195,56 @@ test('protected monitor status exposes compact persisted diagnostics without art
     itemsWithoutSourceMetadata: 1,
   });
 });
+
+
+test('bounded quota-only monitor attention returns 202 while real monitor attention remains 503', async () => {
+  const env = fixtureEnv();
+  const request = {
+    method: 'GET',
+    query: { cron: '1' },
+    headers: { authorization: 'Bearer cron-token' },
+  };
+
+  const quota = response();
+  await respondWithSiteMonitor(request, quota, {
+    env,
+    createStore: () => createSiteMonitorStore({ blob: createBlob() }),
+    runMonitor: async () => ({
+      status: 'attention',
+      runId: 'run-quota-hold',
+      trigger: 'cron',
+      jobs: [{
+        jobId: 'held-1',
+        status: 'deferred',
+        result: {
+          state: 'quota_exceeded',
+          details: {
+            quota: {
+              exceeded: 'repairOperations',
+              usage: { repairOperations: 20 },
+              requested: { repairOperations: 1 },
+            },
+          },
+        },
+      }],
+    }),
+  });
+  assert.equal(quota.statusCode, 202);
+
+  const failure = response();
+  await respondWithSiteMonitor(request, failure, {
+    env,
+    createStore: () => createSiteMonitorStore({ blob: createBlob() }),
+    runMonitor: async () => ({
+      status: 'attention',
+      runId: 'run-real-attention',
+      trigger: 'cron',
+      jobs: [{
+        jobId: 'lease-lost-1',
+        status: 'lease_lost',
+        result: { state: 'lease_lost' },
+      }],
+    }),
+  });
+  assert.equal(failure.statusCode, 503);
+});
