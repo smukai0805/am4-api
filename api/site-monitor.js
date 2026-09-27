@@ -838,6 +838,22 @@ export async function respondWithVercelSiteMonitorWebhook(req, res, {
   });
 }
 
+function siteMonitorHttpStatus(result) {
+  if (result?.status === 'failed') return 500;
+  if (result?.status !== 'attention') return 200;
+  const jobs = Array.isArray(result?.jobs) ? result.jobs : [];
+  const incomplete = jobs.filter((job) => (
+    job?.status !== 'completed' || job?.result?.state !== 'completed'
+  ));
+  const quotaOnly = incomplete.length > 0 && incomplete.every((job) => (
+    job?.status === 'deferred' && job?.result?.state === 'quota_exceeded'
+  ));
+  // Daily quota holds are deliberate back-pressure: the durable queue and
+  // continuation worker retain the jobs. Surface them as Accepted rather than
+  // a monitor outage, while preserving 503 for lease/browser/source failures.
+  return quotaOnly ? 202 : 503;
+}
+
 export async function respondWithSiteMonitor(req, res, {
   env = process.env,
   createStore = createSiteMonitorStore,
@@ -1706,7 +1722,7 @@ export async function respondWithSiteMonitor(req, res, {
     releasedTransientBrowserRuntimeRecoveries,
   }));
   noStore(res);
-  return res.status(result.status === 'failed' ? 500 : result.status === 'attention' ? 503 : 200).json({
+  return res.status(siteMonitorHttpStatus(result)).json({
     ...compactRun(result),
     ...(missingPredictionScan ? { missingPredictionScan } : {}),
     ...(missingReportScan ? { missingReportScan } : {}),
