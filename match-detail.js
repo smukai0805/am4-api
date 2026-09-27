@@ -1545,8 +1545,11 @@
     if (!helper || !detail || !id) return;
     const stored = storedMotmReference(report, detail.fixture);
     const value = editorialValue(report,'report','keyFigures',['試合主要人物','主要人物','MOTM','key figure'], true);
+    const authoredBody = String(report?.body || '');
     let participants = reportMotmParticipants(detail);
-    let selection = helper.selectedMotm(value,participants) || helper.editorialAm4Motm(report.id,value,participants);
+    let selection = helper.selectedMotm(value,participants)
+      || helper.selectedMotm(authoredBody,participants)
+      || helper.editorialAm4Motm(report.id,value || authoredBody,participants);
     const apply = (choice, extra) => {
       if (!choice || validFixtureId(currentDetail?.fixture?.id) !== id) return;
       let block = content.querySelector('[data-report-field="keyFigures"]');
@@ -1571,7 +1574,8 @@
       if (highlightStoredMotm(block, stored)) return;
     }
     apply(selection);
-    if ((!selection && helper.hasAwardStatement(value)) || matchGroup(detail.fixture)!=='finished') return;
+    if ((!selection && (helper.hasAwardStatement(value) || helper.hasAwardStatement(authoredBody)))
+      || matchGroup(detail.fixture)!=='finished') return;
     // Optional, coalesced data retrieval never gates the article or replaces its
     // content. Only this MOTM block is enhanced, preserving scroll and disclosures.
     const data = await readLineupInsights(String(id));
@@ -1579,7 +1583,9 @@
     const latestDetail = currentDetail;
     participants = reportMotmParticipants(latestDetail);
     const allPlayers = [...participants,...(data.players || []),...(data.lineups || []).flatMap(l=>[...(l.startXI || []),...(l.substitutes || [])])];
-    selection = helper.selectedMotm(value,allPlayers) || helper.editorialAm4Motm(report.id,value,allPlayers)
+    selection = helper.selectedMotm(value,allPlayers)
+      || helper.selectedMotm(authoredBody,allPlayers)
+      || helper.editorialAm4Motm(report.id,value || authoredBody,allPlayers)
       || (!data.errors?.players ? helper.dataAm4Motm(latestDetail.fixture,data.players,value) : null);
     apply(selection,data);
   }
