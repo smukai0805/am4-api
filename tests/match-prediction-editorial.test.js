@@ -406,3 +406,31 @@ test('article SSR renders saved MOTM portrait, correct report pill, and error pa
   assert.match(clientSource, /renderStoredEditorialMedia\(body, article\)/);
   assert.match(clientSource, /AM4PredictionKeyPlayers/);
 });
+
+
+test('authored MOTM heading in the full report body survives a stripped structured keyFigures field', async () => {
+  const presentation = require('../match-report-presentation.js');
+  const { selectedMatchReportMotm } = await import('../lib/match-report-motm-data.js');
+  const body = [
+    '## 試合主要人物',
+    '',
+    '### MOTM：Marco Pašalić（Croatia／AM4独自選出）',
+    '',
+    '77分に決勝点を決め、1-1の試合を動かした。',
+  ].join('\n');
+  const article = {
+    id: 'notion-match_report-czechia-croatia',
+    type: 'match_report',
+    body,
+    report: {
+      keyFigures: '77分に決勝点を決め、1-1の試合を動かした。\n\nLuka Modrić（Croatia）：47分に先制した。',
+    },
+  };
+
+  assert.equal(presentation.selectedMotm(body, [])?.name, 'Marco Pašalić');
+  assert.equal(selectedMatchReportMotm(article)?.name, 'Marco Pašalić');
+  assert.equal(
+    presentation.selectedMotm('AM4独自選出MOTM：Matheus Cunha（Manchester United）', [])?.name,
+    'Matheus Cunha',
+  );
+});
