@@ -60,7 +60,7 @@
 
   function selectedMotm(value, players = []) {
     const text = String(value || "").replace(/\*\*/g, "");
-    const matches = [...text.matchAll(/(?:^|[\n。])\s*(?:#{1,6}\s*)?(?:[-*]\s+)?(?:(Sofascore|FotMob|Sports Mole|UEFA|FIFA|公式|AM4)(?:独自)?(?:選出)?\s*)?(?:Man of the Match|Player of the Match|MOTM|POTM)(?:\s*[（(]([^）)\n]+)[）)])?\s*[：:]\s*([^（(\n。:：]+)/giu)]
+    const matches = [...text.matchAll(/(?:^|[\n。])\s*(?:#{1,6}\s*)?(?:[-*]\s+)?(?:(Sofascore|FotMob|Sports Mole|UEFA|FIFA|公式|AM4)(?:独自)?(?:選出)?\s*)?(?:Man of the Match|Player of the Match|(?:MOTM|POTM)(?:\s*(?:[/／・&]|\band\b)\s*(?:MOTM|POTM))?)(?:\s*[（(]([^）)\n]+)[）)])?\s*[：:]\s*([^（(\n。:：]+)/giu)]
       .map(match => ({ name:match[3].trim(), authority:match[1] || match[2] || "" })).filter(item => validName(item.name));
     // Legacy reports sometimes state a named player's MVP award in prose.
     const proseAward = text.match(/(?:^|\n)\s*([\p{L}\p{M} .’'\-・]+?)[（(][^）)\n]+[）)]\s*[：:]\s*(Sofascore|FotMob|UEFA|FIFA)の[^。\n]*?(?:MVP|MOTM|POTM)として(?:扱われ|選出され)/iu);

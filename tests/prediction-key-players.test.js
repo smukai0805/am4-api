@@ -22,6 +22,18 @@ test('renders entity links only for verified player and team IDs', () => {
   assert.doesNotMatch(unresolved, /href="\/(?:players|teams)\//);
 });
 
+test('uses the authored MOTM rationale instead of prepending generic criteria', () => {
+  const reference = keyPlayers.motmReference(
+    'MOTM：Raphinha（Barcelona）\n\n決勝点を決め、終盤も前線で違いを作った。',
+    { name: 'Raphinha', criteria: '選定基準：一般的な基準。' },
+    fixture,
+    [{ id: 1, name: 'Raphinha', photo: 'https://example.test/raphinha.png', team: fixture.away }],
+  );
+
+  assert.match(reference.reason, /決勝点を決め/);
+  assert.doesNotMatch(reference.reason, /一般的な基準/);
+});
+
 test('renders separately named one-word players with their inline club', () => {
   const entries = keyPlayers.splitEntries(
     'Roger Brugué（Levante）：前線から守備で貢献する。\n\nRaphinha（Barcelona）：逆サイドからゴール前へ入る。',

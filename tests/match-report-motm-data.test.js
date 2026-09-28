@@ -36,6 +36,17 @@ test('does not infer an authored MOTM player ID from a surname-only provider rec
   assert.equal(selected?.player, null);
 });
 
+test('recognizes a combined MOTM/POTM heading without changing the authored person', () => {
+  ['MOTM/POTM', 'POTM／MOTM', 'MOTM and POTM'].forEach((heading) => {
+    const selected = presentation.selectedMotm(
+      `${heading}：Dimitrios Kourbelis（Greece／AM4独自選出）\n\n74分の決勝点が勝点3を決めた。`,
+    );
+
+    assert.equal(selected?.name, 'Dimitrios Kourbelis');
+    assert.equal(selected?.authority, 'AM4');
+  });
+});
+
 test('hydrates a report-authored MOTM into a structured SSR card without changing selection or rationale', async () => {
   const article = {
     id: 'notion-match_report-example',

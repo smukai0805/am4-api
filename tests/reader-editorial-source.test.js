@@ -12,6 +12,14 @@ test('the match-detail reader never calls the private Notion bridge on page refr
   assert.match(source, /fullEditorialArticle\s*\(/u);
 });
 
+test('client editorial replacement preserves the same safe source sections as SSR', async () => {
+  const source = await readFile(new URL('../match-detail.js', import.meta.url), 'utf8');
+  assert.match(source, /function appendEditorialSources\s*\(/u);
+  assert.match(source, /appendEditorialSources\(details, prediction\.sources\)/u);
+  assert.match(source, /appendEditorialSources\(content, report\.sources\)/u);
+  assert.equal(source.includes("hostname.replace(/^www\\./, '')"), true);
+});
+
 test('an article mirror miss stays retryable and never asks the reader to query matchContent', async () => {
   const requests = [];
   const id = 'notion-match_report-3dab49a367ef81188b2cd573b7694c49';

@@ -1372,6 +1372,13 @@
     try { const url = new URL(String(value || ""), window.location.origin); return url.protocol === "https:" ? url.href : null; } catch { return null; }
   }
 
+  function safeExternalUrl(value) {
+    try {
+      const url = new URL(String(value || ""));
+      return /^https?:$/u.test(url.protocol) ? url.href : null;
+    } catch { return null; }
+  }
+
   const playerCardSquads = new Map();
   function readPlayerCardSquad(team) {
     const id = Number(team?.id);
@@ -1733,6 +1740,40 @@
     return [...structuredBlocks, ...bodyOnlyBlocks];
   }
 
+  function appendEditorialSources(container, sources) {
+    if (!Array.isArray(sources) || !sources.length) return false;
+    const links = [];
+    sources.forEach((source) => {
+      const url = safeExternalUrl(source?.url);
+      if (!url) return;
+      const link = document.createElement('a');
+      link.href = url;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      const title = String(source?.title || '').replace(/\s+/g, ' ').trim();
+      const placeholder = !title || /^(?:-|–|—)+$/u.test(title) || (() => {
+        try { return new URL(title).href === url; } catch (_error) { return false; }
+      })();
+      const hostname = new URL(url).hostname.replace(/^www\./, '');
+      link.textContent = placeholder ? (hostname || url) : title;
+      const item = node('li');
+      item.append(link);
+      links.push(item);
+    });
+    if (!links.length) return false;
+    const section = node('section', 'match-editorial-sources');
+    section.append(node('h3', '', locale === 'ja' ? '出典' : 'Sources'));
+    const list = node('ul');
+    list.append(...links);
+    section.append(list);
+    container.append(section);
+    return true;
+  }
+
+  function hasEditorialSources(sources) {
+    return Array.isArray(sources) && sources.some((source) => Boolean(safeExternalUrl(source?.url)));
+  }
+
   function appendPredictionSections(content, prediction, blocks) {
     const outlookBlocks = blocks.filter((block) => block.dataset.predictionField === "matchOutlook");
     const keyBlocks = blocks.filter((block) => block.dataset.predictionField === "keyPlayers");
@@ -1752,7 +1793,8 @@
       content.append(lead);
     }
     const collapsed = [...outlookBlocks, ...moreBlocks].filter(Boolean);
-    if (!collapsed.length) return;
+    const hasSources = hasEditorialSources(prediction?.sources);
+    if (!collapsed.length && !hasSources) return;
     const details = node("details", "match-prediction-more");
     const heading = node("summary", "");
     const title = node("strong", "", t("predictionMore"));
@@ -1764,6 +1806,7 @@
     grid.append(...collapsed);
     details.addEventListener("toggle", sync);
     details.append(heading, grid);
+    appendEditorialSources(details, prediction.sources);
     content.append(details);
   }
 
@@ -1923,6 +1966,7 @@
       sections.replaceChildren(grid);
     }
     content.append(sections);
+    appendEditorialSources(content, report.sources);
     void completeReportMotm(content, report).catch(error => console.warn('Optional MOTM selection unavailable.',error));
     return content;
   }

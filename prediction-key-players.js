@@ -349,8 +349,12 @@
         || (named && !samePlayerName(named.playerName,selection.name))) other=true;
       (other || ((hasDedicatedSelectionReason || selection.basis === 'data') && !named) ? remaining : reasons).push(paragraph);
     }
-    const reason=uniqueParagraphs([selection.criteria,selection.reason,reasons.join('\n\n')]
-      .map(visibleMotmCopy).filter(Boolean)).join('\n\n') || DEFAULT_MOTM_CRITERIA;
+    // A specific, authored rationale is the reason readers need.  Keep the
+    // generic AM4 criteria only as a true fallback; putting it ahead of the
+    // authored paragraph makes a valid selection look like it was replaced.
+    const authoredReason=uniqueParagraphs([selection.reason,reasons.join('\n\n')]
+      .map(visibleMotmCopy).filter(Boolean)).join('\n\n');
+    const reason=authoredReason || visibleMotmCopy(selection.criteria) || DEFAULT_MOTM_CRITERIA;
     const visibleRemaining=uniqueParagraphs(remaining.map(visibleMotmCopy).filter(Boolean))
       .filter(paragraph=>paragraph.trim()!==reason.trim()).join('\n\n');
     return {...resolveReference({playerName:selection.name,clubLabel,reason},fixture,[...players,...(selection.player?[selection.player]:[])]),remaining:visibleRemaining};
