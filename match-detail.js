@@ -1476,20 +1476,23 @@
     }).catch(error => console.warn('Key-player identities unavailable.', error));
   }
 
-  function highlightMotm(block, value, suppliedSelection, extra) {
+  function highlightMotm(block, value, suppliedSelection, extra, stored) {
     const helper = window.AM4PredictionKeyPlayers;
     const detail = currentDetail || {};
     const players = playerCardParticipants(extra);
     const selection = suppliedSelection || window.AM4MatchReportPresentation?.selectedMotm(value, players);
-    if (!helper || !selection) return;
+    if (!helper || !selection) return false;
     const cardValue = window.AM4MatchReportPresentation?.withoutMotmAbstention(value) || value;
-    const reference = helper.motmReference(cardValue, selection, detail.fixture, players);
+    const authored = helper.motmReference(cardValue, selection, detail.fixture, players);
+    const retained = retainMatchingMotmMedia(stored, authored, selection);
+    const reference = retained || authored;
     const cards = node('div','match-player-cards');
     const label = locale === 'ja' ? 'AM4選出' : 'AM4 SELECTION';
     cards.innerHTML = helper.renderMotm(reference, {label});
     block.replaceChildren(node('h3','','MOTM'),cards);
     block.classList.add('match-editorial-block--motm');
     hydratePlayerCardImages(block);
+    return Boolean(retained);
   }
 
   // The server-side monitor writes this only after a unique player/team ID and
@@ -1519,16 +1522,53 @@
     };
   }
 
-  function highlightStoredMotm(block, reference) {
-    const helper = window.AM4PredictionKeyPlayers;
-    if (!helper || !reference) return false;
-    const cards = node('div', 'match-player-cards');
-    const label = locale === 'ja' ? 'AM4選出' : 'AM4 SELECTION';
-    cards.innerHTML = helper.renderMotm(reference, { label });
-    block.replaceChildren(node('h3', '', 'MOTM'), cards);
-    block.classList.add('match-editorial-block--motm');
-    hydratePlayerCardImages(block);
-    return true;
+  function sameMotmPerson(left, right) {
+    const key = (value) => String(value || '').normalize('NFKD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/ø/g, 'o').replace(/ð/g, 'd').replace(/ł/g, 'l')
+      .replace(/[^\p{L}\p{N}]+/gu, ' ')
+      .trim();
+    const a = key(left);
+    const b = key(right);
+    return Boolean(a && b && a === b);
+  }
+
+  function motmId(value) {
+    const id = Number(value);
+    return Number.isSafeInteger(id) && id > 0 ? id : null;
+  }
+
+  function retainMatchingMotmMedia(stored, authored, selection) {
+    const storedTeamId = motmId(stored?.teamId || stored?.team?.id);
+    const authoredTeamId = motmId(authored?.team?.id || authored?.player?.team?.id);
+    const storedPlayerId = motmId(stored?.playerId || stored?.player?.id);
+    const authoredPlayerId = motmId(authored?.playerId || authored?.player?.id);
+    if (!stored || !authored || !selection || !sameMotmPerson(stored.playerName, selection.name)
+      || !storedTeamId || !authoredTeamId || storedTeamId !== authoredTeamId
+      || (authoredPlayerId && authoredPlayerId !== storedPlayerId)) return null;
+    const team = {
+      ...(stored.team || {}),
+      ...(authored.team || {}),
+      id: authoredTeamId,
+      logo: authored?.team?.logo || stored?.team?.logo || stored?.logoUrl,
+    };
+    const player = authored.player
+      ? { ...authored.player, name: selection.name, team }
+      : { ...(stored.player || {}), id: storedPlayerId, name: selection.name, team };
+    return {
+      ...authored,
+      playerName: selection.name,
+      playerId: authoredPlayerId || storedPlayerId,
+      teamId: authoredTeamId,
+      team,
+      player,
+      photo: authored.photo || stored.photo,
+      photoUrl: authored.photoUrl || stored.photoUrl || authored.photo || stored.photo,
+      logoUrl: authored.logoUrl || stored.logoUrl || team.logo,
+      clubName: authored.clubName || stored.clubName,
+      clubLabel: authored.clubLabel || stored.clubLabel,
+    };
   }
 
   function reportMotmParticipants(detail) {
@@ -1547,9 +1587,21 @@
     const value = editorialValue(report,'report','keyFigures',['試合主要人物','主要人物','MOTM','key figure'], true);
     const authoredBody = String(report?.body || '');
     let participants = reportMotmParticipants(detail);
-    let selection = helper.selectedMotm(value,participants)
-      || helper.selectedMotm(authoredBody,participants)
-      || helper.editorialAm4Motm(report.id,value || authoredBody,participants);
+    const authoredSelection = (players) => helper.selectedMotm(authoredBody, players);
+    const selectionFor = (players) => {
+      const bodySelection = authoredSelection(players);
+      return {
+        selection: bodySelection
+          || helper.selectedMotm(value, players)
+          || helper.editorialAm4Motm(report.id, value || authoredBody, players),
+        value: bodySelection
+          ? (helper.motmExcerpt?.(authoredBody, bodySelection) || authoredBody)
+          : (value || authoredBody),
+      };
+    };
+    let resolvedSelection = selectionFor(participants);
+    let selection = resolvedSelection.selection;
+    let motmValue = resolvedSelection.value;
     const apply = (choice, extra) => {
       if (!choice || validFixtureId(currentDetail?.fixture?.id) !== id) return;
       let block = content.querySelector('[data-report-field="keyFigures"]');
@@ -1559,21 +1611,11 @@
         block.append(node('h3','','MOTM'));
         content.querySelector('.match-editorial-grid').prepend(block);
       }
-      highlightMotm(block,value,choice,extra);
+      return highlightMotm(block,motmValue,choice,extra,stored);
 
     };
-    if (stored) {
-      let block = content.querySelector('[data-report-field="keyFigures"]');
-      if (!block) {
-        block = node('article', 'match-editorial-block');
-        block.dataset.reportField = 'keyFigures';
-        const grid = content.querySelector('.match-editorial-grid');
-        if (grid) grid.prepend(block);
-        else content.prepend(block);
-      }
-      if (highlightStoredMotm(block, stored)) return;
-    }
-    apply(selection);
+    const retainedMedia = apply(selection);
+    if (retainedMedia) return;
     if ((!selection && (helper.hasAwardStatement(value) || helper.hasAwardStatement(authoredBody)))
       || matchGroup(detail.fixture)!=='finished') return;
     // Optional, coalesced data retrieval never gates the article or replaces its
@@ -1583,10 +1625,10 @@
     const latestDetail = currentDetail;
     participants = reportMotmParticipants(latestDetail);
     const allPlayers = [...participants,...(data.players || []),...(data.lineups || []).flatMap(l=>[...(l.startXI || []),...(l.substitutes || [])])];
-    selection = helper.selectedMotm(value,allPlayers)
-      || helper.selectedMotm(authoredBody,allPlayers)
-      || helper.editorialAm4Motm(report.id,value || authoredBody,allPlayers)
-      || (!data.errors?.players ? helper.dataAm4Motm(latestDetail.fixture,data.players,value) : null);
+    resolvedSelection = selectionFor(allPlayers);
+    motmValue = resolvedSelection.value;
+    selection = resolvedSelection.selection
+      || (!data.errors?.players ? helper.dataAm4Motm(latestDetail.fixture, data.players, motmValue) : null);
     apply(selection,data);
   }
 

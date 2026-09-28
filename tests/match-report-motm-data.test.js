@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
 import test from 'node:test';
 
 import {
@@ -7,6 +8,9 @@ import {
   selectedMatchReportMotm,
   verifiedMotmCard,
 } from '../lib/match-report-motm-data.js';
+
+const require = createRequire(import.meta.url);
+const presentation = require('../match-report-presentation.js');
 
 const fixture = {
   id: 1550125,
@@ -20,6 +24,16 @@ test('does not treat a passing or abstaining MOTM mention as a player selection'
     id: 'notion-match_report-abstain', type: 'match_report',
     report: { keyFigures: 'MOTMは確認できないため、選出は行わない。' },
   }), null);
+});
+
+test('does not infer an authored MOTM player ID from a surname-only provider record', () => {
+  const selected = presentation.selectedMotm(
+    'MOTM：Gonçalo Ramos（Portugal）：決勝点を決めた。',
+    [{ id: 1688, name: 'Ramos' }],
+  );
+
+  assert.equal(selected?.name, 'Gonçalo Ramos');
+  assert.equal(selected?.player, null);
 });
 
 test('hydrates a report-authored MOTM into a structured SSR card without changing selection or rationale', async () => {
@@ -44,6 +58,37 @@ test('hydrates a report-authored MOTM into a structured SSR card without changin
   const reference = motmCardReference(card, fixture);
   assert.equal(reference.player.id, 276);
   assert.equal(reference.team.name, 'AS Roma');
+});
+
+test('the published report body overrides stale structured MOTM identity, photo, and rationale', async () => {
+  const staleCard = {
+    playerName: 'Lorenzo Pellegrini', playerId: 7, teamId: 497, side: 'away', clubName: 'AS Roma',
+    photoUrl: 'https://media.api-sports.io/football/players/7.png',
+    logoUrl: 'https://media.api-sports.io/football/teams/497.png', reason: '古い選出理由。', resolved: true,
+  };
+  const article = {
+    id: 'notion-match_report-body-authority',
+    type: 'match_report',
+    body: '## 試合主要人物\n\n### MOTM：Paulo Dybala（AS Roma／AM4独自選出）\n\n本文で確認した決勝点と終盤の前進を評価。',
+    report: {
+      keyFigures: 'MOTM：Lorenzo Pellegrini（AS Roma）：古い構造化理由。',
+      motmCard: staleCard,
+    },
+  };
+  const hydrated = await hydrateMatchReportMotm(article, fixture, {
+    squadReader: async (team) => team.id === 497 ? [{
+      id: 276, name: 'Paulo Dybala', photo: 'https://media.api-sports.io/football/players/276.png', team,
+    }] : [],
+    lineupReader: async () => [],
+  });
+
+  assert.equal(selectedMatchReportMotm(article)?.name, 'Paulo Dybala');
+  assert.deepEqual(
+    [hydrated.report.motmCard.playerName, hydrated.report.motmCard.playerId, hydrated.report.motmCard.photoUrl],
+    ['Paulo Dybala', 276, 'https://media.api-sports.io/football/players/276.png'],
+  );
+  assert.match(hydrated.report.motmCard.reason, /本文で確認した決勝点/);
+  assert.doesNotMatch(hydrated.report.motmCard.reason, /古い/);
 });
 
 test('does not reuse a verified MOTM photo for a newly selected player or an ambiguous name', async () => {

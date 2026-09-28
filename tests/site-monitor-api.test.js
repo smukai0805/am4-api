@@ -554,7 +554,7 @@ test('an editorial continuation resumes a missing source generation exactly thro
   assert.equal(calls.length, 1);
   assert.equal(calls[0].trigger, 'match_editorial_backfill');
   assert.equal(calls[0].collect, true);
-  assert.deepEqual(calls[0].claimSourceTypes, ['match_report', 'match_prediction']);
+  assert.deepEqual(calls[0].claimSourceTypes, ['match_report', 'match_prediction', 'am4_story']);
   assert.equal(calls[0].claimDeliveryOnly, true);
   assert.ok(calls[0].settings.maxJobsPerRun >= 40);
   assert.ok(calls[0].settings.maxApiCallsPerRun >= 500);
@@ -1189,6 +1189,7 @@ test('protected monitor status exposes compact persisted diagnostics without art
     bySource: {
       match_report: { queued: 1, deliveryOnly: 1, priorities: { 70: 1 } },
       match_prediction: { queued: 1, deliveryOnly: 0, priorities: { 45: 1 } },
+      am4_story: { queued: 0, deliveryOnly: 0, priorities: {} },
       match_report_generation: { queued: 0, deliveryOnly: 0, priorities: {} },
       match_prediction_generation: { queued: 0, deliveryOnly: 0, priorities: {} },
     },

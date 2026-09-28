@@ -540,10 +540,14 @@ test('a stale delivery-only Notion job skips external reads only after its exact
   });
   let notionReads = 0;
   let fixtureLookups = 0;
+  const articleReadIds = [];
   const result = await runSiteMonitor({
     store, trigger: 'manual', collect: false,
     dependencies: {
-      getArticle: async (id) => structuredClone(database.get(id)),
+      getArticle: async (id) => {
+        articleReadIds.push(id);
+        return structuredClone(database.get(id));
+      },
       getAvailability: async () => ({ availability: { [fixture.id]: ['report'] }, matchAvailability: {} }),
       syncPage: async () => { notionReads += 1; throw new Error('delivered stale job must not read Notion'); },
       resolveFixture: async () => { fixtureLookups += 1; throw new Error('delivered stale job must not read provider'); },
@@ -563,6 +567,8 @@ test('a stale delivery-only Notion job skips external reads only after its exact
   assert.equal(result.jobs[0].result.fixture.id, fixture.id);
   assert.equal(notionReads, 0);
   assert.equal(fixtureLookups, 0);
+  assert.ok(articleReadIds.includes(article.id));
+  assert.ok(articleReadIds.every((id) => id === article.id));
 });
 
 test('a Notion page with incomplete availability skips neither repair nor verification', async () => {

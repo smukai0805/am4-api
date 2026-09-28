@@ -23,6 +23,21 @@ test('uses a current domestic league for the header without turning an old selec
   assert.equal(result.season, 2026);
 });
 
+test('uses the current-season national tournament with standings by default while preserving an explicit selection', async () => {
+  const { currentTeamCompetition, selectTeamCompetition } = await import('../lib/team-player-data.js');
+  const competitions = [
+    { leagueId: 1222, leagueName: 'FIFA Series', leagueType: 'Cup', season: 2026, current: true, coverage: { fixtures: true, players: true, standings: false } },
+    { leagueId: 10, leagueName: 'Friendlies', leagueType: 'Cup', season: 2026, current: true, coverage: { fixtures: true, players: true, standings: false } },
+    { leagueId: 5, leagueName: 'UEFA Nations League', leagueType: 'Cup', season: 2026, current: true, coverage: { fixtures: true, players: true, standings: true } },
+    { leagueId: 32, leagueName: 'World Cup - Qualification Europe', leagueType: 'Cup', season: 2024, current: true, coverage: { fixtures: true, players: true, standings: true } },
+  ];
+
+  assert.equal(selectTeamCompetition(competitions, { national: true }).leagueId, 5);
+  assert.equal(currentTeamCompetition(competitions, { national: true }).leagueId, 5);
+  assert.equal(selectTeamCompetition(competitions, { national: true, leagueId: 1222, season: 2026 }).leagueId, 1222);
+  assert.equal(selectTeamCompetition(competitions).leagueId, 1222);
+});
+
 test('uses only a selected club and competition for squad statistics', async () => {
   const { normalizeTeamPlayerStatistics } = await import('../lib/team-player-data.js');
   const records = normalizeTeamPlayerStatistics({

@@ -1,5 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
 
 const fixture = {
   fixtureId: 1550125,
@@ -35,6 +36,26 @@ test('team SSR has an independent canonical page and keeps score controls out of
   assert.match(page, /data-score-control/);
   assert.doesNotMatch(page, /data-entity-tab="columns"/);
   assert.match(page, /<a class="entity-fixture-main-link"[^>]*><\/a>/);
+});
+
+test('national-team SSR calls its selected tournament a major competition, not a club league', async () => {
+  const { renderTeamPage } = await import('../lib/team-player-page-html.js');
+  const page = renderTeamPage({
+    team: { id: 1103, name: 'Bulgaria', national: true },
+    competitions: [{ leagueId: 5, leagueName: 'UEFA Nations League', leagueType: 'Cup', season: 2026, current: true }],
+    competitionState: 'ready',
+    currentCompetition: { leagueId: 5, leagueName: 'UEFA Nations League', season: 2026 },
+    selection: { leagueId: 5, leagueName: 'UEFA Nations League', season: 2026 },
+    tab: 'fixtures', columns: { state: 'ready', items: [] }, section: { state: 'empty', message: '試合はありません。' },
+  });
+
+  assert.match(page, /現在の主要大会: UEFA Nations League/);
+  assert.doesNotMatch(page, /現在の所属リーグ: UEFA Nations League/);
+  assert.match(page, /href="\/teams\/1103\?tab=roster&league=5&season=2026"/);
+
+  const client = fs.readFileSync(require.resolve('../entity-page.js'), 'utf8');
+  assert.match(client, /initial\?\.selection\?\.leagueId/);
+  assert.match(client, /new URL\(target\.href \|\| window\.location\.href/);
 });
 
 test('a COLUMN fetch error preserves the local tab instead of falsely looking empty', async () => {

@@ -294,6 +294,139 @@ test('SSR renders a verified stored MOTM portrait on the first match document', 
   assert.match(initial, /href="\/article\.html\?id=notion-match_report-dybala"/);
 });
 
+test('SSR keeps the published MOTM identity together when a stale stored card disagrees', async () => {
+  const { renderMatchPage } = await import('../lib/match-page-html.js');
+  const { renderArticleBody } = await import('../lib/article-page-html.js');
+  const fixture = {
+    id: 1550126,
+    status: 'FT',
+    date: '2026-09-16',
+    kickoff: '2026-09-16T18:45:00Z',
+    competition: 'セリエA',
+    home: { id: 503, name: 'Torino', logo: 'https://media.api-sports.io/football/teams/503.png' },
+    away: { id: 497, name: 'AS Roma', logo: 'https://media.api-sports.io/football/teams/497.png' },
+  };
+  const report = {
+    id: 'notion-match_report-stale-card',
+    type: 'match_report',
+    body: '## 試合主要人物\n\n### MOTM：Paulo Dybala（AS Roma／AM4独自選出）\n\n本文で確認した決勝点と終盤の前進を評価。',
+    report: {
+      keyFigures: 'MOTM：Lorenzo Pellegrini（AS Roma）：古い構造化理由。',
+      motmCard: {
+        playerName: 'Lorenzo Pellegrini', playerId: 7, teamId: 497, side: 'away', clubName: 'AS Roma',
+        photoUrl: 'https://media.api-sports.io/football/players/7.png',
+        logoUrl: 'https://media.api-sports.io/football/teams/497.png', reason: '古い選出理由。', resolved: true,
+      },
+    },
+  };
+  const page = renderMatchPage({
+    detail: {
+      fixture,
+      events: [{ team: fixture.away, player: { id: 276, name: 'Paulo Dybala', photo: 'https://media.api-sports.io/football/players/276.png' } }],
+      lineups: null,
+      statistics: null,
+    },
+    editorials: { report }, route: 'fixture', fixtureId: fixture.id,
+  });
+  const initial = page.slice(page.indexOf('<section class="match-section'), page.indexOf('<script id="am4-initial-match"'));
+  assert.match(initial, /Paulo Dybala/);
+  assert.match(initial, /players\/276\.png/);
+  assert.match(initial, /本文で確認した決勝点/);
+  assert.doesNotMatch(initial, /data-player-id="7"/);
+  assert.doesNotMatch(initial, /Lorenzo Pellegrini/);
+  assert.doesNotMatch(initial, /古い選出理由/);
+
+  const articleBody = renderArticleBody(report);
+  assert.match(articleBody, /Paulo Dybala/);
+  assert.doesNotMatch(articleBody, /data-player-id="7"/);
+});
+
+test('SSR reuses only matching MOTM media while taking the current reason from the published body', async () => {
+  const { renderMatchPage } = await import('../lib/match-page-html.js');
+  const { renderArticleBody } = await import('../lib/article-page-html.js');
+  const fixture = {
+    id: 1550127,
+    status: 'FT',
+    date: '2026-09-17',
+    kickoff: '2026-09-17T18:45:00Z',
+    competition: 'セリエA',
+    home: { id: 503, name: 'Torino', logo: 'https://media.api-sports.io/football/teams/503.png' },
+    away: { id: 497, name: 'AS Roma', logo: 'https://media.api-sports.io/football/teams/497.png' },
+  };
+  const report = {
+    id: 'notion-match_report-current-reason',
+    type: 'match_report',
+    body: '## 試合主要人物\n\nMOTM：Paulo Dybala（AS Roma）：本文で更新した決勝点と守備への貢献を評価。',
+    report: {
+      keyFigures: 'MOTM：Paulo Dybala（AS Roma）：本文で更新した決勝点と守備への貢献を評価。',
+      motmCard: {
+        playerName: 'Paulo Dybala', playerId: 276, teamId: 497, side: 'away', clubName: 'AS Roma',
+        photoUrl: 'https://media.api-sports.io/football/players/276.png',
+        logoUrl: 'https://media.api-sports.io/football/teams/497.png', reason: '古い選出理由。', resolved: true,
+      },
+    },
+  };
+  const page = renderMatchPage({
+    detail: { fixture, events: null, lineups: null, statistics: null }, editorials: { report }, route: 'fixture', fixtureId: fixture.id,
+  });
+  const initial = page.slice(page.indexOf('<section class="match-section'), page.indexOf('<script id="am4-initial-match"'));
+  assert.match(initial, /data-player-id="276"/);
+  assert.match(initial, /players\/276\.png/);
+  assert.match(initial, /本文で更新した決勝点と守備への貢献/);
+  assert.doesNotMatch(initial, /古い選出理由/);
+
+  const articleBody = renderArticleBody(report);
+  assert.match(articleBody, /data-player-id="276"/);
+  assert.match(articleBody, /本文で更新した決勝点と守備への貢献/);
+  assert.doesNotMatch(articleBody, /古い選出理由/);
+});
+
+test('SSR does not retain a same-named MOTM card for the other fixture team or for an abstention', async () => {
+  const { renderMatchPage } = await import('../lib/match-page-html.js');
+  const fixture = {
+    id: 1550128,
+    status: 'FT',
+    date: '2026-09-18',
+    kickoff: '2026-09-18T18:45:00Z',
+    competition: 'セリエA',
+    home: { id: 503, name: 'Torino', logo: 'https://media.api-sports.io/football/teams/503.png' },
+    away: { id: 497, name: 'AS Roma', logo: 'https://media.api-sports.io/football/teams/497.png' },
+  };
+  const staleCard = {
+    playerName: 'Paulo Dybala', playerId: 276, teamId: 497, side: 'away', clubName: 'AS Roma',
+    photoUrl: 'https://media.api-sports.io/football/players/276.png',
+    logoUrl: 'https://media.api-sports.io/football/teams/497.png', reason: '古い選出理由。', resolved: true,
+  };
+  const otherTeam = renderMatchPage({
+    detail: { fixture, events: null, lineups: null, statistics: null },
+    editorials: {
+      report: {
+        id: 'notion-match_report-other-team', type: 'match_report',
+        body: '## 試合主要人物\n\nMOTM：Paulo Dybala（Torino）：本文で確認した理由。',
+        report: { keyFigures: 'MOTM：Paulo Dybala（Torino）：本文で確認した理由。', motmCard: staleCard },
+      },
+    }, route: 'fixture', fixtureId: fixture.id,
+  });
+  const otherMain = otherTeam.slice(otherTeam.indexOf('<section class="match-section'), otherTeam.indexOf('<script id="am4-initial-match"'));
+  assert.match(otherMain, /本文で確認した理由/);
+  assert.doesNotMatch(otherMain, /data-player-id="276"/);
+  assert.doesNotMatch(otherMain, /players\/276\.png/);
+
+  const abstained = renderMatchPage({
+    detail: { fixture, events: null, lineups: null, statistics: null },
+    editorials: {
+      report: {
+        id: 'notion-match_report-abstained', type: 'match_report',
+        body: '## 試合主要人物\n\nMOTMは確認できないため、選出は行わない。',
+        report: { keyFigures: 'MOTMは確認できないため、選出は行わない。', motmCard: staleCard },
+      },
+    }, route: 'fixture', fixtureId: fixture.id,
+  });
+  const abstainedMain = abstained.slice(abstained.indexOf('<section class="match-section'), abstained.indexOf('<script id="am4-initial-match"'));
+  assert.doesNotMatch(abstainedMain, /data-player-id="276"/);
+  assert.doesNotMatch(abstainedMain, /players\/276\.png/);
+});
+
 test('SSR presents the Brentford report as an explicit AM4 MOTM selection while an older mirror is draining', async () => {
   const { renderMatchPage } = await import('../lib/match-page-html.js');
   const fixture = {
@@ -331,8 +464,8 @@ test('SSR presents the Brentford report as an explicit AM4 MOTM selection while 
   assert.match(articleBody, /終盤2得点に直接関与/);
   assert.doesNotMatch(articleBody, /推測では選出しない/);
   const articlePage = renderArticlePage({ ...report, title: 'Brentford vs Chelsea｜試合解説' });
-  assert.ok(articlePage.indexOf('/match-report-presentation.js?v=20260918-brentford-motm-v8')
-    < articlePage.indexOf('/article-page.js?v=20260918-brentford-motm-v8'));
+  assert.ok(articlePage.indexOf('/match-report-presentation.js?v=20260928-motm-body-priority-v10')
+    < articlePage.indexOf('/article-page.js?v=20260928-source-label-motm-v10'));
   const clientSource = fs.readFileSync(require.resolve('../article-page.js'), 'utf8');
   assert.match(clientSource, /AM4MatchReportPresentation\?\.withEditorialArticleMotm/);
 });
@@ -429,6 +562,10 @@ test('authored MOTM heading in the full report body survives a stripped structur
 
   assert.equal(presentation.selectedMotm(body, [])?.name, 'Marco Pašalić');
   assert.equal(selectedMatchReportMotm(article)?.name, 'Marco Pašalić');
+  assert.equal(
+    presentation.motmExcerpt(`## 試合概要\n前段の本文。\n\n${body}\n\n## 総括\n後段の本文。`, 'Marco Pašalić').includes('前段の本文。'),
+    false,
+  );
   assert.equal(
     presentation.selectedMotm('AM4独自選出MOTM：Matheus Cunha（Manchester United）', [])?.name,
     'Matheus Cunha',

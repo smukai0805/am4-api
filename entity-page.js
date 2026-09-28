@@ -27,10 +27,15 @@
   function visibleSelection() {
     const url = new URL(window.location.href);
     const tab = allowedTabs.has(url.searchParams.get('tab')) ? url.searchParams.get('tab') : (allowedTabs.has(initial.tab) ? initial.tab : defaultTab);
+    // An SSR default may not yet be present in the address bar.  Keep that
+    // verified default when the first client-side tab request is made instead
+    // of asking the section endpoint to choose a different competition again.
+    const initialLeague = kind === 'team' ? String(initial?.selection?.leagueId || '') : '';
+    const initialSeason = kind === 'team' ? String(initial?.selection?.season || '') : '';
     return {
       tab,
-      league: url.searchParams.get('league') || '',
-      season: url.searchParams.get('season') || '',
+      league: url.searchParams.get('league') || initialLeague,
+      season: url.searchParams.get('season') || initialSeason,
       cursor: '',
     };
   }
@@ -255,7 +260,14 @@
 
   function selectionFromTab(target) {
     const current = visibleSelection();
-    return { ...current, tab: target.dataset.entityTab || defaultTab, cursor: '' };
+    const href = new URL(target.href || window.location.href, window.location.origin);
+    return {
+      ...current,
+      tab: target.dataset.entityTab || defaultTab,
+      league: href.searchParams.get('league') || current.league,
+      season: href.searchParams.get('season') || current.season,
+      cursor: '',
+    };
   }
 
   document.addEventListener('click', (event) => {

@@ -113,6 +113,46 @@
     return { ...card, playerName, playerId, teamId, photo, photoUrl: photo, reason, team: { id: teamId, name: clubName, logo } };
   }
 
+  function sameMotmPerson(left, right) {
+    const key = (value) => String(value || '').normalize('NFKD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/ø/g, 'o').replace(/ð/g, 'd').replace(/ł/g, 'l')
+      .replace(/[^\p{L}\p{N}]+/gu, ' ')
+      .trim();
+    const a = key(left);
+    const b = key(right);
+    return Boolean(a && b && a === b);
+  }
+
+  function motmTextKey(value) {
+    return String(value || '').normalize('NFKD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/ø/g, 'o').replace(/ð/g, 'd').replace(/ł/g, 'l')
+      .replace(/[^\p{L}\p{N}]+/gu, ' ')
+      .trim();
+  }
+
+  function authoredMotmSource(article) {
+    const body = String(article?.body || '').trim();
+    const report = window.AM4MatchReportPresentation;
+    const bodySelection = body ? report?.selectedMotm?.(body, []) : null;
+    const keyFigures = String(article?.report?.keyFigures || '').trim();
+    const selection = bodySelection || (keyFigures ? report?.selectedMotm?.(keyFigures, []) : null);
+    const value = bodySelection ? (report?.motmExcerpt?.(body, bodySelection) || body) : keyFigures;
+    return { selection, value };
+  }
+
+  function currentArticleMotmCard(article, card, helper) {
+    const { selection, value } = authoredMotmSource(article);
+    const teamName = String(card?.clubName || card?.team?.name || '').trim();
+    if (!card || !selection || !sameMotmPerson(card.playerName, selection.name)
+      || !teamName || !motmTextKey(value).includes(motmTextKey(teamName))) return null;
+    const authored = helper.motmReference(value, selection, { home: card.team, away: {} }, []);
+    return { ...card, playerName: selection.name, reason: authored.reason, remaining: authored.remaining };
+  }
+
   function renderStoredEditorialMedia(container, article) {
     const helper = window.AM4PredictionKeyPlayers;
     if (!helper) return;
@@ -123,7 +163,7 @@
       cards = (Array.isArray(article?.prediction?.keyPlayerCards) ? article.prediction.keyPlayerCards : []).map(savedArticlePlayerCard).filter(Boolean).slice(0, 2);
       label = 'キーマン';
     } else if (article.type === 'match_report') {
-      const card = savedArticlePlayerCard(article?.report?.motmCard);
+      const card = currentArticleMotmCard(article, savedArticlePlayerCard(article?.report?.motmCard), helper);
       if (card) cards = [card];
       label = 'MOTM';
       motm = true;
@@ -169,7 +209,11 @@
       link.href = url.href;
       link.target = "_blank";
       link.rel = "noopener noreferrer";
-      link.textContent = source.title || url.hostname;
+      const label = String(source?.title || "").replace(/\s+/g, " ").trim();
+      const placeholder = !label || /^(?:-|–|—)+$/u.test(label) || (() => {
+        try { return new URL(label).href === url.href; } catch (_error) { return false; }
+      })();
+      link.textContent = placeholder ? (url.hostname.replace(/^www\./, "") || url.href) : label;
       paragraph.append(link);
       section.append(paragraph);
     });

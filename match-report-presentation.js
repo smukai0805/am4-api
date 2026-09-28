@@ -47,13 +47,13 @@
       const candidate = nameKey(player.name);
       const parts = candidate.split(" ");
       const exact = candidate === wanted;
-      // Accept M. Ødegaard for Martin Ødegaard, but not a different first name
-      // or an ambiguous surname shared by two participants.
+      // Accept M. Ødegaard for Martin Ødegaard, but never infer a player ID
+      // from a surname alone. An authored MOTM name must remain the source of
+      // truth when the provider cannot resolve the full person.
       const abbreviated = parts.length === wantedParts.length && parts.length > 1
         && parts.every((part, index) => part === wantedParts[index]
           || (index < parts.length - 1 && part.length === 1 && wantedParts[index].startsWith(part)));
-      const surnameOnly = parts.length === 1 && wantedParts.length > 1 && candidate === wantedParts.at(-1);
-      if (exact || abbreviated || surnameOnly) matches.set(id, { ...player, id });
+      if (exact || abbreviated) matches.set(id, { ...player, id });
     }
     return matches.size === 1 ? [...matches.values()][0] : null;
   }
@@ -70,6 +70,25 @@
     const selection = [...distinct.values()][0];
     return {...selection, source:selection.authority || null, authority:'AM4', criteria:AM4_MOTM_CRITERIA,
       player:resolvePlayer(selection.name, players)};
+  }
+
+  // Keep the card scoped to the selected person's own paragraph(s).  Passing
+  // an entire report to the card renderer would otherwise make earlier report
+  // sections look like the MOTM rationale merely because the selection was
+  // authored near the end of the body.
+  function motmExcerpt(value, selection) {
+    const name = String(selection?.name || selection || '').trim();
+    const lines = String(value || '').replace(/\r\n?/g, '\n').split('\n');
+    const index = lines.findIndex(line => name
+      && /MOTM|POTM|(?:Man|Player) of the Match/iu.test(line)
+      && line.includes(name));
+    if (index < 0) return String(value || '').trim();
+    const excerpt = [];
+    for (let cursor = index; cursor < lines.length; cursor += 1) {
+      if (cursor > index && /^\s*#{1,6}\s+/u.test(lines[cursor])) break;
+      excerpt.push(lines[cursor]);
+    }
+    return excerpt.join('\n').trim();
   }
 
   function hasAwardStatement(value) {
@@ -110,7 +129,8 @@
   function withEditorialArticleMotm(article, blocks = []) {
     if (article?.type !== 'match_report' || !Array.isArray(blocks)) return blocks;
     const keyFigures = String(article?.report?.keyFigures || '');
-    if (selectedMotm(keyFigures, [])) return blocks;
+    const body = String(article?.body || '');
+    if (selectedMotm(body, []) || selectedMotm(keyFigures, [])) return blocks;
     const selection = editorialAm4Motm(article?.id, keyFigures, []);
     if (!selection) return blocks;
     const headingIndex = blocks.findIndex(block => block?.type === 'heading'
@@ -144,5 +164,5 @@
       criteria:AM4_MOTM_CRITERIA};
   }
 
-  return { selectedMotm, hasAwardStatement, editorialAm4Motm, withEditorialArticleMotm, dataAm4Motm, resolvePlayer, withoutMotmAbstention, AM4_MOTM_CRITERIA };
+  return { selectedMotm, motmExcerpt, hasAwardStatement, editorialAm4Motm, withEditorialArticleMotm, dataAm4Motm, resolvePlayer, withoutMotmAbstention, AM4_MOTM_CRITERIA };
 });

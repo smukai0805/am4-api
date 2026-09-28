@@ -7,6 +7,7 @@ import {
   createNotionClient,
   notionMarkdownToBlocks,
   notionPageToArticle,
+  normalizeNotionContent,
   publishGeneratedMatchPrediction,
   publishGeneratedMatchReport,
   syncNotionPage,
@@ -87,6 +88,21 @@ test('keeps nested H3 key-player headings inside the structured prediction field
     ['Elye Wahi', 'Berke Özer'],
   );
   assert.equal(article.prediction.rationale, 'NiceとLilleの根拠本文。');
+});
+
+test('keeps a saved source URL while replacing a placeholder label with an identifiable domain', () => {
+  const content = normalizeNotionContent([
+    '本文。',
+    '',
+    '## 出典',
+    '- [-](https://www.uefa.com/nationsleague/match/2047985)',
+    '- [Official match centre](https://example.test/match)',
+  ].join('\n'));
+
+  assert.deepEqual(content.sources, [
+    { title: 'uefa.com', url: 'https://www.uefa.com/nationsleague/match/2047985' },
+    { title: 'Official match centre', url: 'https://example.test/match' },
+  ]);
 });
 
 test('Notion 429 returns its Retry-After as a durable deferral signal without an early in-function retry', async () => {
