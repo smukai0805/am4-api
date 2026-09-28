@@ -19,6 +19,7 @@
 import { getLineupInsights } from '../lib/lineup-insights.js';
 import { apiFootballFetch } from '../lib/api-football-client.js';
 import { getArticle, listArticles } from '../lib/article-store.js';
+import { isProductionDailyFixtureSnapshotEnabled, preserveDailyFixtureSnapshot } from '../lib/daily-fixture-snapshot.js';
 import { applyStoredPredictionKeyPlayerCards, hydratePredictionEditorials } from '../lib/prediction-key-player-data.js';
 import {
   readVerifiedPredictionKeyPlayerCards,
@@ -283,6 +284,12 @@ export function selectDailyFixtures(providerFixtures) {
       };
     })
     .sort((a, b) => Date.parse(a.kickoff) - Date.parse(b.kickoff));
+}
+
+export function applyDailyFixtureSnapshot(currentFixtures, preserved) {
+  return Array.isArray(preserved?.fixtures) && preserved.restoredCompetitionIds?.length
+    ? preserved.fixtures
+    : currentFixtures;
 }
 
 function minuteLabel(time = {}) {
@@ -1178,7 +1185,16 @@ export default async function handler(req, res) {
         res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=300');
         return res.status(200).json({ date, errors: data.errors, fixtures: [], competitions: [] });
       }
-      const fixtures = selectDailyFixtures(data.response || []);
+      const currentFixtures = selectDailyFixtures(data.response || []);
+      // A just-promoted deployment starts with an empty CDN response cache.
+      // Keep serving the current provider response unless its fresh, durable
+      // predecessor proves that an entire competition disappeared transiently.
+      const preserved = isProductionDailyFixtureSnapshotEnabled()
+        ? await preserveDailyFixtureSnapshot(date, currentFixtures)
+        : null;
+      // Preserve the provider's original order and entries unless the
+      // snapshot actually recovered a whole missing competition.
+      const fixtures = applyDailyFixtureSnapshot(currentFixtures, preserved);
       const focusFixtures = fixtures.filter((fixture) => fixture.am4Focus);
       const competitions = [...new Set(fixtures.map((fixture) => fixture.competition))];
       const featuredFixtures = selectFeaturedFixtures(focusFixtures.length ? focusFixtures : fixtures);
