@@ -15,7 +15,16 @@
   const LEAGUE_PREVIEW_LIMIT = 4;
   const LIVE_DAILY_REFRESH_MS = 30_000;
   const KICKOFF_RECHECK_BUFFER_MS = 30_000;
-  // Date view keeps European club competitions ahead of domestic leagues.
+  // Date view keeps major men's national-team tournaments above European club
+  // competitions and domestic leagues. Friendlies uses the provider's
+  // national-team competition ID (10), deliberately excluding women's (666)
+  // and club (667) friendlies. Negative ranks retain the existing club order.
+  const INTERNATIONAL_COMPETITIONS = [
+    { providerId: 1, rank: -4, country: "World", names: ["FIFA World Cup", "World Cup", "FIFAワールドカップ", "ワールドカップ"] },
+    { providerId: 4, rank: -3, country: "World", names: ["UEFA EURO", "UEFA European Championship", "Euro Championship", "European Championship", "UEFA欧州選手権", "欧州選手権"] },
+    { providerId: 5, rank: -2, country: "World", names: ["UEFA Nations League", "Nations League", "UEFAネーションズリーグ", "ネーションズリーグ"] },
+    { providerId: 10, rank: -1, country: "World", names: ["Friendlies", "International Friendlies", "International Friendly", "国際親善試合", "親善試合"], requiresCountryMatch: true },
+  ];
   // Conference League is matched by its canonical public names instead of an
   // unverified provider ID, so an ID change cannot quietly move it down.
   const EUROPEAN_COMPETITIONS = [
@@ -30,7 +39,7 @@
     { providerId: 78, rank: 7, competition: "ブンデスリーガ", country: "Germany", names: ["ブンデスリーガ", "Bundesliga"], requiresCountryMatch: true },
     { providerId: 61, rank: 8, competition: "リーグ・アン", country: "France", names: ["リーグ・アン", "Ligue 1"], requiresCountryMatch: true },
   ];
-  const PRIORITY_COMPETITIONS = [...EUROPEAN_COMPETITIONS, ...MAJOR_LEAGUES];
+  const PRIORITY_COMPETITIONS = [...INTERNATIONAL_COMPETITIONS, ...EUROPEAN_COMPETITIONS, ...MAJOR_LEAGUES];
   // Match exact cup names together with the provider country. Lower divisions,
   // youth/women's cups and identically named cups elsewhere stay in the drawer.
   const MAJOR_DOMESTIC_CUPS = new Map([
@@ -44,7 +53,7 @@
   // 横断する。並び順もここを唯一の定義にして、リーグ選択の状態とは分離する。
   const ROUND_LEAGUES = MAJOR_LEAGUES.map(({ competition }) => competition);
   // 日別の「すべて」はクラブではなく大会単位で案内する。お気に入りの次に
-  // 欧州大会、5大リーグ、主要国内リーグの順で置き、未登録の大会は開始時刻順。
+  // 国際大会、欧州大会、5大リーグ、主要国内リーグの順で置き、未登録の大会は開始時刻順。
   const COMPETITION_DISPLAY_ORDER = new Map([
     ...PRIORITY_COMPETITIONS
       .filter(({ providerId }) => Number.isInteger(providerId) && providerId > 0)
@@ -141,7 +150,8 @@
   function competitionAccent(fixture) {
     const competition = priorityCompetitionForFixture(fixture);
     // Restrained wayfinding accents; competition identity always remains in text.
-    return ({ 1: "#8dbaff", 2: "#f3a44a", 3: "#67c995", 4: "#b69ae8",
+    return ({ "-4": "#e8b45d", "-3": "#73c7c7", "-2": "#a797df", "-1": "#98c887",
+      1: "#8dbaff", 2: "#f3a44a", 3: "#67c995", 4: "#b69ae8",
       5: "#ff5968", 6: "#4b9dff", 7: "#ed6472", 8: "#b4ca68" })[competition?.rank] || "#93a6c5";
   }
 
@@ -1167,7 +1177,7 @@
         ? ` · ${unavailableRoundLeagues.join(" / ")}は取得できません`
         : "";
       const dateLabel = new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", month: "long", day: "numeric", weekday: "short" }).format(new Date(`${selectedDailyDate}T12:00:00Z`));
-      const displayOrderLabel = "欧州大会・5大リーグ優先・大会内は時間順";
+      const displayOrderLabel = "国際大会・欧州大会・5大リーグ優先・大会内は時間順";
       if (fixtureOrderLabel) fixtureOrderLabel.textContent = displayOrderLabel;
       fixturesStatus.textContent = fixtures.length
         ? fixtureMode === "date"
