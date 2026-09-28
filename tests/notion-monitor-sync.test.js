@@ -105,6 +105,88 @@ test('keeps a saved source URL while replacing a placeholder label with an ident
   ]);
 });
 
+test('retains Notion source-link annotations through the structured article payload', async () => {
+  const children = new Map([
+    ['page-with-sources', [
+      {
+        id: 'sources-heading', type: 'heading_2', has_children: false,
+        heading_2: { rich_text: [{ plain_text: '出典' }] },
+      },
+      {
+        id: 'source-link', type: 'bulleted_list_item', has_children: false,
+        bulleted_list_item: {
+          rich_text: [{
+            plain_text: 'Official [',
+            href: 'https://www.uefa.com/nationsleague/match/2047985/',
+            text: { content: 'Official [', link: { url: 'https://www.uefa.com/nationsleague/match/2047985/' } },
+          }, {
+            plain_text: 'PDF]',
+            href: 'https://www.uefa.com/nationsleague/match/2047985/',
+            text: { content: 'PDF]', link: { url: 'https://www.uefa.com/nationsleague/match/2047985/' } },
+          }],
+        },
+      },
+    ]],
+  ]);
+  const client = createNotionClient({
+    apiKey: 'notion-token',
+    fetcher: async (url) => {
+      const match = String(url).match(/\/blocks\/([^/]+)\/children/u);
+      if (!match) throw new Error(`Unexpected URL ${url}`);
+      return response({ results: children.get(match[1]) || [], has_more: false });
+    },
+  });
+  const markdown = await client.pageMarkdown('page-with-sources');
+  assert.match(markdown, /https:\/\/www\.uefa\.com\/nationsleague\/match\/2047985\//u);
+  const article = notionPageToArticle({
+    type: 'am4_story',
+    page: notionPage({ sourceId: 'source-story' }),
+    markdown,
+  });
+  assert.deepEqual(article.sources, [{
+    title: 'Official [PDF]',
+    url: 'https://www.uefa.com/nationsleague/match/2047985/',
+  }]);
+  assert.doesNotMatch(article.body, /Official \[PDF\]/u);
+});
+
+test('keeps parent and nested Notion numbered-list indexes independent', async () => {
+  const children = new Map([
+    ['numbered-page', [
+      {
+        id: 'parent-one', type: 'numbered_list_item', has_children: true,
+        numbered_list_item: { rich_text: [{ plain_text: 'parent one' }] },
+      },
+      {
+        id: 'parent-two', type: 'numbered_list_item', has_children: false,
+        numbered_list_item: { rich_text: [{ plain_text: 'parent two' }] },
+      },
+    ]],
+    ['parent-one', [
+      {
+        id: 'child-one', type: 'numbered_list_item', has_children: false,
+        numbered_list_item: { rich_text: [{ plain_text: 'child one' }] },
+      },
+      {
+        id: 'child-two', type: 'numbered_list_item', has_children: false,
+        numbered_list_item: { rich_text: [{ plain_text: 'child two' }] },
+      },
+    ]],
+  ]);
+  const client = createNotionClient({
+    apiKey: 'notion-token',
+    fetcher: async (url) => {
+      const match = String(url).match(/\/blocks\/([^/]+)\/children/u);
+      if (!match) throw new Error(`Unexpected URL ${url}`);
+      return response({ results: children.get(match[1]) || [], has_more: false });
+    },
+  });
+  assert.equal(
+    await client.pageMarkdown('numbered-page'),
+    '1. parent one\n\n1. child one\n\n2. child two\n\n2. parent two',
+  );
+});
+
 test('Notion 429 returns its Retry-After as a durable deferral signal without an early in-function retry', async () => {
   let calls = 0;
   const client = createNotionClient({
