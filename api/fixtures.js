@@ -546,12 +546,12 @@ function cacheControlForStatus(status, { liveRefresh = false } = {}) {
   // This route is requested only by an open match page. Keep the start
   // boundary short even while the provider still reports NS/TBD; otherwise a
   // cached pre-kickoff response can delay the first live event by minutes.
-  if (liveRefresh) return 's-maxage=15, stale-while-revalidate=15';
-  if (FINISHED_STATUSES.includes(status)) return 's-maxage=300, stale-while-revalidate=86400';
+  if (liveRefresh) return 's-maxage=2700, stale-while-revalidate=2700';
+  if (FINISHED_STATUSES.includes(status)) return 's-maxage=1800, stale-while-revalidate=86400';
   if (LIVE_STATUSES.has(status)) {
-    return 's-maxage=15, stale-while-revalidate=45';
+    return 's-maxage=2700, stale-while-revalidate=2700';
   }
-  return 's-maxage=60, stale-while-revalidate=300';
+  return 's-maxage=1800, stale-while-revalidate=3600';
 }
 
 function isNearKickoff(fixture, now = Date.now()) {
@@ -645,9 +645,9 @@ const MATCH_EDITORIAL_TYPES = [
   { type: 'match_prediction', property: 'prediction' },
   { type: 'match_report', property: 'report' },
 ];
-const MATCH_PAGE_CACHE_CONTROL = 'public, max-age=0, s-maxage=60, stale-while-revalidate=120';
-const FINISHED_MATCH_PAGE_CACHE_CONTROL = 'public, max-age=0, s-maxage=300, stale-while-revalidate=300';
-const LIVE_MATCH_PAGE_CACHE_CONTROL = 'public, max-age=0, s-maxage=15, stale-while-revalidate=15';
+const MATCH_PAGE_CACHE_CONTROL = 'public, max-age=0, s-maxage=1800, stale-while-revalidate=3600';
+const FINISHED_MATCH_PAGE_CACHE_CONTROL = 'public, max-age=0, s-maxage=900, stale-while-revalidate=1800';
+const LIVE_MATCH_PAGE_CACHE_CONTROL = 'public, max-age=0, s-maxage=2700, stale-while-revalidate=2700';
 
 function matchPageFixtureId(value) {
   if (value == null || value === '') return null;
@@ -1199,8 +1199,8 @@ export default async function handler(req, res) {
       const competitions = [...new Set(fixtures.map((fixture) => fixture.competition))];
       const featuredFixtures = selectFeaturedFixtures(focusFixtures.length ? focusFixtures : fixtures);
       const cacheControl = fixtures.some((fixture) => LIVE_STATUSES.has(fixture.status) || isNearKickoff(fixture))
-        ? 's-maxage=15, stale-while-revalidate=15'
-        : 's-maxage=60, stale-while-revalidate=300';
+        ? 's-maxage=2700, stale-while-revalidate=2700'
+        : 's-maxage=21600, stale-while-revalidate=43200';
       res.setHeader('Cache-Control', cacheControl);
       return res.status(200).json({ date, fixtures, focusFixtures, featuredFixtures, competitions });
     } catch (err) {
@@ -1218,7 +1218,7 @@ export default async function handler(req, res) {
   try {
     if (featured === '1') {
       const featuredResult = await getFeaturedFixtures(SEASON);
-      res.setHeader('Cache-Control', 's-maxage=1800, stale-while-revalidate=86400');
+      res.setHeader('Cache-Control', 's-maxage=21600, stale-while-revalidate=86400');
       return res.status(200).json({ season: SEASON, ...featuredResult });
     }
 
@@ -1230,7 +1230,7 @@ export default async function handler(req, res) {
 
     if (data.errors && Object.keys(data.errors).length > 0) {
       console.error(`[fixtures] ${league} (league=${leagueId}, season=${SEASON}):`, data.errors);
-      res.setHeader('Cache-Control', 's-maxage=1800, stale-while-revalidate');
+      res.setHeader('Cache-Control', 's-maxage=21600, stale-while-revalidate=86400');
       return res.status(200).json({ league, season: SEASON, errors: data.errors, fixtures: [], rounds: [], dates: [] });
     }
 
@@ -1249,7 +1249,7 @@ export default async function handler(req, res) {
       .map(({ key, label }) => ({ key, label }));
     const dates = [...new Set(fixtures.map(f => f.date).filter(Boolean))].sort();
 
-    res.setHeader('Cache-Control', 's-maxage=1800, stale-while-revalidate');
+    res.setHeader('Cache-Control', 's-maxage=21600, stale-while-revalidate=86400');
     return res.status(200).json({ league, season: SEASON, fixtures, rounds, dates });
 
   } catch (err) {
