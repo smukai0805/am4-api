@@ -17,6 +17,7 @@
 // フォールバックする(lib/name-search.js参照。例: search=Mbappé&fullName=Kylian Mbappé)。
 
 import { resolvePlayerProfile } from '../lib/name-search.js';
+import { apiFootballFetch } from '../lib/api-football-client.js';
 import { createAdSenseHandler } from '../lib/adsense-loader.js';
 import { loadPlayerPageData, loadPlayerSectionData, positiveId as entityPositiveId } from '../lib/team-player-data.js';
 import { renderEntityErrorPage, renderPlayerPage, renderPlayerPageFragments } from '../lib/team-player-page-html.js';
@@ -149,12 +150,11 @@ export default async function handler(req, res) {
       if (!Number.isInteger(providerId) || providerId <= 0) {
         return res.status(400).json({ error: 'playerId は正の整数で指定してください' });
       }
-      const response = await fetch(
-        `https://v3.football.api-sports.io/players/profiles?player=${providerId}`,
-        { headers: { 'x-apisports-key': API_KEY } }
+      const data = await apiFootballFetch(
+        '/players/profiles',
+        { player: providerId },
+        { retries: 0, timeoutMs: 10_000 },
       );
-      if (!response.ok) throw new Error(`取得に失敗: ${response.status}`);
-      const data = await response.json();
       profile = data.response?.[0]?.player || null;
     } else {
       profile = await resolvePlayerProfile(API_KEY, { search, fullName });

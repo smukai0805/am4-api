@@ -634,3 +634,42 @@ test('site monitor records immutable inbound events before queueing and suppress
   assert.equal(repeated.shouldDeliver, false);
   assert.equal(resolved.shouldDeliver, true);
 });
+
+
+test('API-Football quota ledger enforces the cap and resets at UTC midnight', async () => {
+  const blob = createBlob();
+  let clock = new Date('2026-10-01T23:59:58.000Z');
+  const store = createSiteMonitorStore({ blob, now: () => clock });
+
+  const first = await store.consumeApiFootballRequest({ path: '/fixtures', limit: 2 });
+  const second = await store.consumeApiFootballRequest({ path: '/fixtures/events', limit: 2 });
+  const blocked = await store.consumeApiFootballRequest({ path: '/fixtures', limit: 2 });
+
+  assert.equal(first.ok, true);
+  assert.equal(second.ok, true);
+  assert.equal(second.usage.requests, 2);
+  assert.deepEqual(second.usage.byPath, { '/fixtures': 1, '/fixtures/events': 1 });
+  assert.equal(blocked.ok, false);
+  assert.equal(blocked.exceeded, 'apiFootballDailyLimit');
+  assert.equal((await store.readState()).value.apiFootballUsage.requests, 2);
+
+  clock = new Date('2026-10-02T00:00:01.000Z');
+  const reset = await store.consumeApiFootballRequest({ path: '/fixtures', limit: 2 });
+  assert.equal(reset.ok, true);
+  assert.equal(reset.usage.day, '2026-10-02');
+  assert.equal(reset.usage.requests, 1);
+  assert.deepEqual(reset.usage.byPath, { '/fixtures': 1 });
+});
+
+test('API-Football quota ledger never allows a configured limit above the 80-request reserve', async () => {
+  const store = createSiteMonitorStore({
+    blob: createBlob(),
+    now: () => new Date('2026-10-02T12:00:00.000Z'),
+  });
+  for (let index = 0; index < 80; index += 1) {
+    assert.equal((await store.consumeApiFootballRequest({ path: '/fixtures', limit: 999 })).ok, true);
+  }
+  const blocked = await store.consumeApiFootballRequest({ path: '/fixtures', limit: 999 });
+  assert.equal(blocked.ok, false);
+  assert.equal(blocked.limit, 80);
+});

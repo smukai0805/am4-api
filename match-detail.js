@@ -871,6 +871,9 @@
     const nav = page.querySelector('.match-anchor-nav');
     if (updateHash && nav && nav.getBoundingClientRect().top < 100) nav.scrollIntoView({block:'start',behavior:'instant'});
     if (id === 'lineups') void refreshInsights();
+    if (id === 'standings' && currentStandings.state !== 'ready') {
+      void refreshStandingsForFixture(currentDetail.fixture);
+    }
     page.querySelectorAll(".match-anchor-nav [data-match-panel]").forEach((button) => {
       if (button.dataset.matchPanel === id) button.setAttribute("aria-current", "true");
       else button.removeAttribute("aria-current");
@@ -2329,18 +2332,11 @@
     liveRefreshTimer = null;
   }
 
-  function liveRefreshDelay(fixture = currentDetail?.fixture) {
-    if (!fixture) return null;
-    if (isLiveFixture(fixture)) return LIVE_REFRESH_MS;
-    if (AM4FootballData.classifyFixtureStatus(fixture.status) !== "upcoming") return null;
-    const kickoffAt = Date.parse(fixture.kickoff || "");
-    if (!Number.isFinite(kickoffAt)) return null;
-    const untilKickoff = kickoffAt - Date.now();
-    // A page opened before the whistle should wake once just after kickoff, then
-    // switch to the normal 15-second live cadence when the provider says live.
-    return untilKickoff > 0
-      ? Math.max(LIVE_REFRESH_MS, untilKickoff + KICKOFF_RECHECK_BUFFER_MS)
-      : LIVE_REFRESH_MS;
+  function liveRefreshDelay() {
+    // AM4 is an editorial/review product, not a live-score product. Never let
+    // an open reader tab poll API-Football in the background. Fresh provider
+    // data is collected by the bounded server-side schedule instead.
+    return null;
   }
 
   function canRefreshLiveDetail() {
@@ -2517,11 +2513,9 @@
       currentStandings = { state: "loading", data: null };
       render(currentDetail);
       if (activePanel === "lineups") void refreshInsights();
-      scheduleLiveRefresh();
-      // Editorial loading is intentionally independent: a missing Notion record
-      // can never hide the API-FOOTBALL facts already rendered above.
+      // Editorial loading is independent of provider polling. Standings and
+      // optional fixture sections are loaded only when the reader opens them.
       void refreshEditorialForFixture(currentDetail.fixture);
-      void refreshStandingsForFixture(currentDetail.fixture);
       return;
     }
     if (result.state === "archive" && showArchiveDetail(result.archive)) return;
@@ -2549,12 +2543,9 @@
     if (!requestedPanel || PANEL_IDS.has(requestedPanel)) selectPanel(requestedPanel || "overview", { updateHash: false });
   });
   let finishedInsightsUntil = Date.now() + 30 * 60 * 1000;
-  const insightTimer = setInterval(() => {
-    if (document.visibilityState !== 'visible' || activePanel !== 'lineups' || !currentDetail) return;
-    const finished = matchGroup(currentDetail.fixture) === 'finished';
-    if (!finished || (Date.now() < finishedInsightsUntil && Date.now()-insightFetchedAt >= 300000)) void refreshInsights();
-  },60000);
-  window.addEventListener("pagehide", () => { clearLiveRefresh(); clearInterval(insightTimer); }, { once: true });
+  // Lineup insights are reader-triggered only. Do not poll them every minute
+  // while a tab remains open.
+  window.addEventListener("pagehide", () => { clearLiveRefresh(); }, { once: true });
   const topbar=document.querySelector('.brand-topbar');
   if (topbar && typeof ResizeObserver !== 'undefined') new ResizeObserver(() => document.documentElement.style.setProperty('--match-header-height',`${topbar.getBoundingClientRect().height}px`)).observe(topbar);
   const initialMatch = readInitialMatchPayload();
@@ -2567,12 +2558,9 @@
     hydrateServerRenderedMatch(currentDetail);
     if (!currentDetail.archive) {
       if (activePanel === "lineups") void refreshInsights();
-      scheduleLiveRefresh();
-      // Keep live and Notion refreshes independent. Optional fixture sections
-      // are fetched after the SSR header has painted, never before it.
-      void refreshDeferredDetail(currentDetail);
+      // Do not turn page views into provider refreshes. The overview uses the
+      // SSR snapshot; optional fixture/standings data is reader-triggered.
       void refreshEditorialForFixture(currentDetail.fixture);
-      void refreshStandingsForFixture(currentDetail.fixture);
     }
   } else {
     load();

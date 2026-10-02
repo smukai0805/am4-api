@@ -17,6 +17,7 @@ import { TEAM_IDS } from '../lib/team-ids.js';
 // アクセント記号付きの姓(Mbappé等)で0件になる問題、姓だけの検索が同姓の別人
 // (Yamal等)に当たる問題への対策。
 import { resolvePlayerProfile } from '../lib/name-search.js';
+import { apiFootballFetch } from '../lib/api-football-client.js';
 
 // 対応シーズン一覧。2026-07-31: Proプランへの切り替えに伴い2025・2026を追加
 // (2026は開幕前でまだ試合が無いため実データは薄いが、開幕後に自動的に反映される)。
@@ -60,12 +61,11 @@ export default async function handler(req, res) {
     try {
       const results = await Promise.all(
         SEASONS.map(async season => {
-          const response = await fetch(
-            `https://v3.football.api-sports.io/players?search=${encodeURIComponent(search)}&team=${teamId}&season=${season}`,
-            { headers: { 'x-apisports-key': API_KEY } }
+          const data = await apiFootballFetch(
+            '/players',
+            { search, team: teamId, season },
+            { retries: 0, timeoutMs: 10_000 },
           );
-          if (!response.ok) return { season, error: `HTTP ${response.status}` };
-          const data = await response.json();
           if (data.errors && Object.keys(data.errors).length > 0) {
             return { season, error: data.errors };
           }

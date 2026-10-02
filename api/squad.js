@@ -54,6 +54,7 @@
 // フィルタ処理自体を諦め、元の一覧をそのまま返す。
 
 import { TEAM_IDS } from '../lib/team-ids.js';
+import { apiFootballFetch } from '../lib/api-football-client.js';
 
 // API-Footballの4区分(Goalkeeper/Defender/Midfielder/Attacker)を、
 // このサイトのフォーメーション判定(GK/DF/MF/FW)に合わせて変換する。
@@ -76,15 +77,19 @@ function lastCompletedSeasonYear(date = new Date()) {
 // ページングしながら集める(1ページ最大20件)。このエンドポイントは「そのシーズンに
 // 実際にチームへ登録され、統計レコードを持つ選手」のみを返すため、下部組織の
 // 未出場選手や移籍市場ノイズの選手は基本的にここに現れない。
-async function fetchSeasonStatsMap(teamId, season, apiKey) {
+async function fetchSeasonStatsMap(teamId, season, _apiKey) {
   const map = new Map(); // playerId -> このteamIdでの総出場数
   for (let page = 1; page <= 5; page++) {
-    const r = await fetch(
-      `https://v3.football.api-sports.io/players?team=${teamId}&season=${season}&page=${page}`,
-      { headers: { 'x-apisports-key': apiKey } }
-    );
-    if (!r.ok) break;
-    const d = await r.json();
+    let d;
+    try {
+      d = await apiFootballFetch(
+        '/players',
+        { team: teamId, season, page },
+        { retries: 0, timeoutMs: 10_000 },
+      );
+    } catch {
+      break;
+    }
     for (const item of d.response || []) {
       const pid = item.player?.id;
       if (pid == null) continue;
@@ -108,14 +113,13 @@ async function fetchSeasonStatsMap(teamId, season, apiKey) {
 // 実際に最も新しいレコードを探す。また、in/out双方が同一クラブになっている
 // レコード(下部組織→トップ登録などクラブ内の内部移動と思われるもの、例:
 // マリオ・リバス)は「他クラブからの加入」ではないため対象外とする。
-async function isConfirmedNewSignee(playerId, teamId, apiKey) {
+async function isConfirmedNewSignee(playerId, teamId, _apiKey) {
   try {
-    const r = await fetch(
-      `https://v3.football.api-sports.io/transfers?player=${playerId}`,
-      { headers: { 'x-apisports-key': apiKey } }
+    const d = await apiFootballFetch(
+      '/transfers',
+      { player: playerId },
+      { retries: 0, timeoutMs: 10_000 },
     );
-    if (!r.ok) return false;
-    const d = await r.json();
     const transfers = d.response?.[0]?.transfers || [];
     const latest = transfers.reduce((max, t) => {
       if (!t?.date) return max;
@@ -188,12 +192,11 @@ export default async function handler(req, res) {
   }
 
   try {
-    const response = await fetch(
-      `https://v3.football.api-sports.io/players/squads?team=${teamId}`,
-      { headers: { 'x-apisports-key': API_KEY } }
+    const data = await apiFootballFetch(
+      '/players/squads',
+      { team: teamId },
+      { retries: 0, timeoutMs: 10_000 },
     );
-    if (!response.ok) throw new Error(`取得に失敗: ${response.status}`);
-    const data = await response.json();
 
     if (data.errors && Object.keys(data.errors).length > 0) {
       return res.status(200).json({ found: false, reason: 'API-Football側でエラーが発生しました', errors: data.errors });
